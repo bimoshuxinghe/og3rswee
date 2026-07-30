@@ -36,6 +36,18 @@ public final class MpvMedia {
         return isLikelyPhpProxyHls(text);
     }
 
+    public static boolean isRadioAudio(@Nullable String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        String text = decode(stripFragment(url));
+        if (TextUtils.isEmpty(text)) return false;
+        text = text.toLowerCase(Locale.ROOT);
+        if (isAudioExtension(text) || containsAudioMime(text)) return true;
+        if (text.contains("icecast") || text.contains("shoutcast") || text.contains("internet-radio")) return true;
+        if (text.contains("radio") || text.contains("fm") || text.contains("audio")) return isLikelyStreamUrl(text);
+        if (text.contains(":8000/") || text.contains(":8001/") || text.contains(":8080/")) return !hasVideoOrPlaylistExtension(text);
+        return isLikelyPhpProxyRadioAudio(text);
+    }
+
     private static boolean isLikelyPhpProxyHls(String text) {
         if (!text.contains(".php")) return false;
         if (text.contains("m3u8") || text.contains("hls")) return true;
@@ -43,6 +55,31 @@ public final class MpvMedia {
             return text.contains("url=") || text.contains("u=") || text.contains("src=") || text.contains("id=") || text.contains("channel=");
         }
         return false;
+    }
+
+    private static boolean isLikelyPhpProxyRadioAudio(String text) {
+        if (!text.contains(".php")) return false;
+        if (!(text.contains("proxy") || text.contains("play") || text.contains("live") || text.contains("stream"))) return false;
+        if (!(text.contains("url=") || text.contains("u=") || text.contains("src=") || text.contains("id=") || text.contains("channel="))) return false;
+        return text.contains("radio") || text.contains("fm") || text.contains("audio") || text.contains(":8000/") || text.contains(":8001/") || text.contains(":8080/") || isAudioExtension(text) || containsAudioMime(text);
+    }
+
+    private static boolean isLikelyStreamUrl(String text) {
+        return text.startsWith("http://") || text.startsWith("https://") || text.contains("url=") || text.contains("u=") || text.contains("src=");
+    }
+
+    private static boolean isAudioExtension(String text) {
+        String path = text.split("[?#]", 2)[0];
+        return path.endsWith(".mp3") || path.endsWith(".aac") || path.endsWith(".m4a") || path.endsWith(".ogg") || path.endsWith(".oga") || path.endsWith(".opus") || path.endsWith(".flac") || path.endsWith(".wav");
+    }
+
+    private static boolean containsAudioMime(String text) {
+        return text.contains("audio/") || text.contains("content-type=audio") || text.contains("format=audio");
+    }
+
+    private static boolean hasVideoOrPlaylistExtension(String text) {
+        String path = text.split("[?#]", 2)[0];
+        return path.endsWith(".m3u8") || path.endsWith(".mpd") || path.endsWith(".mp4") || path.endsWith(".mkv") || path.endsWith(".ts") || path.endsWith(".flv") || path.endsWith(".avi") || path.endsWith(".mov") || path.endsWith(".webm");
     }
 
     public static boolean isSpoofedSegment(@Nullable String url) {

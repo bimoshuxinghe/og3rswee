@@ -599,7 +599,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyMediaOptions(String url) {
-        if (MpvMedia.isSpoofedSegment(url)) applyProbeOptions();
+        if (MpvMedia.isSpoofedSegment(url) || MpvMedia.isRadioAudio(url)) applyProbeOptions();
         String device = MpvMedia.getBluRayDevice(url);
         if (!TextUtils.isEmpty(device)) setMpvOption("bluray-device", device);
     }
@@ -610,6 +610,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (isHls(item, url)) {
             options.add("demuxer=lavf");
             options.add("demuxer-lavf-format=hls");
+            options.add("keep-open=yes");
+            options.add("keep-open-pause=no");
+        } else if (MpvMedia.isRadioAudio(url)) {
+            options.add("demuxer=lavf");
+            options.add("vid=no");
+            options.add("aid=auto");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
         }
