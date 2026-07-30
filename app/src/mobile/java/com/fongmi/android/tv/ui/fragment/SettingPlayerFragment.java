@@ -124,8 +124,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
 
         mBinding.alwaysProgressText.setText(getSwitch(Setting.isAlwaysProgress()));
 
-        mBinding.homeCarouselText.setText(getSwitch(PlayerSetting.isHomeCarousel()));
-
         mBinding.speedText.setText(format.format(PlayerSetting.getSpeed()));
 
         mBinding.bufferText.setText(String.valueOf(PlayerSetting.getBuffer()));
@@ -187,8 +185,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         mBinding.adblock.setOnClickListener(this::setAdblock);
 
         mBinding.alwaysProgress.setOnClickListener(this::setAlwaysProgress);
-
-        mBinding.homeCarousel.setOnClickListener(this::setHomeCarousel);
 
         mBinding.caption.setOnLongClickListener(this::onCaption);
 
@@ -537,16 +533,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         Setting.putAlwaysProgress(!Setting.isAlwaysProgress());
 
         mBinding.alwaysProgressText.setText(getSwitch(Setting.isAlwaysProgress()));
-
-    }
-
-    private void setHomeCarousel(View view) {
-
-        PlayerSetting.putHomeCarousel(!PlayerSetting.isHomeCarousel());
-
-        mBinding.homeCarouselText.setText(getSwitch(PlayerSetting.isHomeCarousel()));
-
-        new MaterialAlertDialogBuilder(requireActivity()).setMessage("首页轮播海报设置将在重启应用后生效").setPositiveButton(R.string.dialog_positive, null).show();
 
     }
 

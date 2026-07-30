@@ -934,6 +934,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mViewModel.getUrl(mChannel, item);
         player().clear();
         player().stop();
+        showProgress();
         hideUI();
     }
 
@@ -943,6 +944,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mViewModel.getUrl(mChannel);
         player().clear();
         player().stop();
+        showProgress();
     }
 
     private boolean mPendingPlay;

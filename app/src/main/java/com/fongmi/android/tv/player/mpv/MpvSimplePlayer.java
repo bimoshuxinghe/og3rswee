@@ -110,6 +110,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private int currentSurfaceWidth;
     private int currentSurfaceHeight;
     private String lastErrorMessage;
+    private String lastErrorUrl;
 
     public MpvSimplePlayer(Context context, int decode) {
         super(Looper.getMainLooper());
@@ -413,6 +414,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_END_FILE) {
                 if (ignoreNextEndFile) {
                     ignoreNextEndFile = false;
+                } else if (isStaleEndFileError()) {
+                    return;
                 } else if (manualStop || mediaItem == null) {
                     playbackState = Player.STATE_IDLE;
                 } else if (!manualStop && !renderedFirstFrame && mediaItem != null) {
@@ -433,6 +436,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         String lower = value.toLowerCase(Locale.ROOT);
         if (level <= 20 || lower.contains("failed to open") || lower.contains("opening failed") || lower.contains("loading failed") || lower.contains("tls certificate")) {
             lastErrorMessage = "MPV: " + value;
+            lastErrorUrl = extractErrorUrl(value);
         }
         if (passthroughEnabled && MpvAudioPassthrough.isFailureLog(value)) disablePassthroughAndReload();
     }
@@ -507,6 +511,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         videoSize = VideoSize.UNKNOWN;
         playerError = null;
         lastErrorMessage = null;
+        lastErrorUrl = null;
         invalidateState();
         applyOffsets();
         restoreVideoOutput();
@@ -961,6 +966,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         passthroughRecoveryAttempted = false;
         manualStop = false;
         lastErrorMessage = null;
+        lastErrorUrl = null;
         renderedFirstFrame = false;
         reportRenderedFirstFrame = false;
         ignoreNextEndFile = false;
@@ -1011,6 +1017,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         ignoreNextEndFile = false;
         loadedFileActive = false;
         playerError = null;
+        lastErrorMessage = null;
+        lastErrorUrl = null;
         if (initialized) {
             setMpvProperty("pause", true);
             command("stop");
@@ -1030,6 +1038,30 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         playbackState = Player.STATE_IDLE;
         loading = false;
         invalidateState();
+    }
+
+    private boolean isStaleEndFileError() {
+        if (TextUtils.isEmpty(lastErrorUrl) || mediaItem == null || mediaItem.localConfiguration == null) return false;
+        String currentUrl = mediaItem.localConfiguration.uri.toString();
+        String currentPlayableUrl = MpvMedia.getPlayableUrl(currentUrl);
+        return !TextUtils.equals(lastErrorUrl, currentUrl) && !TextUtils.equals(lastErrorUrl, currentPlayableUrl);
+    }
+
+    @Nullable
+    private String extractErrorUrl(String message) {
+        if (TextUtils.isEmpty(message)) return null;
+        int start = message.indexOf("http://");
+        if (start < 0) start = message.indexOf("https://");
+        if (start < 0) return null;
+        int end = message.length();
+        for (int i = start; i < message.length(); i++) {
+            char c = message.charAt(i);
+            if (Character.isWhitespace(c) || c == '\'' || c == '"' || c == ')') {
+                end = i;
+                break;
+            }
+        }
+        return message.substring(start, end);
     }
 
     private void setMpvOption(String name, String value) {

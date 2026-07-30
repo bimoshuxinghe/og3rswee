@@ -12,6 +12,7 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.databinding.FragmentSettingHomeBinding;
 import com.fongmi.android.tv.event.ConfigEvent;
+import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -38,16 +39,22 @@ public class SettingHomeFragment extends BaseFragment {
     protected void initView() {
         setHomeMenuText();
         setHomeStyleText();
+        setHomeCarouselText();
     }
 
     @Override
     protected void initEvent() {
         mBinding.homeMenu.setOnClickListener(this::onHomeMenu);
         mBinding.homeStyle.setOnClickListener(this::onHomeStyle);
+        mBinding.homeCarousel.setOnClickListener(this::setHomeCarousel);
 
         ((NestedScrollView) mBinding.getRoot().findViewById(R.id.scrollView)).setOnScrollChangeListener((android.view.View.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             com.fongmi.android.tv.event.ScrollEvent.post(scrollY - oldScrollY);
         });
+    }
+
+    private String getSwitch(boolean value) {
+        return getString(value ? R.string.setting_on : R.string.setting_off);
     }
 
     private void setHomeMenuText() {
@@ -113,6 +120,16 @@ public class SettingHomeFragment extends BaseFragment {
                     dialog.dismiss();
                 })
                 .show();
+    }
+
+    private void setHomeCarouselText() {
+        mBinding.homeCarouselText.setText(getSwitch(PlayerSetting.isHomeCarousel()));
+    }
+
+    private void setHomeCarousel(View view) {
+        PlayerSetting.putHomeCarousel(!PlayerSetting.isHomeCarousel());
+        setHomeCarouselText();
+        new MaterialAlertDialogBuilder(requireActivity()).setMessage("首页轮播海报设置将在重启应用后生效").setPositiveButton(R.string.dialog_positive, null).show();
     }
 
     @Override
