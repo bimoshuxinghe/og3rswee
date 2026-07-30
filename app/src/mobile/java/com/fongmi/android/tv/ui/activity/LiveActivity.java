@@ -13,6 +13,8 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.media3.common.C;
@@ -101,6 +103,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private int count;
     private PiP mPiP;
     private ViewGroup.LayoutParams mFrameParams;
+    private int mPortraitVideoTopMargin;
     private boolean fullscreen;
 
     private boolean isFullscreen() {
@@ -188,6 +191,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         super.initView(savedInstanceState);
         mFrameParams = mBinding.video.getLayoutParams();
         mKeyDown = CustomKeyDown.create(this, mBinding.exo);
+        setVideoSafeInset();
         setPadding(mBinding.control.getRoot());
         setPadding(mBinding.recycler, true);
         mObserveEpg = this::setEpg;
@@ -296,6 +300,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         setFullscreen(true);
         App.removeCallbacks(mOrientRunnable);
         mBinding.video.setLayoutParams(new android.widget.RelativeLayout.LayoutParams(android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, android.widget.RelativeLayout.LayoutParams.MATCH_PARENT));
+        updateVideoTopMargin();
         mBinding.portraitLayout.setVisibility(View.GONE);
         mBinding.control.title.setVisibility(View.VISIBLE);
         bindAdapters();
@@ -307,6 +312,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         if (!isFullscreen()) return;
         setFullscreen(false);
         mBinding.video.setLayoutParams(mFrameParams);
+        updateVideoTopMargin();
         mBinding.portraitLayout.setVisibility(View.VISIBLE);
         mBinding.control.title.setVisibility(View.INVISIBLE);
         bindAdapters();
@@ -348,7 +354,27 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mFrameParams.height = Math.max(calculated, ResUtil.dp2px(250));
         if (!isFullscreen()) {
             mBinding.video.setLayoutParams(mFrameParams);
+            updateVideoTopMargin();
         }
+    }
+
+    private void setVideoSafeInset() {
+        ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (view, insets) -> {
+            int top = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()).top;
+            mPortraitVideoTopMargin = top + ResUtil.dp2px(8);
+            updateVideoTopMargin();
+            return insets;
+        });
+    }
+
+    private void updateVideoTopMargin() {
+        ViewGroup.LayoutParams layoutParams = mBinding.video.getLayoutParams();
+        if (!(layoutParams instanceof ViewGroup.MarginLayoutParams)) return;
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) layoutParams;
+        int target = !ResUtil.isLand(this) && !isFullscreen() && !isInPictureInPictureMode() ? mPortraitVideoTopMargin : 0;
+        if (params.topMargin == target) return;
+        params.topMargin = target;
+        mBinding.video.setLayoutParams(params);
     }
 
     private void setVideoView() {

@@ -83,6 +83,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     private BannerAdapter mBannerAdapter;
     private HistoryHorizontalAdapter mHistoryAdapter;
     private boolean mAppBarCollapsed = false;
+    private int mAppBarOffset = 0;
     private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable mRunnable = new Runnable() {
         @Override
@@ -213,10 +214,11 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
         mBinding.appBar.addOnOffsetChangedListener((appBarLayout, verticalOffset) -> {
             if (!isViewReady()) return;
+            mAppBarOffset = verticalOffset;
             int totalRange = appBarLayout.getTotalScrollRange();
             if (totalRange > 0) {
                 updateTypePinnedMargin(verticalOffset, totalRange);
-                updateBannerVisibility(verticalOffset, totalRange);
+                updateHomeHeaderVisibility(verticalOffset);
             }
             if (verticalOffset < 0 && !mAppBarCollapsed) {
                 mAppBarCollapsed = true;
@@ -228,10 +230,13 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         });
     }
 
-    private void updateBannerVisibility(int verticalOffset, int totalRange) {
+    private void updateHomeHeaderVisibility(int verticalOffset) {
         if (!PlayerSetting.isHomeCarousel()) {
             mBinding.bannerContainer.setAlpha(0f);
             mBinding.bannerContainer.setVisibility(View.GONE);
+            mBinding.bannerShadow.setVisibility(View.GONE);
+            mBinding.recentLayout.setAlpha(0f);
+            mBinding.recentLayout.setVisibility(View.GONE);
             return;
         }
         int bannerRange = Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight());
@@ -239,6 +244,19 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         float alpha = progress >= 0.9f ? 0f : 1f - progress;
         mBinding.bannerContainer.setAlpha(alpha);
         mBinding.bannerContainer.setVisibility(alpha <= 0f ? View.INVISIBLE : View.VISIBLE);
+        mBinding.bannerShadow.setVisibility(alpha <= 0f ? View.GONE : View.VISIBLE);
+        updateRecentVisibility(alpha);
+    }
+
+    private void updateRecentVisibility(float alpha) {
+        boolean show = PlayerSetting.isHomeCarousel() && Setting.isHomeHistory() && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0;
+        if (!show || alpha <= 0f) {
+            mBinding.recentLayout.setAlpha(0f);
+            mBinding.recentLayout.setVisibility(View.GONE);
+            return;
+        }
+        mBinding.recentLayout.setVisibility(View.VISIBLE);
+        mBinding.recentLayout.setAlpha(alpha);
     }
 
     private void applyHomeCarousel() {
@@ -247,10 +265,9 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         updateCollapsingSize();
         updateTypePinnedMargin();
         mBinding.collapsingToolbar.setVisibility(show ? View.VISIBLE : View.GONE);
-        mBinding.bannerShadow.setVisibility(show ? View.VISIBLE : View.GONE);
-        mBinding.recentLayout.setVisibility(show && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);
         mBinding.bannerContainer.setAlpha(show ? 1f : 0f);
         mBinding.bannerContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+        updateHomeHeaderVisibility(mAppBarOffset);
         if (show) startAutoScroll();
         else stopAutoScroll();
     }
@@ -268,13 +285,14 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void updateTypePinnedMargin() {
-        updateTypePinnedMargin(mBinding.appBar.getTop(), mBinding.appBar.getTotalScrollRange());
+        updateTypePinnedMargin(mAppBarOffset, mBinding.appBar.getTotalScrollRange());
     }
 
     private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
         int topBarHeight = mBinding.topBar.getHeight();
+        int bannerRange = Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight());
         float progress = PlayerSetting.isHomeCarousel() && totalRange > 0
-                ? Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange))
+                ? Math.min(1f, Math.max(0f, -verticalOffset / (float) bannerRange))
                 : 1f;
         ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.type.getLayoutParams();
         int target = Math.round(topBarHeight * progress);
@@ -667,7 +685,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                     }
                     if (historyList != null && !historyList.isEmpty()) {
                         mHistoryAdapter.setItems(historyList);
-                        mBinding.recentLayout.setVisibility(View.VISIBLE);
+                        updateHomeHeaderVisibility(mAppBarOffset);
                     } else {
                         mBinding.recentLayout.setVisibility(View.GONE);
                     }
