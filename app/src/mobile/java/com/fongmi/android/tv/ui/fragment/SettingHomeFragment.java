@@ -15,6 +15,7 @@ import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.base.BaseFragment;
+import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -129,7 +130,7 @@ public class SettingHomeFragment extends BaseFragment {
     private void setHomeCarousel(View view) {
         PlayerSetting.putHomeCarousel(!PlayerSetting.isHomeCarousel());
         setHomeCarouselText();
-        new MaterialAlertDialogBuilder(requireActivity()).setMessage("首页轮播海报设置将在重启应用后生效").setPositiveButton(R.string.dialog_positive, null).show();
+        Notify.show("首页轮播海报设置将在重启应用后生效");
     }
 
     @Override

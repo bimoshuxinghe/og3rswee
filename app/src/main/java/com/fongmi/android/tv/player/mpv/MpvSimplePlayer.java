@@ -92,6 +92,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean externalSubtitlesAdded;
     private boolean passthroughEnabled;
     private boolean passthroughRecoveryAttempted;
+    private boolean hlsAbortRetryAttempted;
     private boolean manualStop;
     private boolean ignoreNextEndFile;
     private boolean loadedFileActive;
@@ -109,6 +110,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private long bufferedPositionMs;
     private int currentSurfaceWidth;
     private int currentSurfaceHeight;
+    private String activeLoadUrl;
     private String lastErrorMessage;
     private String lastErrorUrl;
 
@@ -404,6 +406,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 updateVideoSize();
                 buildTracks();
                 markRenderedFirstFrame();
+                hlsAbortRetryAttempted = false;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_SEEK) {
                 loading = true;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_VIDEO_RECONFIG) {
@@ -419,6 +422,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 } else if (manualStop || mediaItem == null) {
                     playbackState = Player.STATE_IDLE;
                 } else if (!manualStop && !renderedFirstFrame && mediaItem != null) {
+                    if (retryHlsAbortError()) return;
                     setError(lastErrorMessage == null ? "MPV 播放失败" : lastErrorMessage);
                 }
                 else playbackState = Player.STATE_ENDED;
@@ -499,6 +503,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void loadMediaItem(long startPositionMs, boolean useStartOption) {
         if (mediaItem == null || mediaItem.localConfiguration == null) return;
+        String url = mediaItem.localConfiguration.uri.toString();
+        if (!TextUtils.equals(activeLoadUrl, url)) {
+            activeLoadUrl = url;
+            hlsAbortRetryAttempted = false;
+        }
         applyHeaders(mediaItem);
         applyDecodeOption();
         positionMs = startPositionMs == C.TIME_UNSET ? 0 : Math.max(0, startPositionMs);
@@ -515,7 +524,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         invalidateState();
         applyOffsets();
         restoreVideoOutput();
-        String url = mediaItem.localConfiguration.uri.toString();
         applyMediaOptions(url);
         String playableUrl = MpvMedia.getPlayableUrl(url);
         String options = getLoadOptions(positionMs, useStartOption, mediaItem, url);
@@ -964,7 +972,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         videoSize = VideoSize.UNKNOWN;
         externalSubtitlesAdded = false;
         passthroughRecoveryAttempted = false;
+        hlsAbortRetryAttempted = false;
         manualStop = false;
+        activeLoadUrl = null;
         lastErrorMessage = null;
         lastErrorUrl = null;
         renderedFirstFrame = false;
@@ -1017,8 +1027,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         ignoreNextEndFile = false;
         loadedFileActive = false;
         playerError = null;
+        activeLoadUrl = null;
         lastErrorMessage = null;
         lastErrorUrl = null;
+        hlsAbortRetryAttempted = false;
         if (initialized) {
             setMpvProperty("pause", true);
             command("stop");
@@ -1045,6 +1057,30 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         String currentUrl = mediaItem.localConfiguration.uri.toString();
         String currentPlayableUrl = MpvMedia.getPlayableUrl(currentUrl);
         return !TextUtils.equals(lastErrorUrl, currentUrl) && !TextUtils.equals(lastErrorUrl, currentPlayableUrl);
+    }
+
+    private boolean retryHlsAbortError() {
+        if (hlsAbortRetryAttempted || mediaItem == null || mediaItem.localConfiguration == null) return false;
+        String url = mediaItem.localConfiguration.uri.toString();
+        if (!isHls(mediaItem, url) || !isOpeningAbortedError()) return false;
+        hlsAbortRetryAttempted = true;
+        loading = true;
+        playbackState = Player.STATE_BUFFERING;
+        lastErrorMessage = null;
+        lastErrorUrl = null;
+        handler.postDelayed(() -> {
+            if (released || mediaItem == null || mediaItem.localConfiguration == null) return;
+            if (!TextUtils.equals(url, mediaItem.localConfiguration.uri.toString())) return;
+            loadMediaItem(C.TIME_UNSET, false);
+        }, 300);
+        invalidateState();
+        return true;
+    }
+
+    private boolean isOpeningAbortedError() {
+        if (TextUtils.isEmpty(lastErrorMessage)) return false;
+        String lower = lastErrorMessage.toLowerCase(Locale.ROOT);
+        return lower.contains("opening failed or was aborted") || lower.contains("operation was aborted") || lower.contains("immediate exit requested");
     }
 
     @Nullable

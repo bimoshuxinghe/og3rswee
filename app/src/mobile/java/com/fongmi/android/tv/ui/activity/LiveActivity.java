@@ -945,8 +945,13 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
 
     private void prepareChannelSwitch() {
         player().reset();
-        if (!player().isMpv()) player().pause();
-        showProgress();
+        if (player().isMpv()) {
+            hideError();
+            hideProgress();
+        } else {
+            player().pause();
+            showProgress();
+        }
     }
 
     private boolean mPendingPlay;
