@@ -338,6 +338,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.title.setOnLongClickListener(view -> onChange());
         mBinding.control.right.lock.setOnClickListener(view -> onLock());
         mBinding.control.right.rotate.setOnClickListener(view -> onRotate());
+        mBinding.control.right.pip.setOnClickListener(view -> enterPiP());
+        mBinding.control.fullscreen.setOnClickListener(view -> toggleFullscreen());
         mBinding.control.danmaku.setOnClickListener(view -> onDanmakuShow());
         mBinding.control.action.text.setOnClickListener(this::onTrack);
         mBinding.control.action.audio.setOnClickListener(this::onTrack);
@@ -1085,6 +1087,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         return enter;
     }
 
+    private void toggleFullscreen() {
+        if (isFullscreen()) exitFullscreen();
+        else enterFullscreen();
+    }
+
+    private void enterPiP() {
+        if (service() == null) return;
+        if (!player().haveTrack(C.TRACK_TYPE_VIDEO)) return;
+        mPiP.enter(this, player().getVideoWidth(), player().getVideoHeight(), getScale());
+    }
+
     private void enterFullscreen() {
         if (isFullscreen()) return;
         setFullscreen(true);
@@ -1175,6 +1188,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.parse.setVisibility(isFullscreen() && isUseParse() ? View.VISIBLE : View.GONE);
         mBinding.control.action.getRoot().setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
         mBinding.control.right.lock.setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
+        mBinding.control.fullscreen.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.right.pip.setVisibility(isLock() || PiP.noPiP() ? View.GONE : View.VISIBLE);
         mBinding.control.info.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.cast.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.center.setVisibility(isLock() ? View.GONE : View.VISIBLE);

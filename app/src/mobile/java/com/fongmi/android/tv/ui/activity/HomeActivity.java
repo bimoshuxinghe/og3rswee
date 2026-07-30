@@ -231,7 +231,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     private int getHomePosition() {
         if (com.fongmi.android.tv.setting.Setting.isHomeVod()) return 0;
-        if (com.fongmi.android.tv.setting.Setting.isHomeHot()) return 7;
         if (com.fongmi.android.tv.setting.Setting.isHomeLocal()) return 4;
         return 1;
     }
@@ -240,7 +239,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         boolean capsule = com.fongmi.android.tv.setting.Setting.isHomeCapsule();
 
         mBinding.navigation.getMenu().findItem(R.id.vod).setVisible(com.fongmi.android.tv.setting.Setting.isHomeVod());
-        mBinding.navigation.getMenu().findItem(R.id.hot).setVisible(com.fongmi.android.tv.setting.Setting.isHomeHot());
+        mBinding.navigation.getMenu().findItem(R.id.hot).setVisible(false);
         mBinding.navigation.getMenu().findItem(R.id.setting).setVisible(true);
         mBinding.navigation.getMenu().findItem(R.id.local).setVisible(com.fongmi.android.tv.setting.Setting.isHomeLocal());
         mBinding.navigation.getMenu().findItem(R.id.download).setVisible(com.fongmi.android.tv.setting.Setting.isHomeDownload());
@@ -295,7 +294,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         int currentId = mBinding.navigation.getSelectedItemId();
         if (currentId == R.id.vod && !com.fongmi.android.tv.setting.Setting.isHomeVod()) {
             change(getHomePosition());
-        } else if (currentId == R.id.hot && !com.fongmi.android.tv.setting.Setting.isHomeHot()) {
+        } else if (currentId == R.id.hot) {
             change(getHomePosition());
         } else if (currentId == R.id.local && !com.fongmi.android.tv.setting.Setting.isHomeLocal()) {
             change(getHomePosition());
@@ -329,11 +328,10 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         if (position == 0 && !com.fongmi.android.tv.setting.Setting.isHomeVod()) {
             position = getHomePosition();
         }
-        if (position == 7 && !com.fongmi.android.tv.setting.Setting.isHomeHot()) {
+        if (position == 7) {
             position = getHomePosition();
         }
         if (position == 4) mBinding.navigation.setSelectedItemId(R.id.local);
-        else if (position == 7) mBinding.navigation.setSelectedItemId(R.id.hot);
         else if (position < 2) mBinding.navigation.setSelectedItemId(position == 0 ? R.id.vod : R.id.setting);
         else mManager.change(position);
     }
