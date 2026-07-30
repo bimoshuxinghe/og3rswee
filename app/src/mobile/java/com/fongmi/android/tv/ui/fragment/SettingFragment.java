@@ -1,7 +1,5 @@
 package com.fongmi.android.tv.ui.fragment;
 
-import android.content.Intent;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +9,6 @@ import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
 import androidx.viewbinding.ViewBinding;
 
-import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
@@ -29,7 +26,6 @@ import com.fongmi.android.tv.impl.LiveListener;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
-import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.ui.activity.HomeActivity;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.dialog.ConfigDialog;
@@ -57,14 +53,8 @@ import java.util.List;
 
 public class SettingFragment extends BaseFragment implements ConfigListener, SiteListener, LiveListener, ThemeDialog.Listener {
 
-    private static final String TG_GROUP_URL = "https://t.me/tudouxiaolaba";
-    private static final String TG_GROUP_TEXT = "TG\u7fa4\uff1a" + TG_GROUP_URL;
-    private static final long TG_CLICK_INTERVAL = 1500;
-
     private FragmentSettingBinding mBinding;
     private String[] size;
-    private int tgClickCount;
-    private long tgClickTime;
 
     public static SettingFragment newInstance() {
         return new SettingFragment();
@@ -105,7 +95,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.vodUrl.setText(VodConfig.getDesc());
         mBinding.liveUrl.setText(LiveConfig.getDesc());
         mBinding.wallUrl.setText(WallConfig.getDesc());
-        mBinding.versionText.setText(BuildConfig.VERSION_NAME);
+        mBinding.versionText.setText("by：困困兔");
         setOtherText();
         setCacheText();
     }
@@ -114,7 +104,6 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.themeColorText.setText(getThemeText());
         mBinding.dohText.setText(getDohList()[getDohIndex()]);
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
-        mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
     }
@@ -143,14 +132,12 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.home.setOnClickListener(this::onHome);
         mBinding.restore.setOnClickListener(this::onRestore);
         mBinding.sync.setOnClickListener(view -> onSync());
-        mBinding.version.setOnClickListener(this::onVersion);
         mBinding.vod.setOnLongClickListener(this::onVodEdit);
         mBinding.vodHome.setOnClickListener(this::onVodHome);
         mBinding.live.setOnLongClickListener(this::onLiveEdit);
         mBinding.liveHome.setOnClickListener(this::onLiveHome);
         mBinding.wall.setOnLongClickListener(this::onWallEdit);
         mBinding.incognito.setOnClickListener(this::setIncognito);
-        mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.themeColor.setOnClickListener(this::onThemeColor);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
@@ -283,28 +270,6 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         ThemeDialog.show(this);
     }
 
-    private void onVersion(View view) {
-        Notify.show(TG_GROUP_TEXT);
-        if (isTgMultiClick()) openTgGroup();
-    }
-
-    private boolean isTgMultiClick() {
-        long time = System.currentTimeMillis();
-        if (time - tgClickTime > TG_CLICK_INTERVAL) tgClickCount = 0;
-        tgClickTime = time;
-        if (++tgClickCount < 3) return false;
-        tgClickCount = 0;
-        return true;
-    }
-
-    private void openTgGroup() {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(TG_GROUP_URL)));
-        } catch (Exception e) {
-            Notify.show(TG_GROUP_TEXT);
-        }
-    }
-
     private void setWallDefault(View view) {
         Setting.putWall(Setting.getWall() == 4 ? 1 : Setting.getWall() + 1);
         Setting.putWallType(0);
@@ -324,11 +289,6 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     private void setIncognito(View view) {
         Setting.putIncognito(!Setting.isIncognito());
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
-    }
-
-    private void setLiveBoot(View view) {
-        LiveSetting.putBootGlobal(!LiveSetting.isBootGlobal());
-        mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
     }
 
     private void setSize(View view) {

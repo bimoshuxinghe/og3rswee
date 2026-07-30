@@ -40,6 +40,8 @@ import com.fongmi.android.tv.impl.SpeedListener;
 
 import com.fongmi.android.tv.impl.UaListener;
 
+import com.fongmi.android.tv.setting.LiveSetting;
+
 import com.fongmi.android.tv.setting.PlayerSetting;
 
 import com.fongmi.android.tv.setting.Setting;
@@ -124,6 +126,8 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
 
         mBinding.alwaysProgressText.setText(getSwitch(Setting.isAlwaysProgress()));
 
+        mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
+
         mBinding.speedText.setText(format.format(PlayerSetting.getSpeed()));
 
         mBinding.bufferText.setText(String.valueOf(PlayerSetting.getBuffer()));
@@ -185,6 +189,8 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         mBinding.adblock.setOnClickListener(this::setAdblock);
 
         mBinding.alwaysProgress.setOnClickListener(this::setAlwaysProgress);
+
+        mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
 
         mBinding.caption.setOnLongClickListener(this::onCaption);
 
@@ -533,6 +539,14 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         Setting.putAlwaysProgress(!Setting.isAlwaysProgress());
 
         mBinding.alwaysProgressText.setText(getSwitch(Setting.isAlwaysProgress()));
+
+    }
+
+    private void setLiveBoot(View view) {
+
+        LiveSetting.putBootGlobal(!LiveSetting.isBootGlobal());
+
+        mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
 
     }
 
