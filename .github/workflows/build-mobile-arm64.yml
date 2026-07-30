@@ -77,6 +77,19 @@ jobs:
           path: build.log
           if-no-files-found: warn
 
+      - name: Publish latest APK release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete mobile-arm64-latest --yes --cleanup-tag || true
+          git tag -f mobile-arm64-latest
+          git push -f origin mobile-arm64-latest
+          gh release create mobile-arm64-latest Release/apk/*.apk \
+            --title "Mobile Arm64 Latest" \
+            --notes "Latest mobile arm64 release APK built by GitHub Actions." \
+            --latest
+
       - name: Commit build result
         if: always()
         run: |
@@ -84,7 +97,7 @@ jobs:
           if [ -f build.log ]; then cp build.log .github/build-logs/latest-mobile-arm64-build.log; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/build-logs/latest-mobile-arm64-build.log Release/apk/*.apk 2>/dev/null || true
+          git add -f .github/build-logs/latest-mobile-arm64-build.log 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No build result files to commit"
           else
