@@ -290,12 +290,8 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
         int topBarHeight = mBinding.topBar.getHeight();
-        int bannerRange = Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight());
-        float progress = PlayerSetting.isHomeCarousel() && totalRange > 0
-                ? Math.min(1f, Math.max(0f, -verticalOffset / (float) bannerRange))
-                : 1f;
         ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.type.getLayoutParams();
-        int target = Math.round(topBarHeight * progress);
+        int target = PlayerSetting.isHomeCarousel() ? 0 : topBarHeight;
         if (params.topMargin != target) {
             params.topMargin = target;
             mBinding.type.setLayoutParams(params);
