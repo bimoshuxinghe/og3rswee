@@ -207,6 +207,15 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
         mBinding.appBar.addOnOffsetChangedListener((appBarLayout, verticalOffset) -> {
             if (!isViewReady()) return;
+            int totalRange = appBarLayout.getTotalScrollRange();
+            int topBarH = mBinding.topBar.getHeight();
+            com.google.android.material.appbar.AppBarLayout.LayoutParams params =
+                    (com.google.android.material.appbar.AppBarLayout.LayoutParams) mBinding.type.getLayoutParams();
+            if (totalRange > 0) {
+                params.topMargin = topBarH * (-verticalOffset) / totalRange;
+                mBinding.type.setLayoutParams(params);
+                updateBannerVisibility(verticalOffset, totalRange);
+            }
             if (verticalOffset < 0 && !mAppBarCollapsed) {
                 mAppBarCollapsed = true;
                 com.fongmi.android.tv.event.ScrollEvent.post(100);
@@ -215,6 +224,13 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                 com.fongmi.android.tv.event.ScrollEvent.post(-100);
             }
         });
+    }
+
+    private void updateBannerVisibility(int verticalOffset, int totalRange) {
+        float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange));
+        float alpha = progress >= 0.98f ? 0f : 1f - progress;
+        mBinding.bannerContainer.setAlpha(alpha);
+        mBinding.bannerContainer.setVisibility(alpha <= 0f ? View.INVISIBLE : View.VISIBLE);
     }
 
     private void setRecyclerView() {

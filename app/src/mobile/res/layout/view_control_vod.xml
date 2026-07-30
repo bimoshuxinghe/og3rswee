@@ -9,7 +9,7 @@
     <androidx.appcompat.widget.LinearLayoutCompat
         android:id="@+id/top"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="4dp"
@@ -23,13 +23,14 @@
             android:scaleType="center"
             android:src="@drawable/ic_control_back" />
 
-        <FrameLayout
+        <androidx.appcompat.widget.LinearLayoutCompat
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"
-            android:layout_weight="1">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/title"
@@ -39,10 +40,20 @@
                 android:singleLine="true"
                 android:textColor="@color/white"
                 android:textSize="16sp"
-                android:visibility="invisible"
+                android:visibility="visible"
                 tools:text="慶餘年第一季：第一集" />
 
-        </FrameLayout>
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="1920 x 1080" />
+
+        </androidx.appcompat.widget.LinearLayoutCompat>
 
         <androidx.appcompat.widget.LinearLayoutCompat
             android:layout_width="wrap_content"
@@ -169,18 +180,6 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:itemCount="5"
             tools:listitem="@layout/adapter_parse_dark" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/resolution"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="4dp"
-            android:textColor="@color/white"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            tools:text="1920 x 1080" />
 
         <androidx.appcompat.widget.LinearLayoutCompat
             android:layout_width="match_parent"

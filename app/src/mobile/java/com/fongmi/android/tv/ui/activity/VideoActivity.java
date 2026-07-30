@@ -1117,7 +1117,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (isLand() && !player().isPortrait()) setTransition();
         setRequestedOrientation(isPort() ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
         mBinding.episode.postDelayed(() -> mBinding.episode.scrollToPosition(mEpisodeAdapter.getPosition()), 100);
-        mBinding.control.title.setVisibility(View.INVISIBLE);
+        mBinding.control.title.setVisibility(View.VISIBLE);
         mBinding.video.setLayoutParams(mFrameParams);
         mKeyDown.resetScale();
         App.post(mR3, 2000);
