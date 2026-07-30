@@ -474,6 +474,10 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void onBack() {
+        if (isEpgVisible()) {
+            hideEpg();
+            return;
+        }
         finish();
     }
 
@@ -635,9 +639,14 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
             mBinding.group.setVisibility(View.VISIBLE);
             mBinding.epgData.setVisibility(View.GONE);
         } else {
+            mBinding.portBottomLayout.setVisibility(View.VISIBLE);
             mBinding.portChannel.setVisibility(View.VISIBLE);
             mBinding.portEpgData.setVisibility(View.GONE);
         }
+    }
+
+    private boolean isEpgVisible() {
+        return isFullscreen() ? isVisible(mBinding.epgData) : isVisible(mBinding.portEpgData);
     }
 
     private void showPortraitEpg() {
@@ -1390,7 +1399,9 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
 
     @Override
     protected void onBackInvoked() {
-        if (isVisible(mBinding.control.getRoot())) {
+        if (isEpgVisible()) {
+            hideEpg();
+        } else if (isVisible(mBinding.control.getRoot())) {
             hideControl();
         } else if (isVisible(mBinding.widget.info)) {
             hideInfo();
