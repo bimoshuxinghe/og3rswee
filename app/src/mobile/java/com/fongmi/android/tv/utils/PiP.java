@@ -72,8 +72,13 @@ public class PiP {
     }
 
     public void enter(Activity activity, int width, int height, int scale) {
+        enter(activity, width, height, scale, false);
+    }
+
+    public void enter(Activity activity, int width, int height, int scale, boolean force) {
         try {
-            if (noPiP() || activity.isInPictureInPictureMode() || !PlayerSetting.isBackgroundPiP()) return;
+            if (noPiP() || activity.isInPictureInPictureMode()) return;
+            if (!force && !PlayerSetting.isBackgroundPiP()) return;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) builder.setSeamlessResizeEnabled(true);
             if (scale == 1) builder.setAspectRatio(new Rational(16, 9));
             else if (scale == 2) builder.setAspectRatio(new Rational(4, 3));

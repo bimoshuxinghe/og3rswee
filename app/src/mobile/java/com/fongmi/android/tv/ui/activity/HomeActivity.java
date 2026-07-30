@@ -378,7 +378,10 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     private void hideCapsule() {
         mCapsuleVisible = false;
         mCapsuleAnimating = true;
-        int hideDistance = mBinding.navigation.getHeight() + mBinding.navigation.getPaddingBottom();
+        mBinding.navigation.animate().cancel();
+        mBinding.blurView.animate().cancel();
+        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) mBinding.navigation.getLayoutParams();
+        int hideDistance = mBinding.navigation.getHeight() + params.bottomMargin + ResUtil.dp2px(24);
         mBinding.navigation.animate().translationY(hideDistance).setDuration(250).withEndAction(() -> mCapsuleAnimating = false).start();
         mBinding.blurView.animate().translationY(hideDistance).setDuration(250).start();
     }
@@ -386,6 +389,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     private void showCapsule() {
         mCapsuleVisible = true;
         mCapsuleAnimating = true;
+        mBinding.navigation.animate().cancel();
+        mBinding.blurView.animate().cancel();
         mBinding.navigation.animate().translationY(0).setDuration(250).withEndAction(() -> mCapsuleAnimating = false).start();
         mBinding.blurView.animate().translationY(0).setDuration(250).start();
     }

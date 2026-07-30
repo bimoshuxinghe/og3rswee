@@ -165,6 +165,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             mBinding.topBar.post(() -> {
                 if (isViewReady()) {
                     updateCollapsingSize();
+                    updateTypePinnedMargin();
                     applyHomeCarousel();
                 }
             });
@@ -214,6 +215,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             if (!isViewReady()) return;
             int totalRange = appBarLayout.getTotalScrollRange();
             if (totalRange > 0) {
+                updateTypePinnedMargin(verticalOffset, totalRange);
                 updateBannerVisibility(verticalOffset, totalRange);
             }
             if (verticalOffset < 0 && !mAppBarCollapsed) {
@@ -243,7 +245,8 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         if (!isViewReady()) return;
         boolean show = PlayerSetting.isHomeCarousel();
         updateCollapsingSize();
-        mBinding.collapsingToolbar.setVisibility(View.VISIBLE);
+        updateTypePinnedMargin();
+        mBinding.collapsingToolbar.setVisibility(show ? View.VISIBLE : View.GONE);
         mBinding.bannerShadow.setVisibility(show ? View.VISIBLE : View.GONE);
         mBinding.recentLayout.setVisibility(show && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);
         mBinding.bannerContainer.setAlpha(show ? 1f : 0f);
@@ -254,15 +257,30 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void updateCollapsingSize() {
         int topBarHeight = mBinding.topBar.getHeight();
-        int typeHeight = mBinding.type.getHeight() > 0 ? mBinding.type.getHeight() : ResUtil.dp2px(52);
-        int pinnedHeight = topBarHeight + typeHeight;
-        mBinding.collapsingToolbar.setMinimumHeight(pinnedHeight);
+        mBinding.collapsingToolbar.setMinimumHeight(topBarHeight);
         com.google.android.material.appbar.AppBarLayout.LayoutParams params =
                 (com.google.android.material.appbar.AppBarLayout.LayoutParams) mBinding.collapsingToolbar.getLayoutParams();
-        int targetHeight = PlayerSetting.isHomeCarousel() ? ResUtil.dp2px(240) : pinnedHeight;
+        int targetHeight = ResUtil.dp2px(240);
         if (params.height != targetHeight) {
             params.height = targetHeight;
             mBinding.collapsingToolbar.setLayoutParams(params);
+        }
+    }
+
+    private void updateTypePinnedMargin() {
+        updateTypePinnedMargin(mBinding.appBar.getTop(), mBinding.appBar.getTotalScrollRange());
+    }
+
+    private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
+        int topBarHeight = mBinding.topBar.getHeight();
+        float progress = PlayerSetting.isHomeCarousel() && totalRange > 0
+                ? Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange))
+                : 1f;
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.type.getLayoutParams();
+        int target = Math.round(topBarHeight * progress);
+        if (params.topMargin != target) {
+            params.topMargin = target;
+            mBinding.type.setLayoutParams(params);
         }
     }
 

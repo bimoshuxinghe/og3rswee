@@ -37,6 +37,8 @@ import androidx.transition.ChangeBounds;
 import androidx.transition.TransitionManager;
 import androidx.viewbinding.ViewBinding;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.request.transition.Transition;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
@@ -1095,7 +1097,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void enterPiP() {
         if (service() == null) return;
         if (!player().haveTrack(C.TRACK_TYPE_VIDEO)) return;
-        mPiP.enter(this, player().getVideoWidth(), player().getVideoHeight(), getScale());
+        hideControl();
+        mPiP.enter(this, player().getVideoWidth(), player().getVideoHeight(), getScale(), true);
     }
 
     private void enterFullscreen() {
@@ -1265,12 +1268,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setArtwork() {
+        setBackdrop();
         ImgUtil.load(this, mHistory.getVodPic(), new CustomTarget<>() {
             @Override
             public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
                 mBinding.exo.setDefaultArtwork(resource);
                 if (mBinding.bgPoster != null) {
-                    mBinding.bgPoster.setImageDrawable(resource);
                     mBinding.bgPoster.setVisibility(View.VISIBLE);
                     mBinding.bgOverlay.setVisibility(View.VISIBLE);
                 }
@@ -1285,6 +1288,26 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 }
             }
         });
+    }
+
+    private void setBackdrop() {
+        if (mBinding.bgPoster == null) return;
+        if (TextUtils.isEmpty(mHistory.getVodPic())) {
+            mBinding.bgPoster.setVisibility(View.GONE);
+            mBinding.bgOverlay.setVisibility(View.GONE);
+            return;
+        }
+        try {
+            mBinding.bgPoster.setVisibility(View.VISIBLE);
+            mBinding.bgOverlay.setVisibility(View.VISIBLE);
+            Glide.with(this)
+                    .load(ImgUtil.getUrl(mHistory.getVodPic()))
+                    .override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
+                    .error(R.drawable.artwork)
+                    .into(mBinding.bgPoster);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     private void checkFlag(Vod item) {
