@@ -932,7 +932,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void fetch(EpgData item) {
         if (mChannel == null) return;
         mViewModel.getUrl(mChannel, item);
-        stopCurrentChannelPlayback();
+        prepareChannelSwitch();
         hideUI();
     }
 
@@ -940,13 +940,12 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         if (mChannel == null) return;
         LiveConfig.get().setKeep(mChannel);
         mViewModel.getUrl(mChannel);
-        stopCurrentChannelPlayback();
+        prepareChannelSwitch();
     }
 
-    private void stopCurrentChannelPlayback() {
-        player().clearMediaItems();
-        player().clear();
-        player().stop();
+    private void prepareChannelSwitch() {
+        player().pause();
+        player().reset();
         showProgress();
     }
 

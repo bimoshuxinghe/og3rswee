@@ -519,7 +519,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         applyMediaOptions(url);
         String playableUrl = MpvMedia.getPlayableUrl(url);
         String options = getLoadOptions(positionMs, useStartOption, mediaItem, url);
-        command("playlist-clear");
         if (TextUtils.isEmpty(options)) command("loadfile", playableUrl, "replace");
         else command("loadfile", playableUrl, "replace", "-1", options);
         setMpvProperty("pause", !playWhenReady);
