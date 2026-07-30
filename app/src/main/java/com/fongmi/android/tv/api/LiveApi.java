@@ -1,6 +1,9 @@
 package com.fongmi.android.tv.api;
 
+import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
+import androidx.media3.common.MimeTypes;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.LiveConfig;
@@ -45,6 +48,7 @@ public class LiveApi {
         Source.get().stop();
         Result result = item.result();
         result.setUrl(Source.get().fetch(result));
+        if (!item.isRtsp() && TextUtils.isEmpty(result.getFormat())) result.setFormat(MimeTypes.APPLICATION_M3U8);
         return result;
     }
 

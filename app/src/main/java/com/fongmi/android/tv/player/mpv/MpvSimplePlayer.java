@@ -592,7 +592,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private String getLoadOptions(long positionMs, boolean useStartOption, MediaItem item, String url) {
         List<String> options = new ArrayList<>();
         if (positionMs > 0 && useStartOption) options.add("start=" + formatSeconds(positionMs));
-        if (isHls(item, url)) options.add("demuxer-lavf-format=hls");
+        if (isHls(item, url)) {
+            options.add("demuxer=lavf");
+            options.add("demuxer-lavf-format=hls");
+        }
         return TextUtils.join(",", options);
     }
 
