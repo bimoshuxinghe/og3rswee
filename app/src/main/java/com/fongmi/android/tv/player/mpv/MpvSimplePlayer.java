@@ -93,6 +93,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean passthroughEnabled;
     private boolean passthroughRecoveryAttempted;
     private boolean hlsAbortRetryAttempted;
+    private boolean audioOnlyFallback;
     private boolean manualStop;
     private boolean ignoreNextEndFile;
     private boolean loadedFileActive;
@@ -382,6 +383,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 videoSize = VideoSize.UNKNOWN;
                 manualStop = false;
                 externalSubtitlesAdded = false;
+                audioOnlyFallback = false;
                 renderedFirstFrame = false;
                 reportRenderedFirstFrame = false;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED) {
@@ -421,7 +423,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                     return;
                 } else if (manualStop || mediaItem == null) {
                     playbackState = Player.STATE_IDLE;
-                } else if (!manualStop && !renderedFirstFrame && mediaItem != null) {
+                } else if (!manualStop && !renderedFirstFrame && !audioOnlyFallback && mediaItem != null) {
                     if (retryHlsAbortError()) return;
                     setError(lastErrorMessage == null ? "MPV 播放失败" : lastErrorMessage);
                 }
@@ -618,8 +620,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         String mimeType = item.localConfiguration == null ? null : item.localConfiguration.mimeType;
         if (MimeTypes.APPLICATION_M3U8.equals(mimeType)) return true;
         if (!TextUtils.isEmpty(mimeType) && mimeType.toLowerCase(Locale.ROOT).contains("mpegurl")) return true;
-        String lower = MpvMedia.getPlayableUrl(url).toLowerCase(Locale.ROOT);
-        return lower.contains(".m3u8") || lower.contains("format=application/x-mpegurl");
+        return MpvMedia.isHls(MpvMedia.getPlayableUrl(url));
     }
 
     private void applyAudioOptions() {
@@ -763,16 +764,35 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             return;
         }
         List<Tracks.Group> groups = new ArrayList<>();
+        boolean hasAudio = false;
+        boolean hasVideo = false;
         for (int index = 0; index < count; index++) {
             Integer mpvId = safeGetInt("track-list/" + index + "/id");
             String type = safeGetString("track-list/" + index + "/type");
             int trackType = getTrackType(type);
             if (mpvId == null || trackType == C.TRACK_TYPE_UNKNOWN) continue;
+            if (trackType == C.TRACK_TYPE_AUDIO) hasAudio = true;
+            if (trackType == C.TRACK_TYPE_VIDEO) hasVideo = true;
             Format format = buildFormat(index, mpvId, trackType);
             boolean selected = Boolean.TRUE.equals(safeGetBoolean("track-list/" + index + "/selected"));
             groups.add(new Tracks.Group(new TrackGroup("mpv-" + type + "-" + mpvId, format), false, new int[]{C.FORMAT_HANDLED}, new boolean[]{selected}));
         }
         currentTracks = groups.isEmpty() ? Tracks.EMPTY : new Tracks(groups);
+        applyAudioOnlyFallback(hasAudio, hasVideo);
+    }
+
+    private void applyAudioOnlyFallback(boolean hasAudio, boolean hasVideo) {
+        audioOnlyFallback = hasAudio && !hasVideo;
+        if (!audioOnlyFallback) return;
+        videoSize = VideoSize.UNKNOWN;
+        setMpvProperty("vid", "no");
+        setMpvProperty("aid", "auto");
+        if (playerError == null && playbackState == Player.STATE_BUFFERING) {
+            renderedFirstFrame = true;
+            reportRenderedFirstFrame = false;
+            playbackState = Player.STATE_READY;
+            loading = false;
+        }
     }
 
     private Format buildFormat(int index, int mpvId, int trackType) {
@@ -975,6 +995,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         externalSubtitlesAdded = false;
         passthroughRecoveryAttempted = false;
         hlsAbortRetryAttempted = false;
+        audioOnlyFallback = false;
         manualStop = false;
         activeLoadUrl = null;
         lastErrorMessage = null;
@@ -1033,6 +1054,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         lastErrorMessage = null;
         lastErrorUrl = null;
         hlsAbortRetryAttempted = false;
+        audioOnlyFallback = false;
         if (initialized) {
             setMpvProperty("pause", true);
             command("stop");

@@ -26,6 +26,25 @@ public final class MpvMedia {
         return text.contains(".m3u8") && (text.contains("1ljx.com") || text.contains("coffee.1ljx.com"));
     }
 
+    public static boolean isHls(@Nullable String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        String text = decode(stripFragment(url));
+        if (TextUtils.isEmpty(text)) return false;
+        text = text.toLowerCase(Locale.ROOT);
+        if (text.contains(".m3u8") || text.contains("mpegurl") || text.contains("application/vnd.apple.mpegurl")) return true;
+        if (text.contains("format=application/x-mpegurl") || text.contains("format=application/vnd.apple.mpegurl")) return true;
+        return isLikelyPhpProxyHls(text);
+    }
+
+    private static boolean isLikelyPhpProxyHls(String text) {
+        if (!text.contains(".php")) return false;
+        if (text.contains("m3u8") || text.contains("hls")) return true;
+        if (text.contains("proxy") || text.contains("play") || text.contains("live") || text.contains("stream")) {
+            return text.contains("url=") || text.contains("u=") || text.contains("src=") || text.contains("id=") || text.contains("channel=");
+        }
+        return false;
+    }
+
     public static boolean isSpoofedSegment(@Nullable String url) {
         String path = getPath(url);
         return path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".webp") || path.endsWith(".gif");
