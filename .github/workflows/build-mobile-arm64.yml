@@ -30,6 +30,9 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
+      - name: Use installed JDK for Gradle daemon
+        run: rm -f gradle/gradle-daemon-jvm.properties
+
       - name: Build mobile arm64 release APK
         run: ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon
 
