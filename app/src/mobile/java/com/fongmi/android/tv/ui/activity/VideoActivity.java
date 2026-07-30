@@ -1269,11 +1269,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             @Override
             public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
                 mBinding.exo.setDefaultArtwork(resource);
+                if (mBinding.bgPoster != null) {
+                    mBinding.bgPoster.setImageDrawable(resource);
+                    mBinding.bgPoster.setVisibility(View.VISIBLE);
+                    mBinding.bgOverlay.setVisibility(View.VISIBLE);
+                }
             }
 
             @Override
             public void onLoadFailed(@Nullable Drawable errorDrawable) {
                 mBinding.exo.setDefaultArtwork(errorDrawable);
+                if (mBinding.bgPoster != null) {
+                    mBinding.bgPoster.setVisibility(View.GONE);
+                    mBinding.bgOverlay.setVisibility(View.GONE);
+                }
             }
         });
     }

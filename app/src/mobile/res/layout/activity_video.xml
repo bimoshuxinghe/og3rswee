@@ -6,6 +6,20 @@
     android:layout_height="match_parent"
     android:tag="port">
 
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/bgPoster"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/bgOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#59000000"
+        android:visibility="gone" />
+
     <View
         android:id="@+id/statusBar"
         android:layout_width="match_parent"

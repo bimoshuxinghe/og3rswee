@@ -58,6 +58,7 @@
 
         <!-- Bottom Drop Shadow for Carousel -->
         <View
+            android:id="@+id/bannerShadow"
             android:layout_width="match_parent"
             android:layout_height="6dp"
             android:background="@drawable/shape_banner_drop_shadow"

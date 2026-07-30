@@ -41,6 +41,7 @@ import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.impl.FilterListener;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.model.SiteViewModel;
+import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.activity.DownloadActivity;
 import com.fongmi.android.tv.ui.activity.HistoryActivity;
@@ -135,6 +136,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         showProgress();
         setTitle();
         setLogo();
+        applyHomeCarousel();
         loadHomeRecommends();
         loadHistory();
     }
@@ -161,7 +163,10 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                 mBinding.topBar.getPaddingBottom()
             );
             mBinding.topBar.post(() -> {
-                if (isViewReady()) mBinding.collapsingToolbar.setMinimumHeight(mBinding.topBar.getHeight());
+                if (isViewReady()) {
+                    mBinding.collapsingToolbar.setMinimumHeight(mBinding.topBar.getHeight());
+                    applyHomeCarousel();
+                }
             });
             boolean capsule = com.fongmi.android.tv.setting.Setting.isHomeCapsule();
             int margin = ResUtil.dp2px(16);
@@ -227,10 +232,30 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void updateBannerVisibility(int verticalOffset, int totalRange) {
+        if (!PlayerSetting.isHomeCarousel()) {
+            mBinding.bannerContainer.setAlpha(0f);
+            mBinding.bannerContainer.setVisibility(View.GONE);
+            return;
+        }
         float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange));
-        float alpha = progress >= 0.98f ? 0f : 1f - progress;
+        float alpha = progress >= 0.9f ? 0f : 1f - progress;
         mBinding.bannerContainer.setAlpha(alpha);
         mBinding.bannerContainer.setVisibility(alpha <= 0f ? View.INVISIBLE : View.VISIBLE);
+    }
+
+    private void applyHomeCarousel() {
+        if (!isViewReady()) return;
+        boolean show = PlayerSetting.isHomeCarousel();
+        mBinding.collapsingToolbar.setVisibility(show ? View.VISIBLE : View.GONE);
+        mBinding.bannerShadow.setVisibility(show ? View.VISIBLE : View.GONE);
+        mBinding.bannerContainer.setAlpha(show ? 1f : 0f);
+        mBinding.bannerContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+        com.google.android.material.appbar.AppBarLayout.LayoutParams params =
+                (com.google.android.material.appbar.AppBarLayout.LayoutParams) mBinding.type.getLayoutParams();
+        params.topMargin = show ? 0 : mBinding.topBar.getHeight();
+        mBinding.type.setLayoutParams(params);
+        if (show) startAutoScroll();
+        else stopAutoScroll();
     }
 
     private void setRecyclerView() {
@@ -464,7 +489,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void startAutoScroll() {
         stopAutoScroll();
-        if (isViewReady() && mHomeRecommends.size() > 1) {
+        if (isViewReady() && PlayerSetting.isHomeCarousel() && mHomeRecommends.size() > 1) {
             mHandler.postDelayed(mRunnable, 5000);
         }
     }
@@ -476,6 +501,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     @Override
     public void onResume() {
         super.onResume();
+        applyHomeCarousel();
         startAutoScroll();
     }
 

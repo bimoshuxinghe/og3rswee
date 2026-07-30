@@ -225,6 +225,14 @@ public class PlayerSetting {
         Prefers.put("home_mute", homeMute);
     }
 
+    public static boolean isHomeCarousel() {
+        return Prefers.getBoolean("home_carousel", true);
+    }
+
+    public static void putHomeCarousel(boolean homeCarousel) {
+        Prefers.put("home_carousel", homeCarousel);
+    }
+
     public static float getSpeed() {
         return Math.min(Math.max(Prefers.getFloat("speed", 3), 2), 5);
     }

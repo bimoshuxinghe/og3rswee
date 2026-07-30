@@ -203,6 +203,7 @@
     <string name="player_always_time">時鐘常顯</string>
     <string name="player_always_progress">播放時長常顯</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>
+    <string name="player_home_carousel">首頁輪播海報</string>
     <string name="player_home_mute">首頁靜音</string>
     <string name="player_preload_setting">預載設置</string>
     <string name="player_preload">預載</string>
