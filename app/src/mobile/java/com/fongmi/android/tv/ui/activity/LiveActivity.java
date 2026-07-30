@@ -105,6 +105,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private ViewGroup.LayoutParams mFrameParams;
     private int mPortraitVideoTopMargin;
     private boolean fullscreen;
+    private boolean switchingChannel;
 
     private boolean isFullscreen() {
         return fullscreen;
@@ -338,6 +339,11 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void changeHeight() {
+        if (switchingChannel) return;
+        applyVideoHeight();
+    }
+
+    private void applyVideoHeight() {
         if (ResUtil.isLand(this) || isFullscreen() || isInPictureInPictureMode()) return;
         int videoWidth = 0;
         int videoHeight = 0;
@@ -696,9 +702,27 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         Traffic.reset();
     }
 
+    private boolean shouldMaskChannelSwitch() {
+        return player() != null && player().isMpv() && !isFullscreen() && !isInPictureInPictureMode();
+    }
+
+    private void showChannelMask() {
+        if (!shouldMaskChannelSwitch()) return;
+        switchingChannel = true;
+        mBinding.channelMask.setVisibility(View.VISIBLE);
+    }
+
+    private void hideChannelMask() {
+        boolean needApplyHeight = switchingChannel;
+        switchingChannel = false;
+        if (needApplyHeight) applyVideoHeight();
+        mBinding.channelMask.setVisibility(View.GONE);
+    }
+
     private void showError(String text) {
         mBinding.widget.error.setVisibility(View.VISIBLE);
         mBinding.widget.error.setText(text);
+        hideChannelMask();
         hideProgress();
     }
 
@@ -946,9 +970,11 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void prepareChannelSwitch() {
         player().reset();
         if (player().isMpv()) {
+            showChannelMask();
             hideError();
             hideProgress();
         } else {
+            hideChannelMask();
             player().pause();
             showProgress();
         }
@@ -1055,12 +1081,18 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @Override
     protected void onPlayingChanged(boolean isPlaying) {
         if (isPlaying) {
+            hideChannelMask();
             mPiP.update(this, true);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
         }
+    }
+
+    @Override
+    protected void onRenderedFirstFrameChanged() {
+        if (switchingChannel) hideChannelMask();
     }
 
     @Override

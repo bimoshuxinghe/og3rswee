@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
@@ -55,6 +56,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
 
     private FragmentSettingBinding mBinding;
     private String[] size;
+    private boolean showAuthor;
 
     public static SettingFragment newInstance() {
         return new SettingFragment();
@@ -95,9 +97,13 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.vodUrl.setText(VodConfig.getDesc());
         mBinding.liveUrl.setText(LiveConfig.getDesc());
         mBinding.wallUrl.setText(WallConfig.getDesc());
-        mBinding.versionText.setText("by：困困兔");
+        setVersionText();
         setOtherText();
         setCacheText();
+    }
+
+    private void setVersionText() {
+        mBinding.versionText.setText(showAuthor ? "by困困兔" : BuildConfig.VERSION_NAME);
     }
 
     private void setOtherText() {
@@ -132,6 +138,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.home.setOnClickListener(this::onHome);
         mBinding.restore.setOnClickListener(this::onRestore);
         mBinding.sync.setOnClickListener(view -> onSync());
+        mBinding.version.setOnClickListener(this::onVersion);
         mBinding.vod.setOnLongClickListener(this::onVodEdit);
         mBinding.vodHome.setOnClickListener(this::onVodHome);
         mBinding.live.setOnLongClickListener(this::onLiveEdit);
@@ -268,6 +275,11 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
 
     private void onThemeColor(View view) {
         ThemeDialog.show(this);
+    }
+
+    private void onVersion(View view) {
+        showAuthor = !showAuthor;
+        setVersionText();
     }
 
     private void setWallDefault(View view) {
