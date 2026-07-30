@@ -1,0 +1,51 @@
+<resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
+
+    <!-- Home -->
+    <string name="home_vod">精彩影視</string>
+    <string name="home_live">電視直播</string>
+    <string name="home_search">搜尋</string>
+    <string name="home_keep">我的收藏</string>
+    <string name="home_push">推送</string>
+    <string name="home_setting">設定</string>
+    <string name="home_history">最近觀看</string>
+    <string name="toolbar_history">歷史</string>
+    <string name="home_history_vertical">最\n近\n觀\n看</string>
+    <string name="home_recommend">更新推薦</string>
+    <string name="home_keep_brief">精選優質影視劇</string>
+    <string name="home_history_empty">暫無歷史記錄</string>
+    <string name="vod_home">首頁</string>
+
+    <!-- Collect -->
+    <string name="collect_result">「<xliff:g name="name">%s</xliff:g>」的搜尋結果</string>
+
+    <!-- Push -->
+    <string name="push_clip">推送剪貼簿內容</string>
+    <string name="push_info">使用手機掃描 QR Code，或於瀏覽器輸入網址\n<xliff:g name="name">%s</xliff:g></string>
+
+    <!-- Setting -->
+    <string name="player_background">點播背景播放</string>
+
+    <!-- Local NAS -->
+    <string name="nas_type">協議</string>
+    <string name="nas_name">顯示名稱</string>
+    <string name="nas_host">主機</string>
+    <string name="nas_port">端口</string>
+    <string name="nas_path">路徑</string>
+    <string name="nas_user">用戶名</string>
+    <string name="nas_pass">密碼</string>
+    <string name="nas_title_add">添加本地存儲</string>
+    <string name="nas_title_edit">修改本地存儲</string>
+    <string name="nas_delete_confirm">確定刪除此連接嗎？</string>
+    <string name="nas_empty_fields">名稱和主機不能為空</string>
+    <string name="dialog_delete">刪除</string>
+    <string name="nas_manage">管理連接</string>
+    <string name="nas_style">檢視樣式</string>
+    <string name="nas_style_list">列表</string>
+    <string name="nas_style_rect">縮圖(海報)</string>
+    <string name="nas_style_oval">圓形</string>
+    <string name="toolbar_keep">收藏</string>
+    <string name="toolbar_setting">設定</string>
+    <string name="search_hint">搜尋影片、演員、導演</string>
+    <string name="dialog_site_title">&#x9078;&#x64C7;&#x7AD9;&#x9EDE;</string>
+    <string name="dialog_site_desc">&#x4E00;&#x6392;&#x5169;&#x500B;&#xFF0C;&#x9065;&#x63A7;&#x9078;&#x7AD9;&#x66F4;&#x65B9;&#x4FBF;</string>
+</resources>

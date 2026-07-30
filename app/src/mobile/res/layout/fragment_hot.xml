@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        app:title="@string/nav_hot"
+        app:titleTextAppearance="@style/HotToolbarTextAppearance">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/search"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end|center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="10dp"
+            android:src="@drawable/ic_action_search"
+            android:visibility="gone"
+            app:tint="@color/white" />
+
+    </com.google.android.material.appbar.MaterialToolbar>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="10dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/radar"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/shape_hot_tab"
+                android:gravity="center"
+                android:minWidth="58dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/hot_radar"
+                android:textColor="@color/hot_tab_text"
+                android:textSize="13sp" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/movie"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/shape_hot_tab"
+                android:gravity="center"
+                android:minWidth="58dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/hot_movie"
+                android:textColor="@color/hot_tab_text"
+                android:textSize="13sp" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tv"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/shape_hot_tab"
+                android:gravity="center"
+                android:minWidth="58dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/hot_tv"
+                android:textColor="@color/hot_tab_text"
+                android:textSize="13sp" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/show"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/shape_hot_tab"
+                android:gravity="center"
+                android:minWidth="58dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/hot_show"
+                android:textColor="@color/hot_tab_text"
+                android:textSize="13sp" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/anime"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/shape_hot_tab"
+                android:gravity="center"
+                android:minWidth="58dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/hot_anime"
+                android:textColor="@color/hot_tab_text"
+                android:textSize="13sp" />
+
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+    </HorizontalScrollView>
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.fongmi.android.tv.ui.custom.ProgressLayout
+            android:id="@+id/progressLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <com.fongmi.android.tv.ui.custom.CustomRecyclerView
+                android:id="@+id/recycler"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp"
+                tools:listitem="@layout/adapter_vod_rect" />
+
+        </com.fongmi.android.tv.ui.custom.ProgressLayout>
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+</androidx.appcompat.widget.LinearLayoutCompat>

@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:scrollbars="none"
+    android:clipToPadding="false"
+    android:clipChildren="false"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Title -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"
+            android:text="@string/nas_title_add" />
+
+        <!-- Protocol selection button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_type"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/protocol"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:background="@drawable/selector_button"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center"
+                android:padding="8dp"
+                android:text="SMB"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Display Name -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_name"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.fongmi.android.tv.ui.custom.CustomEditText
+                android:id="@+id/name"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="@string/nas_name"
+                android:singleLine="true"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Host -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_host"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.fongmi.android.tv.ui.custom.CustomEditText
+                android:id="@+id/host"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="@string/nas_host"
+                android:singleLine="true"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Port -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_port"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.fongmi.android.tv.ui.custom.CustomEditText
+                android:id="@+id/port"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="@string/nas_port"
+                android:singleLine="true"
+                android:importantForAutofill="no"
+                android:inputType="number"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Path -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_path"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.fongmi.android.tv.ui.custom.CustomEditText
+                android:id="@+id/path"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="@string/nas_path"
+                android:singleLine="true"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Username -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_user"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.fongmi.android.tv.ui.custom.CustomEditText
+                android:id="@+id/user"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="@string/nas_user"
+                android:singleLine="true"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Password -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/nas_pass"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.fongmi.android.tv.ui.custom.CustomEditText
+                android:id="@+id/pass"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="@string/nas_pass"
+                android:singleLine="true"
+                android:importantForAutofill="no"
+                android:inputType="textPassword"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- Action buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/positive"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/selector_button"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="@string/dialog_positive"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/negative"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/selector_button"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="@string/dialog_negative"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

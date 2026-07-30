@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/shape_site_dialog"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="18dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="MPV 配置"
+        android:textColor="#F013213A"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="选择本地 mpv.conf，或填写在线配置地址"
+        android:textColor="#9913213A"
+        android:textSize="12sp" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/current"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:ellipsize="middle"
+        android:singleLine="true"
+        android:textColor="#B313213A"
+        android:textSize="13sp" />
+
+    <androidx.appcompat.widget.AppCompatEditText
+        android:id="@+id/input"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/shape_site_search"
+        android:gravity="center_vertical"
+        android:hint="https://.../mpv.conf"
+        android:inputType="textUri"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:singleLine="true"
+        android:textColor="#E613213A"
+        android:textColorHint="#6613213A"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/local"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="本地文件"
+            android:textColor="#13227A"
+            android:textSize="14sp"
+            app:backgroundTint="#1A5EF2C2"
+            app:cornerRadius="18dp"
+            app:rippleColor="#335EF2C2"
+            app:strokeColor="#335EF2C2"
+            app:strokeWidth="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/url"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="导入地址"
+            android:textColor="#13227A"
+            android:textSize="14sp"
+            app:backgroundTint="#1A13227A"
+            app:cornerRadius="18dp"
+            app:rippleColor="#265EF2C2"
+            app:strokeColor="#2613227A"
+            app:strokeWidth="1dp" />
+
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/clear"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="10dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:text="清除配置"
+        android:textColor="#B35C626B"
+        android:textSize="14sp"
+        app:backgroundTint="#0A13227A"
+        app:cornerRadius="18dp"
+        app:rippleColor="#1A13227A"
+        app:strokeColor="#1413227A"
+        app:strokeWidth="1dp" />
+
+</LinearLayout>

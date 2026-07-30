@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="2dp"
+    android:layout_marginBottom="2dp"
+    android:background="@drawable/shape_live"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:duplicateParentState="true"
+        android:fontFeatureSettings="tnum"
+        android:textColor="@color/selector_text"
+        android:textSize="14sp"
+        tools:text="01" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/logo"
+        android:layout_width="44dp"
+        android:layout_height="33dp"
+        android:layout_marginEnd="12dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:duplicateParentState="true"
+        android:orientation="vertical">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:duplicateParentState="true"
+            android:ellipsize="marquee"
+            android:singleLine="true"
+            android:textColor="@color/selector_text"
+            android:textSize="14sp"
+            tools:text="CNN" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/epg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:duplicateParentState="true"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="#CCFFFFFF"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="EPG Program"
+            tools:visibility="visible" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginTop="4dp"
+            android:progressDrawable="@drawable/progress_epg"
+            android:visibility="gone"
+            tools:progress="50"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+</androidx.appcompat.widget.LinearLayoutCompat>

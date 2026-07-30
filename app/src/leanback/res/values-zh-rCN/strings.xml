@@ -1,0 +1,51 @@
+<resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
+
+    <!-- Home -->
+    <string name="home_vod">精彩影视</string>
+    <string name="home_live">电视直播</string>
+    <string name="home_search">搜索</string>
+    <string name="home_keep">我的收藏</string>
+    <string name="home_push">推送</string>
+    <string name="home_setting">设置</string>
+    <string name="home_history">最近观看</string>
+    <string name="toolbar_history">历史</string>
+    <string name="home_history_vertical">最\n近\n观\n看</string>
+    <string name="home_recommend">更新推荐</string>
+    <string name="home_keep_brief">精选优质影视剧</string>
+    <string name="home_history_empty">暂无历史记录</string>
+    <string name="vod_home">首页</string>
+
+    <!-- Collect -->
+    <string name="collect_result">“<xliff:g name="name">%s</xliff:g>”的搜索结果</string>
+
+    <!-- Push -->
+    <string name="push_clip">推送剪贴板内容</string>
+    <string name="push_info">使用手机扫描二维码，或于浏览器访问地址\n<xliff:g name="name">%s</xliff:g></string>
+
+    <!-- Setting -->
+    <string name="player_background">点播后台播放</string>
+
+    <!-- Local NAS -->
+    <string name="nas_type">协议</string>
+    <string name="nas_name">显示名称</string>
+    <string name="nas_host">主机</string>
+    <string name="nas_port">端口</string>
+    <string name="nas_path">路径</string>
+    <string name="nas_user">用户名</string>
+    <string name="nas_pass">密码</string>
+    <string name="nas_title_add">添加本地存储</string>
+    <string name="nas_title_edit">修改本地存储</string>
+    <string name="nas_delete_confirm">确定删除此连接吗？</string>
+    <string name="nas_empty_fields">名称和主机不能为空</string>
+    <string name="dialog_delete">删除</string>
+    <string name="nas_manage">管理连接</string>
+    <string name="nas_style">视图样式</string>
+    <string name="nas_style_list">列表</string>
+    <string name="nas_style_rect">缩略图(海报)</string>
+    <string name="nas_style_oval">圆形</string>
+    <string name="toolbar_keep">收藏</string>
+    <string name="toolbar_setting">设置</string>
+    <string name="search_hint">搜索影片、演员、导演</string>
+    <string name="dialog_site_title">&#x9009;&#x62E9;&#x7AD9;&#x70B9;</string>
+    <string name="dialog_site_desc">&#x4E00;&#x6392;&#x4E24;&#x4E2A;&#xFF0C;&#x9065;&#x63A7;&#x9009;&#x7AD9;&#x66F4;&#x65B9;&#x4FBF;</string>
+</resources>
