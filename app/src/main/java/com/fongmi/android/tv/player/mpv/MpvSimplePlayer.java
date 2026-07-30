@@ -608,6 +608,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (isHls(item, url)) {
             options.add("demuxer=lavf");
             options.add("demuxer-lavf-format=hls");
+            options.add("keep-open=yes");
+            options.add("keep-open-pause=no");
         }
         return TextUtils.join(",", options);
     }

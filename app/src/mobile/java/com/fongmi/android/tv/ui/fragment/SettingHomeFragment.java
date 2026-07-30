@@ -130,7 +130,7 @@ public class SettingHomeFragment extends BaseFragment {
     private void setHomeCarousel(View view) {
         PlayerSetting.putHomeCarousel(!PlayerSetting.isHomeCarousel());
         setHomeCarouselText();
-        Notify.show("首页轮播海报设置将在重启应用后生效");
+        Notify.show("重启后生效");
     }
 
     @Override

@@ -1330,6 +1330,22 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     @Override
+    public void onSingleTap(float x) {
+        if (!isFullscreen()) {
+            onToggle();
+        } else if (isVisible(mBinding.control.getRoot())) {
+            hideControl();
+        } else if (x < ResUtil.getScreenWidth(this) / 3f) {
+            if (isVisible(mBinding.recycler)) hideUI();
+            else showUI();
+        } else {
+            if (isVisible(mBinding.recycler)) hideUI();
+            showControl();
+        }
+        hideInfo();
+    }
+
+    @Override
     public void onDoubleTap() {
         if (isVisible(mBinding.recycler)) hideUI();
         if (isVisible(mBinding.control.getRoot())) hideControl();
