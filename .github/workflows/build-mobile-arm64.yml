@@ -79,19 +79,22 @@ jobs:
 
       - name: Publish latest APK release
         if: success()
+        continue-on-error: true
+        timeout-minutes: 10
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete mobile-arm64-latest --yes --cleanup-tag || true
           git tag -f mobile-arm64-latest
-          git push -f origin mobile-arm64-latest
+          git push -f origin mobile-arm64-latest || true
           gh release create mobile-arm64-latest Release/apk/*.apk \
             --title "Mobile Arm64 Latest" \
             --notes "Latest mobile arm64 release APK built by GitHub Actions." \
-            --latest
+            --latest || echo "::warning::Release publishing failed, APK artifact is still available."
 
       - name: Commit build result
         if: always()
+        continue-on-error: true
         run: |
           mkdir -p .github/build-logs
           if [ -f build.log ]; then cp build.log .github/build-logs/latest-mobile-arm64-build.log; fi
@@ -102,5 +105,5 @@ jobs:
             echo "No build result files to commit"
           else
             git commit -m "Update mobile arm64 build result [skip ci]"
-            git push
+            git push || echo "::warning::Build log push failed."
           fi
