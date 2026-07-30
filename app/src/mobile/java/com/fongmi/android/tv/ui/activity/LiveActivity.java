@@ -345,13 +345,14 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
             videoWidth = player().getVideoWidth();
             videoHeight = player().getVideoHeight();
         }
+        boolean hasVideoSize = videoWidth > 0 && videoHeight > 0;
         if (videoWidth == 0 || videoHeight == 0) {
             videoWidth = 1920;
             videoHeight = 1080;
         }
         int viewWidth = ResUtil.getScreenWidth();
         int calculated = (int) (viewWidth * ((float) videoHeight / videoWidth));
-        mFrameParams.height = Math.max(calculated, ResUtil.dp2px(250));
+        mFrameParams.height = hasVideoSize ? calculated : Math.max(calculated, ResUtil.dp2px(250));
         if (!isFullscreen()) {
             mBinding.video.setLayoutParams(mFrameParams);
             updateVideoTopMargin();

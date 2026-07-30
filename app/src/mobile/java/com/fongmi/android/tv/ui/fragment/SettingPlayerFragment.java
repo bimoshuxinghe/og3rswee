@@ -546,6 +546,8 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
 
         mBinding.homeCarouselText.setText(getSwitch(PlayerSetting.isHomeCarousel()));
 
+        new MaterialAlertDialogBuilder(requireActivity()).setMessage("首页轮播海报设置将在重启应用后生效").setPositiveButton(R.string.dialog_positive, null).show();
+
     }
 
     private void onBackground(View view) {
