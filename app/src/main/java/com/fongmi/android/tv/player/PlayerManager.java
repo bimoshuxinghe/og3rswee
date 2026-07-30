@@ -448,6 +448,10 @@ public class PlayerManager implements ParseCallback {
         return engine instanceof MpvPlayerEngine;
     }
 
+    public boolean isMpv() {
+        return isMpvEngine();
+    }
+
     private boolean canUseMpv(PlaySpec spec) {
         return (PlayerSetting.isMpv() || MpvMedia.shouldPreferMpv(spec == null ? null : spec.getUrl())) && isMpvSupported(spec);
     }

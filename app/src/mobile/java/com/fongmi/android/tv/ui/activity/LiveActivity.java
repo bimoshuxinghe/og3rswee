@@ -944,8 +944,8 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void prepareChannelSwitch() {
-        player().pause();
         player().reset();
+        if (!player().isMpv()) player().pause();
         showProgress();
     }
 
@@ -954,8 +954,8 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void start(Result result) {
         mPlaybackKey = result.getRealUrl();
         startPlayer(mPlaybackKey, result, false, getHome().getTimeout(), buildMetadata());
-        player().pause();
-        mPendingPlay = true;
+        mPendingPlay = !player().isMpv();
+        if (mPendingPlay) player().pause();
     }
 
     private void checkControl() {
