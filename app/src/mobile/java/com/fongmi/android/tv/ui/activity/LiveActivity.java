@@ -20,7 +20,6 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
-import androidx.media3.common.VideoSize;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
@@ -105,7 +104,6 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private ViewGroup.LayoutParams mFrameParams;
     private int mPortraitVideoTopMargin;
     private boolean fullscreen;
-    private boolean switchingChannel;
 
     private boolean isFullscreen() {
         return fullscreen;
@@ -207,7 +205,6 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         setVideoView();
         setViewModel();
 
-        changeHeight();
         if (ResUtil.isLand(this)) {
             fullscreen = false;
             enterFullscreen();
@@ -330,38 +327,6 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void setOrient() {
         if (!isFullscreen() && isAutoRotate()) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
-        }
-    }
-
-    @Override
-    protected void onSizeChanged(VideoSize size) {
-        changeHeight();
-    }
-
-    private void changeHeight() {
-        if (switchingChannel) return;
-        applyVideoHeight();
-    }
-
-    private void applyVideoHeight() {
-        if (ResUtil.isLand(this) || isFullscreen() || isInPictureInPictureMode()) return;
-        int videoWidth = 0;
-        int videoHeight = 0;
-        if (service() != null && player() != null) {
-            videoWidth = player().getVideoWidth();
-            videoHeight = player().getVideoHeight();
-        }
-        boolean hasVideoSize = videoWidth > 0 && videoHeight > 0;
-        if (videoWidth == 0 || videoHeight == 0) {
-            videoWidth = 1920;
-            videoHeight = 1080;
-        }
-        int viewWidth = ResUtil.getScreenWidth();
-        int calculated = (int) (viewWidth * ((float) videoHeight / videoWidth));
-        mFrameParams.height = hasVideoSize ? calculated : Math.max(calculated, ResUtil.dp2px(250));
-        if (!isFullscreen()) {
-            mBinding.video.setLayoutParams(mFrameParams);
-            updateVideoTopMargin();
         }
     }
 
@@ -702,27 +667,9 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         Traffic.reset();
     }
 
-    private boolean shouldMaskChannelSwitch() {
-        return player() != null && player().isMpv() && !isFullscreen() && !isInPictureInPictureMode();
-    }
-
-    private void showChannelMask() {
-        if (!shouldMaskChannelSwitch()) return;
-        switchingChannel = true;
-        mBinding.channelMask.setVisibility(View.VISIBLE);
-    }
-
-    private void hideChannelMask() {
-        boolean needApplyHeight = switchingChannel;
-        switchingChannel = false;
-        if (needApplyHeight) applyVideoHeight();
-        mBinding.channelMask.setVisibility(View.GONE);
-    }
-
     private void showError(String text) {
         mBinding.widget.error.setVisibility(View.VISIBLE);
         mBinding.widget.error.setText(text);
-        hideChannelMask();
         hideProgress();
     }
 
@@ -970,11 +917,9 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void prepareChannelSwitch() {
         player().reset();
         if (player().isMpv()) {
-            showChannelMask();
             hideError();
             hideProgress();
         } else {
-            hideChannelMask();
             player().pause();
             showProgress();
         }
@@ -1081,18 +1026,12 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @Override
     protected void onPlayingChanged(boolean isPlaying) {
         if (isPlaying) {
-            hideChannelMask();
             mPiP.update(this, true);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
         }
-    }
-
-    @Override
-    protected void onRenderedFirstFrameChanged() {
-        if (switchingChannel) hideChannelMask();
     }
 
     @Override
