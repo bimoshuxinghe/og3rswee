@@ -15,9 +15,11 @@ import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Gravity;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.RelativeLayout;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -300,6 +302,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (v, insets) -> setStatusBar(insets));
         mKeyDown = CustomKeyDown.create(this, mBinding.exo);
         mFrameParams = mBinding.video.getLayoutParams();
+        FrameLayout.LayoutParams lrcParams = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, ResUtil.dp2px(110));
+        lrcParams.gravity = Gravity.BOTTOM;
+        lrcParams.bottomMargin = ResUtil.dp2px(4);
+        mBinding.lrcView.setLayoutParams(lrcParams);
         mBinding.progressLayout.showProgress();
         mBinding.swipeLayout.setEnabled(false);
         mObserveDetail = this::setDetail;

@@ -287,11 +287,9 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         if (mBinding.contentLayout == null || mBinding.topBar == null) return;
         int topBarHeight = mBinding.topBar.getHeight();
         boolean carousel = PlayerSetting.isHomeCarousel();
-        int margin = carousel ? 0 : topBarHeight;
-        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.contentLayout.getLayoutParams();
-        if (params.topMargin != margin) {
-            params.topMargin = margin;
-            mBinding.contentLayout.setLayoutParams(params);
+        float translation = carousel ? 0f : topBarHeight;
+        if (mBinding.contentLayout.getTranslationY() != translation) {
+            mBinding.contentLayout.setTranslationY(translation);
         }
     }
 
@@ -300,17 +298,15 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         int topBarHeight = mBinding.topBar.getHeight();
         if (topBarHeight <= 0 || totalRange <= 0) return;
         boolean carousel = PlayerSetting.isHomeCarousel();
-        int margin;
+        float translation;
         if (carousel) {
             float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange));
-            margin = (int) (topBarHeight * progress);
+            translation = topBarHeight * progress;
         } else {
-            margin = topBarHeight;
+            translation = topBarHeight;
         }
-        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.contentLayout.getLayoutParams();
-        if (params.topMargin != margin) {
-            params.topMargin = margin;
-            mBinding.contentLayout.setLayoutParams(params);
+        if (mBinding.contentLayout.getTranslationY() != translation) {
+            mBinding.contentLayout.setTranslationY(translation);
         }
     }
 
