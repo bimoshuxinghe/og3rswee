@@ -1211,7 +1211,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void enterFullscreen() {
         if (isFullscreen()) return;
         setFullscreen(true);
-        boolean portrait = player().isPortrait() || (mReader != null && mReader.isActive());
+        boolean noVideo = player().getVideoWidth() == 0 && player().getVideoHeight() == 0;
+        boolean portrait = noVideo || player().isPortrait() || (mReader != null && mReader.isActive());
         if (isLand() && !portrait) setTransition();
         mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
         setRequestedOrientation(portrait ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
