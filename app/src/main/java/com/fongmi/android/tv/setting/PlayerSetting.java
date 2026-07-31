@@ -242,7 +242,7 @@ public class PlayerSetting {
     }
 
     public static float getLrcTextSize() {
-        return Math.min(Math.max(Prefers.getFloat("lrc_text_size", 42f), 24f), 80f);
+        return Math.min(Math.max(Prefers.getFloat("lrc_text_size", 56f), 24f), 80f);
     }
 
     public static void putLrcTextSize(float size) {

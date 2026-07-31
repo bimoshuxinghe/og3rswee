@@ -442,12 +442,16 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.exo.setVisibility(View.GONE);
             mBinding.widget.getRoot().setVisibility(View.GONE);
             mBinding.lrcView.setVisibility(View.GONE);
+            mKeyDown.setLrcMode(false);
             if (!isFullscreen()) enterFullscreen();
         } else {
             mReader.clear();
             mBinding.exo.setVisibility(View.VISIBLE);
             mBinding.widget.getRoot().setVisibility(View.VISIBLE);
-            if (mBinding.lrcView.hasLrc()) mBinding.lrcView.setVisibility(View.VISIBLE);
+            if (mBinding.lrcView.hasLrc()) {
+                mBinding.lrcView.setVisibility(View.VISIBLE);
+                mKeyDown.setLrcMode(true);
+            }
         }
     }
 
@@ -647,13 +651,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             });
             mBinding.lrcView.setData(result.getLrc());
             mBinding.lrcView.setVisibility(View.VISIBLE);
-            mBinding.lrcView.setOnLongClickListener(v -> {
-                showLrcSizeDialog();
-                return true;
-            });
+            mKeyDown.setLrcMode(true);
         } else {
             mBinding.lrcView.clear();
             mBinding.lrcView.setVisibility(View.GONE);
+            mKeyDown.setLrcMode(false);
         }
     }
 
@@ -2040,6 +2042,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.widget.speed.setVisibility(View.GONE);
         mBinding.widget.bright.setVisibility(View.GONE);
         mBinding.widget.volume.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void onLrcLongPress() {
+        showLrcSizeDialog();
     }
 
     @Override

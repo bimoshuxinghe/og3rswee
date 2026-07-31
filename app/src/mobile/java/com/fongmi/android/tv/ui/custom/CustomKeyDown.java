@@ -35,6 +35,7 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
     private boolean animating;
     private boolean touch;
     private boolean lock;
+    private boolean lrcMode;
     private float bright;
     private float volume;
     private float scale;
@@ -77,6 +78,10 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
         this.lock = lock;
     }
 
+    public void setLrcMode(boolean lrcMode) {
+        this.lrcMode = lrcMode;
+    }
+
     public float getScale() {
         return scale;
     }
@@ -115,6 +120,10 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
     @Override
     public void onLongPress(@NonNull MotionEvent e) {
         if (multiTouch || isEdge(e) || changeScale || lock) return;
+        if (lrcMode) {
+            listener.onLrcLongPress();
+            return;
+        }
         listener.onSpeedUp();
         changeSpeed = true;
     }
@@ -247,5 +256,7 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
         void onDoubleTap();
 
         void onTouchEnd();
+
+        default void onLrcLongPress() {}
     }
 }

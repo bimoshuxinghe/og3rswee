@@ -270,13 +270,11 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void updateCollapsingSize() {
-        int topBarHeight = mBinding.topBar.getHeight();
-        if (topBarHeight <= 0) topBarHeight = ResUtil.dp2px(52);
-        mBinding.collapsingToolbar.setMinimumHeight(topBarHeight);
+        mBinding.collapsingToolbar.setMinimumHeight(0);
         com.google.android.material.appbar.AppBarLayout.LayoutParams params =
                 (com.google.android.material.appbar.AppBarLayout.LayoutParams) mBinding.collapsingToolbar.getLayoutParams();
         boolean carousel = PlayerSetting.isHomeCarousel();
-        int targetHeight = carousel ? ResUtil.dp2px(240) : topBarHeight;
+        int targetHeight = carousel ? ResUtil.dp2px(240) : ResUtil.dp2px(1);
         if (params.height != targetHeight) {
             params.height = targetHeight;
             mBinding.collapsingToolbar.setLayoutParams(params);

@@ -47,8 +47,8 @@ public class LrcView extends View {
     private List<LrcEntry> entries = new ArrayList<>();
     private Callback callback;
     private int currentIndex = -1;
-    private float textSize = 42f;
-    private float lineSpacing = 56f;
+    private float textSize = 56f;
+    private float lineSpacing = 75f;
     private int currentColor = Color.parseColor("#FFD700");
     private int normalColor = Color.parseColor("#BDBDBD");
 
