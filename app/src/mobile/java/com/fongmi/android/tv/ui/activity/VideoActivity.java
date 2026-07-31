@@ -2046,6 +2046,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void onBackInvoked() {
         if (isVisible(mBinding.control.getRoot())) {
             hideControl();
+        } else if (mReader.isActive() && !isLock()) {
+            leavingPlayback = true;
+            stopPlaybackIfLeaving();
+            mViewModel.stopSearch();
+            if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            super.onBackInvoked();
         } else if (isFullscreen() && !isLock()) {
             exitFullscreen();
         } else if (!isLock()) {
