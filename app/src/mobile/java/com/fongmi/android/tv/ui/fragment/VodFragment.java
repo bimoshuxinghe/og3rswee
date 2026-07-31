@@ -218,6 +218,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             int totalRange = appBarLayout.getTotalScrollRange();
             if (totalRange > 0) {
                 updateHomeHeaderVisibility(verticalOffset);
+                updateTypePinnedMargin(verticalOffset, totalRange);
             }
             if (verticalOffset < 0 && !mAppBarCollapsed) {
                 mAppBarCollapsed = true;
@@ -265,6 +266,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         mBinding.bannerShadow.setAlpha(show ? 1f : 0f);
         if (!show) mBinding.recentLayout.setVisibility(View.GONE);
         updateHomeHeaderVisibility(mAppBarOffset);
+        updateTypePinnedMargin();
         if (show) startAutoScroll();
         else stopAutoScroll();
     }
@@ -282,11 +284,34 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void updateTypePinnedMargin() {
-        // type is now outside AppBarLayout, no margin needed
+        if (mBinding.contentLayout == null || mBinding.topBar == null) return;
+        int topBarHeight = mBinding.topBar.getHeight();
+        boolean carousel = PlayerSetting.isHomeCarousel();
+        int margin = carousel ? 0 : topBarHeight;
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.contentLayout.getLayoutParams();
+        if (params.topMargin != margin) {
+            params.topMargin = margin;
+            mBinding.contentLayout.setLayoutParams(params);
+        }
     }
 
     private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
-        // type is now outside AppBarLayout, no margin needed
+        if (mBinding.contentLayout == null || mBinding.topBar == null) return;
+        int topBarHeight = mBinding.topBar.getHeight();
+        if (topBarHeight <= 0 || totalRange <= 0) return;
+        boolean carousel = PlayerSetting.isHomeCarousel();
+        int margin;
+        if (carousel) {
+            float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange));
+            margin = (int) (topBarHeight * progress);
+        } else {
+            margin = topBarHeight;
+        }
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.contentLayout.getLayoutParams();
+        if (params.topMargin != margin) {
+            params.topMargin = margin;
+            mBinding.contentLayout.setLayoutParams(params);
+        }
     }
 
     private void setRecyclerView() {
