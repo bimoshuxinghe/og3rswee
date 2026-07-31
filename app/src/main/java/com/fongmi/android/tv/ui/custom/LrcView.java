@@ -143,7 +143,12 @@ public class LrcView extends View {
                 long min = Long.parseLong(standard.group(1)) * 60000;
                 long sec = Long.parseLong(standard.group(2)) * 1000;
                 String msStr = standard.group(3);
-                long ms = msStr != null ? Long.parseLong(msStr.padEnd(3, '0').substring(0, 3)) : 0;
+                long ms = 0;
+                if (msStr != null) {
+                    String padded = msStr;
+                    while (padded.length() < 3) padded += "0";
+                    ms = Long.parseLong(padded.substring(0, 3));
+                }
                 long start = min + sec + ms;
                 String text = standard.group(4);
                 if (!TextUtils.isEmpty(text)) {
