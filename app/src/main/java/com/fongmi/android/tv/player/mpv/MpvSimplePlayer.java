@@ -723,8 +723,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void updateVideoSize() {
-        Integer width = firstPositiveInt("video-out-params/w", "video-params/w", "width");
-        Integer height = firstPositiveInt("video-out-params/h", "video-params/h", "height");
+        Integer width = firstPositiveInt("video-out-params/w", "video-params/w");
+        Integer height = firstPositiveInt("video-out-params/h", "video-params/h");
         if (width == null || height == null) {
             Integer displayWidth = safeGetInt("video-out-params/dw");
             Integer displayHeight = safeGetInt("video-out-params/dh");
@@ -743,7 +743,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private boolean isVideoSizeProperty(String property) {
-        return "width".equals(property) || "height".equals(property) || "video-params".equals(property) || "video-out-params".equals(property);
+        return "video-params".equals(property) || "video-out-params".equals(property);
     }
 
     @Nullable

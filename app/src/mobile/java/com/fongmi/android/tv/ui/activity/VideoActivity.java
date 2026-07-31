@@ -1213,11 +1213,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         setFullscreen(true);
         boolean noVideo = player().getVideoWidth() == 0 && player().getVideoHeight() == 0;
         boolean portrait = noVideo || player().isPortrait() || (mReader != null && mReader.isActive());
+        setRequestedOrientation(portrait ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        setRotate(portrait);
         if (isLand() && !portrait) setTransition();
         mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
-        setRequestedOrientation(portrait ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         mBinding.control.title.setVisibility(View.VISIBLE);
-        setRotate(portrait);
         mKeyDown.resetScale();
         App.post(mR3, 2000);
         hideControl();
@@ -1421,11 +1421,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         try {
             mBinding.bgPoster.setVisibility(View.VISIBLE);
             mBinding.bgOverlay.setVisibility(View.VISIBLE);
-            int width = Math.max(1080, ResUtil.getScreenWidth());
-            int height = Math.max(1920, ResUtil.getScreenHeight());
             Glide.with(this)
                     .load(ImgUtil.getUrl(mHistory.getVodPic()))
-                    .override(width, height)
+                    .centerCrop()
                     .error(R.drawable.artwork)
                     .into(mBinding.bgPoster);
         } catch (Throwable e) {
