@@ -49,6 +49,12 @@
                 android:layout_height="match_parent"
                 app:surface_type="none" />
 
+            <com.fongmi.android.tv.ui.custom.LrcView
+                android:id="@+id/lrcView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
             <include
                 android:id="@+id/widget"
                 layout="@layout/view_widget_vod"

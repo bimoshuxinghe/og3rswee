@@ -447,6 +447,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.exo.setVisibility(View.GONE);
             mBinding.widget.getRoot().setVisibility(View.GONE);
             mBinding.lrcView.setVisibility(View.GONE);
+            mBinding.visualizer.setVisibility(View.GONE);
             mKeyDown.setLrcMode(false);
             if (!isFullscreen()) enterFullscreen();
         } else {
@@ -455,6 +456,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.widget.getRoot().setVisibility(View.VISIBLE);
             if (mBinding.lrcView.hasLrc()) {
                 mBinding.lrcView.setVisibility(View.VISIBLE);
+                mBinding.visualizer.setVisibility(View.VISIBLE);
                 mKeyDown.setLrcMode(true);
             }
         }
@@ -680,10 +682,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             });
             mBinding.lrcView.setData(result.getLrc());
             mBinding.lrcView.setVisibility(View.VISIBLE);
+            mBinding.visualizer.setVisibility(View.VISIBLE);
             mKeyDown.setLrcMode(true);
+            setupVisualizer();
         } else {
             mBinding.lrcView.clear();
             mBinding.lrcView.setVisibility(View.GONE);
+            mBinding.visualizer.setVisibility(View.GONE);
+            mBinding.visualizer.stop();
             mKeyDown.setLrcMode(false);
         }
     }
@@ -1752,10 +1758,31 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mPiP.update(this, true);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
             mBinding.lrcView.start();
+            setupVisualizer();
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
             mBinding.lrcView.stop();
+            mBinding.visualizer.stop();
+        }
+    }
+
+    private void setupVisualizer() {
+        try {
+            if (mBinding.visualizer.getVisibility() != View.VISIBLE) return;
+            androidx.media3.exoplayer.ExoPlayer exo = null;
+            if (player().getPlayer() instanceof androidx.media3.exoplayer.ExoPlayer) {
+                exo = (androidx.media3.exoplayer.ExoPlayer) player().getPlayer();
+            }
+            if (exo != null) {
+                int sessionId = exo.getAudioSessionId();
+                if (sessionId != 0) {
+                    mBinding.visualizer.setAudioSessionId(sessionId);
+                    mBinding.visualizer.start();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -2255,6 +2282,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mClock.release();
         if (mReader != null) mReader.clear();
         mBinding.lrcView.clear();
+        mBinding.visualizer.release();
         saveHistory(true);
         Timer.get().reset();
         DanmakuApi.cancel();
