@@ -46,7 +46,7 @@ public class PicAdapter extends RecyclerView.Adapter<PicAdapter.ViewHolder> {
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         String url = items.get(position);
         ImgUtil.load("", url, holder.binding.image, false);
-        holder.binding.image.setOnClickListener(v -> {
+        holder.binding.getRoot().setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(url);
         });
     }
