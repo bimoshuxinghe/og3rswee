@@ -41,6 +41,7 @@ public class SettingHomeFragment extends BaseFragment {
         setHomeMenuText();
         setHomeStyleText();
         setHomeCarouselText();
+        setDetailPosterText();
     }
 
     @Override
@@ -48,6 +49,7 @@ public class SettingHomeFragment extends BaseFragment {
         mBinding.homeMenu.setOnClickListener(this::onHomeMenu);
         mBinding.homeStyle.setOnClickListener(this::onHomeStyle);
         mBinding.homeCarousel.setOnClickListener(this::setHomeCarousel);
+        mBinding.detailPoster.setOnClickListener(this::setDetailPoster);
 
         ((NestedScrollView) mBinding.getRoot().findViewById(R.id.scrollView)).setOnScrollChangeListener((android.view.View.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             com.fongmi.android.tv.event.ScrollEvent.post(scrollY - oldScrollY);
@@ -130,6 +132,16 @@ public class SettingHomeFragment extends BaseFragment {
     private void setHomeCarousel(View view) {
         PlayerSetting.putHomeCarousel(!PlayerSetting.isHomeCarousel());
         setHomeCarouselText();
+        Notify.show("重启后生效");
+    }
+
+    private void setDetailPosterText() {
+        mBinding.detailPosterText.setText(getSwitch(PlayerSetting.isDetailPoster()));
+    }
+
+    private void setDetailPoster(View view) {
+        PlayerSetting.putDetailPoster(!PlayerSetting.isDetailPoster());
+        setDetailPosterText();
         Notify.show("重启后生效");
     }
 

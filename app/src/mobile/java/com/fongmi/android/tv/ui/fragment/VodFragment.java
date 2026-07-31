@@ -235,26 +235,29 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             mBinding.bannerContainer.setAlpha(0f);
             mBinding.bannerContainer.setVisibility(View.GONE);
             mBinding.bannerShadow.setVisibility(View.GONE);
+            mBinding.recentLayout.setAlpha(0f);
             mBinding.recentLayout.setVisibility(View.GONE);
             return;
         }
-        // Only use alpha for fade effect, never toggle GONE/VISIBLE during scrolling.
-        // Toggling visibility changes AppBarLayout total height -> changes scroll range -> triggers
-        // onOffsetChanged again -> creates a feedback loop that causes screen flicker.
+        // Use alpha to fade banner and recentLayout together as user scrolls.
+        // Never toggle GONE/VISIBLE during scroll to avoid AppBarLayout height feedback loop.
+        boolean hasRecent = Setting.isHomeHistory() && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0;
         mBinding.bannerContainer.setVisibility(View.VISIBLE);
         mBinding.bannerShadow.setVisibility(View.VISIBLE);
+        if (hasRecent) mBinding.recentLayout.setVisibility(View.VISIBLE);
         int bannerRange = Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight());
         float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) bannerRange));
         float alpha = 1f - progress;
         mBinding.bannerContainer.setAlpha(alpha);
         mBinding.bannerShadow.setAlpha(alpha);
-        // Set recentLayout visibility based on data availability only, not scroll progress.
-        updateRecentVisibility();
+        // recentLayout fades together with banner, completely hidden when banner is collapsed
+        mBinding.recentLayout.setAlpha(hasRecent ? alpha : 0f);
     }
 
     private void updateRecentVisibility() {
         boolean show = PlayerSetting.isHomeCarousel() && Setting.isHomeHistory() && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0;
         mBinding.recentLayout.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) mBinding.recentLayout.setAlpha(1f - Math.min(1f, Math.max(0f, -mAppBarOffset / (float) Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight()))));
     }
 
     private void applyHomeCarousel() {

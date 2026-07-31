@@ -3,7 +3,10 @@ package com.fongmi.android.tv.ui.custom;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,7 +40,7 @@ public class LrcView extends View {
         @Override
         public void run() {
             invalidate();
-            handler.postDelayed(this, 50);
+            handler.postDelayed(this, 33);
         }
     };
 
@@ -48,7 +51,6 @@ public class LrcView extends View {
     private float lineSpacing = 56f;
     private int currentColor = Color.parseColor("#FFD700");
     private int normalColor = Color.parseColor("#BDBDBD");
-    private int padding = 24;
 
     public LrcView(Context context) {
         this(context, null);
@@ -185,49 +187,87 @@ public class LrcView extends View {
             float y = centerY + (i - currentIndex) * lineSpacing;
             if (y < -lineSpacing || y > height + lineSpacing) continue;
             boolean isCurrent = (i == currentIndex);
-            Paint textPaint = isCurrent ? currentPaint : normalPaint;
-            Paint outline = isCurrent ? outlinePaint : null;
-            String text = entry.text;
-            if (isCurrent && entry.words != null && !entry.words.isEmpty()) {
-                drawWordByWord(canvas, entry, position, x, y);
+            if (isCurrent) {
+                drawKaraokeLine(canvas, entry, position, x, y);
             } else {
-                if (outline != null) canvas.drawText(text, x, y, outline);
-                canvas.drawText(text, x, y, textPaint);
+                canvas.drawText(entry.text, x, y, normalPaint);
             }
         }
     }
 
-    private void drawWordByWord(Canvas canvas, LrcEntry entry, long position, float x, float y) {
-        float textWidth = currentPaint.measureText(entry.text);
-        float startX = x - textWidth / 2f;
-        float drawnWidth = 0f;
-        for (WordEntry word : entry.words) {
-            float wordWidth = currentPaint.measureText(word.text);
-            long wordEnd = entry.start + word.start + word.duration;
-            long wordStart = entry.start + word.start;
-            float progress = 0f;
-            if (position >= wordEnd) {
-                progress = 1f;
-            } else if (position > wordStart) {
-                progress = (position - wordStart) / (float) word.duration;
+    /**
+     * Karaoke drawing for current line.
+     * - Enhanced LRC (with word timing): word-by-word progressive highlight using clipRect
+     * - Standard LRC (no word timing): line-level progressive sweep from left to right
+     * Both modes draw normal color text first, then clip and draw highlighted text on top.
+     */
+    private void drawKaraokeLine(Canvas canvas, LrcEntry entry, long position, float x, float y) {
+        String text = entry.text;
+        if (TextUtils.isEmpty(text)) return;
+
+        // Calculate overall progress within this line
+        long lineEnd = entry.start + entry.duration;
+        float lineProgress = 0f;
+        if (entry.duration > 0) {
+            if (position >= lineEnd) {
+                lineProgress = 1f;
+            } else if (position >= entry.start) {
+                lineProgress = (float)(position - entry.start) / (float)entry.duration;
             }
-            float drawX = startX + drawnWidth;
-            normalPaint.setTextAlign(Paint.Align.LEFT);
-            currentPaint.setTextAlign(Paint.Align.LEFT);
-            outlinePaint.setTextAlign(Paint.Align.LEFT);
-            canvas.drawText(word.text, drawX, y, normalPaint);
-            if (progress > 0) {
+        }
+
+        // Save original align
+        Paint.Align origAlign = currentPaint.getTextAlign();
+        currentPaint.setTextAlign(Paint.Align.LEFT);
+        normalPaint.setTextAlign(Paint.Align.LEFT);
+        outlinePaint.setTextAlign(Paint.Align.LEFT);
+
+        float textWidth = currentPaint.measureText(text);
+        float startX = x - textWidth / 2f;
+
+        // Draw normal color text as background
+        canvas.drawText(text, startX, y, normalPaint);
+
+        if (entry.words != null && !entry.words.isEmpty()) {
+            // Enhanced LRC: word-by-word karaoke
+            float drawnWidth = 0f;
+            for (WordEntry word : entry.words) {
+                float wordWidth = currentPaint.measureText(word.text);
+                long wordStart = entry.start + word.start;
+                long wordEnd = wordStart + word.duration;
+                float wordProgress = 0f;
+                if (position >= wordEnd) {
+                    wordProgress = 1f;
+                } else if (position > wordStart) {
+                    wordProgress = (float)(position - wordStart) / (float)word.duration;
+                }
+                float drawX = startX + drawnWidth;
+                // Draw outline for completed words
+                if (wordProgress > 0) {
+                    canvas.save();
+                    canvas.clipRect(drawX, y - textSize, drawX + wordWidth * wordProgress, y + textSize);
+                    canvas.drawText(word.text, drawX, y, outlinePaint);
+                    canvas.drawText(word.text, drawX, y, currentPaint);
+                    canvas.restore();
+                }
+                drawnWidth += wordWidth;
+            }
+        } else {
+            // Standard LRC: line-level karaoke sweep from left to right
+            float highlightWidth = textWidth * lineProgress;
+            if (highlightWidth > 0) {
                 canvas.save();
-                canvas.clipRect(drawX, y - textSize, drawX + wordWidth * progress, y + textSize);
-                canvas.drawText(word.text, drawX, y, outlinePaint);
-                canvas.drawText(word.text, drawX, y, currentPaint);
+                canvas.clipRect(startX, y - textSize, startX + highlightWidth, y + textSize);
+                canvas.drawText(text, startX, y, outlinePaint);
+                canvas.drawText(text, startX, y, currentPaint);
                 canvas.restore();
             }
-            drawnWidth += wordWidth;
         }
-        normalPaint.setTextAlign(Paint.Align.CENTER);
-        currentPaint.setTextAlign(Paint.Align.CENTER);
-        outlinePaint.setTextAlign(Paint.Align.CENTER);
+
+        // Restore original align
+        currentPaint.setTextAlign(origAlign);
+        normalPaint.setTextAlign(origAlign);
+        outlinePaint.setTextAlign(origAlign);
     }
 
     private int findCurrentIndex(long position) {

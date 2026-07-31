@@ -233,6 +233,14 @@ public class PlayerSetting {
         Prefers.put("home_carousel", homeCarousel);
     }
 
+    public static boolean isDetailPoster() {
+        return Prefers.getBoolean("detail_poster", true);
+    }
+
+    public static void putDetailPoster(boolean detailPoster) {
+        Prefers.put("detail_poster", detailPoster);
+    }
+
     public static float getSpeed() {
         return Math.min(Math.max(Prefers.getFloat("speed", 3), 2), 5);
     }

@@ -1333,6 +1333,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void setArtwork() {
         setBackdrop();
+        if (!PlayerSetting.isDetailPoster()) {
+            if (mBinding.bgPoster != null) {
+                mBinding.bgPoster.setVisibility(View.GONE);
+                mBinding.bgOverlay.setVisibility(View.GONE);
+            }
+            return;
+        }
         ImgUtil.load(this, mHistory.getVodPic(), new CustomTarget<>() {
             @Override
             public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
@@ -1356,7 +1363,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void setBackdrop() {
         if (mBinding.bgPoster == null) return;
-        if (TextUtils.isEmpty(mHistory.getVodPic())) {
+        if (!PlayerSetting.isDetailPoster() || TextUtils.isEmpty(mHistory.getVodPic())) {
             mBinding.bgPoster.setVisibility(View.GONE);
             mBinding.bgOverlay.setVisibility(View.GONE);
             return;
@@ -1364,9 +1371,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         try {
             mBinding.bgPoster.setVisibility(View.VISIBLE);
             mBinding.bgOverlay.setVisibility(View.VISIBLE);
+            int width = Math.max(1080, ResUtil.getScreenWidth());
+            int height = Math.max(1920, ResUtil.getScreenHeight());
             Glide.with(this)
                     .load(ImgUtil.getUrl(mHistory.getVodPic()))
-                    .override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
+                    .override(width, height)
                     .error(R.drawable.artwork)
                     .into(mBinding.bgPoster);
         } catch (Throwable e) {
