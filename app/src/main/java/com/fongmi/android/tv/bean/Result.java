@@ -86,6 +86,8 @@ public class Result implements Parcelable {
     private String key;
     @SerializedName("position")
     private Long position;
+    @SerializedName("lrc")
+    private String lrc;
     @SerializedName("pagecount")
     private Integer pagecount;
     @SerializedName("parse")
@@ -277,6 +279,14 @@ public class Result implements Parcelable {
 
     public Long getPosition() {
         return position;
+    }
+
+    public String getLrc() {
+        return TextUtils.isEmpty(lrc) ? "" : lrc;
+    }
+
+    public boolean hasLrc() {
+        return !getLrc().isEmpty();
     }
 
     public Integer getPageCount() {

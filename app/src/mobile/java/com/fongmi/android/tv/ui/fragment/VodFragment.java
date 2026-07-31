@@ -235,28 +235,26 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             mBinding.bannerContainer.setAlpha(0f);
             mBinding.bannerContainer.setVisibility(View.GONE);
             mBinding.bannerShadow.setVisibility(View.GONE);
-            mBinding.recentLayout.setAlpha(0f);
             mBinding.recentLayout.setVisibility(View.GONE);
             return;
         }
+        // Only use alpha for fade effect, never toggle GONE/VISIBLE during scrolling.
+        // Toggling visibility changes AppBarLayout total height -> changes scroll range -> triggers
+        // onOffsetChanged again -> creates a feedback loop that causes screen flicker.
+        mBinding.bannerContainer.setVisibility(View.VISIBLE);
+        mBinding.bannerShadow.setVisibility(View.VISIBLE);
         int bannerRange = Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight());
         float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) bannerRange));
-        float alpha = progress >= 0.9f ? 0f : 1f - progress;
+        float alpha = 1f - progress;
         mBinding.bannerContainer.setAlpha(alpha);
-        mBinding.bannerContainer.setVisibility(alpha <= 0f ? View.INVISIBLE : View.VISIBLE);
-        mBinding.bannerShadow.setVisibility(alpha <= 0f ? View.GONE : View.VISIBLE);
-        updateRecentVisibility(alpha);
+        mBinding.bannerShadow.setAlpha(alpha);
+        // Set recentLayout visibility based on data availability only, not scroll progress.
+        updateRecentVisibility();
     }
 
-    private void updateRecentVisibility(float alpha) {
+    private void updateRecentVisibility() {
         boolean show = PlayerSetting.isHomeCarousel() && Setting.isHomeHistory() && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0;
-        if (!show || alpha <= 0f) {
-            mBinding.recentLayout.setAlpha(0f);
-            mBinding.recentLayout.setVisibility(View.GONE);
-            return;
-        }
-        mBinding.recentLayout.setVisibility(View.VISIBLE);
-        mBinding.recentLayout.setAlpha(alpha);
+        mBinding.recentLayout.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     private void applyHomeCarousel() {

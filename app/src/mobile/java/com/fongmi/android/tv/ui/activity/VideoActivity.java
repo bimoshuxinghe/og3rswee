@@ -68,6 +68,7 @@ import com.fongmi.android.tv.player.PlayerHelper;
 import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.player.PreloadManager;
 import com.fongmi.android.tv.service.PlaybackService;
+import com.fongmi.android.tv.ui.custom.LrcView;
 import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
@@ -440,11 +441,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             hideProgress();
             mBinding.exo.setVisibility(View.GONE);
             mBinding.widget.getRoot().setVisibility(View.GONE);
+            mBinding.lrcView.setVisibility(View.GONE);
             if (!isFullscreen()) enterFullscreen();
         } else {
             mReader.clear();
             mBinding.exo.setVisibility(View.VISIBLE);
             mBinding.widget.getRoot().setVisibility(View.VISIBLE);
+            if (mBinding.lrcView.hasLrc()) mBinding.lrcView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -616,6 +619,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (result.hasArtwork()) setArtwork(result.getArtwork());
         if (result.hasPosition()) mHistory.setPosition(result.getPosition());
         if (result.hasDesc()) setText(mBinding.content, 0, result.getDesc());
+        setLrc(result);
         mBinding.control.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
         boolean wasReader = mReader.isActive();
         String readerTitle = mHistory != null ? mHistory.getVodName() : "";
@@ -633,6 +637,19 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             if (DanmakuSetting.isSpiderFirst() && !result.getDanmaku().isEmpty()) player().addDanmaku(danmaku);
             else player().setDanmaku(danmaku);
         });
+    }
+
+    private void setLrc(Result result) {
+        if (result.hasLrc()) {
+            mBinding.lrcView.setCallback(() -> {
+                try { return player().getPosition(); } catch (Exception e) { return 0L; }
+            });
+            mBinding.lrcView.setData(result.getLrc());
+            mBinding.lrcView.setVisibility(View.VISIBLE);
+        } else {
+            mBinding.lrcView.clear();
+            mBinding.lrcView.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -1581,9 +1598,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             hideProgress();
             mPiP.update(this, true);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
+            mBinding.lrcView.start();
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
+            mBinding.lrcView.stop();
         }
     }
 
@@ -2068,6 +2087,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         stopPlaybackIfLeaving();
         mClock.release();
         if (mReader != null) mReader.clear();
+        mBinding.lrcView.clear();
         saveHistory(true);
         Timer.get().reset();
         DanmakuApi.cancel();

@@ -72,6 +72,12 @@
                 android:visibility="gone"
                 tools:text="已播放 30:15/60:30 预计完成于 11:45" />
 
+            <com.fongmi.android.tv.ui.custom.LrcView
+                android:id="@+id/lrcView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
         </FrameLayout>
 
         <com.google.android.material.textview.MaterialTextView
