@@ -7,6 +7,9 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.Shader;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -1414,18 +1417,37 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!PlayerSetting.isDetailPoster() || TextUtils.isEmpty(mHistory.getVodPic())) {
             mBinding.bgPoster.setVisibility(View.GONE);
             mBinding.bgOverlay.setVisibility(View.GONE);
+            mBinding.bgPoster.setBackground(null);
             return;
         }
         try {
             mBinding.bgPoster.setVisibility(View.VISIBLE);
             mBinding.bgOverlay.setVisibility(View.VISIBLE);
-            int width = Math.max(1080, ResUtil.getScreenWidth());
-            int height = Math.max(1920, ResUtil.getScreenHeight());
+            int tileWidth = ResUtil.dp2px(120);
+            int tileHeight = ResUtil.dp2px(180);
             Glide.with(this)
+                    .asBitmap()
                     .load(ImgUtil.getUrl(mHistory.getVodPic()))
-                    .override(width, height)
+                    .override(tileWidth, tileHeight)
                     .error(R.drawable.artwork)
-                    .into(mBinding.bgPoster);
+                    .into(new CustomTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                            BitmapDrawable drawable = new BitmapDrawable(getResources(), resource);
+                            drawable.setTileModeXY(Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
+                            mBinding.bgPoster.setImageDrawable(null);
+                            mBinding.bgPoster.setBackground(drawable);
+                        }
+                        @Override
+                        public void onLoadCleared(@Nullable Drawable placeholder) {
+                            mBinding.bgPoster.setBackground(null);
+                        }
+                        @Override
+                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                            mBinding.bgPoster.setVisibility(View.GONE);
+                            mBinding.bgOverlay.setVisibility(View.GONE);
+                        }
+                    });
         } catch (Throwable e) {
             e.printStackTrace();
         }
