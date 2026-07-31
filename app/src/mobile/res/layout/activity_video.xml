@@ -79,6 +79,12 @@
             android:visibility="gone"
             tools:text="已播放 30:15/60:30 预计完成于 11:45" />
 
+        <include
+            android:id="@+id/reader"
+            layout="@layout/view_reader_vod"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
     </FrameLayout>
 
     <View

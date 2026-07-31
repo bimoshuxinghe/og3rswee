@@ -85,4 +85,21 @@
         <item>子母畫面</item>
     </string-array>
 
+    <!-- Reader -->
+    <string name="reader_menu">閱讀選單</string>
+    <string name="reader_horizontal">橫向閱讀</string>
+    <string name="reader_vertical">縱向閱讀</string>
+    <string name="reader_previous">上一章</string>
+    <string name="reader_directory">目錄</string>
+    <string name="reader_next">下一章</string>
+    <string name="reader_wallpaper">設為桌布</string>
+    <string name="reader_wallpaper_loading">正在設置桌布...</string>
+    <string name="reader_wallpaper_done">桌布設置成功</string>
+    <string name="reader_wallpaper_failed">桌布設置失敗</string>
+
+    <string-array name="select_picture_reader_mode">
+        <item>普通模式</item>
+        <item>純背景模式</item>
+    </string-array>
+
 </resources>

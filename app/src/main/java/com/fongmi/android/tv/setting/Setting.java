@@ -54,6 +54,14 @@ public class Setting {
         return Prefers.getInt("wall_type", 0);
     }
 
+    public static int getPictureReaderMode() {
+        return Prefers.getInt("picture_reader_mode", 0);
+    }
+
+    public static void putPictureReaderMode(int mode) {
+        Prefers.put("picture_reader_mode", mode);
+    }
+
     public static void putWallType(int type) {
         Prefers.put("wall_type", type);
     }

@@ -85,4 +85,21 @@
         <item>PiP</item>
     </string-array>
 
+    <!-- Reader -->
+    <string name="reader_menu">Reader Menu</string>
+    <string name="reader_horizontal">Horizontal</string>
+    <string name="reader_vertical">Vertical</string>
+    <string name="reader_previous">Previous</string>
+    <string name="reader_directory">Directory</string>
+    <string name="reader_next">Next</string>
+    <string name="reader_wallpaper">Set as Wallpaper</string>
+    <string name="reader_wallpaper_loading">Setting wallpaper...</string>
+    <string name="reader_wallpaper_done">Wallpaper set successfully</string>
+    <string name="reader_wallpaper_failed">Failed to set wallpaper</string>
+
+    <string-array name="select_picture_reader_mode">
+        <item>Normal</item>
+        <item>Background Only</item>
+    </string-array>
+
 </resources>

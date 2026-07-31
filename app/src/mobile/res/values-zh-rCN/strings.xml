@@ -85,4 +85,21 @@
         <item>画中画</item>
     </string-array>
 
+    <!-- Reader -->
+    <string name="reader_menu">阅读菜单</string>
+    <string name="reader_horizontal">横向阅读</string>
+    <string name="reader_vertical">纵向阅读</string>
+    <string name="reader_previous">上一章</string>
+    <string name="reader_directory">目录</string>
+    <string name="reader_next">下一章</string>
+    <string name="reader_wallpaper">设为壁纸</string>
+    <string name="reader_wallpaper_loading">正在设置壁纸...</string>
+    <string name="reader_wallpaper_done">壁纸设置成功</string>
+    <string name="reader_wallpaper_failed">壁纸设置失败</string>
+
+    <string-array name="select_picture_reader_mode">
+        <item>普通模式</item>
+        <item>纯背景模式</item>
+    </string-array>
+
 </resources>

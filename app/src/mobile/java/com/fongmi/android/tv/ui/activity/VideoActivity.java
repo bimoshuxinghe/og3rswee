@@ -80,6 +80,7 @@ import com.fongmi.android.tv.ui.base.ViewType;
 import com.fongmi.android.tv.ui.custom.CustomKeyDown;
 import com.fongmi.android.tv.ui.custom.CustomMovement;
 import com.fongmi.android.tv.ui.custom.CustomSeekView;
+import com.fongmi.android.tv.ui.custom.VodReader;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.ui.dialog.CastDialog;
 import com.fongmi.android.tv.ui.dialog.ControlDialog;
@@ -143,6 +144,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private Clock mClock;
     private PiP mPiP;
     private int layoutMode = 0;
+    private VodReader mReader;
 
     public static void push(FragmentActivity activity, String text) {
         if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
@@ -312,6 +314,19 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         checkDanmakuImg();
         setRecyclerView();
         setVideoView();
+        mReader = new VodReader(this, mBinding.reader, new VodReader.Listener() {
+            @Override public void onSingleTap() {
+                if (isFullscreen()) {
+                    if (isVisible(mBinding.control.getRoot())) hideControl();
+                    else showControl();
+                }
+            }
+            @Override public void onDoubleTap() { toggleFullscreen(); }
+            @Override public void onPrevious() { checkPrev(); }
+            @Override public void onNext() { checkNext(); }
+            @Override public void onDirectory() { onEpisodes(); }
+            @Override public void onPageChanged(int current, int total) {}
+        });
         setViewModel();
         showProgress();
         setAnimator();
@@ -419,6 +434,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         }
     }
 
+    private void setReaderVisible(boolean visible) {
+        if (visible) {
+            hideControl();
+            hideProgress();
+            mBinding.exo.setVisibility(View.GONE);
+            mBinding.widget.getRoot().setVisibility(View.GONE);
+            if (!isFullscreen()) enterFullscreen();
+        } else {
+            mReader.clear();
+            mBinding.exo.setVisibility(View.VISIBLE);
+            mBinding.widget.getRoot().setVisibility(View.VISIBLE);
+        }
+    }
+
     private void setAnimator() {
         mAnimator = new ValueAnimator();
         mAnimator.setInterpolator(new DecelerateInterpolator());
@@ -475,6 +504,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         updateNavigationKey();
         player().reset();
         player().stop();
+        if (mReader.isActive()) mReader.clear();
         saveHistory();
         getDetail();
     }
@@ -587,6 +617,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (result.hasPosition()) mHistory.setPosition(result.getPosition());
         if (result.hasDesc()) setText(mBinding.content, 0, result.getDesc());
         mBinding.control.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
+        boolean wasReader = mReader.isActive();
+        String readerTitle = mHistory != null ? mHistory.getVodName() : "";
+        if (mReader.set(result, readerTitle)) {
+            player().stop();
+            player().clear();
+            setReaderVisible(true);
+            return;
+        }
+        if (wasReader) {
+            setReaderVisible(false);
+        }
         startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata(), getResumePosition());
         if (DanmakuApi.canSearch()) DanmakuApi.search(mHistory.getVodName(), getEpisode().getName(), danmaku -> {
             if (DanmakuSetting.isSpiderFirst() && !result.getDanmaku().isEmpty()) player().addDanmaku(danmaku);
@@ -864,6 +905,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void checkPlay() {
         setR1Callback();
+        if (mReader.isActive()) {
+            if (isVisible(mBinding.control.getRoot())) hideControl();
+            else showControl();
+            return;
+        }
         if (player().isPlaying()) onPaused();
         else if (player().isEmpty()) onRefresh();
         else onPlay();
@@ -973,6 +1019,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         player().stop();
         player().clear();
         mClock.setCallback(null);
+        if (mReader.isActive()) mReader.clear();
         if (mFlagAdapter.isEmpty()) return;
         if (mEpisodeAdapter.isEmpty()) return;
         getPlayer(getFlag(), getEpisode());
@@ -2014,6 +2061,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void onDestroy() {
         stopPlaybackIfLeaving();
         mClock.release();
+        if (mReader != null) mReader.clear();
         saveHistory(true);
         Timer.get().reset();
         DanmakuApi.cancel();
