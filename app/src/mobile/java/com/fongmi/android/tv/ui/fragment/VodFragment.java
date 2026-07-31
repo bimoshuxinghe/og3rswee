@@ -271,20 +271,13 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void updateCollapsingSize() {
-        int topBarHeight = mBinding.topBar.getHeight();
-        mBinding.collapsingToolbar.setMinimumHeight(topBarHeight);
+        mBinding.collapsingToolbar.setMinimumHeight(0);
         com.google.android.material.appbar.AppBarLayout.LayoutParams params =
                 (com.google.android.material.appbar.AppBarLayout.LayoutParams) mBinding.collapsingToolbar.getLayoutParams();
         int targetHeight = ResUtil.dp2px(240);
         if (params.height != targetHeight) {
             params.height = targetHeight;
             mBinding.collapsingToolbar.setLayoutParams(params);
-        }
-        if (topBarHeight == 0) {
-            mBinding.topBar.post(() -> {
-                if (!isViewReady()) return;
-                mBinding.collapsingToolbar.setMinimumHeight(mBinding.topBar.getHeight());
-            });
         }
     }
 
@@ -294,8 +287,21 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
         int topBarHeight = mBinding.topBar.getHeight();
+        if (topBarHeight == 0) {
+            mBinding.topBar.post(() -> {
+                if (!isViewReady()) return;
+                updateTypePinnedMargin(mAppBarOffset, mBinding.appBar.getTotalScrollRange());
+            });
+            return;
+        }
         ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) mBinding.type.getLayoutParams();
-        int target = PlayerSetting.isHomeCarousel() ? 0 : topBarHeight;
+        int target;
+        if (!PlayerSetting.isHomeCarousel()) {
+            target = topBarHeight;
+        } else {
+            float progress = totalRange > 0 ? Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange)) : 0f;
+            target = (int) (progress * topBarHeight);
+        }
         if (params.topMargin != target) {
             params.topMargin = target;
             mBinding.type.setLayoutParams(params);

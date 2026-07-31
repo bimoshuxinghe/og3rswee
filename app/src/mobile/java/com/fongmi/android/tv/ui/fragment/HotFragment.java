@@ -41,8 +41,8 @@ import java.util.Map;
 public class HotFragment extends BaseFragment implements VodAdapter.OnClickListener, SwipeRefreshLayout.OnRefreshListener {
 
     private static final int MORE_THRESHOLD = 10;
-    private static final int CATEGORY_FADE_DURATION = 130;
-    private static final int CATEGORY_ENTER_DURATION = 220;
+    private static final int CATEGORY_FADE_OUT = 150;
+    private static final int CATEGORY_FADE_IN = 200;
     private static final Map<String, List<Vod>> HOT_CACHE = new HashMap<>();
 
     private FragmentHotBinding mBinding;
@@ -258,9 +258,8 @@ public class HotFragment extends BaseFragment implements VodAdapter.OnClickListe
     private void animateCategoryOut() {
         mBinding.recycler.animate().cancel();
         mBinding.recycler.animate()
-                .alpha(0.45f)
-                .translationY(ResUtil.dp2px(6))
-                .setDuration(CATEGORY_FADE_DURATION)
+                .alpha(0f)
+                .setDuration(CATEGORY_FADE_OUT)
                 .setInterpolator(new DecelerateInterpolator())
                 .start();
     }
@@ -268,11 +267,9 @@ public class HotFragment extends BaseFragment implements VodAdapter.OnClickListe
     private void animateCategoryIn() {
         mBinding.recycler.animate().cancel();
         mBinding.recycler.setAlpha(0f);
-        mBinding.recycler.setTranslationY(ResUtil.dp2px(10));
         mBinding.recycler.animate()
                 .alpha(1f)
-                .translationY(0)
-                .setDuration(CATEGORY_ENTER_DURATION)
+                .setDuration(CATEGORY_FADE_IN)
                 .setInterpolator(new DecelerateInterpolator())
                 .start();
     }

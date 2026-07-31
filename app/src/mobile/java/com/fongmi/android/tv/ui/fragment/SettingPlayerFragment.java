@@ -570,31 +570,38 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
 
     private void onLrcSize(View view) {
 
-        String[] sizes = {"28", "36", "42", "50", "60", "72"};
+        com.fongmi.android.tv.databinding.DialogLrcSizeBinding binding =
+                com.fongmi.android.tv.databinding.DialogLrcSizeBinding.inflate(getLayoutInflater());
 
         float current = PlayerSetting.getLrcTextSize();
+        int progress = (int) (current - 24f);
+        binding.lrcSizeSeek.setMax(56);
+        binding.lrcSizeSeek.setProgress(progress);
+        binding.lrcSizeValue.setText(String.valueOf((int) current));
 
-        int selectedIndex = 2;
+        binding.lrcSizeSeek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                float size = 24f + prog;
+                binding.lrcSizeValue.setText(String.valueOf((int) size));
+            }
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
 
-        for (int i = 0; i < sizes.length; i++) {
-
-            if (Float.parseFloat(sizes[i]) == current) { selectedIndex = i; break; }
-
-        }
-
-        new MaterialAlertDialogBuilder(requireActivity()).setTitle(R.string.player_lrc_size).setNegativeButton(R.string.dialog_negative, null).setSingleChoiceItems(sizes, selectedIndex, (dialog, which) -> {
-
-            float size = Float.parseFloat(sizes[which]);
-
-            PlayerSetting.putLrcTextSize(size);
-
-            mBinding.lrcSizeText.setText(sizes[which]);
-
-            com.fongmi.android.tv.event.RefreshEvent.subtitle("");
-
-            dialog.dismiss();
-
-        }).show();
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.player_lrc_size)
+                .setView(binding.getRoot())
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    float size = 24f + binding.lrcSizeSeek.getProgress();
+                    PlayerSetting.putLrcTextSize(size);
+                    mBinding.lrcSizeText.setText(String.valueOf((int) size));
+                    com.fongmi.android.tv.event.RefreshEvent.subtitle("");
+                })
+                .show();
 
     }
 
