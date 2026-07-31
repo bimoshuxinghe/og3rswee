@@ -128,7 +128,8 @@ public class HotFragment extends BaseFragment implements VodAdapter.OnClickListe
         mCategoryChanging = true;
         setTab();
         animateCategoryOut();
-        loadHot(false);
+        // Delay content load until fade-out completes to avoid flicker
+        mBinding.recycler.postDelayed(() -> loadHot(false), CATEGORY_FADE_OUT + 20);
     }
 
     private void setTab() {
@@ -231,8 +232,9 @@ public class HotFragment extends BaseFragment implements VodAdapter.OnClickListe
     private void setAdapter() {
         List<Vod> items = new ArrayList<>();
         for (Vod item : mItems) if (mType.equals(item.getTag())) items.add(item);
-        mBinding.progressLayout.showContent(true, items.size());
         boolean animate = mCategoryChanging;
+        // Don't animate progress layout during category change to avoid visual jump
+        mBinding.progressLayout.showContent(!animate, items.size());
         mCategoryChanging = false;
         mAdapter.setItems(items, hasChange -> {
             if (animate) {

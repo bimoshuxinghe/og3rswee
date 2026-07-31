@@ -19,8 +19,8 @@
             android:id="@+id/collapsing_toolbar"
             android:layout_width="match_parent"
             android:layout_height="240dp"
-            app:contentScrim="@color/transparent"
-            app:statusBarScrim="@color/transparent"
+            app:contentScrim="?attr/colorSurface"
+            app:statusBarScrim="?attr/colorSurface"
             app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
             <FrameLayout
@@ -101,28 +101,38 @@
 
         </LinearLayout>
 
-        <!-- 3. Sub-category tabs: below Continue Watching when expanded, pinned under search when collapsed -->
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Container for type tabs + pager, positioned below AppBarLayout -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- Sub-category tabs -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/type"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="?attr/colorSurface"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:orientation="horizontal"
             android:paddingStart="8dp"
             android:paddingTop="0dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="12dp"
+            android:paddingBottom="8dp"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/adapter_type" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+        <com.fongmi.android.tv.ui.custom.CustomViewPager
+            android:id="@+id/pager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
-    <com.fongmi.android.tv.ui.custom.CustomViewPager
-        android:id="@+id/pager"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+    </LinearLayout>
 
     <!-- 4. Floating Custom Top Bar on the top layer of CoordinatorLayout -->
     <LinearLayout

@@ -647,10 +647,50 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             });
             mBinding.lrcView.setData(result.getLrc());
             mBinding.lrcView.setVisibility(View.VISIBLE);
+            mBinding.lrcView.setOnLongClickListener(v -> {
+                showLrcSizeDialog();
+                return true;
+            });
         } else {
             mBinding.lrcView.clear();
             mBinding.lrcView.setVisibility(View.GONE);
         }
+    }
+
+    private void showLrcSizeDialog() {
+        com.fongmi.android.tv.databinding.DialogLrcSizeBinding binding =
+                com.fongmi.android.tv.databinding.DialogLrcSizeBinding.inflate(getLayoutInflater());
+        float current = PlayerSetting.getLrcTextSize();
+        int progress = (int) (current - 24f);
+        binding.lrcSizeSeek.setMax(56);
+        binding.lrcSizeSeek.setProgress(progress);
+        binding.lrcSizeValue.setText(String.valueOf((int) current));
+        binding.lrcSizeSeek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                float size = 24f + prog;
+                binding.lrcSizeValue.setText(String.valueOf((int) size));
+                mBinding.lrcView.setTextSize(size);
+            }
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.player_lrc_size)
+                .setView(binding.getRoot())
+                .setNegativeButton(R.string.dialog_negative, (dialog, which) -> {
+                    mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                })
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    float size = 24f + binding.lrcSizeSeek.getProgress();
+                    PlayerSetting.putLrcTextSize(size);
+                })
+                .setOnDismissListener(dialog -> {
+                    mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                })
+                .show();
     }
 
     @Override
