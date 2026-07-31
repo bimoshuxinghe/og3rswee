@@ -241,6 +241,14 @@ public class PlayerSetting {
         Prefers.put("detail_poster", detailPoster);
     }
 
+    public static float getLrcTextSize() {
+        return Math.min(Math.max(Prefers.getFloat("lrc_text_size", 42f), 24f), 80f);
+    }
+
+    public static void putLrcTextSize(float size) {
+        Prefers.put("lrc_text_size", Math.min(Math.max(size, 24f), 80f));
+    }
+
     public static float getSpeed() {
         return Math.min(Math.max(Prefers.getFloat("speed", 3), 2), 5);
     }

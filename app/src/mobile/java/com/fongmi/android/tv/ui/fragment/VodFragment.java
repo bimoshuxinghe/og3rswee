@@ -233,24 +233,18 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     private void updateHomeHeaderVisibility(int verticalOffset) {
         if (!PlayerSetting.isHomeCarousel()) {
             mBinding.bannerContainer.setAlpha(0f);
-            mBinding.bannerContainer.setVisibility(View.GONE);
-            mBinding.bannerShadow.setVisibility(View.GONE);
+            mBinding.bannerShadow.setAlpha(0f);
             mBinding.recentLayout.setAlpha(0f);
-            mBinding.recentLayout.setVisibility(View.GONE);
             return;
         }
-        // Use alpha to fade banner and recentLayout together as user scrolls.
-        // Never toggle GONE/VISIBLE during scroll to avoid AppBarLayout height feedback loop.
+        // Only use alpha for fading — never change visibility during scroll
+        // to avoid AppBarLayout layout recalculation that causes gaps/jumps
         boolean hasRecent = Setting.isHomeHistory() && mHistoryAdapter != null && mHistoryAdapter.getItemCount() > 0;
-        mBinding.bannerContainer.setVisibility(View.VISIBLE);
-        mBinding.bannerShadow.setVisibility(View.VISIBLE);
-        if (hasRecent) mBinding.recentLayout.setVisibility(View.VISIBLE);
         int bannerRange = Math.max(1, mBinding.collapsingToolbar.getHeight() - mBinding.collapsingToolbar.getMinimumHeight());
         float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) bannerRange));
         float alpha = 1f - progress;
         mBinding.bannerContainer.setAlpha(alpha);
         mBinding.bannerShadow.setAlpha(alpha);
-        // recentLayout fades together with banner, completely hidden when banner is collapsed
         mBinding.recentLayout.setAlpha(hasRecent ? alpha : 0f);
     }
 
@@ -266,8 +260,11 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         updateCollapsingSize();
         updateTypePinnedMargin();
         mBinding.collapsingToolbar.setVisibility(show ? View.VISIBLE : View.GONE);
-        mBinding.bannerContainer.setAlpha(show ? 1f : 0f);
         mBinding.bannerContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+        mBinding.bannerShadow.setVisibility(show ? View.VISIBLE : View.GONE);
+        mBinding.bannerContainer.setAlpha(show ? 1f : 0f);
+        mBinding.bannerShadow.setAlpha(show ? 1f : 0f);
+        if (!show) mBinding.recentLayout.setVisibility(View.GONE);
         updateHomeHeaderVisibility(mAppBarOffset);
         if (show) startAutoScroll();
         else stopAutoScroll();
@@ -282,6 +279,12 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         if (params.height != targetHeight) {
             params.height = targetHeight;
             mBinding.collapsingToolbar.setLayoutParams(params);
+        }
+        if (topBarHeight == 0) {
+            mBinding.topBar.post(() -> {
+                if (!isViewReady()) return;
+                mBinding.collapsingToolbar.setMinimumHeight(mBinding.topBar.getHeight());
+            });
         }
     }
 
@@ -668,7 +671,10 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void loadHistory() {
         if (!Setting.isHomeHistory() || !PlayerSetting.isHomeCarousel()) {
-            if (isViewReady()) mBinding.recentLayout.setVisibility(View.GONE);
+            if (isViewReady()) {
+                mBinding.recentLayout.setVisibility(View.GONE);
+                mBinding.recentLayout.setAlpha(0f);
+            }
             return;
         }
         com.fongmi.android.tv.utils.Task.executor().submit(() -> {
@@ -678,10 +684,13 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                     if (!isViewReady() || mHistoryAdapter == null) return;
                     if (!Setting.isHomeHistory() || !PlayerSetting.isHomeCarousel()) {
                         mBinding.recentLayout.setVisibility(View.GONE);
+                        mBinding.recentLayout.setAlpha(0f);
                         return;
                     }
                     if (historyList != null && !historyList.isEmpty()) {
                         mHistoryAdapter.setItems(historyList);
+                        mBinding.recentLayout.setVisibility(View.VISIBLE);
+                        mBinding.recentLayout.setAlpha(1f);
                         updateHomeHeaderVisibility(mAppBarOffset);
                     } else {
                         mBinding.recentLayout.setVisibility(View.GONE);

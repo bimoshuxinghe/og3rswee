@@ -150,6 +150,8 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
 
         mBinding.backgroundText.setText((background = ResUtil.getStringArray(R.array.select_background))[PlayerSetting.getBackground()]);
 
+        mBinding.lrcSizeText.setText(String.valueOf((int) PlayerSetting.getLrcTextSize()));
+
     }
 
     @Override
@@ -195,6 +197,8 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         mBinding.caption.setOnLongClickListener(this::onCaption);
 
         mBinding.background.setOnClickListener(this::onBackground);
+
+        mBinding.lrcSize.setOnClickListener(this::onLrcSize);
 
         mBinding.audioDecode.setOnClickListener(this::setAudioDecode);
 
@@ -557,6 +561,36 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
             mBinding.backgroundText.setText(background[which]);
 
             PlayerSetting.putBackground(which);
+
+            dialog.dismiss();
+
+        }).show();
+
+    }
+
+    private void onLrcSize(View view) {
+
+        String[] sizes = {"28", "36", "42", "50", "60", "72"};
+
+        float current = PlayerSetting.getLrcTextSize();
+
+        int selectedIndex = 2;
+
+        for (int i = 0; i < sizes.length; i++) {
+
+            if (Float.parseFloat(sizes[i]) == current) { selectedIndex = i; break; }
+
+        }
+
+        new MaterialAlertDialogBuilder(requireActivity()).setTitle(R.string.player_lrc_size).setNegativeButton(R.string.dialog_negative, null).setSingleChoiceItems(sizes, selectedIndex, (dialog, which) -> {
+
+            float size = Float.parseFloat(sizes[which]);
+
+            PlayerSetting.putLrcTextSize(size);
+
+            mBinding.lrcSizeText.setText(sizes[which]);
+
+            com.fongmi.android.tv.event.RefreshEvent.subtitle("");
 
             dialog.dismiss();
 

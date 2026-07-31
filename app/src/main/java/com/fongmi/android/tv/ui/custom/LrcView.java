@@ -87,6 +87,20 @@ public class LrcView extends View {
         this.callback = callback;
     }
 
+    public void setTextSize(float size) {
+        this.textSize = size;
+        this.lineSpacing = size * 1.35f;
+        currentPaint.setTextSize(size);
+        normalPaint.setTextSize(size);
+        outlinePaint.setTextSize(size);
+        outlinePaint.setStrokeWidth(Math.max(2f, size * 0.1f));
+        invalidate();
+    }
+
+    public float getTextSize() {
+        return textSize;
+    }
+
     public void setData(String data) {
         stop();
         entries = parseLrc(data);

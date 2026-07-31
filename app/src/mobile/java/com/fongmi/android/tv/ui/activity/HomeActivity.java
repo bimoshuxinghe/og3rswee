@@ -239,7 +239,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         boolean capsule = com.fongmi.android.tv.setting.Setting.isHomeCapsule();
 
         mBinding.navigation.getMenu().findItem(R.id.vod).setVisible(com.fongmi.android.tv.setting.Setting.isHomeVod());
-        mBinding.navigation.getMenu().findItem(R.id.hot).setVisible(false);
+        mBinding.navigation.getMenu().findItem(R.id.hot).setVisible(com.fongmi.android.tv.setting.Setting.isHomeHot());
         mBinding.navigation.getMenu().findItem(R.id.setting).setVisible(true);
         mBinding.navigation.getMenu().findItem(R.id.local).setVisible(com.fongmi.android.tv.setting.Setting.isHomeLocal());
         mBinding.navigation.getMenu().findItem(R.id.download).setVisible(com.fongmi.android.tv.setting.Setting.isHomeDownload());
@@ -328,7 +328,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         if (position == 0 && !com.fongmi.android.tv.setting.Setting.isHomeVod()) {
             position = getHomePosition();
         }
-        if (position == 7) {
+        if (position == 7 && !com.fongmi.android.tv.setting.Setting.isHomeHot()) {
             position = getHomePosition();
         }
         if (position == 4) mBinding.navigation.setSelectedItemId(R.id.local);

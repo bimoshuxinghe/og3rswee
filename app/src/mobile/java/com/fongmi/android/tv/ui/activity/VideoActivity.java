@@ -641,6 +641,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void setLrc(Result result) {
         if (result.hasLrc()) {
+            mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
             mBinding.lrcView.setCallback(() -> {
                 try { return player().getPosition(); } catch (Exception e) { return 0L; }
             });
@@ -1318,6 +1319,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setOrient() {
+        if (isRotate()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
+            return;
+        }
         if (isPort() && isAutoRotate()) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
         if (isLand() && isAutoRotate()) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE);
     }
@@ -1664,7 +1669,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (event.getType() == RefreshEvent.Type.DETAIL) getDetail();
         else if (event.getType() == RefreshEvent.Type.PLAYER) onRefresh();
         else if (event.getType() == RefreshEvent.Type.VOD) updateVod(event.getVod());
-        else if (event.getType() == RefreshEvent.Type.SUBTITLE) player().setSub(Sub.from(event.getPath()));
+        else if (event.getType() == RefreshEvent.Type.SUBTITLE) {
+            mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+            if (!event.getPath().isEmpty()) player().setSub(Sub.from(event.getPath()));
+        }
         else if (event.getType() == RefreshEvent.Type.DANMAKU) player().setDanmaku(Danmaku.from(event.getPath()));
     }
 
@@ -1688,6 +1696,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void checkOrientation() {
+        if (player().getVideoWidth() == 0 || player().getVideoHeight() == 0) return;
         if (isFullscreen() && !isRotate() && player().isPortrait()) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
             setRotate(true);
