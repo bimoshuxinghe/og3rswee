@@ -48,6 +48,14 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <com.fongmi.android.tv.ui.custom.LrcView
+            android:id="@+id/lrcView"
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone" />
+
         <include
             android:id="@+id/control"
             layout="@layout/view_control_vod"
@@ -78,14 +86,6 @@
             android:shadowRadius="2"
             android:visibility="gone"
             tools:text="已播放 30:15/60:30 预计完成于 11:45" />
-
-        <com.fongmi.android.tv.ui.custom.LrcView
-            android:id="@+id/lrcView"
-            android:layout_width="match_parent"
-            android:layout_height="110dp"
-            android:layout_gravity="bottom"
-            android:layout_marginBottom="4dp"
-            android:visibility="gone" />
 
         <include
             android:id="@+id/reader"
