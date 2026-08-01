@@ -650,23 +650,23 @@ public class ProxySubscriptionManager {
                 sb.append("    network: tcp\n");
             }
             String security = u.getQueryParameter("security");
+            String sni = u.getQueryParameter("sni");
+            String pbk = u.getQueryParameter("pbk");
+            if (pbk == null) pbk = u.getQueryParameter("public-key");
+            String sid = u.getQueryParameter("sid");
+            if (sid == null) sid = u.getQueryParameter("short-id");
             if (security != null && "tls".equals(security)) {
                 sb.append("    tls: true\n");
-                if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+                if (sni != null) sb.append("    server-name: ").append(quote(sni)).append("\n");
                 if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
-            } else if (security != null && "reality".equals(security)) {
+            } else if (security != null && "reality".equals(security) || pbk != null) {
                 sb.append("    tls: true\n");
-                sb.append("    reality-opts:\n");
-                if (u.getQueryParameter("public-key") != null) sb.append("      public-key: ").append(quote(u.getQueryParameter("public-key"))).append("\n");
-                if (u.getQueryParameter("short-id") != null) sb.append("      short-id: ").append(quote(u.getQueryParameter("short-id"))).append("\n");
-                if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
-            }
-            if (u.getQueryParameter("pbk") != null) {
-                if (sb.indexOf("    reality-opts:") == -1) sb.append("    reality-opts:\n");
-                sb.append("      public-key: ").append(quote(u.getQueryParameter("pbk"))).append("\n");
-                if (u.getQueryParameter("sid") != null) sb.append("      short-id: ").append(quote(u.getQueryParameter("sid"))).append("\n");
-                if (u.getQueryParameter("sni") != null && sb.indexOf("    server-name:") == -1) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
-                if (sb.indexOf("    tls:") == -1) sb.append("    tls: true\n");
+                if (sni != null) sb.append("    server-name: ").append(quote(sni)).append("\n");
+                if (pbk != null || sid != null) {
+                    sb.append("    reality-opts:\n");
+                    if (pbk != null) sb.append("      public-key: ").append(quote(pbk)).append("\n");
+                    if (sid != null) sb.append("      short-id: ").append(quote(sid)).append("\n");
+                }
             }
             if (u.getQueryParameter("fp") != null) sb.append("    client-fingerprint: ").append(u.getQueryParameter("fp")).append("\n");
             return sb.toString();
