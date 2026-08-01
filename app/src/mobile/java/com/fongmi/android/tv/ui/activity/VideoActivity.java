@@ -401,13 +401,16 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.flag.setAdapter(mFlagAdapter = new FlagAdapter(this));
         mBinding.quick.setAdapter(mQuickAdapter = new QuickAdapter(this));
         layoutMode = Setting.getLayoutMode();
-        if (layoutMode != 0) Setting.putLayoutMode(layoutMode = 0);
         mBinding.episode.setHasFixedSize(true);
         mBinding.episode.setItemAnimator(null);
         if (layoutMode == 0) {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(2, 8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        } else if (layoutMode == 1) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
@@ -777,7 +780,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onMore() {
-        layoutMode = layoutMode == 0 ? 2 : 0;
+        layoutMode = (layoutMode + 1) % 3;
         Setting.putLayoutMode(layoutMode);
         List<Episode> items = new ArrayList<>(mEpisodeAdapter.getItems());
         while (mBinding.episode.getItemDecorationCount() > 0) mBinding.episode.removeItemDecorationAt(0);
@@ -785,6 +788,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(2, 8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        } else if (layoutMode == 1) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));

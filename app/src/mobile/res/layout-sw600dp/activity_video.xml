@@ -6,6 +6,20 @@
     android:layout_height="match_parent"
     android:tag="land">
 
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/bgPoster"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/bgOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#60000000"
+        android:visibility="gone" />
+
     <com.fongmi.android.tv.ui.custom.ProgressLayout
         android:id="@+id/progressLayout"
         android:layout_width="match_parent"
