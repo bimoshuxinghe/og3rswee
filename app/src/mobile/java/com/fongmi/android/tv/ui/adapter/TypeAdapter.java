@@ -43,6 +43,7 @@ public class TypeAdapter extends RecyclerView.Adapter<TypeAdapter.ViewHolder> {
     }
 
     public void addAll(Result result) {
+        mItems.clear();
         mItems.addAll(result.getTypes());
         if (!result.getList().isEmpty()) mItems.add(0, home());
         if (!mItems.isEmpty()) mItems.get(0).setSelected(true);
@@ -50,20 +51,11 @@ public class TypeAdapter extends RecyclerView.Adapter<TypeAdapter.ViewHolder> {
     }
 
     public void setItems(Result result) {
-        List<Class> newItems = new ArrayList<>(result.getTypes());
-        if (!result.getList().isEmpty()) newItems.add(0, home());
-        if (!newItems.isEmpty()) {
-            newItems.get(0).setSelected(true);
-        }
-        
-        if (mItems.size() == 1 && !newItems.isEmpty() && mItems.get(0).getTypeId().equals(newItems.get(0).getTypeId())) {
-            mItems.addAll(newItems.subList(1, newItems.size()));
-            notifyItemRangeInserted(1, newItems.size() - 1);
-        } else {
-            mItems.clear();
-            mItems.addAll(newItems);
-            notifyDataSetChanged();
-        }
+        mItems.clear();
+        mItems.addAll(result.getTypes());
+        if (!result.getList().isEmpty()) mItems.add(0, home());
+        if (!mItems.isEmpty()) mItems.get(0).setSelected(true);
+        notifyDataSetChanged();
     }
 
     public void setSelected(int position) {

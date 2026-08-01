@@ -157,7 +157,7 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         mBinding.progressLayout.showContent(first, size);
         mBinding.swipeLayout.setRefreshing(false);
         mScroller.endLoading(result);
-        if (size > 0) addVideo(result);
+        if (size > 0) addVideo(result, first);
     }
 
     public void setResult(Result result) {
@@ -171,10 +171,11 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         mAdapter.setItems(result.getList(), this::checkMore);
     }
 
-    private void addVideo(Result result) {
+    private void addVideo(Result result, boolean first) {
         Style style = result.getVod().getStyle(getStyle());
         if (!style.equals(mAdapter.getStyle())) setStyle(style);
-        mAdapter.addAll(result.getList(), this::checkMore);
+        if (first) mAdapter.setItems(result.getList(), this::checkMore);
+        else mAdapter.addAll(result.getList(), this::checkMore);
     }
 
     private void checkMore() {
