@@ -52,19 +52,27 @@ public class MihomoManager {
         if (TextUtils.isEmpty(config)) return false;
         stop();
         try {
+            Thread.sleep(300);
             File dir = Path.files("mihomo");
             if (!dir.exists()) dir.mkdirs();
             File file = new File(dir, CONFIG);
-            Path.write(file, fixConfig(config, selected).getBytes(StandardCharsets.UTF_8));
+            String fixedConfig = fixConfig(config, selected);
+            Path.write(file, fixedConfig.getBytes(StandardCharsets.UTF_8));
+            Log.d(TAG, "Config written to " + file.getAbsolutePath());
+            Log.d(TAG, "Config content:\n" + fixedConfig);
             File binary = new File(App.get().getApplicationInfo().nativeLibraryDir, BINARY);
-            if (!binary.exists()) return false;
+            if (!binary.exists()) {
+                Log.e(TAG, "Binary not found: " + binary.getAbsolutePath());
+                Log.e(TAG, "nativeLibraryDir: " + App.get().getApplicationInfo().nativeLibraryDir);
+                return false;
+            }
             binary.setExecutable(true);
+            Log.d(TAG, "Starting mihomo: " + binary.getAbsolutePath() + " -d " + dir.getAbsolutePath() + " -f " + file.getAbsolutePath());
             process = new ProcessBuilder(binary.getAbsolutePath(), "-d", dir.getAbsolutePath(), "-f", file.getAbsolutePath()).redirectErrorStream(true).start();
             drain(process);
             return waitReady();
         } catch (Exception e) {
             stop();
-            e.printStackTrace();
             Log.e(TAG, "start failed", e);
             return false;
         }
@@ -73,6 +81,12 @@ public class MihomoManager {
     public synchronized void stop() {
         if (process == null) return;
         process.destroy();
+        try {
+            if (!process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+        } catch (InterruptedException ignored) {
+        }
         process = null;
     }
 
@@ -81,11 +95,18 @@ public class MihomoManager {
     }
 
     private boolean waitReady() throws InterruptedException {
-        for (int i = 0; i < 50; i++) {
-            if (!isRunning()) return false;
-            if (canConnect()) return true;
+        for (int i = 0; i < 80; i++) {
+            if (!isRunning()) {
+                Log.e(TAG, "Mihomo process died before becoming ready");
+                return false;
+            }
+            if (canConnect()) {
+                Log.d(TAG, "Mihomo ready after " + i * 100 + "ms");
+                return true;
+            }
             Thread.sleep(100);
         }
+        Log.e(TAG, "Mihomo failed to become ready within 8 seconds");
         return isRunning();
     }
 
@@ -119,8 +140,32 @@ public class MihomoManager {
         text = putTopLevel(text, "allow-lan", "false");
         text = putTopLevel(text, "bind-address", "'127.0.0.1'");
         text = putTopLevel(text, "external-controller", "'127.0.0.1:" + CONTROLLER_PORT + "'");
-        text = putTopLevel(text, "log-level", "warning");
+        text = putTopLevel(text, "log-level", "info");
+        text = putTopLevel(text, "find-process-mode", "off");
+        text = putTopLevel(text, "global-client-fingerprint", "chrome");
+        text = ensureDns(text);
         return text;
+    }
+
+    private String ensureDns(String text) {
+        if (text.contains("\ndns:") || text.startsWith("dns:")) return text;
+        String dns = "dns:\n" +
+                "  enable: true\n" +
+                "  listen: 0.0.0.0:1053\n" +
+                "  enhanced-mode: fake-ip\n" +
+                "  fake-ip-range: 198.18.0.1/16\n" +
+                "  nameserver:\n" +
+                "    - 223.5.5.5\n" +
+                "    - 119.29.29.29\n" +
+                "    - https://dns.alidns.com/dns-query\n" +
+                "  fallback:\n" +
+                "    - https://1.1.1.1/dns-query\n" +
+                "    - https://8.8.8.8/dns-query\n" +
+                "  fallback-filter:\n" +
+                "    geoip: false\n" +
+                "    ipcidr:\n" +
+                "      - 240.0.0.0/4\n";
+        return dns + text;
     }
 
     private String buildSelectedConfig(String text, String selected) {

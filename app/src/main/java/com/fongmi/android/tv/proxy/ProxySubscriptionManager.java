@@ -92,13 +92,20 @@ public class ProxySubscriptionManager {
             applySaved();
             return true;
         }
-        if (TextUtils.isEmpty(Setting.getProxySubscriptionConfig())) return false;
-        if (!MihomoManager.get().start(Setting.getProxySubscriptionConfig(), node.getName())) return false;
+        if (TextUtils.isEmpty(Setting.getProxySubscriptionConfig())) {
+            android.util.Log.e("ProxySub", "select failed: config is empty");
+            return false;
+        }
+        if (!MihomoManager.get().start(Setting.getProxySubscriptionConfig(), node.getName())) {
+            android.util.Log.e("ProxySub", "select failed: mihomo start failed for node " + node.getName());
+            return false;
+        }
         ProxyNode local = ProxyNode.mihomo(node.getName());
         Setting.putProxySubscriptionCoreName(node.getName());
         Setting.putProxySubscriptionSelected(local.getUrl());
         Setting.putProxySubscriptionEnabled(true);
         OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(local.getUrl())));
+        android.util.Log.d("ProxySub", "select success: " + node.getName() + " -> " + local.getUrl());
         return true;
     }
 
@@ -196,8 +203,13 @@ public class ProxySubscriptionManager {
     private long testMihomo(ProxyNode node) {
         if (TextUtils.isEmpty(Setting.getProxySubscriptionConfig())) return -1;
         long start = System.currentTimeMillis();
-        if (!MihomoManager.get().start(Setting.getProxySubscriptionConfig(), node.getName())) return -1;
-        return requestByLocalProxy(start);
+        if (!MihomoManager.get().start(Setting.getProxySubscriptionConfig(), node.getName())) {
+            android.util.Log.e("ProxySub", "testMihomo: mihomo start failed for " + node.getName());
+            return -1;
+        }
+        long result = requestByLocalProxy(start);
+        android.util.Log.d("ProxySub", "testMihomo: " + node.getName() + " result=" + result);
+        return result;
     }
 
     private long requestByLocalProxy(long start) {
@@ -205,8 +217,11 @@ public class ProxySubscriptionManager {
         OkHttpClient client = OkHttp.client().newBuilder().proxy(proxy).connectTimeout(TEST_TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TEST_TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TEST_TIMEOUT, TimeUnit.MILLISECONDS).build();
         Request request = new Request.Builder().url(TEST_URL).head().build();
         try (Response response = client.newCall(request).execute()) {
-            return response.isSuccessful() || response.code() == 204 ? System.currentTimeMillis() - start : -2;
+            long latency = response.isSuccessful() || response.code() == 204 ? System.currentTimeMillis() - start : -2;
+            android.util.Log.d("ProxySub", "requestByLocalProxy: code=" + response.code() + " latency=" + latency);
+            return latency;
         } catch (Exception e) {
+            android.util.Log.e("ProxySub", "requestByLocalProxy failed", e);
             return -2;
         }
     }
@@ -489,6 +504,7 @@ public class ProxySubscriptionManager {
         sb.append("    type: ").append(type).append("\n");
         sb.append("    server: ").append(server).append("\n");
         sb.append("    port: ").append(port).append("\n");
+        sb.append("    udp: true\n");
         if (userKey != null && !TextUtils.isEmpty(userVal)) {
             sb.append("    ").append(userKey).append(": ").append(quote(userVal)).append("\n");
             sb.append("    ").append(passKey).append(": ").append(quote(passVal)).append("\n");
@@ -509,14 +525,18 @@ public class ProxySubscriptionManager {
             sb.append("    uuid: ").append(quote(str(o, "id"))).append("\n");
             sb.append("    alterId: ").append(o.has("aid") ? intStr(o, "aid") : "0").append("\n");
             sb.append("    cipher: ").append(o.has("scy") ? str(o, "scy") : "auto").append("\n");
-            if (o.has("net") && !"tcp".equals(str(o, "net"))) {
-                sb.append("    network: ").append(str(o, "net")).append("\n");
-                if ("ws".equals(str(o, "net")) && o.has("path")) {
+            sb.append("    udp: true\n");
+            String net = o.has("net") ? str(o, "net") : "tcp";
+            if (!"tcp".equals(net)) {
+                sb.append("    network: ").append(net).append("\n");
+                if ("ws".equals(net) && o.has("path")) {
                     sb.append("    ws-opts:\n");
                     sb.append("      path: ").append(quote(str(o, "path"))).append("\n");
                     if (o.has("host")) sb.append("      headers:\n        Host: ").append(quote(str(o, "host"))).append("\n");
                 }
-                if ("grpc".equals(str(o, "net")) && o.has("path")) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(str(o, "path"))).append("\n");
+                if ("grpc".equals(net) && o.has("path")) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(str(o, "path"))).append("\n");
+            } else {
+                sb.append("    network: tcp\n");
             }
             if (o.has("tls") && ("tls".equals(str(o, "tls")) || "1".equals(str(o, "tls")))) {
                 sb.append("    tls: true\n");
@@ -571,6 +591,7 @@ public class ProxySubscriptionManager {
             sb.append("    port: ").append(port).append("\n");
             sb.append("    cipher: ").append(method).append("\n");
             sb.append("    password: ").append(quote(password)).append("\n");
+            sb.append("    udp: true\n");
             return sb.toString();
         } catch (Exception e) {
             return null;
@@ -596,6 +617,7 @@ public class ProxySubscriptionManager {
             sb.append("    password: ").append(quote(TextUtils.isEmpty(pwd) ? pwdB64 : pwd)).append("\n");
             sb.append("    protocol: ").append(parts[2]).append("\n");
             sb.append("    obfs: ").append(parts[4]).append("\n");
+            sb.append("    udp: true\n");
             return sb.toString();
         } catch (Exception e) {
             return null;
@@ -613,6 +635,7 @@ public class ProxySubscriptionManager {
             sb.append("    server: ").append(u.getHost() != null ? u.getHost() : "").append("\n");
             sb.append("    port: ").append(u.getPort() > 0 ? u.getPort() : "").append("\n");
             sb.append("    uuid: ").append(quote(uuid)).append("\n");
+            sb.append("    udp: true\n");
             if (u.getQueryParameter("flow") != null) sb.append("    flow: ").append(u.getQueryParameter("flow")).append("\n");
             String network = u.getQueryParameter("type");
             if (network != null && !"tcp".equals(network)) {
@@ -623,6 +646,8 @@ public class ProxySubscriptionManager {
                     if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
                 }
                 if ("grpc".equals(network) && u.getQueryParameter("serviceName") != null) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(u.getQueryParameter("serviceName"))).append("\n");
+            } else {
+                sb.append("    network: tcp\n");
             }
             String security = u.getQueryParameter("security");
             if (security != null && "tls".equals(security)) {
@@ -659,15 +684,19 @@ public class ProxySubscriptionManager {
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
             sb.append("    password: ").append(quote(u.getUserInfo() != null ? u.getUserInfo() : "")).append("\n");
+            sb.append("    udp: true\n");
             if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
             if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
-            if (u.getQueryParameter("type") != null && !"tcp".equals(u.getQueryParameter("type"))) {
-                sb.append("    network: ").append(u.getQueryParameter("type")).append("\n");
-                if ("ws".equals(u.getQueryParameter("type"))) {
+            String network = u.getQueryParameter("type");
+            if (network != null && !"tcp".equals(network)) {
+                sb.append("    network: ").append(network).append("\n");
+                if ("ws".equals(network)) {
                     sb.append("    ws-opts:\n");
                     if (u.getQueryParameter("path") != null) sb.append("      path: ").append(quote(u.getQueryParameter("path"))).append("\n");
                     if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
                 }
+            } else {
+                sb.append("    network: tcp\n");
             }
             return sb.toString();
         } catch (Exception e) {
@@ -683,6 +712,7 @@ public class ProxySubscriptionManager {
             sb.append("    type: hysteria2\n");
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    udp: true\n");
             if (u.getUserInfo() != null) sb.append("    password: ").append(quote(u.getUserInfo())).append("\n");
             if (u.getQueryParameter("sni") != null) sb.append("    sni: ").append(quote(u.getQueryParameter("sni"))).append("\n");
             if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
@@ -700,6 +730,7 @@ public class ProxySubscriptionManager {
             sb.append("    type: hysteria\n");
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    udp: true\n");
             if (u.getQueryParameter("auth") != null) sb.append("    auth-str: ").append(quote(u.getQueryParameter("auth"))).append("\n");
             if (u.getQueryParameter("peer") != null) sb.append("    peers:\n      - ").append(quote(u.getQueryParameter("peer"))).append("\n");
             if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
@@ -717,6 +748,7 @@ public class ProxySubscriptionManager {
             sb.append("    type: tuic\n");
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    udp: true\n");
             if (u.getUserInfo() != null) {
                 String[] up = u.getUserInfo().split(":");
                 if (up.length >= 1) sb.append("    uuid: ").append(quote(up[0])).append("\n");
@@ -739,6 +771,7 @@ public class ProxySubscriptionManager {
             sb.append("    type: snell\n");
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    udp: true\n");
             if (u.getUserInfo() != null) sb.append("    psk: ").append(quote(u.getUserInfo())).append("\n");
             return sb.toString();
         } catch (Exception e) {
@@ -754,6 +787,7 @@ public class ProxySubscriptionManager {
             sb.append("    type: anytls\n");
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    udp: true\n");
             if (u.getUserInfo() != null) sb.append("    password: ").append(quote(u.getUserInfo())).append("\n");
             if (u.getQueryParameter("sni") != null) sb.append("    sni: ").append(quote(u.getQueryParameter("sni"))).append("\n");
             if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
@@ -775,6 +809,7 @@ public class ProxySubscriptionManager {
             sb.append("    type: juicity\n");
             sb.append("    server: ").append(u.getHost()).append("\n");
             sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    udp: true\n");
             if (u.getUserInfo() != null) {
                 String[] up = u.getUserInfo().split(":");
                 if (up.length >= 1) sb.append("    uuid: ").append(quote(up[0])).append("\n");
