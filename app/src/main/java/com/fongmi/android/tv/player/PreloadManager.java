@@ -99,6 +99,8 @@ public class PreloadManager {
     }
 
     private void warm(Result result) {
+        String rawUrl = result.getUrl().v();
+        if (rawUrl.startsWith("pics://") || rawUrl.startsWith("novel://")) return;
         String url = result.getRealUrl();
         if (!url.startsWith("http")) return;
         long limit = (long) PlayerSetting.getPreloadCapacity() * 1024L * 1024L;

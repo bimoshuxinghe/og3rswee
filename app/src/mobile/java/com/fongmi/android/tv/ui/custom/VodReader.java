@@ -121,7 +121,7 @@ public class VodReader {
         this.title = title == null ? "" : title;
         binding.title.setText(this.title);
         binding.info.setVisibility(View.VISIBLE);
-        String value = result == null ? "" : result.getRealUrl();
+        String value = result == null ? "" : result.getUrl().v();
         if (value.startsWith("pics://")) {
             novel = false;
             boolean background = Setting.getPictureReaderMode() == 1;

@@ -237,6 +237,7 @@ public class SiteApi {
             SpiderDebug.log("player", playerContent);
             Result result = Result.fromJson(playerContent);
             if (result.getFlag().isEmpty()) result.setFlag(flag);
+            if (result.getUrl().v().startsWith("pics://") || result.getUrl().v().startsWith("novel://")) result.setPlayUrl("");
             result.setUrl(Source.get().fetch(result));
             result.setHeader(site.getHeader());
             result.setKey(key);
@@ -249,6 +250,7 @@ public class SiteApi {
             SpiderDebug.log("player", playerContent);
             Result result = Result.fromJson(playerContent);
             if (result.getFlag().isEmpty()) result.setFlag(flag);
+            if (result.getUrl().v().startsWith("pics://") || result.getUrl().v().startsWith("novel://")) result.setPlayUrl("");
             result.setUrl(Source.get().fetch(result));
             result.setHeader(site.getHeader());
             return result;
@@ -257,8 +259,12 @@ public class SiteApi {
             result.setUrl(id);
             result.setFlag(flag);
             result.setHeader(site.getHeader());
-            result.setPlayUrl(site.getPlayUrl());
-            result.setParse(Sniffer.isVideoFormat(id) && result.getPlayUrl().isEmpty() ? 0 : 1);
+            if (id.startsWith("pics://") || id.startsWith("novel://")) {
+                result.setParse(0);
+            } else {
+                result.setPlayUrl(site.getPlayUrl());
+                result.setParse(Sniffer.isVideoFormat(id) && result.getPlayUrl().isEmpty() ? 0 : 1);
+            }
             result.setUrl(Source.get().fetch(result));
             SpiderDebug.log("player", result.toString());
             return result;
