@@ -636,7 +636,6 @@ public class ProxySubscriptionManager {
             sb.append("    port: ").append(u.getPort() > 0 ? u.getPort() : "").append("\n");
             sb.append("    uuid: ").append(quote(uuid)).append("\n");
             sb.append("    udp: true\n");
-            if (u.getQueryParameter("flow") != null) sb.append("    flow: ").append(u.getQueryParameter("flow")).append("\n");
             String network = u.getQueryParameter("type");
             if (network != null && !"tcp".equals(network)) {
                 sb.append("    network: ").append(network).append("\n");
@@ -655,11 +654,15 @@ public class ProxySubscriptionManager {
             if (pbk == null) pbk = u.getQueryParameter("public-key");
             String sid = u.getQueryParameter("sid");
             if (sid == null) sid = u.getQueryParameter("short-id");
+            boolean isReality = (security != null && "reality".equals(security)) || pbk != null;
+            String flow = u.getQueryParameter("flow");
+            if (flow == null && isReality) flow = "xtls-rprx-vision";
+            if (flow != null) sb.append("    flow: ").append(flow).append("\n");
             if (security != null && "tls".equals(security)) {
                 sb.append("    tls: true\n");
                 if (sni != null) sb.append("    server-name: ").append(quote(sni)).append("\n");
                 if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
-            } else if (security != null && "reality".equals(security) || pbk != null) {
+            } else if (isReality) {
                 sb.append("    tls: true\n");
                 if (sni != null) sb.append("    server-name: ").append(quote(sni)).append("\n");
                 if (pbk != null || sid != null) {
@@ -669,6 +672,7 @@ public class ProxySubscriptionManager {
                 }
             }
             if (u.getQueryParameter("fp") != null) sb.append("    client-fingerprint: ").append(u.getQueryParameter("fp")).append("\n");
+            else if (isReality) sb.append("    client-fingerprint: chrome\n");
             return sb.toString();
         } catch (Exception e) {
             return null;

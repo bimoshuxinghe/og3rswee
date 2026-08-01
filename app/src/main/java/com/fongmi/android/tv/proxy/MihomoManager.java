@@ -181,7 +181,6 @@ public class MihomoManager {
         text = putTopLevel(text, "external-controller", "'127.0.0.1:" + CONTROLLER_PORT + "'");
         text = putTopLevel(text, "log-level", "info");
         text = putTopLevel(text, "find-process-mode", "off");
-        text = putTopLevel(text, "global-client-fingerprint", "chrome");
         text = ensureDns(text);
         return text;
     }
