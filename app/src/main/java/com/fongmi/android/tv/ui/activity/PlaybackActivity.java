@@ -163,7 +163,11 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
     }
 
     protected void startPlayer(String key, Result result, boolean useParse, long timeout, MediaMetadata metadata, long startPositionMs) {
-        android.util.Log.d("AntigravityLive", "startPlayer: key=" + key + ", realUrl=" + result.getRealUrl() + ", needParse=" + result.needParse() + ", useParse=" + useParse);
+        String realUrl = result.getRealUrl();
+        if (realUrl.startsWith("pics://") || realUrl.startsWith("novel://")) {
+            return;
+        }
+        android.util.Log.d("AntigravityLive", "startPlayer: key=" + key + ", realUrl=" + realUrl + ", needParse=" + result.needParse() + ", useParse=" + useParse);
         if (result.getDrm() != null && !FrameworkMediaDrm.isCryptoSchemeSupported(result.getDrm().getUUID())) {
             onError(ResUtil.getString(R.string.error_play_drm));
         } else if (result.hasMsg()) {

@@ -161,4 +161,5 @@ dependencies {
     coreLibraryDesugaring libs.desugar
     implementation 'com.github.Dimezis:BlurView:version-2.0.3'
     implementation 'com.belerweb:pinyin4j:2.5.1'
+    implementation 'com.github.chrisbanes:PhotoView:2.3.0'
 }

@@ -722,6 +722,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     public void onItemClick(Result result) {
         updateHistoryProgress();
+        String readerTitle = mHistory != null ? mHistory.getVodName() : "";
+        if (mReader != null && mReader.set(result, readerTitle)) {
+            player().stop();
+            player().clear();
+            setReaderVisible(true);
+            return;
+        }
         startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata(), getResumePosition());
     }
 

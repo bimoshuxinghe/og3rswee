@@ -237,7 +237,11 @@ public class SiteApi {
             SpiderDebug.log("player", playerContent);
             Result result = Result.fromJson(playerContent);
             if (result.getFlag().isEmpty()) result.setFlag(flag);
-            if (result.getUrl().v().startsWith("pics://") || result.getUrl().v().startsWith("novel://")) result.setPlayUrl("");
+            if (result.getUrl().v().startsWith("pics://") || result.getUrl().v().startsWith("novel://")) {
+                result.setPlayUrl("");
+                result.setParse(0);
+                result.setJx(0);
+            }
             result.setUrl(Source.get().fetch(result));
             result.setHeader(site.getHeader());
             result.setKey(key);
@@ -250,7 +254,11 @@ public class SiteApi {
             SpiderDebug.log("player", playerContent);
             Result result = Result.fromJson(playerContent);
             if (result.getFlag().isEmpty()) result.setFlag(flag);
-            if (result.getUrl().v().startsWith("pics://") || result.getUrl().v().startsWith("novel://")) result.setPlayUrl("");
+            if (result.getUrl().v().startsWith("pics://") || result.getUrl().v().startsWith("novel://")) {
+                result.setPlayUrl("");
+                result.setParse(0);
+                result.setJx(0);
+            }
             result.setUrl(Source.get().fetch(result));
             result.setHeader(site.getHeader());
             return result;
