@@ -65,6 +65,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             notifyChanged();
         });
         binding.update.setOnClickListener(this::onUpdate);
+        binding.test.setOnClickListener(this::onTest);
         binding.auto.setOnClickListener(this::onAuto);
         binding.nodes.setOnClickListener(this::onNodes);
     }
@@ -94,6 +95,26 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                     Notify.show(Notify.getError(R.string.proxy_sub_fail, e));
                 });
             }
+        });
+    }
+
+    private void onTest(View view) {
+        if (ProxySubscriptionManager.get().getNodes().isEmpty()) {
+            Notify.show(R.string.proxy_sub_no_node);
+            return;
+        }
+        Notify.progress(requireActivity());
+        Task.execute(() -> {
+            List<ProxyNode> nodes = ProxySubscriptionManager.get().testAll();
+            ProxyNode fastest = getFastest(nodes);
+            if (fastest != null) ProxySubscriptionManager.get().select(fastest);
+            App.post(() -> {
+                Notify.dismiss();
+                setStatus();
+                notifyChanged();
+                if (fastest != null) Notify.show(getString(R.string.proxy_sub_test_done, fastest.getDisplay()));
+                else Notify.show(R.string.proxy_sub_test_fail);
+            });
         });
     }
 

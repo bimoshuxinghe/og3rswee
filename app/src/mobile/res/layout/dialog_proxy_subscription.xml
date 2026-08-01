@@ -85,21 +85,35 @@
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="6dp"
                 android:layout_weight="1"
                 android:text="@string/proxy_sub_update"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 app:cornerRadius="22dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/test"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="@string/proxy_sub_test"
+                android:textSize="13sp"
+                app:backgroundTint="@android:color/transparent"
+                app:cornerRadius="22dp"
+                app:strokeColor="@color/black_20"
+                app:strokeWidth="1dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/auto"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="6dp"
                 android:layout_weight="1"
                 android:text="@string/proxy_sub_auto"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 app:backgroundTint="@android:color/transparent"
                 app:cornerRadius="22dp"
                 app:strokeColor="@color/black_20"
@@ -112,7 +126,7 @@
                 android:layout_height="44dp"
                 android:layout_weight="1"
                 android:text="@string/proxy_sub_nodes"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 app:cornerRadius="22dp" />
 
         </LinearLayout>

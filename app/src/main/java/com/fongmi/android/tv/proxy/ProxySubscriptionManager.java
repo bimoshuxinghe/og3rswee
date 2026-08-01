@@ -62,7 +62,7 @@ public class ProxySubscriptionManager {
     public synchronized ProxyNode getSelected() {
         String selected = Setting.getProxySubscriptionSelected();
         if (TextUtils.isEmpty(selected)) return null;
-        if (selected.startsWith("http://127.0.0.1:17890")) {
+        if (selected.startsWith("http://127.0.0.1:" + MihomoManager.getMixedPort())) {
             ProxyNode node = ProxyNode.mihomo(Setting.getProxySubscriptionCoreName());
             if (node != null) Setting.putProxySubscriptionSelected(node.getUrl());
             return node;
@@ -109,6 +109,7 @@ public class ProxySubscriptionManager {
 
     public List<ProxyNode> refresh(String url) throws Exception {
         String text = fetch(url);
+        if (TextUtils.isEmpty(text)) throw new Exception("Subscription returned empty content");
         String config = getClashConfig(text);
         List<ProxyNode> result;
         if (TextUtils.isEmpty(config)) {
@@ -117,14 +118,19 @@ public class ProxySubscriptionManager {
         } else {
             result = parse(config);
         }
+        if (result.isEmpty()) throw new Exception("No valid proxy nodes found in subscription");
         Setting.putProxySubscriptionConfig(config);
         saveNodes(result);
         return result;
     }
 
     private String fetch(String url) {
-        String text = OkHttp.string(url, Map.of("User-Agent", "Clash Verge/2.0.0", "Accept", "text/plain, */*"));
-        return TextUtils.isEmpty(text) ? OkHttp.string(url) : text;
+        String[] userAgents = {"Clash Verge/2.0.0", "ClashforWindows/0.20.39", "v2rayN/6.0", "Shadowrocket/1900", "Mozilla/5.0"};
+        for (String ua : userAgents) {
+            String text = OkHttp.string(url, Map.of("User-Agent", ua, "Accept", "text/plain, application/json, */*"));
+            if (!TextUtils.isEmpty(text) && text.length() > 10) return text;
+        }
+        return OkHttp.string(url);
     }
 
     public ProxyNode autoSelect() {
@@ -213,8 +219,12 @@ public class ProxySubscriptionManager {
     private List<ProxyNode> parse(String text) {
         Map<String, ProxyNode> result = new LinkedHashMap<>();
         addLines(result, text);
-        addLines(result, decode(text));
+        String decoded = decode(text);
+        addLines(result, decoded);
         addClash(result, text);
+        addClash(result, decoded);
+        addSip008(result, text);
+        addSip008(result, decoded);
         List<ProxyNode> nodes = new ArrayList<>();
         for (ProxyNode node : result.values()) if (isValidNode(node)) nodes.add(node);
         return nodes;
@@ -325,8 +335,33 @@ public class ProxySubscriptionManager {
         return !TextUtils.isEmpty(line) && !Character.isWhitespace(line.charAt(0)) && line.contains(":");
     }
 
+    private void addSip008(Map<String, ProxyNode> result, String text) {
+        if (TextUtils.isEmpty(text) || !text.trim().startsWith("{") && !text.trim().startsWith("[")) return;
+        try {
+            com.google.gson.JsonElement element = App.gson().fromJson(text, com.google.gson.JsonElement.class);
+            if (element == null || !element.isJsonObject()) return;
+            JsonObject root = element.getAsJsonObject();
+            if (!root.has("servers")) return;
+            for (com.google.gson.JsonElement item : root.getAsJsonArray("servers")) {
+                if (!item.isJsonObject()) continue;
+                JsonObject server = item.getAsJsonObject();
+                String serverAddr = server.has("server") ? server.get("server").getAsString() : "";
+                int port = server.has("server_port") ? server.get("server_port").getAsInt() : (server.has("port") ? server.get("port").getAsInt() : -1);
+                if (TextUtils.isEmpty(serverAddr) || port <= 0) continue;
+                String name = server.has("remarks") ? server.get("remarks").getAsString() : (server.has("name") ? server.get("name").getAsString() : serverAddr + ":" + port);
+                String method = server.has("method") ? server.get("method").getAsString() : "";
+                String password = server.has("password") ? server.get("password").getAsString() : "";
+                String ssUri = "ss://" + android.util.Base64.encodeToString((method + ":" + password).getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP) + "@" + serverAddr + ":" + port + "#" + Uri.encode(name);
+                ProxyNode node = ProxyNode.unsupported(name, "ss", serverAddr, port, ssUri);
+                result.putIfAbsent(ssUri, node);
+            }
+        } catch (Exception e) {
+            // Not SIP008 format
+        }
+    }
+
     private boolean isClashConfig(String text) {
-        return !TextUtils.isEmpty(text) && text.matches("(?s).*\\n?proxies\\s*:.*");
+        return !TextUtils.isEmpty(text) && text.contains("proxies:");
     }
 
     private String getClashConfig(String text) {
@@ -350,9 +385,20 @@ public class ProxySubscriptionManager {
     }
 
     private String value(String line, String key) {
-        int index = line.indexOf(key + ":");
-        if (index == -1) return "";
-        String value = line.substring(index + key.length() + 1).trim();
+        String searchKey = key + ":";
+        int index = -1;
+        int from = 0;
+        while (true) {
+            int found = line.indexOf(searchKey, from);
+            if (found == -1) return "";
+            int before = found - 1;
+            if (before < 0 || !Character.isLetterOrDigit(line.charAt(before)) && line.charAt(before) != '-') {
+                index = found;
+                break;
+            }
+            from = found + searchKey.length();
+        }
+        String value = line.substring(index + searchKey.length()).trim();
         int comma = value.indexOf(',');
         if (comma != -1) value = value.substring(0, comma);
         return value.replace("{", "").replace("}", "").replace("\"", "").replace("'", "").trim();
@@ -468,23 +514,41 @@ public class ProxySubscriptionManager {
             String body = uri.substring("ss://".length());
             int hashIdx = body.indexOf('#');
             String main = hashIdx >= 0 ? body.substring(0, hashIdx) : body;
-            String decoded = decode(main);
-            if (TextUtils.isEmpty(decoded)) decoded = main;
-            int atIdx = decoded.lastIndexOf('@');
-            String method = "", password = "", serverPort;
+            int atIdx = main.indexOf('@');
+            String method, password, server, port;
             if (atIdx >= 0) {
+                String userInfo = main.substring(0, atIdx);
+                String serverPort = main.substring(atIdx + 1);
+                String decoded = decode(userInfo);
+                if (decoded.isEmpty() || !decoded.contains(":")) decoded = userInfo;
+                int colonIdx = decoded.indexOf(':');
+                if (colonIdx < 0) return null;
+                method = decoded.substring(0, colonIdx);
+                password = decoded.substring(colonIdx + 1);
+                String[] sp = serverPort.split(":");
+                if (sp.length < 2) return null;
+                server = sp[0];
+                port = sp[1];
+            } else {
+                String decoded = decode(main);
+                if (decoded.isEmpty() || !decoded.contains("@")) return null;
+                atIdx = decoded.lastIndexOf('@');
                 String userInfo = decoded.substring(0, atIdx);
-                serverPort = decoded.substring(atIdx + 1);
+                String serverPort = decoded.substring(atIdx + 1);
                 int colonIdx = userInfo.indexOf(':');
-                if (colonIdx >= 0) { method = userInfo.substring(0, colonIdx); password = userInfo.substring(colonIdx + 1); }
-            } else { return null; }
-            String[] sp = serverPort.split(":");
-            if (sp.length < 2) return null;
+                if (colonIdx < 0) return null;
+                method = userInfo.substring(0, colonIdx);
+                password = userInfo.substring(colonIdx + 1);
+                String[] sp = serverPort.split(":");
+                if (sp.length < 2) return null;
+                server = sp[0];
+                port = sp[1];
+            }
             StringBuilder sb = new StringBuilder();
             sb.append("  - name: ").append(quote(name)).append("\n");
             sb.append("    type: ss\n");
-            sb.append("    server: ").append(sp[0]).append("\n");
-            sb.append("    port: ").append(sp[1]).append("\n");
+            sb.append("    server: ").append(server).append("\n");
+            sb.append("    port: ").append(port).append("\n");
             sb.append("    cipher: ").append(method).append("\n");
             sb.append("    password: ").append(quote(password)).append("\n");
             return sb.toString();
@@ -497,13 +561,21 @@ public class ProxySubscriptionManager {
         try {
             String decoded = decode(uri.substring("ssr://".length()));
             if (TextUtils.isEmpty(decoded)) return null;
-            String[] parts = decoded.split(":");
+            int slashIdx = decoded.indexOf("/?");
+            String main = slashIdx >= 0 ? decoded.substring(0, slashIdx) : decoded;
+            String[] parts = main.split(":");
             if (parts.length < 6) return null;
             StringBuilder sb = new StringBuilder();
             sb.append("  - name: ").append(quote(name)).append("\n");
             sb.append("    type: ssr\n");
             sb.append("    server: ").append(parts[0]).append("\n");
             sb.append("    port: ").append(parts[1]).append("\n");
+            sb.append("    cipher: ").append(parts[3]).append("\n");
+            String pwdB64 = parts[5];
+            String pwd = decode(pwdB64);
+            sb.append("    password: ").append(quote(TextUtils.isEmpty(pwd) ? pwdB64 : pwd)).append("\n");
+            sb.append("    protocol: ").append(parts[2]).append("\n");
+            sb.append("    obfs: ").append(parts[4]).append("\n");
             return sb.toString();
         } catch (Exception e) {
             return null;
@@ -690,12 +762,19 @@ public class ProxySubscriptionManager {
     }
 
     private String decode(String text) {
+        if (TextUtils.isEmpty(text)) return "";
+        String value = text.trim().replace("\n", "").replace("\r", "").replace(" ", "");
+        String result = tryDecode(value, Base64.NO_WRAP);
+        if (result.contains("://")) return result;
+        result = tryDecode(value, Base64.URL_SAFE | Base64.NO_WRAP);
+        if (result.contains("://")) return result;
+        return "";
+    }
+
+    private String tryDecode(String value, int flags) {
         try {
-            if (TextUtils.isEmpty(text)) return "";
-            String value = text.trim().replace("\n", "").replace("\r", "");
-            byte[] bytes = Base64.decode(value, Base64.DEFAULT | Base64.URL_SAFE);
-            String decoded = new String(bytes, StandardCharsets.UTF_8);
-            return decoded.contains("://") ? decoded : "";
+            byte[] bytes = Base64.decode(value, flags);
+            return new String(bytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "";
         }

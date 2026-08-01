@@ -172,7 +172,7 @@
     <string name="proxy_sub_empty">Please enter subscription URL</string>
     <string name="proxy_sub_fail">Subscription update failed</string>
     <string name="proxy_sub_no_node">No available node</string>
-    <string name="proxy_sub_no_supported">Parsed %1$d nodes, but no direct HTTP/SOCKS node is available</string>
+    <string name="proxy_sub_no_supported">Parsed %1$d nodes. Tap Test to find fastest, or pick from Nodes</string>
     <string name="proxy_sub_selected">Selected: %1$s</string>
     <string name="proxy_sub_test_done">Test complete: fastest %1$s</string>
     <string name="proxy_sub_need_core">Use Auto for encrypted nodes; embedded mihomo will pick the route</string>
