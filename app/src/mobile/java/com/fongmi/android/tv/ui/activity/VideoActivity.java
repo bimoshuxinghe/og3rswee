@@ -315,19 +315,21 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         checkDanmakuImg();
         setRecyclerView();
         setVideoView();
-        mReader = new VodReader(this, mBinding.reader, new VodReader.Listener() {
-            @Override public void onSingleTap() {
-                if (isFullscreen()) {
-                    if (isVisible(mBinding.control.getRoot())) hideControl();
-                    else showControl();
+        if (mBinding.reader != null) {
+            mReader = new VodReader(this, mBinding.reader, new VodReader.Listener() {
+                @Override public void onSingleTap() {
+                    if (isFullscreen()) {
+                        if (isVisible(mBinding.control.getRoot())) hideControl();
+                        else showControl();
+                    }
                 }
-            }
-            @Override public void onDoubleTap() { toggleFullscreen(); }
-            @Override public void onPrevious() { checkPrev(); }
-            @Override public void onNext() { checkNext(); }
-            @Override public void onDirectory() { onEpisodes(); }
-            @Override public void onPageChanged(int current, int total) {}
-        });
+                @Override public void onDoubleTap() { toggleFullscreen(); }
+                @Override public void onPrevious() { checkPrev(); }
+                @Override public void onNext() { checkNext(); }
+                @Override public void onDirectory() { onEpisodes(); }
+                @Override public void onPageChanged(int current, int total) {}
+            });
+        }
         setViewModel();
         showProgress();
         setAnimator();
@@ -445,7 +447,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mKeyDown.setLrcMode(false);
             if (!isFullscreen()) enterFullscreen();
         } else {
-            mReader.clear();
+            if (mReader != null) mReader.clear();
             mBinding.exo.setVisibility(View.VISIBLE);
             mBinding.widget.getRoot().setVisibility(View.VISIBLE);
             if (mBinding.lrcView.hasLrc()) {
@@ -511,7 +513,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         updateNavigationKey();
         player().reset();
         player().stop();
-        if (mReader.isActive()) mReader.clear();
+        if (mReader != null && mReader.isActive()) mReader.clear();
         saveHistory();
         getDetail();
     }
@@ -625,9 +627,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (result.hasDesc()) setText(mBinding.content, 0, result.getDesc());
         setLrc(result);
         mBinding.control.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
-        boolean wasReader = mReader.isActive();
+        boolean wasReader = mReader != null && mReader.isActive();
         String readerTitle = mHistory != null ? mHistory.getVodName() : "";
-        if (mReader.set(result, readerTitle)) {
+        if (mReader != null && mReader.set(result, readerTitle)) {
             player().stop();
             player().clear();
             setReaderVisible(true);
@@ -965,7 +967,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void checkPlay() {
         setR1Callback();
-        if (mReader.isActive()) {
+        if (mReader != null && mReader.isActive()) {
             if (isVisible(mBinding.control.getRoot())) hideControl();
             else showControl();
             return;
@@ -1079,7 +1081,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         player().stop();
         player().clear();
         mClock.setCallback(null);
-        if (mReader.isActive()) mReader.clear();
+        if (mReader != null && mReader.isActive()) mReader.clear();
         if (mFlagAdapter.isEmpty()) return;
         if (mEpisodeAdapter.isEmpty()) return;
         getPlayer(getFlag(), getEpisode());
@@ -1387,6 +1389,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 mBinding.bgPoster.setVisibility(View.GONE);
                 mBinding.bgOverlay.setVisibility(View.GONE);
             }
+            mBinding.getRoot().setBackgroundColor(android.graphics.Color.TRANSPARENT);
             return;
         }
         ImgUtil.load(this, mHistory.getVodPic(), new CustomTarget<>() {
@@ -2131,7 +2134,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void onBackInvoked() {
         if (isVisible(mBinding.control.getRoot())) {
             hideControl();
-        } else if (mReader.isActive() && !isLock()) {
+        } else if (mReader != null && mReader.isActive() && !isLock()) {
             leavingPlayback = true;
             stopPlaybackIfLeaving();
             mViewModel.stopSearch();

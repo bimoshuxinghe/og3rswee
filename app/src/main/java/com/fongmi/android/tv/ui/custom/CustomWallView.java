@@ -70,6 +70,7 @@ public class CustomWallView extends FrameLayout implements DefaultLifecycleObser
         stop();
         load();
         theme();
+        setBackgroundColor(getWallColor());
     }
 
     private void stop() {
