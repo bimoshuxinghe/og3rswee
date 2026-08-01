@@ -804,11 +804,13 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private Format buildFormat(int index, int mpvId, int trackType) {
+        String codec = safeGetString("track-list/" + index + "/codec");
         Format.Builder builder = new Format.Builder()
                 .setId("mpv:" + trackType + ":" + mpvId)
                 .setLabel(getTrackLabel(index, mpvId, trackType))
                 .setLanguage(safeGetString("track-list/" + index + "/lang"))
-                .setSampleMimeType(getSampleMimeType(trackType, safeGetString("track-list/" + index + "/codec")));
+                .setCodecs(codec)
+                .setSampleMimeType(getSampleMimeType(trackType, codec));
         Integer width = safeGetInt("track-list/" + index + "/demux-w");
         Integer height = safeGetInt("track-list/" + index + "/demux-h");
         Integer channels = safeGetInt("track-list/" + index + "/demux-channel-count");
@@ -822,13 +824,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private String getTrackLabel(int index, int mpvId, int trackType) {
         String title = safeGetString("track-list/" + index + "/title");
-        String lang = safeGetString("track-list/" + index + "/lang");
-        String codec = safeGetString("track-list/" + index + "/codec");
         String prefix = trackType == C.TRACK_TYPE_AUDIO ? "Audio" : trackType == C.TRACK_TYPE_TEXT ? "Sub" : "Video";
         StringBuilder builder = new StringBuilder(prefix).append(' ').append(mpvId);
         if (!TextUtils.isEmpty(title)) builder.append(" - ").append(title);
-        if (!TextUtils.isEmpty(lang)) builder.append(" [").append(lang).append(']');
-        if (!TextUtils.isEmpty(codec)) builder.append(" (").append(codec).append(')');
         return builder.toString();
     }
 
