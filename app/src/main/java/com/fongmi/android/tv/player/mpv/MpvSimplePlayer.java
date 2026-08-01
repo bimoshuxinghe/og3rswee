@@ -124,8 +124,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         this.videoSize = VideoSize.UNKNOWN;
         this.playWhenReady = true;
         this.volume = 1.0f;
-        this.subtitleScale = 1.0;
-        this.subtitlePosition = 100.0;
+        this.subtitleScale = com.fongmi.android.tv.setting.PlayerSetting.getMpvSubtitleScale();
+        this.subtitlePosition = com.fongmi.android.tv.setting.PlayerSetting.getMpvSubtitlePosition();
         this.playbackState = Player.STATE_IDLE;
         this.durationMs = C.TIME_UNSET;
         this.bufferedPositionMs = C.TIME_UNSET;
@@ -677,11 +677,13 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private void setSubtitleScale(double scale) {
         subtitleScale = Math.max(0.5, Math.min(scale, 3.0));
         setMpvProperty("sub-scale", subtitleScale);
+        com.fongmi.android.tv.setting.PlayerSetting.putMpvSubtitleScale((float) subtitleScale);
     }
 
     private void setSubtitlePosition(double position) {
         subtitlePosition = Math.max(0.0, Math.min(position, 100.0));
         setMpvProperty("sub-pos", subtitlePosition);
+        com.fongmi.android.tv.setting.PlayerSetting.putMpvSubtitlePosition((float) subtitlePosition);
     }
 
     private SimpleBasePlayer.MediaItemData buildMediaItemData() {

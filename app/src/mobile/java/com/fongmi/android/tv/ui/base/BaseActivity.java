@@ -5,9 +5,11 @@ import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.DisplayCutout;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
@@ -34,6 +36,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         enableEdgeToEdge();
         enableDynamicColor();
+        enableHighRefreshRate();
         super.onCreate(savedInstanceState);
         setContentView(getBinding().getRoot());
         EventBus.getDefault().register(this);
@@ -111,6 +114,24 @@ public abstract class BaseActivity extends AppCompatActivity {
     private void enableDynamicColor() {
         int color = Setting.getDynamicColor();
         if (color != 0) DynamicColors.applyToActivityIfAvailable(this, new DynamicColorsOptions.Builder().setContentBasedSource(color).build());
+    }
+
+    private void enableHighRefreshRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        Display display = getWindowManager().getDefaultDisplay();
+        Display.Mode[] modes = display.getSupportedModes();
+        Display.Mode current = display.getMode();
+        Display.Mode best = current;
+        for (Display.Mode mode : modes) {
+            if (mode.getPhysicalWidth() == current.getPhysicalWidth()
+                    && mode.getPhysicalHeight() == current.getPhysicalHeight()
+                    && mode.getRefreshRate() > best.getRefreshRate()) {
+                best = mode;
+            }
+        }
+        WindowManager.LayoutParams params = getWindow().getAttributes();
+        params.preferredDisplayModeId = best.getModeId();
+        getWindow().setAttributes(params);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

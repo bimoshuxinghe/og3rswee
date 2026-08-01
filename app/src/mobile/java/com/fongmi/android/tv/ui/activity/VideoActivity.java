@@ -350,7 +350,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.back.setOnClickListener(view -> onBack());
         mBinding.control.cast.setOnClickListener(view -> onCast());
         mBinding.control.info.setOnClickListener(view -> onInfo());
-        mBinding.control.keep.setOnClickListener(view -> onKeep());
         mBinding.control.play.setOnClickListener(view -> checkPlay());
         mBinding.control.next.setOnClickListener(view -> checkNext());
         mBinding.control.prev.setOnClickListener(view -> checkPrev());
@@ -1305,7 +1304,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.danmaku.setVisibility(isLock() || !player().haveDanmaku() ? View.GONE : View.VISIBLE);
         mBinding.control.setting.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
         mBinding.control.right.rotate.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
-        mBinding.control.keep.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
         mBinding.control.parse.setVisibility(isFullscreen() && isUseParse() ? View.VISIBLE : View.GONE);
         mBinding.control.action.getRoot().setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
         mBinding.control.right.lock.setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
@@ -1317,13 +1315,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.bottom.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.back.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.top.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.getRoot().setAlpha(0f);
         mBinding.control.getRoot().setVisibility(View.VISIBLE);
+        mBinding.control.getRoot().animate().alpha(1f).setDuration(200).start();
         setR1Callback();
         updateAlwaysProgress();
     }
 
     private void hideControl() {
-        mBinding.control.getRoot().setVisibility(View.GONE);
+        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> mBinding.control.getRoot().setVisibility(View.GONE)).start();
         App.removeCallbacks(mR1);
         updateAlwaysProgress();
     }
@@ -1510,7 +1510,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void checkKeepImg() {
-        mBinding.control.keep.setImageResource(Keep.find(getHistoryKey()) == null ? R.drawable.ic_control_keep_off : R.drawable.ic_control_keep_on);
     }
 
     private void checkLockImg() {

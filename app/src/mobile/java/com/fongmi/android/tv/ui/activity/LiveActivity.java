@@ -333,7 +333,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void setVideoSafeInset() {
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (view, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            mPortraitVideoTopMargin = top;
+            mPortraitVideoTopMargin = top / 2;
             updateVideoTopMargin();
             return insets;
         });
@@ -696,13 +696,15 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mBinding.control.bottom.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.back.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.top.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.getRoot().setAlpha(0f);
         mBinding.control.getRoot().setVisibility(View.VISIBLE);
+        mBinding.control.getRoot().animate().alpha(1f).setDuration(200).start();
         setR1Callback();
         hideInfo();
     }
 
     private void hideControl() {
-        mBinding.control.getRoot().setVisibility(View.GONE);
+        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> mBinding.control.getRoot().setVisibility(View.GONE)).start();
         App.removeCallbacks(mR1);
     }
 

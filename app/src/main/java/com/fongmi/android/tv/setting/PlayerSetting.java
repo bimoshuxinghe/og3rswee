@@ -316,4 +316,20 @@ public class PlayerSetting {
     public static void putSubtitlePosition(float value) {
         Prefers.put("subtitle_position", value);
     }
+
+    public static float getMpvSubtitleScale() {
+        return Prefers.getFloat("mpv_subtitle_scale", 1.0f);
+    }
+
+    public static void putMpvSubtitleScale(float value) {
+        Prefers.put("mpv_subtitle_scale", value);
+    }
+
+    public static float getMpvSubtitlePosition() {
+        return Prefers.getFloat("mpv_subtitle_position", 100.0f);
+    }
+
+    public static void putMpvSubtitlePosition(float value) {
+        Prefers.put("mpv_subtitle_position", value);
+    }
 }
