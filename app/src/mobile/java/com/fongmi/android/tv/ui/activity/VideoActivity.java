@@ -635,6 +635,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         String readerTitle = mHistory != null ? mHistory.getVodName() : "";
         if (mReader != null && mReader.set(result, readerTitle)) {
             isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mQuickAdapter.clear();
             player().stop();
             player().clear();
             setReaderVisible(true);
@@ -736,6 +739,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         String readerTitle = mHistory != null ? mHistory.getVodName() : "";
         if (mReader != null && mReader.set(result, readerTitle)) {
             isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mQuickAdapter.clear();
             player().stop();
             player().clear();
             setReaderVisible(true);
