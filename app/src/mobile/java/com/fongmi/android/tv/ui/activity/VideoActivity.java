@@ -146,6 +146,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private PiP mPiP;
     private int layoutMode = 0;
     private VodReader mReader;
+    private boolean isReaderContent;
 
     public static void push(FragmentActivity activity, String text) {
         if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
@@ -516,6 +517,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         player().reset();
         player().stop();
         if (mReader != null && mReader.isActive()) mReader.clear();
+        isReaderContent = false;
         saveHistory();
         getDetail();
     }
@@ -632,11 +634,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         boolean wasReader = mReader != null && mReader.isActive();
         String readerTitle = mHistory != null ? mHistory.getVodName() : "";
         if (mReader != null && mReader.set(result, readerTitle)) {
+            isReaderContent = true;
             player().stop();
             player().clear();
             setReaderVisible(true);
             return;
         }
+        String readerUrl = result.getUrl().v();
+        if (readerUrl.startsWith("pics://") || readerUrl.startsWith("novel://")) {
+            isReaderContent = true;
+            if (wasReader) setReaderVisible(false);
+            showError(getString(R.string.error_play_url));
+            return;
+        }
+        isReaderContent = false;
         if (wasReader) {
             setReaderVisible(false);
         }
@@ -724,11 +735,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         updateHistoryProgress();
         String readerTitle = mHistory != null ? mHistory.getVodName() : "";
         if (mReader != null && mReader.set(result, readerTitle)) {
+            isReaderContent = true;
             player().stop();
             player().clear();
             setReaderVisible(true);
             return;
         }
+        String readerUrl = result.getUrl().v();
+        if (readerUrl.startsWith("pics://") || readerUrl.startsWith("novel://")) {
+            isReaderContent = true;
+            return;
+        }
+        isReaderContent = false;
         startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata(), getResumePosition());
     }
 
@@ -1095,6 +1113,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         player().clear();
         mClock.setCallback(null);
         if (mReader != null && mReader.isActive()) mReader.clear();
+        isReaderContent = false;
         if (mFlagAdapter.isEmpty()) return;
         if (mEpisodeAdapter.isEmpty()) return;
         getPlayer(getFlag(), getEpisode());
@@ -1632,6 +1651,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         player().reset();
         player().stop();
         showError(msg);
+        if (isReaderContent) return;
         startFlow();
     }
 
@@ -1810,6 +1830,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void startFlow() {
         if (!getSite().isChangeable()) return;
+        if (isReaderContent) return;
         if (isUseParse()) checkParse();
         else checkFlag();
     }
@@ -1835,6 +1856,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void checkSearch(boolean force) {
+        if (isReaderContent) return;
         if (mQuickAdapter.isEmpty()) initSearch(mBinding.name.getText().toString(), true);
         else if (isAutoMode() || force) nextSite();
     }

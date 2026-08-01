@@ -333,7 +333,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void setVideoSafeInset() {
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (view, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            mPortraitVideoTopMargin = top / 2 + ResUtil.dp2px(4);
+            mPortraitVideoTopMargin = top / 2 + ResUtil.dp2px(8);
             updateVideoTopMargin();
             return insets;
         });

@@ -1,6 +1,8 @@
 package com.fongmi.android.tv.ui.custom;
 
 import android.app.Activity;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -46,10 +48,14 @@ public class VodReader {
     }
 
     private static final String KEY_DIRECTION = "vod_reader_vertical";
+    private static final int LONG_PRESS_DELAY = 3000;
+    private static final float LONG_PRESS_SLOP = 24f;
     private final Activity activity;
     private final ViewReaderVodBinding binding;
     private final Listener listener;
     private final GestureDetector gestures;
+    private final Handler longPressHandler = new Handler(Looper.getMainLooper());
+    private final Runnable longPressRunnable = this::showDirectionDialog;
     private final List<String> pages = new ArrayList<>();
     private boolean active;
     private boolean novel;
@@ -59,6 +65,8 @@ public class VodReader {
     private float novelDownY;
     private float downX;
     private float downY;
+    private float longPressX;
+    private float longPressY;
 
     public VodReader(Activity activity, ViewReaderVodBinding binding, Listener listener) {
         this.activity = activity;
@@ -89,7 +97,7 @@ public class VodReader {
 
             @Override
             public void onLongPress(@NonNull MotionEvent e) {
-                showDirectionDialog();
+                // Disabled - using custom long press with 3 second delay
             }
         });
         RecyclerView recycler = (RecyclerView) binding.pager.getChildAt(0);
@@ -98,6 +106,7 @@ public class VodReader {
             public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent event) {
                 gestures.onTouchEvent(event);
                 handleEdgeSwipe(event);
+                handleCustomLongPress(event);
                 return false;
             }
         });
@@ -110,6 +119,7 @@ public class VodReader {
         binding.novelScroll.setOnTouchListener((view, event) -> {
             gestures.onTouchEvent(event);
             handleNovelEdge(event);
+            handleCustomLongPress(event);
             return false;
         });
         binding.novelScroll.setOnScrollChangeListener((androidx.core.widget.NestedScrollView.OnScrollChangeListener) (v, x, y, oldX, oldY) -> {
@@ -166,6 +176,7 @@ public class VodReader {
 
     public void clear() {
         active = false;
+        longPressHandler.removeCallbacks(longPressRunnable);
         if (novel && !novelKey.isEmpty()) Prefers.put(novelKey, binding.novelScroll.getScrollY());
         pages.clear();
         binding.novelText.setText("");
@@ -235,6 +246,29 @@ public class VodReader {
             int position = binding.pager.getCurrentItem();
             if (delta < -threshold && position == pages.size() - 1) listener.onNext();
             else if (delta > threshold && position == 0) listener.onPrevious();
+        }
+    }
+
+    private void handleCustomLongPress(MotionEvent event) {
+        if (!active) return;
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                longPressX = event.getX();
+                longPressY = event.getY();
+                longPressHandler.postDelayed(longPressRunnable, LONG_PRESS_DELAY);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                float dx = Math.abs(event.getX() - longPressX);
+                float dy = Math.abs(event.getY() - longPressY);
+                if (dx > LONG_PRESS_SLOP || dy > LONG_PRESS_SLOP) {
+                    longPressHandler.removeCallbacks(longPressRunnable);
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_POINTER_UP:
+                longPressHandler.removeCallbacks(longPressRunnable);
+                break;
         }
     }
 
