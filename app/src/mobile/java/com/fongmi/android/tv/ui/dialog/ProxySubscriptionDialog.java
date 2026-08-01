@@ -15,6 +15,7 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.databinding.DialogProxySubscriptionBinding;
+import com.fongmi.android.tv.proxy.MihomoManager;
 import com.fongmi.android.tv.proxy.ProxyNode;
 import com.fongmi.android.tv.proxy.ProxySubscriptionManager;
 import com.fongmi.android.tv.setting.Setting;
@@ -96,7 +97,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             } catch (Throwable e) {
                 App.post(() -> {
                     Notify.dismiss();
-                    Notify.show(Notify.getError(R.string.proxy_sub_fail, e));
+                    showErrorDialog("订阅更新失败", e.getMessage() != null ? e.getMessage() : e.toString());
                 });
             }
         });
@@ -117,7 +118,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                 setStatus();
                 notifyChanged();
                 if (fastest != null) Notify.show(getString(R.string.proxy_sub_test_done, fastest.getDisplay()));
-                else Notify.show(R.string.proxy_sub_test_fail);
+                else showErrorDialog("测速失败", "所有节点均无法连接\n\n" + MihomoManager.get().getLastError());
             });
         });
     }
@@ -134,7 +135,11 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                 Notify.dismiss();
                 setStatus();
                 notifyChanged();
-                Notify.show(selected == null ? getString(R.string.proxy_sub_no_node) : getString(R.string.proxy_sub_selected, selected.getDisplay()));
+                if (selected != null) {
+                    Notify.show(getString(R.string.proxy_sub_selected, selected.getDisplay()));
+                } else {
+                    showErrorDialog("自动选择失败", "无法选择可用节点\n\n" + MihomoManager.get().getLastError());
+                }
             });
         });
     }
@@ -171,7 +176,9 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             App.post(() -> {
                 Notify.dismiss();
                 if (!finalOk) {
-                    Notify.show(R.string.proxy_sub_connect_fail);
+                    String error = MihomoManager.get().getLastError();
+                    if (TextUtils.isEmpty(error)) error = "延迟=" + latency + "ms\n选择节点失败";
+                    showErrorDialog("连接失败: " + node.getName(), error);
                     setStatus();
                     return;
                 }
@@ -181,6 +188,22 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                 Notify.show(getString(R.string.proxy_sub_selected, node.getDisplay()));
             });
         });
+    }
+
+    private void showErrorDialog(String title, String message) {
+        if (!isAdded()) return;
+        String display = TextUtils.isEmpty(message) ? "未知错误" : message;
+        if (display.length() > 3000) display = display.substring(0, 3000) + "\n...(日志过长已截断)";
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(title)
+                .setMessage(display)
+                .setPositiveButton("复制日志", (d, w) -> {
+                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager) requireActivity().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("mihomo_log", MihomoManager.get().getLog()));
+                    Notify.show("日志已复制到剪贴板");
+                })
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private int getSelectedIndex(List<ProxyNode> nodes) {

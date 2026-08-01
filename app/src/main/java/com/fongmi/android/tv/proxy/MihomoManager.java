@@ -13,6 +13,7 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 public class MihomoManager {
 
@@ -21,8 +22,11 @@ public class MihomoManager {
     private static final String CONFIG = "config.yaml";
     private static final int MIXED_PORT = 18890;
     private static final int CONTROLLER_PORT = 18891;
+    private static final int MAX_LOG_LINES = 200;
 
     private Process process;
+    private final StringBuilder logBuffer = new StringBuilder();
+    private String lastError = "";
 
     private static class Loader {
         static volatile MihomoManager INSTANCE = new MihomoManager();
@@ -44,13 +48,26 @@ public class MihomoManager {
         return "http://127.0.0.1:" + MIXED_PORT + "#" + Uri.encode(TextUtils.isEmpty(name) ? "Mihomo" : name);
     }
 
+    public String getLastError() {
+        return lastError;
+    }
+
+    public String getLog() {
+        return logBuffer.toString();
+    }
+
     public synchronized boolean start(String config) {
         return start(config, "");
     }
 
     public synchronized boolean start(String config, String selected) {
-        if (TextUtils.isEmpty(config)) return false;
+        if (TextUtils.isEmpty(config)) {
+            lastError = "配置为空";
+            return false;
+        }
         stop();
+        lastError = "";
+        logBuffer.setLength(0);
         try {
             Thread.sleep(300);
             File dir = Path.files("mihomo");
@@ -58,22 +75,26 @@ public class MihomoManager {
             File file = new File(dir, CONFIG);
             String fixedConfig = fixConfig(config, selected);
             Path.write(file, fixedConfig.getBytes(StandardCharsets.UTF_8));
-            Log.d(TAG, "Config written to " + file.getAbsolutePath());
-            Log.d(TAG, "Config content:\n" + fixedConfig);
+            appendLog("配置文件: " + file.getAbsolutePath());
+            appendLog("配置内容:\n" + fixedConfig);
+
             File binary = new File(App.get().getApplicationInfo().nativeLibraryDir, BINARY);
             if (!binary.exists()) {
-                Log.e(TAG, "Binary not found: " + binary.getAbsolutePath());
-                Log.e(TAG, "nativeLibraryDir: " + App.get().getApplicationInfo().nativeLibraryDir);
+                lastError = "二进制文件不存在: " + binary.getAbsolutePath() + "\nnativeLibraryDir: " + App.get().getApplicationInfo().nativeLibraryDir;
+                appendLog(lastError);
                 return false;
             }
             binary.setExecutable(true);
-            Log.d(TAG, "Starting mihomo: " + binary.getAbsolutePath() + " -d " + dir.getAbsolutePath() + " -f " + file.getAbsolutePath());
+            appendLog("启动: " + binary.getAbsolutePath() + " -d " + dir.getAbsolutePath() + " -f " + file.getAbsolutePath());
+
             process = new ProcessBuilder(binary.getAbsolutePath(), "-d", dir.getAbsolutePath(), "-f", file.getAbsolutePath()).redirectErrorStream(true).start();
             drain(process);
             return waitReady();
         } catch (Exception e) {
-            stop();
+            lastError = "启动异常: " + e.getMessage();
+            appendLog(lastError);
             Log.e(TAG, "start failed", e);
+            stop();
             return false;
         }
     }
@@ -82,8 +103,9 @@ public class MihomoManager {
         if (process == null) return;
         process.destroy();
         try {
-            if (!process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+            if (!process.waitFor(2, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
+                appendLog("进程被强制终止");
             }
         } catch (InterruptedException ignored) {
         }
@@ -97,16 +119,18 @@ public class MihomoManager {
     private boolean waitReady() throws InterruptedException {
         for (int i = 0; i < 80; i++) {
             if (!isRunning()) {
-                Log.e(TAG, "Mihomo process died before becoming ready");
+                lastError = "Mihomo进程启动后立即退出\n可能原因: 配置错误/二进制不兼容/权限不足\n\n日志:\n" + logBuffer.toString();
+                appendLog(lastError);
                 return false;
             }
             if (canConnect()) {
-                Log.d(TAG, "Mihomo ready after " + i * 100 + "ms");
+                appendLog("Mihomo启动成功，耗时" + i * 100 + "ms");
                 return true;
             }
             Thread.sleep(100);
         }
-        Log.e(TAG, "Mihomo failed to become ready within 8 seconds");
+        lastError = "Mihomo在8秒内未就绪\n进程状态: " + (isRunning() ? "运行中" : "已退出") + "\n\n日志:\n" + logBuffer.toString();
+        appendLog(lastError);
         return isRunning();
     }
 
@@ -119,12 +143,27 @@ public class MihomoManager {
         }
     }
 
+    private void appendLog(String line) {
+        Log.d(TAG, line);
+        if (logBuffer.length() > 0) logBuffer.append("\n");
+        logBuffer.append(line);
+        int lineCount = logBuffer.toString().split("\n").length;
+        if (lineCount > MAX_LOG_LINES) {
+            String[] lines = logBuffer.toString().split("\n", lineCount - MAX_LOG_LINES + 1);
+            logBuffer.setLength(0);
+            for (int i = 1; i < lines.length; i++) {
+                logBuffer.append(lines[i]);
+                if (i < lines.length - 1) logBuffer.append("\n");
+            }
+        }
+    }
+
     private void drain(Process process) {
         Thread thread = new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    Log.d(TAG, line);
+                    appendLog(line);
                 }
             } catch (Exception ignored) {
             }
