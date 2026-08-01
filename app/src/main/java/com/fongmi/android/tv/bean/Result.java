@@ -309,6 +309,10 @@ public class Result implements Parcelable {
         return jx == null ? 0 : jx;
     }
 
+    public void setJx(Integer jx) {
+        this.jx = jx;
+    }
+
     public Drm getDrm() {
         return drm;
     }
