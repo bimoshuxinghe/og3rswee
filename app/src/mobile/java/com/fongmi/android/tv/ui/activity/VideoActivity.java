@@ -637,7 +637,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             isReaderContent = true;
             setAutoMode(false);
             setInitAuto(false);
+            mViewModel.stopSearch();
             mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
             player().stop();
             player().clear();
             setReaderVisible(true);
@@ -646,7 +648,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         String readerUrl = result.getUrl().v();
         if (readerUrl.startsWith("pics://") || readerUrl.startsWith("novel://")) {
             isReaderContent = true;
-            if (wasReader) setReaderVisible(false);
+            setAutoMode(false);
+            setInitAuto(false);
+            mViewModel.stopSearch();
+            mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
+            player().stop();
+            player().clear();
+            mBinding.exo.setVisibility(View.GONE);
+            mBinding.widget.getRoot().setVisibility(View.GONE);
             showError(getString(R.string.error_play_url));
             return;
         }
@@ -741,7 +751,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             isReaderContent = true;
             setAutoMode(false);
             setInitAuto(false);
+            mViewModel.stopSearch();
             mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
             player().stop();
             player().clear();
             setReaderVisible(true);
@@ -750,6 +762,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         String readerUrl = result.getUrl().v();
         if (readerUrl.startsWith("pics://") || readerUrl.startsWith("novel://")) {
             isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mViewModel.stopSearch();
+            mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
+            player().stop();
+            player().clear();
+            mBinding.exo.setVisibility(View.GONE);
+            mBinding.widget.getRoot().setVisibility(View.GONE);
             return;
         }
         isReaderContent = false;
@@ -1115,6 +1136,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void onRefresh() {
         saveHistory();
+        mViewModel.stopSearch();
         player().stop();
         player().clear();
         mClock.setCallback(null);
