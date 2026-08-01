@@ -110,7 +110,13 @@ public class ProxySubscriptionManager {
     public List<ProxyNode> refresh(String url) throws Exception {
         String text = fetch(url);
         String config = getClashConfig(text);
-        List<ProxyNode> result = parse(TextUtils.isEmpty(config) ? text : config);
+        List<ProxyNode> result;
+        if (TextUtils.isEmpty(config)) {
+            result = parse(text);
+            config = generateClashConfig(result);
+        } else {
+            result = parse(config);
+        }
         Setting.putProxySubscriptionConfig(config);
         saveNodes(result);
         return result;
@@ -236,12 +242,17 @@ public class ProxySubscriptionManager {
         String lower = line.toLowerCase(Locale.ROOT);
         if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("socks://") || lower.startsWith("socks5://") || lower.startsWith("socks5h://")) return ProxyNode.fromUri(line);
         if (lower.startsWith("vmess://")) return parseVmess(line);
-        if (lower.startsWith("ss://")) return ProxyNode.unsupported(getFragmentName(line, "SS"), "ss");
-        if (lower.startsWith("ssr://")) return ProxyNode.unsupported(getFragmentName(line, "SSR"), "ssr");
-        if (lower.startsWith("vless://")) return ProxyNode.unsupported(getFragmentName(line, "VLESS"), "vless");
-        if (lower.startsWith("trojan://")) return ProxyNode.unsupported(getFragmentName(line, "Trojan"), "trojan");
-        if (lower.startsWith("hysteria2://") || lower.startsWith("hy2://")) return ProxyNode.unsupported(getFragmentName(line, "Hysteria2"), "hysteria2");
-        if (lower.startsWith("anytls://")) return ProxyNode.unsupported(getFragmentName(line, "AnyTLS"), "anytls");
+        if (lower.startsWith("ss://")) return ProxyNode.unsupported(getFragmentName(line, "SS"), "ss", "", -1, line);
+        if (lower.startsWith("ssr://")) return ProxyNode.unsupported(getFragmentName(line, "SSR"), "ssr", "", -1, line);
+        if (lower.startsWith("vless://")) return ProxyNode.unsupported(getFragmentName(line, "VLESS"), "vless", "", -1, line);
+        if (lower.startsWith("trojan://")) return ProxyNode.unsupported(getFragmentName(line, "Trojan"), "trojan", "", -1, line);
+        if (lower.startsWith("hysteria2://") || lower.startsWith("hy2://")) return ProxyNode.unsupported(getFragmentName(line, "Hysteria2"), "hysteria2", "", -1, line);
+        if (lower.startsWith("hysteria://") || lower.startsWith("hy://")) return ProxyNode.unsupported(getFragmentName(line, "Hysteria"), "hysteria", "", -1, line);
+        if (lower.startsWith("tuic://")) return ProxyNode.unsupported(getFragmentName(line, "TUIC"), "tuic", "", -1, line);
+        if (lower.startsWith("snell://")) return ProxyNode.unsupported(getFragmentName(line, "Snell"), "snell", "", -1, line);
+        if (lower.startsWith("anytls://")) return ProxyNode.unsupported(getFragmentName(line, "AnyTLS"), "anytls", "", -1, line);
+        if (lower.startsWith("wireguard://") || lower.startsWith("wg://")) return ProxyNode.unsupported(getFragmentName(line, "WireGuard"), "wireguard", "", -1, line);
+        if (lower.startsWith("juicity://")) return ProxyNode.unsupported(getFragmentName(line, "Juicity"), "juicity", "", -1, line);
         return null;
     }
 
@@ -250,9 +261,9 @@ public class ProxySubscriptionManager {
             String json = decode(line.substring("vmess://".length()));
             JsonObject object = App.gson().fromJson(json, JsonObject.class);
             String name = object != null && object.has("ps") ? object.get("ps").getAsString() : "VMess";
-            return ProxyNode.unsupported(name, "vmess");
+            return ProxyNode.unsupported(name, "vmess", "", -1, line);
         } catch (Exception e) {
-            return ProxyNode.unsupported("VMess", "vmess");
+            return ProxyNode.unsupported("VMess", "vmess", "", -1, line);
         }
     }
 
@@ -353,6 +364,329 @@ public class ProxySubscriptionManager {
         } catch (Exception e) {
             return -1;
         }
+    }
+
+    private String generateClashConfig(List<ProxyNode> nodes) {
+        StringBuilder proxies = new StringBuilder();
+        StringBuilder names = new StringBuilder();
+        for (ProxyNode node : nodes) {
+            String entry = toClashProxy(node);
+            if (entry == null) continue;
+            proxies.append(entry).append("\n");
+            names.append("      - ").append(quote(node.getName())).append("\n");
+        }
+        if (proxies.length() == 0) return "";
+        return "mode: rule\n" +
+                "ipv6: false\n" +
+                "proxies:\n" +
+                proxies +
+                "proxy-groups:\n" +
+                "  - name: XYS_PROXY\n" +
+                "    type: select\n" +
+                "    proxies:\n" +
+                names +
+                "rules:\n" +
+                "  - MATCH,XYS_PROXY\n";
+    }
+
+    private String toClashProxy(ProxyNode node) {
+        if (node == null) return null;
+        if (node.isSupported()) {
+            String scheme = node.getScheme();
+            if ("socks5".equals(scheme)) {
+                return clashProxyEntry("socks5", node.getName(), node.getHost(), node.getPort(),
+                        "username", node.getUserInfo(), "password", "");
+            }
+            return clashProxyEntry("http", node.getName(), node.getHost(), node.getPort(), null, null, null, null);
+        }
+        String uri = node.getRawUri();
+        if (TextUtils.isEmpty(uri)) return null;
+        String scheme = node.getScheme();
+        if ("vmess".equals(scheme)) return vmessToClash(uri, node.getName());
+        if ("ss".equals(scheme)) return ssToClash(uri, node.getName());
+        if ("ssr".equals(scheme)) return ssrToClash(uri, node.getName());
+        if ("vless".equals(scheme)) return vlessToClash(uri, node.getName());
+        if ("trojan".equals(scheme)) return trojanToClash(uri, node.getName());
+        if ("hysteria2".equals(scheme)) return hysteria2ToClash(uri, node.getName());
+        if ("hysteria".equals(scheme)) return hysteriaToClash(uri, node.getName());
+        if ("tuic".equals(scheme)) return tuicToClash(uri, node.getName());
+        if ("snell".equals(scheme)) return snellToClash(uri, node.getName());
+        if ("anytls".equals(scheme)) return anytlsToClash(uri, node.getName());
+        if ("wireguard".equals(scheme)) return wireguardToClash(uri, node.getName());
+        if ("juicity".equals(scheme)) return juicityToClash(uri, node.getName());
+        return null;
+    }
+
+    private String clashProxyEntry(String type, String name, String server, int port, String userKey, String userVal, String passKey, String passVal) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("  - name: ").append(quote(name)).append("\n");
+        sb.append("    type: ").append(type).append("\n");
+        sb.append("    server: ").append(server).append("\n");
+        sb.append("    port: ").append(port).append("\n");
+        if (userKey != null && !TextUtils.isEmpty(userVal)) {
+            sb.append("    ").append(userKey).append(": ").append(quote(userVal)).append("\n");
+            sb.append("    ").append(passKey).append(": ").append(quote(passVal)).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String vmessToClash(String uri, String name) {
+        try {
+            String json = decode(uri.substring("vmess://".length()));
+            JsonObject o = App.gson().fromJson(json, JsonObject.class);
+            if (o == null) return null;
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: vmess\n");
+            sb.append("    server: ").append(str(o, "add")).append("\n");
+            sb.append("    port: ").append(intStr(o, "port")).append("\n");
+            sb.append("    uuid: ").append(quote(str(o, "id"))).append("\n");
+            sb.append("    alterId: ").append(o.has("aid") ? intStr(o, "aid") : "0").append("\n");
+            sb.append("    cipher: ").append(o.has("scy") ? str(o, "scy") : "auto").append("\n");
+            if (o.has("net") && !"tcp".equals(str(o, "net"))) {
+                sb.append("    network: ").append(str(o, "net")).append("\n");
+                if ("ws".equals(str(o, "net")) && o.has("path")) {
+                    sb.append("    ws-opts:\n");
+                    sb.append("      path: ").append(quote(str(o, "path"))).append("\n");
+                    if (o.has("host")) sb.append("      headers:\n        Host: ").append(quote(str(o, "host"))).append("\n");
+                }
+                if ("grpc".equals(str(o, "net")) && o.has("path")) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(str(o, "path"))).append("\n");
+            }
+            if (o.has("tls") && ("tls".equals(str(o, "tls")) || "1".equals(str(o, "tls")))) {
+                sb.append("    tls: true\n");
+                if (o.has("sni")) sb.append("    server-name: ").append(quote(str(o, "sni"))).append("\n");
+                if (o.has("allowInsecure") && ("1".equals(str(o, "allowInsecure")) || "true".equals(str(o, "allowInsecure")))) sb.append("    skip-cert-verify: true\n");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String ssToClash(String uri, String name) {
+        try {
+            String body = uri.substring("ss://".length());
+            int hashIdx = body.indexOf('#');
+            String main = hashIdx >= 0 ? body.substring(0, hashIdx) : body;
+            String decoded = decode(main);
+            if (TextUtils.isEmpty(decoded)) decoded = main;
+            int atIdx = decoded.lastIndexOf('@');
+            String method = "", password = "", serverPort;
+            if (atIdx >= 0) {
+                String userInfo = decoded.substring(0, atIdx);
+                serverPort = decoded.substring(atIdx + 1);
+                int colonIdx = userInfo.indexOf(':');
+                if (colonIdx >= 0) { method = userInfo.substring(0, colonIdx); password = userInfo.substring(colonIdx + 1); }
+            } else { return null; }
+            String[] sp = serverPort.split(":");
+            if (sp.length < 2) return null;
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: ss\n");
+            sb.append("    server: ").append(sp[0]).append("\n");
+            sb.append("    port: ").append(sp[1]).append("\n");
+            sb.append("    cipher: ").append(method).append("\n");
+            sb.append("    password: ").append(quote(password)).append("\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String ssrToClash(String uri, String name) {
+        try {
+            String decoded = decode(uri.substring("ssr://".length()));
+            if (TextUtils.isEmpty(decoded)) return null;
+            String[] parts = decoded.split(":");
+            if (parts.length < 6) return null;
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: ssr\n");
+            sb.append("    server: ").append(parts[0]).append("\n");
+            sb.append("    port: ").append(parts[1]).append("\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String vlessToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: vless\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    uuid: ").append(quote(u.getQueryParameter("uuid") != null ? u.getQueryParameter("uuid") : "")).append("\n");
+            if (u.getQueryParameter("flow") != null) sb.append("    flow: ").append(u.getQueryParameter("flow")).append("\n");
+            if (u.getQueryParameter("type") != null && !"tcp".equals(u.getQueryParameter("type"))) {
+                sb.append("    network: ").append(u.getQueryParameter("type")).append("\n");
+                if ("ws".equals(u.getQueryParameter("type"))) {
+                    sb.append("    ws-opts:\n");
+                    if (u.getQueryParameter("path") != null) sb.append("      path: ").append(quote(u.getQueryParameter("path"))).append("\n");
+                    if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
+                }
+                if ("grpc".equals(u.getQueryParameter("type")) && u.getQueryParameter("serviceName") != null) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(u.getQueryParameter("serviceName"))).append("\n");
+            }
+            if (u.getQueryParameter("security") != null && "tls".equals(u.getQueryParameter("security"))) {
+                sb.append("    tls: true\n");
+                if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+                if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String trojanToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: trojan\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            sb.append("    password: ").append(quote(u.getUserInfo() != null ? u.getUserInfo() : "")).append("\n");
+            if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+            if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
+            if (u.getQueryParameter("type") != null && !"tcp".equals(u.getQueryParameter("type"))) {
+                sb.append("    network: ").append(u.getQueryParameter("type")).append("\n");
+                if ("ws".equals(u.getQueryParameter("type"))) {
+                    sb.append("    ws-opts:\n");
+                    if (u.getQueryParameter("path") != null) sb.append("      path: ").append(quote(u.getQueryParameter("path"))).append("\n");
+                    if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
+                }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String hysteria2ToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: hysteria2\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            if (u.getUserInfo() != null) sb.append("    password: ").append(quote(u.getUserInfo())).append("\n");
+            if (u.getQueryParameter("sni") != null) sb.append("    sni: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+            if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String hysteriaToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: hysteria\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            if (u.getQueryParameter("auth") != null) sb.append("    auth-str: ").append(quote(u.getQueryParameter("auth"))).append("\n");
+            if (u.getQueryParameter("peer") != null) sb.append("    peers:\n      - ").append(quote(u.getQueryParameter("peer"))).append("\n");
+            if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String tuicToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: tuic\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            if (u.getUserInfo() != null) {
+                String[] up = u.getUserInfo().split(":");
+                if (up.length >= 1) sb.append("    uuid: ").append(quote(up[0])).append("\n");
+                if (up.length >= 2) sb.append("    password: ").append(quote(up[1])).append("\n");
+            }
+            if (u.getQueryParameter("sni") != null) sb.append("    sni: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+            if (u.getQueryParameter("alpn") != null) sb.append("    alpn:\n      - ").append(quote(u.getQueryParameter("alpn"))).append("\n");
+            if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String snellToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: snell\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            if (u.getUserInfo() != null) sb.append("    psk: ").append(quote(u.getUserInfo())).append("\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String anytlsToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: anytls\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            if (u.getUserInfo() != null) sb.append("    password: ").append(quote(u.getUserInfo())).append("\n");
+            if (u.getQueryParameter("sni") != null) sb.append("    sni: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+            if (u.getQueryParameter("insecure") != null && "1".equals(u.getQueryParameter("insecure"))) sb.append("    skip-cert-verify: true\n");
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String wireguardToClash(String uri, String name) {
+        return null;
+    }
+
+    private String juicityToClash(String uri, String name) {
+        try {
+            Uri u = Uri.parse(uri);
+            StringBuilder sb = new StringBuilder();
+            sb.append("  - name: ").append(quote(name)).append("\n");
+            sb.append("    type: juicity\n");
+            sb.append("    server: ").append(u.getHost()).append("\n");
+            sb.append("    port: ").append(u.getPort()).append("\n");
+            if (u.getUserInfo() != null) {
+                String[] up = u.getUserInfo().split(":");
+                if (up.length >= 1) sb.append("    uuid: ").append(quote(up[0])).append("\n");
+                if (up.length >= 2) sb.append("    password: ").append(quote(up[1])).append("\n");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String quote(String value) {
+        if (value == null) return "\"\"";
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
+    private String str(JsonObject o, String key) {
+        return o != null && o.has(key) && !o.get(key).isJsonNull() ? o.get(key).getAsString() : "";
+    }
+
+    private String intStr(JsonObject o, String key) {
+        return o != null && o.has(key) && !o.get(key).isJsonNull() ? o.get(key).getAsString() : "0";
     }
 
     private String decode(String text) {

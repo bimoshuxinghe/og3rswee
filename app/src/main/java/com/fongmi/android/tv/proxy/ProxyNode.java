@@ -14,12 +14,17 @@ public class ProxyNode {
     private String userInfo;
     private boolean supported;
     private long latency;
+    private String rawUri;
 
     public static ProxyNode unsupported(String name, String scheme) {
-        return unsupported(name, scheme, "", -1);
+        return unsupported(name, scheme, "", -1, null);
     }
 
     public static ProxyNode unsupported(String name, String scheme, String host, int port) {
+        return unsupported(name, scheme, host, port, null);
+    }
+
+    public static ProxyNode unsupported(String name, String scheme, String host, int port, String rawUri) {
         ProxyNode node = new ProxyNode();
         node.name = name;
         node.scheme = scheme;
@@ -27,6 +32,7 @@ public class ProxyNode {
         node.port = port;
         node.supported = false;
         node.latency = -1;
+        node.rawUri = rawUri;
         return node;
     }
 
@@ -87,6 +93,10 @@ public class ProxyNode {
 
     public boolean needsCore() {
         return !isSupported();
+    }
+
+    public String getRawUri() {
+        return TextUtils.isEmpty(rawUri) ? "" : rawUri;
     }
 
     public long getLatency() {
