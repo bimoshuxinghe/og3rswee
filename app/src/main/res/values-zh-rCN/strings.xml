@@ -182,6 +182,8 @@
     <string name="proxy_sub_select">选择</string>
     <string name="proxy_sub_test_ok">延迟：%1$d ms</string>
     <string name="proxy_sub_test_fail">测速失败</string>
+    <string name="proxy_sub_parsed">解析到 %1$d 个节点，请选择</string>
+    <string name="proxy_sub_connect_fail">连接失败，请尝试其他节点</string>
 
     <!-- Backup & Restore -->
     <string name="restore_select">选择备份</string>

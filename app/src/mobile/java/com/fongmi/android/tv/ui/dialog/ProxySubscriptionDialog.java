@@ -4,6 +4,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 
 import androidx.annotation.NonNull;
@@ -64,6 +65,10 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             setStatus();
             notifyChanged();
         });
+        binding.url.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) onUpdate(v);
+            return true;
+        });
         binding.update.setOnClickListener(this::onUpdate);
         binding.test.setOnClickListener(this::onTest);
         binding.auto.setOnClickListener(this::onAuto);
@@ -81,13 +86,12 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
         Task.execute(() -> {
             try {
                 List<ProxyNode> nodes = ProxySubscriptionManager.get().refresh(url);
-                ProxyNode selected = ProxySubscriptionManager.get().autoSelect();
                 App.post(() -> {
                     Notify.dismiss();
                     setStatus();
                     notifyChanged();
-                    if (selected == null) Notify.show(getString(R.string.proxy_sub_no_supported, nodes.size()));
-                    else Notify.show(getString(R.string.proxy_sub_selected, selected.getDisplay()));
+                    Notify.show(getString(R.string.proxy_sub_parsed, nodes.size()));
+                    showNodeList(nodes);
                 });
             } catch (Throwable e) {
                 App.post(() -> {
@@ -141,32 +145,40 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             Notify.show(R.string.proxy_sub_no_node);
             return;
         }
+        showNodeList(nodes);
+    }
+
+    private void showNodeList(List<ProxyNode> nodes) {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireActivity(), android.R.layout.simple_list_item_single_choice, getDisplays(nodes));
-        new MaterialAlertDialogBuilder(requireActivity()).setTitle(R.string.proxy_sub_nodes).setNegativeButton(R.string.dialog_negative, null).setSingleChoiceItems(adapter, getSelectedIndex(nodes), (dialog, which) -> selectNode(dialog, nodes, adapter, which)).show();
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.proxy_sub_nodes)
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setSingleChoiceItems(adapter, getSelectedIndex(nodes), (dialog, which) -> selectNode(dialog, nodes, adapter, which))
+                .show();
     }
 
     private void selectNode(android.content.DialogInterface dialog, List<ProxyNode> nodes, ArrayAdapter<String> adapter, int which) {
         ProxyNode node = nodes.get(which);
+        dialog.dismiss();
         Notify.progress(requireActivity());
         Task.execute(() -> {
             long latency = ProxySubscriptionManager.get().testOne(node);
             boolean ok = latency > 0 && ProxySubscriptionManager.get().select(node);
+            if (!ok && !node.isSupported()) {
+                ok = ProxySubscriptionManager.get().select(node);
+            }
+            boolean finalOk = ok;
             App.post(() -> {
                 Notify.dismiss();
-                if (!ok) {
-                    adapter.clear();
-                    adapter.addAll(getDisplays(nodes));
-                    adapter.notifyDataSetChanged();
+                if (!finalOk) {
+                    Notify.show(R.string.proxy_sub_connect_fail);
                     setStatus();
-                    Notify.show(R.string.proxy_sub_no_node);
                     return;
                 }
                 binding.enable.setChecked(true);
-                adapter.clear();
-                adapter.addAll(getDisplays(nodes));
-                adapter.notifyDataSetChanged();
                 setStatus();
                 notifyChanged();
+                Notify.show(getString(R.string.proxy_sub_selected, node.getDisplay()));
             });
         });
     }

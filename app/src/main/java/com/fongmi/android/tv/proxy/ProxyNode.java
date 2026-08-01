@@ -124,8 +124,9 @@ public class ProxyNode {
     }
 
     public String getDisplay() {
+        String type = getScheme().isEmpty() ? "" : " [" + getScheme() + "]";
         String speed = latency > 0 ? " · " + latency + "ms" : latency == -2 ? " · timeout" : "";
-        return getName() + speed;
+        return getName() + type + speed;
     }
 
     @NonNull

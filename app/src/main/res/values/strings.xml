@@ -182,6 +182,8 @@
     <string name="proxy_sub_select">Select</string>
     <string name="proxy_sub_test_ok">Latency: %1$d ms</string>
     <string name="proxy_sub_test_fail">Test failed</string>
+    <string name="proxy_sub_parsed">Parsed %1$d nodes, please select one</string>
+    <string name="proxy_sub_connect_fail">Connection failed, try another node</string>
 
     <!-- Backup & Restore -->
     <string name="restore_select">Select backup</string>
