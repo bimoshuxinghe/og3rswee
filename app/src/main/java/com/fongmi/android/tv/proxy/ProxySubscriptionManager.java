@@ -108,7 +108,12 @@ public class ProxySubscriptionManager {
     }
 
     public List<ProxyNode> refresh(String url) throws Exception {
-        String text = fetch(url);
+        String text;
+        if (isDirectProxyLink(url)) {
+            text = url;
+        } else {
+            text = fetch(url);
+        }
         if (TextUtils.isEmpty(text)) throw new Exception("Subscription returned empty content");
         String config = getClashConfig(text);
         List<ProxyNode> result;
@@ -119,9 +124,24 @@ public class ProxySubscriptionManager {
             result = parse(config);
         }
         if (result.isEmpty()) throw new Exception("No valid proxy nodes found in subscription");
+        if (TextUtils.isEmpty(config)) throw new Exception("Failed to generate config from parsed nodes");
         Setting.putProxySubscriptionConfig(config);
         saveNodes(result);
         return result;
+    }
+
+    private boolean isDirectProxyLink(String input) {
+        if (TextUtils.isEmpty(input)) return false;
+        String lower = input.trim().toLowerCase(Locale.ROOT);
+        String[] schemes = {"vless://", "vmess://", "ss://", "ssr://", "trojan://", "hysteria2://", "hy2://", "hysteria://", "hy://", "tuic://", "snell://", "anytls://", "wireguard://", "wg://", "juicity://"};
+        for (String scheme : schemes) if (lower.startsWith(scheme)) return true;
+        String[] lines = input.replace("\r", "\n").split("\n");
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            for (String scheme : schemes) if (trimmed.toLowerCase(Locale.ROOT).startsWith(scheme)) return true;
+        }
+        return false;
     }
 
     private String fetch(String url) {
@@ -585,27 +605,45 @@ public class ProxySubscriptionManager {
     private String vlessToClash(String uri, String name) {
         try {
             Uri u = Uri.parse(uri);
+            String uuid = u.getUserInfo() != null ? u.getUserInfo() : "";
+            if (uuid.isEmpty() && u.getQueryParameter("uuid") != null) uuid = u.getQueryParameter("uuid");
             StringBuilder sb = new StringBuilder();
             sb.append("  - name: ").append(quote(name)).append("\n");
             sb.append("    type: vless\n");
-            sb.append("    server: ").append(u.getHost()).append("\n");
-            sb.append("    port: ").append(u.getPort()).append("\n");
-            sb.append("    uuid: ").append(quote(u.getQueryParameter("uuid") != null ? u.getQueryParameter("uuid") : "")).append("\n");
+            sb.append("    server: ").append(u.getHost() != null ? u.getHost() : "").append("\n");
+            sb.append("    port: ").append(u.getPort() > 0 ? u.getPort() : "").append("\n");
+            sb.append("    uuid: ").append(quote(uuid)).append("\n");
             if (u.getQueryParameter("flow") != null) sb.append("    flow: ").append(u.getQueryParameter("flow")).append("\n");
-            if (u.getQueryParameter("type") != null && !"tcp".equals(u.getQueryParameter("type"))) {
-                sb.append("    network: ").append(u.getQueryParameter("type")).append("\n");
-                if ("ws".equals(u.getQueryParameter("type"))) {
+            String network = u.getQueryParameter("type");
+            if (network != null && !"tcp".equals(network)) {
+                sb.append("    network: ").append(network).append("\n");
+                if ("ws".equals(network)) {
                     sb.append("    ws-opts:\n");
                     if (u.getQueryParameter("path") != null) sb.append("      path: ").append(quote(u.getQueryParameter("path"))).append("\n");
                     if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
                 }
-                if ("grpc".equals(u.getQueryParameter("type")) && u.getQueryParameter("serviceName") != null) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(u.getQueryParameter("serviceName"))).append("\n");
+                if ("grpc".equals(network) && u.getQueryParameter("serviceName") != null) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(u.getQueryParameter("serviceName"))).append("\n");
             }
-            if (u.getQueryParameter("security") != null && "tls".equals(u.getQueryParameter("security"))) {
+            String security = u.getQueryParameter("security");
+            if (security != null && "tls".equals(security)) {
                 sb.append("    tls: true\n");
                 if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
                 if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
+            } else if (security != null && "reality".equals(security)) {
+                sb.append("    tls: true\n");
+                sb.append("    reality-opts:\n");
+                if (u.getQueryParameter("public-key") != null) sb.append("      public-key: ").append(quote(u.getQueryParameter("public-key"))).append("\n");
+                if (u.getQueryParameter("short-id") != null) sb.append("      short-id: ").append(quote(u.getQueryParameter("short-id"))).append("\n");
+                if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
             }
+            if (u.getQueryParameter("pbk") != null) {
+                if (sb.indexOf("    reality-opts:") == -1) sb.append("    reality-opts:\n");
+                sb.append("      public-key: ").append(quote(u.getQueryParameter("pbk"))).append("\n");
+                if (u.getQueryParameter("sid") != null) sb.append("      short-id: ").append(quote(u.getQueryParameter("sid"))).append("\n");
+                if (u.getQueryParameter("sni") != null && sb.indexOf("    server-name:") == -1) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+                if (sb.indexOf("    tls:") == -1) sb.append("    tls: true\n");
+            }
+            if (u.getQueryParameter("fp") != null) sb.append("    client-fingerprint: ").append(u.getQueryParameter("fp")).append("\n");
             return sb.toString();
         } catch (Exception e) {
             return null;
