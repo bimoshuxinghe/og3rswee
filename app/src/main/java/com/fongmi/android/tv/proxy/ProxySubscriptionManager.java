@@ -76,10 +76,20 @@ public class ProxySubscriptionManager {
         return Setting.isProxySubscriptionEnabled() && node != null && node.isSupported() ? node.getUrl() : "";
     }
 
+    private String getConfig() {
+        String config = generateClashConfig(getNodes());
+        if (TextUtils.isEmpty(config)) {
+            config = Setting.getProxySubscriptionConfig();
+        } else {
+            Setting.putProxySubscriptionConfig(config);
+        }
+        return config;
+    }
+
     public void applySaved() {
         String url = getProxyUrl();
         if (TextUtils.isEmpty(url)) return;
-        if (isMihomo(url) && !MihomoManager.get().isRunning() && !MihomoManager.get().start(Setting.getProxySubscriptionConfig(), Setting.getProxySubscriptionCoreName())) return;
+        if (isMihomo(url) && !MihomoManager.get().isRunning() && !MihomoManager.get().start(getConfig(), Setting.getProxySubscriptionCoreName())) return;
         OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
     }
 
@@ -92,11 +102,12 @@ public class ProxySubscriptionManager {
             applySaved();
             return true;
         }
-        if (TextUtils.isEmpty(Setting.getProxySubscriptionConfig())) {
+        String config = getConfig();
+        if (TextUtils.isEmpty(config)) {
             android.util.Log.e("ProxySub", "select failed: config is empty");
             return false;
         }
-        if (!MihomoManager.get().start(Setting.getProxySubscriptionConfig(), node.getName())) {
+        if (!MihomoManager.get().start(config, node.getName())) {
             android.util.Log.e("ProxySub", "select failed: mihomo start failed for node " + node.getName());
             return false;
         }
@@ -201,9 +212,10 @@ public class ProxySubscriptionManager {
     }
 
     private long testMihomo(ProxyNode node) {
-        if (TextUtils.isEmpty(Setting.getProxySubscriptionConfig())) return -1;
+        String config = getConfig();
+        if (TextUtils.isEmpty(config)) return -1;
         long start = System.currentTimeMillis();
-        if (!MihomoManager.get().start(Setting.getProxySubscriptionConfig(), node.getName())) {
+        if (!MihomoManager.get().start(config, node.getName())) {
             android.util.Log.e("ProxySub", "testMihomo: mihomo start failed for " + node.getName());
             return -1;
         }
@@ -324,37 +336,54 @@ public class ProxySubscriptionManager {
         String server = "";
         int port = -1;
         boolean proxies = false;
+        StringBuilder yamlBuilder = new StringBuilder();
         for (String raw : text.replace("\r", "\n").split("\n")) {
             String line = raw.trim();
             if (isTopLevel(raw)) {
-                proxies = line.startsWith("proxies:");
-                if (!proxies) {
+                if (proxies && !TextUtils.isEmpty(name)) {
                     ProxyNode node = clashNode(name, type, server, port);
-                    if (node != null) result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
-                    name = "";
-                    type = "";
-                    server = "";
-                    port = -1;
+                    if (node != null) {
+                        node.setProxyYaml(yamlBuilder.toString());
+                        result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
+                    }
                 }
+                proxies = line.startsWith("proxies:");
+                name = "";
+                type = "";
+                server = "";
+                port = -1;
+                yamlBuilder.setLength(0);
                 continue;
             }
             if (!proxies) continue;
             if (line.startsWith("-")) {
-                ProxyNode node = clashNode(name, type, server, port);
-                if (node != null) result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
+                if (!TextUtils.isEmpty(name)) {
+                    ProxyNode node = clashNode(name, type, server, port);
+                    if (node != null) {
+                        node.setProxyYaml(yamlBuilder.toString());
+                        result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
+                    }
+                }
                 name = value(line, "name");
                 type = value(line, "type");
                 server = value(line, "server");
                 port = parsePort(value(line, "port"));
+                yamlBuilder.setLength(0);
             } else {
                 if (TextUtils.isEmpty(name)) name = value(line, "name");
                 if (TextUtils.isEmpty(type)) type = value(line, "type");
                 if (TextUtils.isEmpty(server)) server = value(line, "server");
                 if (port <= 0) port = parsePort(value(line, "port"));
             }
+            yamlBuilder.append(raw).append("\n");
         }
-        ProxyNode node = clashNode(name, type, server, port);
-        if (node != null) result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
+        if (proxies && !TextUtils.isEmpty(name)) {
+            ProxyNode node = clashNode(name, type, server, port);
+            if (node != null) {
+                node.setProxyYaml(yamlBuilder.toString());
+                result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
+            }
+        }
     }
 
     private ProxyNode clashNode(String name, String type, String server, int port) {
@@ -410,7 +439,6 @@ public class ProxySubscriptionManager {
     }
 
     private ProxyNode firstCoreNode() {
-        if (TextUtils.isEmpty(Setting.getProxySubscriptionConfig())) return null;
         for (ProxyNode node : getNodes()) if (node.needsCore()) return node;
         return null;
     }
@@ -472,6 +500,7 @@ public class ProxySubscriptionManager {
 
     private String toClashProxy(ProxyNode node) {
         if (node == null) return null;
+        if (!TextUtils.isEmpty(node.getProxyYaml())) return node.getProxyYaml();
         if (node.isSupported()) {
             String scheme = node.getScheme();
             if ("socks5".equals(scheme)) {

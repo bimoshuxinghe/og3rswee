@@ -175,6 +175,7 @@ public class MihomoManager {
     private String fixConfig(String config, String selected) {
         String text = config.replace("\r\n", "\n").replace("\r", "\n");
         if (!TextUtils.isEmpty(selected)) text = buildSelectedConfig(text, selected);
+        text = fixVlessFlow(text);
         text = putTopLevel(text, "mixed-port", String.valueOf(MIXED_PORT));
         text = putTopLevel(text, "allow-lan", "false");
         text = putTopLevel(text, "bind-address", "'127.0.0.1'");
@@ -183,6 +184,82 @@ public class MihomoManager {
         text = putTopLevel(text, "find-process-mode", "off");
         text = ensureDns(text);
         return text;
+    }
+
+    private String fixVlessFlow(String text) {
+        String[] lines = text.split("\n", -1);
+        StringBuilder result = new StringBuilder();
+        boolean inProxies = false;
+        java.util.List<String> entry = new java.util.ArrayList<>();
+        boolean isVless = false;
+        boolean hasReality = false;
+        boolean hasFlow = false;
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+            boolean isTopLevel = !TextUtils.isEmpty(line) && !Character.isWhitespace(line.charAt(0)) && line.contains(":");
+            boolean isNewEntry = inProxies && trimmed.startsWith("- ");
+
+            if (isTopLevel || isNewEntry) {
+                if (!entry.isEmpty()) {
+                    if (isVless && hasReality && !hasFlow) {
+                        String indent = "    ";
+                        for (String l : entry) {
+                            if (l.trim().startsWith("type:")) {
+                                indent = l.substring(0, l.length() - l.trim().length());
+                                break;
+                            }
+                        }
+                        for (String l : entry) {
+                            result.append(l).append("\n");
+                            if (l.trim().startsWith("uuid:")) {
+                                result.append(indent).append("flow: xtls-rprx-vision\n");
+                            }
+                        }
+                    } else {
+                        for (String l : entry) result.append(l).append("\n");
+                    }
+                    entry.clear();
+                }
+                isVless = false;
+                hasReality = false;
+                hasFlow = false;
+            }
+
+            if (isTopLevel) {
+                inProxies = trimmed.startsWith("proxies:");
+                result.append(line).append("\n");
+            } else if (inProxies) {
+                if (trimmed.startsWith("type:") && trimmed.contains("vless")) isVless = true;
+                if (trimmed.startsWith("reality-opts:")) hasReality = true;
+                if (trimmed.startsWith("flow:")) hasFlow = true;
+                entry.add(line);
+            } else {
+                result.append(line).append("\n");
+            }
+        }
+
+        if (!entry.isEmpty()) {
+            if (isVless && hasReality && !hasFlow) {
+                String indent = "    ";
+                for (String l : entry) {
+                    if (l.trim().startsWith("type:")) {
+                        indent = l.substring(0, l.length() - l.trim().length());
+                        break;
+                    }
+                }
+                for (String l : entry) {
+                    result.append(l).append("\n");
+                    if (l.trim().startsWith("uuid:")) {
+                        result.append(indent).append("flow: xtls-rprx-vision\n");
+                    }
+                }
+            } else {
+                for (String l : entry) result.append(l).append("\n");
+            }
+        }
+
+        return result.toString();
     }
 
     private String ensureDns(String text) {

@@ -15,6 +15,7 @@ public class ProxyNode {
     private boolean supported;
     private long latency;
     private String rawUri;
+    private String proxyYaml;
 
     public static ProxyNode unsupported(String name, String scheme) {
         return unsupported(name, scheme, "", -1, null);
@@ -97,6 +98,14 @@ public class ProxyNode {
 
     public String getRawUri() {
         return TextUtils.isEmpty(rawUri) ? "" : rawUri;
+    }
+
+    public String getProxyYaml() {
+        return TextUtils.isEmpty(proxyYaml) ? "" : proxyYaml;
+    }
+
+    public void setProxyYaml(String proxyYaml) {
+        this.proxyYaml = proxyYaml;
     }
 
     public long getLatency() {
