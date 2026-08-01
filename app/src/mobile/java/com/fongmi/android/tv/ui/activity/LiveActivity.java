@@ -182,7 +182,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Util.hideSystemUI(this);
+        if (ResUtil.isLand(this)) Util.hideSystemUI(this);
     }
 
     @Override
@@ -296,6 +296,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void enterFullscreen() {
         if (isFullscreen()) return;
         setFullscreen(true);
+        Util.hideSystemUI(this);
         App.removeCallbacks(mOrientRunnable);
         mBinding.video.setLayoutParams(new android.widget.RelativeLayout.LayoutParams(android.widget.RelativeLayout.LayoutParams.MATCH_PARENT, android.widget.RelativeLayout.LayoutParams.MATCH_PARENT));
         updateVideoTopMargin();
@@ -309,6 +310,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void exitFullscreen() {
         if (!isFullscreen()) return;
         setFullscreen(false);
+        Util.showSystemUI(this);
         mBinding.video.setLayoutParams(mFrameParams);
         updateVideoTopMargin();
         mBinding.portraitLayout.setVisibility(View.VISIBLE);
@@ -333,7 +335,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void setVideoSafeInset() {
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (view, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            mPortraitVideoTopMargin = top / 2 + ResUtil.dp2px(8);
+            mPortraitVideoTopMargin = top;
             updateVideoTopMargin();
             return insets;
         });
@@ -1377,13 +1379,12 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
             exitFullscreen();
         }
-        Util.hideSystemUI(this);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) Util.hideSystemUI(this);
+        if (hasFocus && isFullscreen()) Util.hideSystemUI(this);
     }
 
     @Override

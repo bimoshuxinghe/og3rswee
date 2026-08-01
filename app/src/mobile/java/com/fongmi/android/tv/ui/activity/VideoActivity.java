@@ -1422,7 +1422,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 mBinding.bgPoster.setVisibility(View.GONE);
                 mBinding.bgOverlay.setVisibility(View.GONE);
             }
-            mBinding.getRoot().setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            mBinding.getRoot().setBackgroundColor(android.graphics.Color.BLACK);
             return;
         }
         ImgUtil.load(this, mHistory.getVodPic(), new CustomTarget<>() {
@@ -1884,7 +1884,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         items.removeIf(this::mismatch);
         mBinding.quick.setVisibility(View.VISIBLE);
         mQuickAdapter.addAll(items);
-        if (isInitAuto()) nextSite();
+        if (isInitAuto() && !isReaderContent) nextSite();
         if (items.isEmpty()) return;
         App.removeCallbacks(mR4);
     }
@@ -1910,6 +1910,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void nextSite() {
+        if (isReaderContent) return;
         if (mQuickAdapter.isEmpty()) return;
         Vod item = mQuickAdapter.get(0);
         Notify.show(getString(R.string.play_switch_site, item.getSiteName()));
