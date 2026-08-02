@@ -290,6 +290,10 @@ public class MihomoManager {
                 "    proxies:\n" +
                 "      - " + quote(selected) + "\n" +
                 "rules:\n" +
+                "  - GEOSITE,private,DIRECT\n" +
+                "  - GEOSITE,cn,DIRECT\n" +
+                "  - GEOIP,private,DIRECT,no-resolve\n" +
+                "  - GEOIP,cn,DIRECT,no-resolve\n" +
                 "  - MATCH,XYS_PROXY\n";
     }
 

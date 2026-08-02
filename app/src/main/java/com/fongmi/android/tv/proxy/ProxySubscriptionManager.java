@@ -96,20 +96,7 @@ public class ProxySubscriptionManager {
         if (isMihomo(url)) {
             if (MihomoManager.get().isRunning()) {
                 mihomoStarting = false;
-                if (quickTestProxy() > 0) {
-                    OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-                    android.util.Log.d("ProxySub", "applySaved: mihomo running and connection verified, proxy applied");
-                } else {
-                    android.util.Log.w("ProxySub", "applySaved: mihomo running but connection test failed, restarting");
-                    if (async) {
-                        if (!mihomoStarting) {
-                            mihomoStarting = true;
-                            startMihomoAsync(url);
-                        }
-                    } else {
-                        startMihomoSync(url);
-                    }
-                }
+                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
             } else if (async) {
                 if (!mihomoStarting) {
                     mihomoStarting = true;
@@ -132,13 +119,8 @@ public class ProxySubscriptionManager {
         }
         boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
         if (ok) {
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-            if (quickTestProxy() > 0) {
-                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-                android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
-            } else {
-                android.util.Log.e("ProxySub", "startMihomoSync: mihomo started but connection test failed, proxy NOT applied");
-            }
+            OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+            android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
         } else {
             android.util.Log.e("ProxySub", "startMihomoSync: mihomo start failed: " + MihomoManager.get().getLastError());
         }
@@ -154,13 +136,8 @@ public class ProxySubscriptionManager {
                 }
                 boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
                 if (ok) {
-                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-                    if (quickTestProxy() > 0) {
-                        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-                        android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
-                    } else {
-                        android.util.Log.e("ProxySub", "startMihomoAsync: mihomo started but connection test failed, proxy NOT applied");
-                    }
+                    OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                    android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
                 } else {
                     android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed: " + MihomoManager.get().getLastError());
                 }
@@ -171,22 +148,24 @@ public class ProxySubscriptionManager {
     }
 
     private long quickTestProxy() {
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()), 1000);
-            socket.setSoTimeout(3000);
-            java.io.OutputStream out = socket.getOutputStream();
-            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
-            String connectRequest = "CONNECT " + TEST_HOST + ":443 HTTP/1.1\r\nHost: " + TEST_HOST + ":443\r\n\r\n";
-            out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
-            out.flush();
-            String statusLine = reader.readLine();
-            android.util.Log.d("ProxySub", "quickTestProxy: status=" + statusLine);
-            if (statusLine != null && statusLine.contains("200")) return 1;
-            return -1;
-        } catch (Exception e) {
-            android.util.Log.e("ProxySub", "quickTestProxy failed: " + e.getMessage());
-            return -1;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()), 1000);
+                socket.setSoTimeout(3000);
+                java.io.OutputStream out = socket.getOutputStream();
+                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
+                String connectRequest = "CONNECT " + TEST_HOST + ":443 HTTP/1.1\r\nHost: " + TEST_HOST + ":443\r\n\r\n";
+                out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                String statusLine = reader.readLine();
+                android.util.Log.d("ProxySub", "quickTestProxy attempt=" + attempt + " status=" + statusLine);
+                if (statusLine != null && statusLine.contains("200")) return 1;
+            } catch (Exception e) {
+                android.util.Log.e("ProxySub", "quickTestProxy attempt=" + attempt + " failed: " + e.getMessage());
+            }
+            try { Thread.sleep(1000); } catch (InterruptedException ignored) { return -1; }
         }
+        return -1;
     }
 
     public boolean testConnection() {
@@ -219,7 +198,6 @@ public class ProxySubscriptionManager {
                 return false;
             }
         }
-        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
         if (quickTestProxy() <= 0) {
             android.util.Log.e("ProxySub", "select: connection test failed after mihomo start, proxy NOT applied. Node: " + node.getName());
             return false;
@@ -650,6 +628,10 @@ public class ProxySubscriptionManager {
                 "    proxies:\n" +
                 names +
                 "rules:\n" +
+                "  - GEOSITE,private,DIRECT\n" +
+                "  - GEOSITE,cn,DIRECT\n" +
+                "  - GEOIP,private,DIRECT,no-resolve\n" +
+                "  - GEOIP,cn,DIRECT,no-resolve\n" +
                 "  - MATCH,XYS_PROXY\n";
     }
 
