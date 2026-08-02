@@ -1361,10 +1361,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void showProgress() {
-        if (isPlayingNow()) {
-            hideProgress();
-            return;
-        }
         mBinding.progress.getRoot().setVisibility(View.VISIBLE);
         App.post(mR2, 0);
         hideError();
@@ -1454,10 +1450,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setTraffic() {
-        if (isPlayingNow()) {
-            hideProgress();
-            return;
-        }
         Traffic.setSpeed(mBinding.progress.traffic);
         App.post(mR2, 1000);
     }
@@ -1735,8 +1727,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void onStateChanged(int state) {
         switch (state) {
             case Player.STATE_BUFFERING:
-                if (isPlayingNow()) hideProgress();
-                else showProgress();
+                showProgress();
                 break;
             case Player.STATE_READY:
                 hideProgress();
@@ -1752,7 +1743,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onRenderedFirstFrameChanged() {
-        hideProgress();
     }
 
     @Override
@@ -1786,7 +1776,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     public void onTimeChanged(long time) {
         if (!isOwner()) return;
         if (!player().isPlaying()) return;
-        hideProgress();
+        if (!isBuffering()) hideProgress();
         long position, duration;
         mHistory.setCreateTime(time);
         mHistory.setPosition(position = player().getPosition());
@@ -2124,6 +2114,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     public void onSeekEnd(long time) {
         seekTo(time);
+        showProgress();
         syncHistory(true);
     }
 

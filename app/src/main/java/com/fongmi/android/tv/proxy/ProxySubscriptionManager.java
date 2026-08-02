@@ -36,6 +36,7 @@ public class ProxySubscriptionManager {
 
     private List<ProxyNode> nodes;
     private volatile boolean mihomoStarting = false;
+    private volatile boolean testing = false;
 
     private static class Loader {
         static volatile ProxySubscriptionManager INSTANCE = new ProxySubscriptionManager();
@@ -43,6 +44,14 @@ public class ProxySubscriptionManager {
 
     public static ProxySubscriptionManager get() {
         return Loader.INSTANCE;
+    }
+
+    public boolean isTesting() {
+        return testing;
+    }
+
+    public boolean hasNodes() {
+        return nodes != null && !nodes.isEmpty();
     }
 
     public String getSummary() {
@@ -300,7 +309,15 @@ public class ProxySubscriptionManager {
     public synchronized List<ProxyNode> testAll() {
         List<ProxyNode> allNodes = getNodes();
         if (allNodes.isEmpty()) return allNodes;
+        testing = true;
+        try {
+            return testAllInternal(allNodes);
+        } finally {
+            testing = false;
+        }
+    }
 
+    private List<ProxyNode> testAllInternal(List<ProxyNode> allNodes) {
         long startTime = System.currentTimeMillis();
 
         // 阶段1：对所有节点进行快速TCP可达性测试（50线程并发），过滤掉不可达的节点

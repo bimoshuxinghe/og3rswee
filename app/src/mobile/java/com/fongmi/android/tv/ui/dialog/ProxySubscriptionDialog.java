@@ -114,7 +114,11 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
     }
 
     private void onTest(View view) {
-        if (ProxySubscriptionManager.get().getNodes().isEmpty()) {
+        if (ProxySubscriptionManager.get().isTesting()) {
+            Notify.show("正在测速中...");
+            return;
+        }
+        if (!ProxySubscriptionManager.get().hasNodes()) {
             Notify.show(R.string.proxy_sub_no_node);
             return;
         }

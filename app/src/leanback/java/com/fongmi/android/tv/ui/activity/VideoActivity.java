@@ -1539,6 +1539,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     public void onSeekEnd(long time) {
         mKeyDown.reset();
         seekTo(time);
+        showProgress();
         syncHistory(true);
     }
 
