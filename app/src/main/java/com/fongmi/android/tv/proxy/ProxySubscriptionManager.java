@@ -902,12 +902,8 @@ public class ProxySubscriptionManager {
             boolean isReality = (security != null && "reality".equals(security)) || pbk != null;
             boolean isTls = (security != null && "tls".equals(security)) || isReality;
             if (pbk != null) {
-                String originalPbk = pbk;
-                pbk = pbk.replace("-", "+").replace("_", "/");
-                int pad = pbk.length() % 4;
-                if (pad == 2) pbk += "==";
-                else if (pad == 3) pbk += "=";
-                android.util.Log.d("ProxySub", "vlessToClash: pbk original=" + originalPbk + " converted=" + pbk);
+                pbk = pbk.replace("+", "-").replace("/", "_").replaceAll("=+$", "");
+                android.util.Log.d("ProxySub", "vlessToClash: pbk=" + pbk);
             }
             String flow = getParam(u, "flow");
             if (flow == null && isReality && "tcp".equals(network)) flow = "xtls-rprx-vision";
