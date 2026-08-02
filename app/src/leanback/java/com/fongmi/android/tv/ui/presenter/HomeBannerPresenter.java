@@ -4,10 +4,13 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.leanback.widget.Presenter;
@@ -24,7 +27,6 @@ import com.fongmi.android.tv.ui.activity.LiveActivity;
 import com.fongmi.android.tv.ui.activity.SearchActivity;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.ResUtil;
-import android.widget.LinearLayout;
 
 import java.util.List;
 
@@ -152,7 +154,7 @@ public class HomeBannerPresenter extends Presenter {
         // 居中卡片充满走马灯区域
         FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams) holder.binding.cardCenter.getLayoutParams();
         cp.width = FrameLayout.LayoutParams.MATCH_PARENT;
-        cp.gravity = android.view.Gravity.CENTER;
+        cp.gravity = Gravity.CENTER;
         holder.binding.cardCenter.setLayoutParams(cp);
         holder.binding.cardCenter.setScaleX(1f);
         holder.binding.cardCenter.setScaleY(1f);
@@ -347,7 +349,7 @@ public class HomeBannerPresenter extends Presenter {
         // 中
         FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams) holder.binding.cardCenter.getLayoutParams();
         cp.width = ResUtil.dp2px(240);
-        cp.gravity = android.view.Gravity.START | android.view.Gravity.TOP;
+        cp.gravity = Gravity.START | Gravity.TOP;
         holder.binding.cardCenter.setLayoutParams(cp);
         holder.binding.cardCenter.setVisibility(View.VISIBLE);
         holder.binding.cardCenter.setTranslationX(holder.baseCenterX);
