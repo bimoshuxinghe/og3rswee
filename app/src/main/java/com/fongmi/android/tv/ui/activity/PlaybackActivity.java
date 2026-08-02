@@ -25,7 +25,6 @@ import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.service.PlaybackService;
-import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.CustomSeekView;
@@ -249,8 +248,8 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
             if (owner) mService.suspend();
             mService.resetSessionActivity();
         } else if (owner) {
-            if (isFinishing() && getClass().getSimpleName().equals("LiveActivity") && LiveSetting.isPreview()) {
-                // Do not shutdown if finishing and returning to home screen with preview enabled
+            if (false) {
+                // Preview no longer exists, always shutdown
             } else {
                 mService.shutdown();
             }
@@ -374,8 +373,8 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
     protected void onStop() {
         super.onStop();
         if (isOwner() && PlayerSetting.isBackgroundOff() && mController != null) {
-            if (isFinishing() && getClass().getSimpleName().equals("LiveActivity") && LiveSetting.isPreview()) {
-                // Do not pause if finishing and returning to home screen with preview enabled
+            if (false) {
+                // Preview no longer exists, always pause
             } else {
                 mController.pause();
             }

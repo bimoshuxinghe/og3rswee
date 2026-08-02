@@ -6,12 +6,10 @@ public class HomeBanner {
 
     private final List<Func> funcs;
     private final List<Vod> recommends;
-    private final boolean livePreview;
 
-    public HomeBanner(List<Func> funcs, List<Vod> recommends, boolean livePreview) {
+    public HomeBanner(List<Func> funcs, List<Vod> recommends) {
         this.funcs = funcs;
         this.recommends = recommends;
-        this.livePreview = livePreview;
     }
 
     public List<Func> getFuncs() {
@@ -20,9 +18,5 @@ public class HomeBanner {
 
     public List<Vod> getRecommends() {
         return recommends;
-    }
-
-    public boolean isLivePreview() {
-        return livePreview;
     }
 }

@@ -44,14 +44,6 @@ public class LiveSetting {
         Prefers.put("scale_live", scale);
     }
 
-    public static boolean isPreview() {
-        return Prefers.getBoolean("live_preview", false);
-    }
-
-    public static void putPreview(boolean preview) {
-        Prefers.put("live_preview", preview);
-    }
-
     public static boolean isBootGlobal() {
         return Prefers.getBoolean("boot_live_global", false);
     }
@@ -60,4 +52,3 @@ public class LiveSetting {
         Prefers.put("boot_live_global", boot);
     }
 }
-

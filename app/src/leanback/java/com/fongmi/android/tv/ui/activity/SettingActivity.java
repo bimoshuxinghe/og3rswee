@@ -91,7 +91,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private void setOtherText() {
         mBinding.dohText.setText(getDohList()[getDohIndex()]);
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
-        mBinding.livePreviewText.setText(getSwitch(LiveSetting.isPreview()));
         mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.searchText.setText((search = ResUtil.getStringArray(R.array.select_search))[Setting.getSearchMode()]);
@@ -128,7 +127,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.liveHome.setOnClickListener(this::onLiveHome);
         mBinding.wall.setOnLongClickListener(this::onWallEdit);
         mBinding.incognito.setOnClickListener(this::setIncognito);
-        mBinding.livePreview.setOnClickListener(this::setLivePreview);
         mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.search.setOnClickListener(this::setSearch);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
@@ -267,12 +265,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private void setIncognito(View view) {
         Setting.putIncognito(!Setting.isIncognito());
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
-    }
-
-    private void setLivePreview(View view) {
-        LiveSetting.putPreview(!LiveSetting.isPreview());
-        mBinding.livePreviewText.setText(getSwitch(LiveSetting.isPreview()));
-        RefreshEvent.home();
     }
 
     private void setLiveBoot(View view) {

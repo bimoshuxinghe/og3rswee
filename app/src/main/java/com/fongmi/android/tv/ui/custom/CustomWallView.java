@@ -34,6 +34,8 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.io.File;
 import java.io.IOException;
 
+import android.util.Log;
+
 import pl.droidsonroids.gif.GifDrawable;
 
 public class CustomWallView extends FrameLayout implements DefaultLifecycleObserver {
@@ -122,8 +124,44 @@ public class CustomWallView extends FrameLayout implements DefaultLifecycleObser
         video.setPlayer(player);
         video.setVisibility(VISIBLE);
         binding.image.setImageDrawable(cache());
-        player.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)));
-        player.prepare();
+        MediaItem item = MediaItem.fromUri(Uri.fromFile(file));
+        ensureIdleOrEnded(player);
+        try {
+            player.setMediaItem(item);
+            player.prepare();
+        } catch (Exception e) {
+            Log.w("CustomWallView", "loadVideo setMediaItem failed, retry.", e);
+            try {
+                player.stop();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.clearMediaItems();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.setMediaItem(item);
+                player.prepare();
+            } catch (Exception e2) {
+                Log.e("CustomWallView", "loadVideo setMediaItem retry failed.", e2);
+            }
+        }
+    }
+
+    private static void ensureIdleOrEnded(Player player) {
+        if (player == null) return;
+        int state = player.getPlaybackState();
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return;
+        try {
+            player.stop();
+        } catch (Exception ignored) {
+        }
+        state = player.getPlaybackState();
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return;
+        try {
+            player.clearMediaItems();
+        } catch (Exception ignored) {
+        }
     }
 
     private void loadGif(File file) {

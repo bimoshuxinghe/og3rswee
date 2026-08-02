@@ -24,7 +24,6 @@ import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.AdapterHomeBannerBinding;
 import com.fongmi.android.tv.ui.activity.HomeActivity;
-import com.fongmi.android.tv.ui.activity.LiveActivity;
 import com.fongmi.android.tv.ui.activity.SearchActivity;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -34,14 +33,14 @@ import java.util.List;
 /**
  * 首页 Banner Presenter — 8-Slot Cover Flow 走马灯
  *
- *   可见卡片（7张）：   [-3 小] [-2 中小] [-1 中] [0 大] [+1 中] [+2 中小] [+3 小]
- *   缩放比例：           0.60    0.72     0.85   1.00   0.85    0.72     0.60
- *   缓冲卡片（1张）：   [+4 缓冲，屏幕右侧外 alpha=0，scale=0.5]
+ *   可见卡片（5张）：   [-2 中小] [-1 中] [0 大] [+1 中] [+2 中小]
+ *   缩放比例：           0.72     0.85   1.00   0.85    0.72
+ *   缓冲卡片（3张）：   [-3/-4 左侧缓冲 alpha=0 scale=0.5] [+3 右侧 buffer scale=0.5] [+4 右侧外 scale=0.5]
  *
  *   切换（向左滚动）：所有 8 张卡片从 position p 平滑移动到 p-1，scale 对应改变
  *     动画结束后：
- *       最左飞出的 slot（新 pos -4，alpha=0） → 重新绑定数据到 (centerIdx+4) → 瞬间重置到 pos +4 作为新的缓冲
- *       其余 slot 已在正确位置，无需视觉跳变
+ *       刚飞出可见区的 slot（新 pos -3，alpha=0） → 重新绑定数据到 (centerIdx+4) → 瞬间重置到 pos +4 作为新的最右缓冲
+ *       其余 7 个 slot 已在正确位置，无需视觉跳变
  *       更新中间详情文字 / 指示器 / 点击事件
  */
 public class HomeBannerPresenter extends Presenter {
@@ -94,29 +93,15 @@ public class HomeBannerPresenter extends Presenter {
             }
         }
 
-        if (item.isLivePreview()) {
-            // 直播预览模式
-            holder.binding.detailLayout.setVisibility(View.GONE);
-            holder.binding.livePreviewLayout.setVisibility(View.VISIBLE);
-            stopMarquee(holder);
-            holder.binding.middleCard.setFocusable(true);
-            holder.binding.middleCard.setOnClickListener(view -> {
-                activity.stopPreview();
-                LiveActivity.start(activity);
-            });
-            holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> animateScale(v, hasFocus, 1.05f));
-            activity.attachPreviewPlayer(holder.binding.previewExo);
-        } else {
-            // Cover Flow 走马灯模式
-            holder.binding.detailLayout.setVisibility(View.VISIBLE);
-            holder.binding.livePreviewLayout.setVisibility(View.GONE);
+        // Cover Flow 走马灯模式（预览功能已整体删除，不再区分直播预览分支）
+        holder.binding.detailLayout.setVisibility(View.VISIBLE);
+        holder.binding.livePreviewLayout.setVisibility(View.GONE);
 
-            if (carouselList.size() < 2) {
-                showStaticBanner(holder, carouselList.isEmpty() ? createNoRecommendVod() : carouselList.get(0));
-                stopMarquee(holder);
-            } else {
-                startCoverFlowMarquee(holder, carouselList);
-            }
+        if (carouselList.size() < 2) {
+            showStaticBanner(holder, carouselList.isEmpty() ? createNoRecommendVod() : carouselList.get(0));
+            stopMarquee(holder);
+        } else {
+            startCoverFlowMarquee(holder, carouselList);
         }
     }
 
@@ -271,12 +256,12 @@ public class HomeBannerPresenter extends Presenter {
     private static final int MARQUEE_INTERVAL_MS = 5000;
     private static final int MARQUEE_ANIM_MS    = 800;
     private static final int CARD_WIDTH_DP      = 220;
-    private static final int CARD_GAP_DP        = 8;
+    private static final int CARD_GAP_DP        = 14;
     private static final int NUM_SLOTS          = 8;
     private static final int CENTER_SLOT        = 3;  // 静态时 slot3 承载中间卡片（position=0）
 
-    /** 位置 -3..+3 (7个可见) 对应的缩放比例；位置 +4 buffer scale=0.5 位置 -4 exit scale=0.5 */
-    private static final float[] SCALE_BY_POS = {0.60f, 0.72f, 0.85f, 1.00f, 0.85f, 0.72f, 0.60f};
+    /** 位置 -2..+2 (5个可见) 对应的缩放比例；|pos|>=3 buffer scale=0.5 */
+    private static final float[] SCALE_BY_POS = {0.72f, 0.85f, 1.00f, 0.85f, 0.72f};
     /** 每个物理 slot 8 张卡片在初始化/复位时对应的"逻辑位置"（-3,-2,-1,0,+1,+2,+3,+4） */
     private static final int[] INITIAL_POSITION = {-3, -2, -1, 0, 1, 2, 3, 4};
 
@@ -293,7 +278,7 @@ public class HomeBannerPresenter extends Presenter {
         }
         holder.containerWidth = containerW;
         int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
-        int step   = ResUtil.dp2px((int)(CARD_WIDTH_DP * 0.58f) + CARD_GAP_DP); // 相邻卡片中心点间距
+        int step   = ResUtil.dp2px(CARD_WIDTH_DP + CARD_GAP_DP); // 相邻卡片中心点间距 = 卡片宽 + 间距（保证不重叠完整显示）
         holder.cardWidth = cardW;
         holder.stepX = step;
         // 中间卡片 (position 0) 的 translationX = 容器中心 - 卡片半宽
@@ -309,19 +294,19 @@ public class HomeBannerPresenter extends Presenter {
         } catch (Exception ignored) {}
     }
 
-    /** 给定逻辑位置 pos（-3..+4），返回该 slot 的 translationX / scale / alpha / z */
+    /** 给定逻辑位置 pos，返回该 slot 的 translationX / scale / alpha / z */
     private float posToTranslationX(ViewHolder holder, int pos) {
         return holder.centerTX + pos * holder.stepX;
     }
 
     private float posToScale(int pos) {
-        if (pos >= -3 && pos <= 3) return SCALE_BY_POS[pos + 3];
-        return 0.50f; // +4 buffer / -4 exit
+        if (pos >= -2 && pos <= 2) return SCALE_BY_POS[pos + 2];
+        return 0.50f; // |pos| >= 3 buffer / exit
     }
 
     private float posToAlpha(int pos) {
-        if (pos >= -3 && pos <= 3) return 1.0f;
-        return 0f; // +4 buffer / -4 exit
+        if (pos >= -2 && pos <= 2) return 1.0f;
+        return 0f; // |pos| >= 3 buffer / exit
     }
 
     private float posToZ(int pos) {
@@ -333,7 +318,7 @@ public class HomeBannerPresenter extends Presenter {
     }
 
     private int posToVisibility(int pos) {
-        return (pos >= -3 && pos <= 4) ? View.VISIBLE : View.INVISIBLE;
+        return (pos >= -2 && pos <= 2) ? View.VISIBLE : View.INVISIBLE;
     }
 
     private static int mod(int a, int n) {
@@ -375,7 +360,6 @@ public class HomeBannerPresenter extends Presenter {
             holder.slotDataIndex[i] = dataIdx;
             holder.slotPosition[i] = pos;
             ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[i]);
-            final int fi = i;
             slotClickListenerReset(holder, i);
         }
 
@@ -470,13 +454,14 @@ public class HomeBannerPresenter extends Presenter {
     /**
      * 向左前进一帧：
      *   每个物理 slot 的逻辑位置从 p → p-1
-     *     pos -3 → -4 (飞出左侧，alpha→0，scale→0.5)
-     *     pos -2 → -3，pos -1 → -2，pos 0 → -1，pos +1 → 0，pos +2 → +1，pos +3 → +2
-     *     pos +4 → +3 (从右侧飞入，alpha 0→1，scale 0.5→0.6)
+     *     pos -2 → -3 (飞出可见区左侧，alpha→0，scale→0.5)
+     *     pos -1 → -2，pos 0 → -1，pos +1 → 0，pos +2 → +1
+     *     pos +3 → +2 (从右侧缓冲区进入可见区，alpha 0→1，scale 0.5→0.72)
+     *     pos +4 → +3 (进入右侧缓冲区)
      *   动画结束后：
-     *     飞出的 slot（现在 pos = -4）绑定新数据（currentCenterIdx + 4），
-     *     其逻辑位置重置为 +4（新缓冲），瞬间移动到 +4 位置（因为不可见所以无视觉跳变）。
-     *     其他 7 个 slot 已经停在它们的新静态位置（p-1）且可见，无需位移。
+     *     刚飞出可见区的 slot（现在 pos = -3）绑定新数据（currentCenterIdx + 4），
+     *     其逻辑位置重置为 +4（新最右缓冲），瞬间移动到 +4 位置（因为不可见所以无视觉跳变）。
+     *     其他 7 个 slot 已经停在它们的新静态位置（p-1），可见的 5 张（-2..+2）修正对齐。
      *     更新 currentCenterIdx++，详情文字，指示器，点击事件。
      */
     private void advanceCoverFlow(ViewHolder holder) {
@@ -525,18 +510,18 @@ public class HomeBannerPresenter extends Presenter {
                 int exitSlotIdx = -1;
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     holder.slotPosition[i] -= 1;
-                    if (holder.slotPosition[i] == -4) exitSlotIdx = i;
+                    if (holder.slotPosition[i] == -3) exitSlotIdx = i;
                 }
 
-                // === 步骤 2：把退出的 slot（pos=-4）回收为新的缓冲（pos=+4） ===
+                // === 步骤 2：把退出可见区的 slot（pos=-3）回收为新的最右缓冲（pos=+4） ===
                 if (exitSlotIdx >= 0) {
                     int newCenter = mod(oldCenter + 1, n);
-                    // 这个 slot 应该承载数据：newCenter + 4
+                    // 这个 slot 应该承载数据：newCenter + 4（对应位置 +4，作为最右侧缓冲）
                     int newDataIdx = mod(newCenter + 4, n);
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
-                    // 逻辑位置从 -4 改为 +4，瞬间放置到 +4 位置（不可见，alpha=0）
+                    // 逻辑位置从 -3 改为 +4，瞬间放置到 +4 位置（不可见，alpha=0）
                     holder.slotPosition[exitSlotIdx] = 4;
                     FrameLayout s = holder.slots[exitSlotIdx];
                     s.setTranslationX(posToTranslationX(holder, 4));
@@ -548,10 +533,10 @@ public class HomeBannerPresenter extends Presenter {
                     slotClickListenerReset(holder, exitSlotIdx);
                 }
 
-                // === 步骤 3：其余 7 个 slot 已在正确位置，修正 VISIBLE ===
+                // === 步骤 3：5 张可见 slot（-2..+2）修正 VISIBLE + 精确对齐 ===
                 for (int i = 0; i < NUM_SLOTS; i++) {
                     int p = holder.slotPosition[i];
-                    if (p >= -3 && p <= 3) {
+                    if (p >= -2 && p <= 2) {
                         holder.slots[i].setVisibility(View.VISIBLE);
                         // 防动画浮点误差，强制对齐到精确静态值
                         holder.slots[i].setTranslationX(posToTranslationX(holder, p));
@@ -581,7 +566,7 @@ public class HomeBannerPresenter extends Presenter {
                 holder.marqueeAnimator = null;
 
                 // === 步骤 5：预加载后续可能出现的新海报（保险） ===
-                for (int k = 4; k <= 6; k++) {
+                for (int k = 3; k <= 5; k++) {
                     int idx = mod(newCenterIdx + k, n);
                     Vod v = holder.carouselVods.get(idx);
                     if (v != null && v.getPic() != null) {
@@ -615,8 +600,6 @@ public class HomeBannerPresenter extends Presenter {
         for (int i = 0; i < NUM_SLOTS; i++) {
             try { Glide.with(holder.binding.getRoot().getContext()).clear(holder.imgs[i]); } catch (Exception ignored) {}
         }
-        try { Glide.with(holder.binding.previewExo).clear(holder.binding.previewExo); } catch (Exception ignored) {}
-        activity.detachPreviewPlayer();
         resetScale(holder.binding.btnVod);
         resetScale(holder.binding.btnLive);
         resetScale(holder.binding.btnKeep);
@@ -637,7 +620,7 @@ public class HomeBannerPresenter extends Presenter {
 
         public final FrameLayout[] slots = new FrameLayout[NUM_SLOTS];
         public final android.widget.ImageView[] imgs = new android.widget.ImageView[NUM_SLOTS];
-        /** 每个物理 slot 当前承载的"逻辑位置"（-3..+4） */
+        /** 每个物理 slot 当前承载的"逻辑位置"（-4..+4 之间循环） */
         public final int[] slotPosition = new int[NUM_SLOTS];
         /** 每个物理 slot 当前绑定的数据索引（carouselVods 列表内的 index） */
         public final int[] slotDataIndex = new int[NUM_SLOTS];

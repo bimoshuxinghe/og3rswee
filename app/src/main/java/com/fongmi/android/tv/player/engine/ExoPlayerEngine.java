@@ -20,6 +20,8 @@ import com.fongmi.android.tv.utils.ResUtil;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import android.util.Log;
+
 public class ExoPlayerEngine implements PlayerEngine {
 
     private final ErrorMsgProvider provider;
@@ -187,15 +189,56 @@ public class ExoPlayerEngine implements PlayerEngine {
             }
             item = builder.build();
         }
-        
-        player.setMediaItem(item, position);
-        player.prepare();
-        player.play();
+
+        // 先确保播放器处于允许 setMediaItem(empty playlist) 的合法状态
+        ensureIdleOrEnded(player);
+        try {
+            player.setMediaItem(item, position);
+            player.prepare();
+            player.play();
+        } catch (Exception e) {
+            Log.w("ExoPlayerEngine", "startInternal failed, retry after stop+clear.", e);
+            try {
+                player.stop();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.clearMediaItems();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.setMediaItem(item, position);
+                player.prepare();
+                player.play();
+            } catch (Exception e2) {
+                Log.e("ExoPlayerEngine", "startInternal retry failed.", e2);
+            }
+        }
+    }
+
+    private static void ensureIdleOrEnded(Player player) {
+        if (player == null) return;
+        int state = player.getPlaybackState();
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return;
+        try {
+            player.stop();
+        } catch (Exception ignored) {
+        }
+        state = player.getPlaybackState();
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return;
+        try {
+            player.clearMediaItems();
+        } catch (Exception ignored) {
+        }
     }
 
     private ErrorAction seekToDefaultPosition() {
-        player.seekToDefaultPosition();
-        player.prepare();
+        try {
+            player.seekToDefaultPosition();
+            player.prepare();
+        } catch (Exception e) {
+            Log.w("ExoPlayerEngine", "seekToDefaultPosition failed.", e);
+        }
         return ErrorAction.RECOVERED;
     }
 

@@ -135,7 +135,6 @@
     <string name="setting_player">播放设置</string>
     <string name="setting_danmaku">弹幕设置</string>
     <string name="setting_incognito">无痕模式</string>
-    <string name="setting_live_preview">首页直播预览</string>
     <string name="setting_live_boot">开机直接进入直播</string>
     <string name="setting_theme_color">主题色彩</string>
     <string name="setting_home">首页设置</string>
@@ -174,7 +173,7 @@
     <string name="proxy_sub_no_supported">解析到 %1$d 个节点。点击测速找最快节点，或从节点列表手动选择</string>
     <string name="proxy_sub_selected">已选择：%1$s</string>
     <string name="proxy_sub_test_done">测速完成：最快 %1$s</string>
-    <string name="proxy_sub_need_core">加密节点请点“自动”，由内置 mihomo 选择可用线路</string>
+    <string name="proxy_sub_need_core">加密节点请点"自动"，由内置 mihomo 选择可用线路</string>
 
     <string name="proxy_sub_push">扫码推送</string>
     <string name="proxy_sub_push_title">代理地址推送</string>

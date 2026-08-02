@@ -15,6 +15,8 @@ import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.player.mpv.MpvSimplePlayer;
 import com.fongmi.android.tv.utils.ResUtil;
 
+import android.util.Log;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -86,9 +88,46 @@ public class MpvPlayerEngine implements PlayerEngine {
 
     @Override
     public void start(PlaySpec spec, long positionMs) {
-        player.setMediaItem(ExoUtil.getMediaItem(spec, decode), positionMs);
-        player.prepare();
-        player.play();
+        MediaItem item = ExoUtil.getMediaItem(spec, decode);
+        ensureIdleOrEnded(player);
+        try {
+            player.setMediaItem(item, positionMs);
+            player.prepare();
+            player.play();
+        } catch (Exception e) {
+            Log.w("MpvPlayerEngine", "start failed, retry after stop+clear.", e);
+            try {
+                player.stop();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.clearMediaItems();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.setMediaItem(item, positionMs);
+                player.prepare();
+                player.play();
+            } catch (Exception e2) {
+                Log.e("MpvPlayerEngine", "start retry failed.", e2);
+            }
+        }
+    }
+
+    private static void ensureIdleOrEnded(Player player) {
+        if (player == null) return;
+        int state = player.getPlaybackState();
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return;
+        try {
+            player.stop();
+        } catch (Exception ignored) {
+        }
+        state = player.getPlaybackState();
+        if (state == Player.STATE_IDLE || state == Player.STATE_ENDED) return;
+        try {
+            player.clearMediaItems();
+        } catch (Exception ignored) {
+        }
     }
 
     @Override

@@ -25,7 +25,6 @@ import androidx.leanback.widget.OnChildViewHolderSelectedListener;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
-import androidx.media3.common.MediaMetadata;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
@@ -83,17 +82,9 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import com.fongmi.android.tv.bean.HomeBanner;
 import com.fongmi.android.tv.ui.presenter.HomeBannerPresenter;
-import com.fongmi.android.tv.model.LiveViewModel;
-import com.fongmi.android.tv.bean.Channel;
-import com.fongmi.android.tv.bean.Group;
-import com.fongmi.android.tv.setting.LiveSetting;
-import com.fongmi.android.tv.setting.PlayerSetting;
-import com.fongmi.android.tv.utils.Task;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
-import androidx.media3.ui.PlayerView;
-import androidx.lifecycle.Observer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -121,13 +112,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private SiteViewModel mViewModel;
     private Result mResult;
     private Clock mClock;
-    private LiveViewModel mLiveViewModel;
     private TypeAdapter mTypeAdapter;
     private View mOldView;
     private ServiceConnection mPlaybackServiceConnection;
     private PlaybackService mPlaybackService;
-    private PlayerView mPreviewPlayerView;
-    private Observer<Result> mObserveLiveUrl;
     private final BroadcastReceiver mNetworkReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -444,9 +432,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             }
             // else: result 为空但 mResult 有 savedInstanceState 恢复的有效数据，保留现有数据，仅移除 progress
         });
-        mLiveViewModel = new ViewModelProvider(this).get(LiveViewModel.class);
-        mObserveLiveUrl = this::startLivePreview;
-        mLiveViewModel.url().observeForever(mObserveLiveUrl);
     }
 
     private void setAdapter() {
@@ -804,7 +789,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mClock.start();
         registerReceiver(mNetworkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
         updateNetworkState();
-        loadLivePreview();
     }
 
     @Override
@@ -812,7 +796,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         super.onPause();
         mClock.stop();
         unregisterReceiver(mNetworkReceiver);
-        stopPreview();
     }
 
     private FolderFragment getFragment() {
@@ -840,7 +823,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void exitApp() {
-        stopPreview();
         if (mPlaybackService != null) mPlaybackService.shutdown();
         else stopService(new Intent(this, PlaybackService.class));
         super.onBackInvoked();
@@ -865,9 +847,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     protected void onDestroy() {
         unbindPlaybackService();
-        if (mLiveViewModel != null && mObserveLiveUrl != null) {
-            mLiveViewModel.url().removeObserver(mObserveLiveUrl);
-        }
         DLNARendererService.stop(this);
         // 仅在用户真正退出App时才清空单例配置与数据源
         // 否则系统回收Activity（如播放视频时内存不足）后返回首页，VodConfig/LiveConfig为空会导致接口无数据
@@ -882,12 +861,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         super.onDestroy();
     }
 
-    private Channel mPreviewChannel;
-
     private void setHomeBanner(List<Vod> recommends) {
         mBinding.live.setVisibility(LiveConfig.hasUrl() ? View.VISIBLE : View.GONE);
 
-        HomeBanner banner = new HomeBanner(new ArrayList<>(), recommends, LiveSetting.isPreview());
+        HomeBanner banner = new HomeBanner(new ArrayList<>(), recommends);
         if (mAdapter.size() > 0 && mAdapter.get(0) instanceof HomeBanner) {
             mAdapter.replace(0, banner);
         } else {
@@ -900,10 +877,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             @Override
             public void onServiceConnected(ComponentName name, IBinder binder) {
                 mPlaybackService = ((PlaybackService.LocalBinder) binder).getService();
-                if (mPreviewPlayerView != null) {
-                    mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
-                }
-                loadLivePreview();
             }
 
             @Override
@@ -918,77 +891,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             unbindService(mPlaybackServiceConnection);
             mPlaybackServiceConnection = null;
             mPlaybackService = null;
-        }
-    }
-
-    private void loadLivePreview() {
-        if (mPlaybackService == null || !LiveSetting.isPreview()) return;
-        if (mPreviewPlayerView != null) {
-            try {
-                mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        Task.executor().submit(() -> {
-            LiveConfig.get().ensureLoaded();
-            runOnUiThread(() -> {
-                List<Group> groups = LiveConfig.get().getHome().getGroups();
-                if (groups.isEmpty()) return;
-                int[] position = LiveConfig.get().findKeepPosition(groups);
-                Group group = groups.get(position[0]);
-                Channel channel = group.getChannel().get(position[1]);
-                mPreviewChannel = channel;
-                try {
-                    mPlaybackService.player().getPlayer().setVolume(PlayerSetting.isHomeMute() ? 0f : 1.0f);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                mLiveViewModel.getUrl(channel);
-            });
-        });
-    }
-
-    private void startLivePreview(Result result) {
-        if (mPlaybackService == null || !LiveSetting.isPreview() || mPreviewPlayerView == null || mPreviewChannel == null) return;
-        try {
-            mPlaybackService.player().getPlayer().setVolume(PlayerSetting.isHomeMute() ? 0f : 1.0f);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        try {
-            MediaMetadata metadata = PlayerManager.buildMetadata(mPreviewChannel.getName(), "", "");
-            mPlaybackService.player().start(com.fongmi.android.tv.player.engine.PlaySpec.from(result, result.getRealUrl(), metadata), LiveConfig.get().getHome().getTimeout());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void attachPreviewPlayer(PlayerView view) {
-        this.mPreviewPlayerView = view;
-        if (mPlaybackService != null && mPreviewPlayerView != null) {
-            try {
-                mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            loadLivePreview();
-        }
-    }
-
-    public void detachPreviewPlayer() {
-        if (mPreviewPlayerView != null) {
-            mPreviewPlayerView.setPlayer(null);
-            mPreviewPlayerView = null;
-        }
-    }
-
-    public void stopPreview() {
-        if (mPreviewPlayerView != null) {
-            mPreviewPlayerView.setPlayer(null);
-        }
-        if (mPlaybackService != null) {
-            mPlaybackService.player().stop();
         }
     }
 
