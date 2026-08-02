@@ -422,7 +422,7 @@ public class PlayerManager implements ParseCallback {
             callback.onPlayerRebuild(player);
         } catch (Exception e) {
             e.printStackTrace();
-            if (callback != null) callback.onError(engine == null ? e.getMessage() : engine.getErrorMessage(e));
+            if (callback != null) callback.onError(engine != null && e instanceof PlaybackException ? engine.getErrorMessage((PlaybackException) e) : e.getMessage());
         }
     }
 
@@ -531,7 +531,7 @@ public class PlayerManager implements ParseCallback {
             engine.start(spec.checkUa(), positionMs);
         } catch (Exception e) {
             e.printStackTrace();
-            if (callback != null) callback.onError(engine == null ? e.getMessage() : engine.getErrorMessage(e));
+            if (callback != null) callback.onError(engine != null && e instanceof PlaybackException ? engine.getErrorMessage((PlaybackException) e) : e.getMessage());
         }
         pendingStartPositionMs = C.TIME_UNSET;
         App.post(runnable, timeout);
