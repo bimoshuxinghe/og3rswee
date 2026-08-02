@@ -196,7 +196,26 @@ public class ProxySubscriptionNodeDialog extends BaseAlertDialog {
             boolean selected = node != null && isSelected(node);
             view.setSelected(selected);
             TextView text = view.findViewById(android.R.id.text1);
-            if (node != null) text.setText((selected ? "* " : "  ") + node.getDisplay());
+            if (node != null) {
+                String prefix = (selected ? "* " : "  ");
+                String display = node.getDisplay();
+                String fullText = prefix + display;
+                if (node.getLatency() != 0) {
+                    // 使用 SpannableString 给延迟部分着色
+                    android.text.SpannableStringBuilder ssb = new android.text.SpannableStringBuilder(fullText);
+                    String latencyStr = node.getLatency() > 0 ? " · " + node.getLatency() + "ms"
+                            : node.getLatency() == -2 ? " · timeout" : "";
+                    if (!latencyStr.isEmpty()) {
+                        int start = fullText.length() - latencyStr.length();
+                        int end = fullText.length();
+                        ssb.setSpan(new android.text.style.ForegroundColorSpan(node.getLatencyColor()), start, end,
+                                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                    text.setText(ssb);
+                } else {
+                    text.setText(fullText);
+                }
+            }
             return view;
         }
     }

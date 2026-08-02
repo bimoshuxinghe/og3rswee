@@ -432,7 +432,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                     Result tempResult = new Result();
                     tempResult.setList(cachedResult.getList());
                     mAdapter.addAll(mResult = tempResult);
-                    hideProgress();
+                    // 有缓存时先显示内容，但保持进度条直到网络请求完成
                     showContent();
                 }
             } catch (Exception e) {

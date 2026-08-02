@@ -8,6 +8,7 @@ import com.fongmi.android.tv.setting.Setting;
 import com.github.catvod.net.OkHttp;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 import okhttp3.Call;
@@ -19,11 +20,37 @@ import okhttp3.Response;
 
 public class WebDavSync {
 
+    private static final String FOLDER_NAME = "星落";
+
+    private static String getFolderUrl(String url) {
+        if (!url.endsWith("/")) url += "/";
+        return url + URLEncoder.encode(FOLDER_NAME, StandardCharsets.UTF_8) + "/";
+    }
+
     private static String getBackupUrl(String url) {
-        if (!url.endsWith("/")) {
-            url += "/";
+        return getFolderUrl(url) + "fongmi_backup.json";
+    }
+
+    /**
+     * 创建星落文件夹（MKCOL），已存在则忽略
+     */
+    private static boolean createFolder(String url, String user, String pass) {
+        if (TextUtils.isEmpty(url) || TextUtils.isEmpty(user) || TextUtils.isEmpty(pass)) return false;
+        try {
+            String folderUrl = getFolderUrl(url);
+            Request request = new Request.Builder()
+                    .url(folderUrl)
+                    .header("Authorization", Credentials.basic(user, pass))
+                    .method("MKCOL", null)
+                    .build();
+            Response response = OkHttp.client(5000).newCall(request).execute();
+            int code = response.code();
+            response.close();
+            // 201=创建成功, 405=已存在, 301=重定向(部分服务端) 都视为成功
+            return code == 201 || code == 200 || code == 405;
+        } catch (Exception e) {
+            return false;
         }
-        return url + "fongmi_backup.json";
     }
 
     public static void test(String url, String user, String pass, com.fongmi.android.tv.impl.Callback callback) {
@@ -48,6 +75,9 @@ public class WebDavSync {
                 int code = response.code();
                 response.close();
                 if (code == 200 || code == 404) {
+                    // 验证通过，自动创建星落文件夹
+                    boolean folderCreated = createFolder(url, user, pass);
+                    android.util.Log.d("WebDavSync", "test: connection ok, folder created=" + folderCreated);
                     App.post(callback::success);
                 } else {
                     App.post(callback::error);
@@ -67,6 +97,9 @@ public class WebDavSync {
 
         Task.execute(() -> {
             try {
+                // 确保星落文件夹存在
+                createFolder(url, user, pass);
+
                 Backup backup = Backup.create();
                 String json = backup.toString();
                 byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
@@ -123,6 +156,26 @@ public class WebDavSync {
                     }
                 } else {
                     response.close();
+                    // 兼容旧备份：星落文件夹不存在时，尝试从根目录下载
+                    String oldUrl = url.endsWith("/") ? url + "fongmi_backup.json" : url + "/fongmi_backup.json";
+                    Request oldRequest = new Request.Builder()
+                            .url(oldUrl)
+                            .header("Authorization", Credentials.basic(user, pass))
+                            .build();
+                    Response oldResponse = OkHttp.client(10000).newCall(oldRequest).execute();
+                    if (oldResponse.isSuccessful()) {
+                        String json = oldResponse.body().string();
+                        oldResponse.close();
+                        Backup backup = Backup.objectFrom(json);
+                        if (!backup.getConfig().isEmpty() || !backup.getSite().isEmpty()) {
+                            backup.restore();
+                            // 迁移到星落文件夹
+                            createFolder(url, user, pass);
+                            if (callback != null) App.post(callback::success);
+                            return;
+                        }
+                    }
+                    oldResponse.close();
                     if (callback != null) App.post(callback::error);
                 }
             } catch (Exception e) {

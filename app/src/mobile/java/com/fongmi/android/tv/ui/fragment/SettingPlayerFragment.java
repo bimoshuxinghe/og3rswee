@@ -591,6 +591,32 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
             public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
         });
 
+        // 歌词颜色选择器
+        int[] lrcColors = {0xFFFFD700, 0xFF4CAF50, 0xFF00BCD4, 0xFF2196F3, 0xFF9C27B0, 0xFFF44336, 0xFFFF9800, 0xFFFFFFFF};
+        int savedColor = PlayerSetting.getLrcColor();
+        final int[] selectedColor = {savedColor};
+        float density = getResources().getDisplayMetrics().density;
+        for (int c : lrcColors) {
+            View circle = new View(requireContext());
+            int size = (int) (32 * density);
+            int margin = (int) (5 * density);
+            android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(size, size);
+            params.setMargins(margin, 0, margin, 0);
+            circle.setLayoutParams(params);
+            circle.setTag(c);
+            applyColorCircle(circle, c, c == selectedColor[0], density);
+            final int color = c;
+            circle.setOnClickListener(v -> {
+                selectedColor[0] = color;
+                for (int j = 0; j < binding.lrcColorContainer.getChildCount(); j++) {
+                    View child = binding.lrcColorContainer.getChildAt(j);
+                    int childColor = (int) child.getTag();
+                    applyColorCircle(child, childColor, childColor == color, density);
+                }
+            });
+            binding.lrcColorContainer.addView(circle);
+        }
+
         new MaterialAlertDialogBuilder(requireActivity())
                 .setTitle(R.string.player_lrc_size)
                 .setView(binding.getRoot())
@@ -598,11 +624,24 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
                     float size = 24f + binding.lrcSizeSeek.getProgress();
                     PlayerSetting.putLrcTextSize(size);
+                    PlayerSetting.putLrcColor(selectedColor[0]);
                     mBinding.lrcSizeText.setText(String.valueOf((int) size));
                     com.fongmi.android.tv.event.RefreshEvent.subtitle("");
                 })
                 .show();
 
+    }
+
+    private void applyColorCircle(View circle, int color, boolean selected, float density) {
+        android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+        drawable.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        drawable.setColor(color);
+        if (selected) {
+            drawable.setStroke((int) (3 * density), android.graphics.Color.WHITE);
+        } else {
+            drawable.setStroke((int) (1 * density), 0x33FFFFFF);
+        }
+        circle.setBackground(drawable);
     }
 
     private void setAudioDecode(View view) {

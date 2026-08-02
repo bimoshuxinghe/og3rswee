@@ -138,6 +138,17 @@ public class ProxyNode {
         return getName() + type + speed;
     }
 
+    /**
+     * 获取延迟对应的颜色：
+     * latency > 0 且 < 2000ms → 绿色
+     * latency >= 2000ms → 红色
+     * latency <= 0（未测试/超时）→ 红色
+     */
+    public int getLatencyColor() {
+        if (latency > 0 && latency < 2000) return android.graphics.Color.parseColor("#4CAF50");
+        return android.graphics.Color.parseColor("#F44336");
+    }
+
     @NonNull
     @Override
     public String toString() {

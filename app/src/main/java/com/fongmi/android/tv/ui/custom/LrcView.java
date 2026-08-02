@@ -101,6 +101,16 @@ public class LrcView extends View {
         return textSize;
     }
 
+    public void setCurrentColor(int color) {
+        this.currentColor = color;
+        currentPaint.setColor(color);
+        invalidate();
+    }
+
+    public int getCurrentColor() {
+        return currentColor;
+    }
+
     public void setData(String data) {
         stop();
         entries = parseLrc(data);

@@ -117,6 +117,28 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         mBinding.recycler.setTranslationY(-ResUtil.dp2px(getY()));
         mBinding.recycler.setHasFixedSize(true);
         setStyle(getStyle());
+        updateBottomPadding();
+    }
+
+    private void updateBottomPadding() {
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(mBinding.recycler, (v, insets) -> {
+            int bottom = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom;
+            boolean capsule = com.fongmi.android.tv.setting.Setting.isHomeCapsule();
+            int paddingBottom;
+            if (capsule) {
+                paddingBottom = bottom + ResUtil.dp2px(56) + ResUtil.dp2px(16) + ResUtil.dp2px(16);
+            } else {
+                paddingBottom = ResUtil.dp2px(16);
+            }
+            mBinding.recycler.setPadding(
+                mBinding.recycler.getPaddingLeft(),
+                mBinding.recycler.getPaddingTop(),
+                mBinding.recycler.getPaddingRight(),
+                paddingBottom
+            );
+            return insets;
+        });
+        androidx.core.view.ViewCompat.requestApplyInsets(mBinding.recycler);
     }
 
     private void setStyle(Style style) {
@@ -140,7 +162,13 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
             if (!mBinding.swipeLayout.isRefreshing()) mBinding.progressLayout.showProgress();
             if (isHome()) {
                 FolderFragment parent = getParent();
-                if (parent != null) setAdapter(parent.getResult());
+                if (parent != null) {
+                    Result parentResult = parent.getResult();
+                    if (parentResult != null && parentResult.getList() != null && !parentResult.getList().isEmpty()) {
+                        setAdapter(parentResult);
+                    }
+                    // 如果父级结果为空（py线路还在加载），保持转圈状态，等父级加载完成后通过setResult回调更新
+                }
             } else {
                 getVideo(getTypeId(), "1");
             }
@@ -163,6 +191,11 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     public void setResult(Result result) {
         boolean first = mScroller.first();
         int size = result.getList().size();
+        if (isHome() && size == 0) {
+            // 首页tab且结果为空（py线路可能还在加载或加载失败），保持转圈状态
+            mBinding.swipeLayout.setRefreshing(false);
+            return;
+        }
         mBinding.progressLayout.showContent(first, size);
         mBinding.swipeLayout.setRefreshing(false);
         mScroller.endLoading(result);

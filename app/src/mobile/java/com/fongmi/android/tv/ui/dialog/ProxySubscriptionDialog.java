@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -166,7 +167,33 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
     }
 
     private void showNodeList(List<ProxyNode> nodes) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireActivity(), android.R.layout.simple_list_item_single_choice, getDisplays(nodes));
+        ArrayAdapter<ProxyNode> adapter = new ArrayAdapter<ProxyNode>(requireActivity(), android.R.layout.simple_list_item_single_choice, nodes) {
+            @NonNull
+            @Override
+            public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                ProxyNode node = getItem(position);
+                TextView text = view.findViewById(android.R.id.text1);
+                if (node != null) {
+                    String display = node.getDisplay();
+                    if (node.getLatency() != 0) {
+                        android.text.SpannableStringBuilder ssb = new android.text.SpannableStringBuilder(display);
+                        String latencyStr = node.getLatency() > 0 ? " · " + node.getLatency() + "ms"
+                                : node.getLatency() == -2 ? " · timeout" : "";
+                        if (!latencyStr.isEmpty()) {
+                            int start = display.length() - latencyStr.length();
+                            int end = display.length();
+                            ssb.setSpan(new android.text.style.ForegroundColorSpan(node.getLatencyColor()), start, end,
+                                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        }
+                        text.setText(ssb);
+                    } else {
+                        text.setText(display);
+                    }
+                }
+                return view;
+            }
+        };
         new MaterialAlertDialogBuilder(requireActivity())
                 .setTitle(R.string.proxy_sub_nodes)
                 .setNegativeButton(R.string.dialog_negative, null)
@@ -174,7 +201,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                 .show();
     }
 
-    private void selectNode(android.content.DialogInterface dialog, List<ProxyNode> nodes, ArrayAdapter<String> adapter, int which) {
+    private void selectNode(android.content.DialogInterface dialog, List<ProxyNode> nodes, ArrayAdapter<?> adapter, int which) {
         ProxyNode node = nodes.get(which);
         dialog.dismiss();
         Notify.progress(requireActivity());

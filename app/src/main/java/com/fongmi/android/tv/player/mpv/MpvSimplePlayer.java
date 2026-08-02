@@ -845,7 +845,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             builder.append(" - ").append(title);
         } else {
             if (!TextUtils.isEmpty(lang) && !"und".equals(lang)) builder.append(" [").append(lang).append("]");
-            if (!TextUtils.isEmpty(codec)) builder.append(" ").append(codec);
+            if (!TextUtils.isEmpty(codec)) builder.append(" ").append(codec.toUpperCase(Locale.ROOT));
             if (trackType == C.TRACK_TYPE_VIDEO) {
                 Integer w = safeGetInt("track-list/" + index + "/demux-w");
                 if (w == null || w <= 0) w = safeGetInt("track-list/" + index + "/w");

@@ -26,7 +26,7 @@ import java.util.Set;
 public class ProxySubscriptionManager {
 
     private static final String NAME = "subscription";
-    private static final int MAX_TEST = 60;
+    private static final int MAX_THREADS = 20;
     private static final String TEST_HOST = "www.gstatic.com";
     private static final String TEST_URL = "https://" + TEST_HOST + "/generate_204";
     private static final int TEST_TIMEOUT = 5000;
@@ -263,10 +263,24 @@ public class ProxySubscriptionManager {
     }
 
     private String fetch(String url) {
-        String[] userAgents = {"Clash Verge/2.0.0", "ClashforWindows/0.20.39", "v2rayN/6.0", "Shadowrocket/1900", "Mozilla/5.0"};
+        String[] userAgents = {
+            "Clash Verge/2.0.0", "ClashforWindows/0.20.39", "clash-meta/1.18.0",
+            "v2rayN/6.0", "Shadowrocket/1900", "Quantumult/1.0",
+            "Surge/5.0", "Mozilla/5.0"
+        };
         for (String ua : userAgents) {
-            String text = OkHttp.string(url, Map.of("User-Agent", ua, "Accept", "text/plain, application/json, */*"));
-            if (!TextUtils.isEmpty(text) && text.length() > 10) return text;
+            try {
+                String text = OkHttp.string(url, Map.of(
+                    "User-Agent", ua,
+                    "Accept", "text/plain, application/json, application/yaml, */*"
+                ));
+                if (!TextUtils.isEmpty(text) && text.length() > 10) {
+                    android.util.Log.d("ProxySub", "fetch: success with UA=" + ua + " len=" + text.length());
+                    return text;
+                }
+            } catch (Exception e) {
+                android.util.Log.w("ProxySub", "fetch: failed with UA=" + ua + " err=" + e.getMessage());
+            }
         }
         return OkHttp.string(url);
     }
@@ -282,13 +296,54 @@ public class ProxySubscriptionManager {
     }
 
     public synchronized List<ProxyNode> testAll() {
-        int tested = 0;
-        for (ProxyNode node : getNodes()) {
-            if (tested++ >= MAX_TEST) break;
-            node.setLatency(test(node));
+        List<ProxyNode> allNodes = getNodes();
+        if (allNodes.isEmpty()) return allNodes;
+        // 分离可并发检测的节点（TCP直连）和需要mihomo的节点（需顺序检测）
+        List<ProxyNode> parallelNodes = new ArrayList<>();
+        List<ProxyNode> sequentialNodes = new ArrayList<>();
+        for (ProxyNode node : allNodes) {
+            if (node.isSupported()) parallelNodes.add(node);
+            else sequentialNodes.add(node);
+        }
+        // 并发检测支持直连的节点
+        if (!parallelNodes.isEmpty()) {
+            java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(Math.min(MAX_THREADS, parallelNodes.size()));
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(parallelNodes.size());
+            for (ProxyNode node : parallelNodes) {
+                executor.submit(() -> {
+                    try {
+                        node.setLatency(testDirect(node));
+                    } catch (Exception e) {
+                        node.setLatency(-1);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            try {
+                latch.await(60, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            executor.shutdownNow();
+        }
+        // 顺序检测需要mihomo的节点
+        for (ProxyNode node : sequentialNodes) {
+            node.setLatency(testMihomo(node));
         }
         saveNodes(getNodes());
         return getNodes();
+    }
+
+    private long testDirect(ProxyNode node) {
+        if (node == null) return -1;
+        long start = System.currentTimeMillis();
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(node.getHost(), node.getPort()), 2500);
+            return System.currentTimeMillis() - start;
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     public synchronized long testOne(ProxyNode node) {
@@ -386,13 +441,22 @@ public class ProxySubscriptionManager {
 
     private List<ProxyNode> parse(String text) {
         Map<String, ProxyNode> result = new LinkedHashMap<>();
-        addLines(result, text);
         String decoded = decode(text);
-        addLines(result, decoded);
+        String decodedRaw = decodeRaw(text);
+        // 尝试原始文本
+        addLines(result, text);
         addClash(result, text);
-        addClash(result, decoded);
         addSip008(result, text);
+        addClashJson(result, text);
+        // 尝试base64解码后的文本
+        addLines(result, decoded);
+        addLines(result, decodedRaw);
+        addClash(result, decoded);
+        addClash(result, decodedRaw);
         addSip008(result, decoded);
+        addSip008(result, decodedRaw);
+        addClashJson(result, decoded);
+        addClashJson(result, decodedRaw);
         List<ProxyNode> nodes = new ArrayList<>();
         for (ProxyNode node : result.values()) if (isValidNode(node)) nodes.add(node);
         return nodes;
@@ -533,27 +597,87 @@ public class ProxySubscriptionManager {
     }
 
     private void addSip008(Map<String, ProxyNode> result, String text) {
-        if (TextUtils.isEmpty(text) || !text.trim().startsWith("{") && !text.trim().startsWith("[")) return;
+        if (TextUtils.isEmpty(text)) return;
+        String trimmed = text.trim();
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return;
         try {
-            com.google.gson.JsonElement element = App.gson().fromJson(text, com.google.gson.JsonElement.class);
-            if (element == null || !element.isJsonObject()) return;
+            com.google.gson.JsonElement element = App.gson().fromJson(trimmed, com.google.gson.JsonElement.class);
+            if (element == null) return;
+            // 支持 JSON 数组格式：[{...}, {...}]
+            if (element.isJsonArray()) {
+                for (com.google.gson.JsonElement item : element.getAsJsonArray()) {
+                    if (!item.isJsonObject()) continue;
+                    parseSip008Server(result, item.getAsJsonObject());
+                }
+                return;
+            }
+            // 支持 JSON 对象格式：{"servers": [{...}, ...]}
+            if (!element.isJsonObject()) return;
             JsonObject root = element.getAsJsonObject();
             if (!root.has("servers")) return;
             for (com.google.gson.JsonElement item : root.getAsJsonArray("servers")) {
                 if (!item.isJsonObject()) continue;
-                JsonObject server = item.getAsJsonObject();
-                String serverAddr = server.has("server") ? server.get("server").getAsString() : "";
-                int port = server.has("server_port") ? server.get("server_port").getAsInt() : (server.has("port") ? server.get("port").getAsInt() : -1);
-                if (TextUtils.isEmpty(serverAddr) || port <= 0) continue;
-                String name = server.has("remarks") ? server.get("remarks").getAsString() : (server.has("name") ? server.get("name").getAsString() : serverAddr + ":" + port);
-                String method = server.has("method") ? server.get("method").getAsString() : "";
-                String password = server.has("password") ? server.get("password").getAsString() : "";
-                String ssUri = "ss://" + android.util.Base64.encodeToString((method + ":" + password).getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP) + "@" + serverAddr + ":" + port + "#" + Uri.encode(name);
-                ProxyNode node = makeNode(name, "ss", ssUri);
-                result.putIfAbsent(ssUri, node);
+                parseSip008Server(result, item.getAsJsonObject());
             }
         } catch (Exception e) {
             // Not SIP008 format
+        }
+    }
+
+    private void parseSip008Server(Map<String, ProxyNode> result, JsonObject server) {
+        String serverAddr = server.has("server") ? server.get("server").getAsString() : "";
+        int port = server.has("server_port") ? server.get("server_port").getAsInt() : (server.has("port") ? server.get("port").getAsInt() : -1);
+        if (TextUtils.isEmpty(serverAddr) || port <= 0) return;
+        String name = server.has("remarks") ? server.get("remarks").getAsString() : (server.has("name") ? server.get("name").getAsString() : serverAddr + ":" + port);
+        String method = server.has("method") ? server.get("method").getAsString() : "";
+        String password = server.has("password") ? server.get("password").getAsString() : "";
+        String ssUri = "ss://" + android.util.Base64.encodeToString((method + ":" + password).getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP) + "@" + serverAddr + ":" + port + "#" + Uri.encode(name);
+        ProxyNode node = makeNode(name, "ss", ssUri);
+        result.putIfAbsent(ssUri, node);
+    }
+
+    /**
+     * 解析 Clash API JSON 格式的订阅（proxies 为 JSON 数组）
+     * 例如：{"proxies": [{"name": "node1", "type": "vmess", "server": "...", "port": 443, ...}]}
+     */
+    private void addClashJson(Map<String, ProxyNode> result, String text) {
+        if (TextUtils.isEmpty(text)) return;
+        String trimmed = text.trim();
+        if (!trimmed.startsWith("{")) return;
+        try {
+            com.google.gson.JsonElement element = App.gson().fromJson(trimmed, com.google.gson.JsonElement.class);
+            if (element == null || !element.isJsonObject()) return;
+            JsonObject root = element.getAsJsonObject();
+            if (!root.has("proxies") || !root.get("proxies").isJsonArray()) return;
+            for (com.google.gson.JsonElement item : root.getAsJsonArray("proxies")) {
+                if (!item.isJsonObject()) continue;
+                JsonObject proxy = item.getAsJsonObject();
+                String name = proxy.has("name") ? proxy.get("name").getAsString() : "";
+                String type = proxy.has("type") ? proxy.get("type").getAsString() : "";
+                String server = proxy.has("server") ? proxy.get("server").getAsString() : "";
+                int port = proxy.has("port") ? proxy.get("port").getAsInt() : -1;
+                if (TextUtils.isEmpty(type) || TextUtils.isEmpty(server) || port <= 0) continue;
+                // 生成 YAML 片段
+                StringBuilder yaml = new StringBuilder();
+                yaml.append("- name: ").append(name).append("\n");
+                yaml.append("  type: ").append(type).append("\n");
+                yaml.append("  server: ").append(server).append("\n");
+                yaml.append("  port: ").append(port).append("\n");
+                for (Map.Entry<String, com.google.gson.JsonElement> entry : proxy.entrySet()) {
+                    String key = entry.getKey();
+                    if (key.equals("name") || key.equals("type") || key.equals("server") || key.equals("port")) continue;
+                    String val = entry.getValue().isJsonPrimitive() ? entry.getValue().getAsString() : entry.getValue().toString();
+                    yaml.append("  ").append(key).append(": ").append(val).append("\n");
+                }
+                ProxyNode node = clashNode(name, type, server, port);
+                if (node != null) {
+                    node.setProxyYaml(yaml.toString());
+                    result.putIfAbsent(node.isSupported() ? node.getUrl() : name + type + server + port, node);
+                }
+            }
+            android.util.Log.d("ProxySub", "addClashJson: parsed " + root.getAsJsonArray("proxies").size() + " proxies from JSON");
+        } catch (Exception e) {
+            // Not Clash JSON format
         }
     }
 
@@ -561,10 +685,28 @@ public class ProxySubscriptionManager {
         return !TextUtils.isEmpty(text) && text.contains("proxies:");
     }
 
+    private boolean isClashJsonConfig(String text) {
+        if (TextUtils.isEmpty(text)) return false;
+        String trimmed = text.trim();
+        if (!trimmed.startsWith("{")) return false;
+        try {
+            com.google.gson.JsonElement element = App.gson().fromJson(trimmed, com.google.gson.JsonElement.class);
+            return element != null && element.isJsonObject() && element.getAsJsonObject().has("proxies");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private String getClashConfig(String text) {
         if (isClashConfig(text)) return text;
+        if (isClashJsonConfig(text)) return text;
         String decoded = decode(text);
-        return isClashConfig(decoded) ? decoded : "";
+        if (isClashConfig(decoded)) return decoded;
+        if (isClashJsonConfig(decoded)) return decoded;
+        String decodedRaw = decodeRaw(text);
+        if (isClashConfig(decodedRaw)) return decodedRaw;
+        if (isClashJsonConfig(decodedRaw)) return decodedRaw;
+        return "";
     }
 
     private boolean hasCoreNodes() {
@@ -1097,6 +1239,28 @@ public class ProxySubscriptionManager {
         result = tryDecode(value, Base64.URL_SAFE | Base64.NO_WRAP);
         if (result.contains("://")) return result;
         return "";
+    }
+
+    /**
+     * 解码base64内容，不限制解码结果必须包含 "://"
+     * 用于解析base64编码的JSON订阅（如Clash API JSON、SIP008等）
+     */
+    private String decodeRaw(String text) {
+        if (TextUtils.isEmpty(text)) return "";
+        String value = text.trim().replace("\n", "").replace("\r", "").replace(" ", "");
+        // 如果原文已经是可读内容（包含中文或JSON结构），不需要解码
+        if (value.startsWith("{") || value.startsWith("[") || value.contains("proxies:") || value.contains("://")) return "";
+        String result = tryDecode(value, Base64.NO_WRAP);
+        if (isValidDecoded(result)) return result;
+        result = tryDecode(value, Base64.URL_SAFE | Base64.NO_WRAP);
+        if (isValidDecoded(result)) return result;
+        return "";
+    }
+
+    private boolean isValidDecoded(String text) {
+        if (TextUtils.isEmpty(text) || text.length() < 10) return false;
+        // 检查解码结果是否为有效内容（JSON、YAML或代理链接）
+        return text.contains("{") || text.contains("proxies:") || text.contains("://") || text.contains("servers:");
     }
 
     private String tryDecode(String value, int flags) {

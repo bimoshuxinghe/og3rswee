@@ -210,6 +210,7 @@
     <string name="player_detail_poster">Detail page poster background</string>
     <string name="player_home_carousel">Home carousel poster</string>
     <string name="player_lrc_size">Lyrics font size</string>
+    <string name="player_lrc_color">Lyrics color</string>
     <string name="player_home_mute">Home screen mute</string>
     <string name="player_preload_setting">Preload setting</string>
     <string name="player_preload">Preload</string>

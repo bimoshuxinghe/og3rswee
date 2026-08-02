@@ -249,6 +249,14 @@ public class PlayerSetting {
         Prefers.put("lrc_text_size", Math.min(Math.max(size, 24f), 80f));
     }
 
+    public static int getLrcColor() {
+        return Prefers.getInt("lrc_color", 0xFFFFD700);
+    }
+
+    public static void putLrcColor(int color) {
+        Prefers.put("lrc_color", color);
+    }
+
     public static float getSpeed() {
         return Math.min(Math.max(Prefers.getFloat("speed", 3), 2), 5);
     }
