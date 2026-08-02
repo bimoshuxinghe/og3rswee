@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - mobile-v8a
   workflow_dispatch:
 
 permissions:
