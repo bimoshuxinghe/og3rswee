@@ -515,6 +515,7 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
     protected void onStateChanged(int state) {
         switch (state) {
             case Player.STATE_BUFFERING:
+                showProgress();
                 break;
             case Player.STATE_READY:
                 if (mPendingPlay) {

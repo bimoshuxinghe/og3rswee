@@ -291,6 +291,16 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         if (mBinding.contentLayout.getTranslationY() != translation) {
             mBinding.contentLayout.setTranslationY(translation);
         }
+        // 补偿translationY导致的底部裁剪：用paddingBottom缩小内容区域
+        int padBottom = Math.round(translation);
+        if (mBinding.contentLayout.getPaddingBottom() != padBottom) {
+            mBinding.contentLayout.setPadding(
+                mBinding.contentLayout.getPaddingLeft(),
+                mBinding.contentLayout.getPaddingTop(),
+                mBinding.contentLayout.getPaddingRight(),
+                padBottom
+            );
+        }
     }
 
     private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
@@ -307,6 +317,15 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         }
         if (mBinding.contentLayout.getTranslationY() != translation) {
             mBinding.contentLayout.setTranslationY(translation);
+        }
+        int padBottom = Math.round(translation);
+        if (mBinding.contentLayout.getPaddingBottom() != padBottom) {
+            mBinding.contentLayout.setPadding(
+                mBinding.contentLayout.getPaddingLeft(),
+                mBinding.contentLayout.getPaddingTop(),
+                mBinding.contentLayout.getPaddingRight(),
+                padBottom
+            );
         }
     }
 

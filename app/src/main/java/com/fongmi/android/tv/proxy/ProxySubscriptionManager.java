@@ -26,10 +26,12 @@ import java.util.Set;
 public class ProxySubscriptionManager {
 
     private static final String NAME = "subscription";
-    private static final int MAX_THREADS = 20;
+    private static final int MAX_THREADS = 50;
+    private static final int TCP_TIMEOUT = 1000;
+    private static final int DELAY_TIMEOUT = 3000;
     private static final String TEST_HOST = "www.gstatic.com";
     private static final String TEST_URL = "https://" + TEST_HOST + "/generate_204";
-    private static final int TEST_TIMEOUT = 5000;
+    private static final int TEST_TIMEOUT = 3000;
     private static final String[] FILTER_NAMES = {"更新订阅", "特殊时期", "如果是", "客户端太旧", "请到网站", "更新一下客户端"};
 
     private List<ProxyNode> nodes;
@@ -298,50 +300,187 @@ public class ProxySubscriptionManager {
     public synchronized List<ProxyNode> testAll() {
         List<ProxyNode> allNodes = getNodes();
         if (allNodes.isEmpty()) return allNodes;
-        // 分离可并发检测的节点（TCP直连）和需要mihomo的节点（需顺序检测）
-        List<ProxyNode> parallelNodes = new ArrayList<>();
-        List<ProxyNode> sequentialNodes = new ArrayList<>();
+
+        long startTime = System.currentTimeMillis();
+
+        // 阶段1：对所有节点进行快速TCP可达性测试（50线程并发），过滤掉不可达的节点
+        android.util.Log.d("ProxySub", "testAll: phase 1 - TCP reachability test for " + allNodes.size() + " nodes");
+        int tcpThreads = Math.min(MAX_THREADS, allNodes.size());
+        java.util.concurrent.ExecutorService tcpExecutor = java.util.concurrent.Executors.newFixedThreadPool(tcpThreads);
+        java.util.concurrent.CountDownLatch tcpLatch = new java.util.concurrent.CountDownLatch(allNodes.size());
         for (ProxyNode node : allNodes) {
-            if (node.isSupported()) parallelNodes.add(node);
-            else sequentialNodes.add(node);
+            tcpExecutor.submit(() -> {
+                try {
+                    node.setLatency(testTcpReachability(node));
+                } catch (Exception e) {
+                    node.setLatency(-1);
+                } finally {
+                    tcpLatch.countDown();
+                }
+            });
         }
-        // 并发检测支持直连的节点
-        if (!parallelNodes.isEmpty()) {
-            java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(Math.min(MAX_THREADS, parallelNodes.size()));
-            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(parallelNodes.size());
-            for (ProxyNode node : parallelNodes) {
-                executor.submit(() -> {
-                    try {
-                        node.setLatency(testDirect(node));
-                    } catch (Exception e) {
-                        node.setLatency(-1);
-                    } finally {
-                        latch.countDown();
-                    }
-                });
+        try {
+            tcpLatch.await(20, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        tcpExecutor.shutdownNow();
+        android.util.Log.d("ProxySub", "testAll: phase 1 done in " + (System.currentTimeMillis() - startTime) + "ms");
+
+        // 分离结果
+        List<ProxyNode> reachableNodes = new ArrayList<>();
+        List<ProxyNode> mihomoNodes = new ArrayList<>();
+        for (ProxyNode node : allNodes) {
+            if (node.getLatency() > 0) {
+                if (node.isSupported()) {
+                    // 直连节点：TCP延迟即为最终结果
+                    reachableNodes.add(node);
+                } else {
+                    // mihomo节点：重置为0，待阶段2测试
+                    node.setLatency(0);
+                    mihomoNodes.add(node);
+                }
             }
-            try {
-                latch.await(60, java.util.concurrent.TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            executor.shutdownNow();
         }
-        // 顺序检测需要mihomo的节点
-        for (ProxyNode node : sequentialNodes) {
-            node.setLatency(testMihomo(node));
+        android.util.Log.d("ProxySub", "testAll: " + reachableNodes.size() + " direct, " + mihomoNodes.size() + " mihomo, " + (allNodes.size() - reachableNodes.size() - mihomoNodes.size()) + " unreachable");
+
+        // 阶段2：对mihomo可达节点，通过mihomo delay API并行测试（无需切换selector）
+        if (!mihomoNodes.isEmpty()) {
+            long phase2Start = System.currentTimeMillis();
+            android.util.Log.d("ProxySub", "testAll: phase 2 - mihomo delay API test for " + mihomoNodes.size() + " nodes");
+            testMihomoNodesViaApi(mihomoNodes);
+            android.util.Log.d("ProxySub", "testAll: phase 2 done in " + (System.currentTimeMillis() - phase2Start) + "ms");
         }
+
+        android.util.Log.d("ProxySub", "testAll: total time " + (System.currentTimeMillis() - startTime) + "ms");
         saveNodes(getNodes());
         return getNodes();
     }
 
-    private long testDirect(ProxyNode node) {
+    /**
+     * 快速TCP可达性测试：测试节点的server:port是否可连接
+     */
+    private long testTcpReachability(ProxyNode node) {
         if (node == null) return -1;
+        if (TextUtils.isEmpty(node.getHost()) || node.getPort() <= 0) return -1;
         long start = System.currentTimeMillis();
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(node.getHost(), node.getPort()), 2500);
+            socket.connect(new InetSocketAddress(node.getHost(), node.getPort()), TCP_TIMEOUT);
             return System.currentTimeMillis() - start;
         } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * 通过mihomo delay API并行测试所有节点延迟
+     * API: GET /proxies/{name}/delay?url=...&timeout=...
+     * 无需切换selector，可完全并行
+     */
+    private void testMihomoNodesViaApi(List<ProxyNode> mihomoNodes) {
+        String config = getConfig();
+        if (TextUtils.isEmpty(config)) {
+            android.util.Log.e("ProxySub", "testMihomoNodesViaApi: config empty, fallback to sequential");
+            for (ProxyNode node : mihomoNodes) {
+                node.setLatency(testMihomo(node));
+            }
+            return;
+        }
+        // 启动mihomo（使用第一个节点作为初始选择）
+        String firstName = mihomoNodes.get(0).getName();
+        if (!MihomoManager.get().start(config, firstName)) {
+            android.util.Log.e("ProxySub", "testMihomoNodesViaApi: mihomo start failed, fallback to sequential");
+            for (ProxyNode node : mihomoNodes) {
+                node.setLatency(testMihomo(node));
+            }
+            return;
+        }
+        // 等待mihomo就绪
+        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+
+        // 保存用户当前选中的节点，测试后恢复
+        String originalName = Setting.getProxySubscriptionCoreName();
+
+        // 并行调用delay API测试所有节点
+        int threads = Math.min(30, mihomoNodes.size());
+        java.util.concurrent.ExecutorService delayExecutor = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.concurrent.CountDownLatch delayLatch = new java.util.concurrent.CountDownLatch(mihomoNodes.size());
+        for (ProxyNode node : mihomoNodes) {
+            delayExecutor.submit(() -> {
+                try {
+                    long latency = testDelayViaApi(node.getName());
+                    node.setLatency(latency);
+                } catch (Exception e) {
+                    node.setLatency(-1);
+                } finally {
+                    delayLatch.countDown();
+                }
+            });
+        }
+        try {
+            // 每个请求最多DELAY_TIMEOUT+1秒，等待所有完成
+            delayLatch.await(DELAY_TIMEOUT + 1, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        delayExecutor.shutdownNow();
+
+        // 恢复用户原来选中的节点
+        if (!TextUtils.isEmpty(originalName) && !originalName.equals(firstName)) {
+            switchSelectorViaApi(originalName);
+        }
+    }
+
+    /**
+     * 通过API切换XYS_PROXY组的选中节点
+     */
+    private void switchSelectorViaApi(String name) {
+        try {
+            String apiUrl = "http://127.0.0.1:" + MihomoManager.getControllerPort() + "/proxies/XYS_PROXY";
+            JsonObject body = new JsonObject();
+            body.addProperty("name", name);
+            okhttp3.MediaType jsonType = okhttp3.MediaType.parse("application/json; charset=utf-8");
+            okhttp3.Request request = new okhttp3.Request.Builder()
+                    .url(apiUrl)
+                    .put(okhttp3.RequestBody.create(body.toString(), jsonType))
+                    .build();
+            try (okhttp3.Response response = OkHttp.client(2000).newCall(request).execute()) {
+                android.util.Log.d("ProxySub", "switchSelectorViaApi: " + name + " -> " + response.code());
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ProxySub", "switchSelectorViaApi error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 调用mihomo的delay API测试单个节点延迟
+     * GET /proxies/{name}/delay?url=https://www.gstatic.com/generate_204&timeout=3000
+     * 返回: {"delay": 123}
+     */
+    private long testDelayViaApi(String name) {
+        try {
+            String encodedName = java.net.URLEncoder.encode(name, "UTF-8");
+            String apiUrl = "http://127.0.0.1:" + MihomoManager.getControllerPort()
+                    + "/proxies/" + encodedName + "/delay"
+                    + "?url=" + java.net.URLEncoder.encode(TEST_URL, "UTF-8")
+                    + "&timeout=" + DELAY_TIMEOUT;
+            okhttp3.Request request = new okhttp3.Request.Builder().url(apiUrl).get().build();
+            try (okhttp3.Response response = OkHttp.client(DELAY_TIMEOUT + 1000).newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    android.util.Log.w("ProxySub", "testDelayViaApi: " + name + " HTTP " + response.code());
+                    return -1;
+                }
+                String body = response.body() != null ? response.body().string() : "";
+                JsonObject json = App.gson().fromJson(body, JsonObject.class);
+                if (json != null && json.has("delay")) {
+                    long delay = json.get("delay").getAsLong();
+                    android.util.Log.d("ProxySub", "testDelayViaApi: " + name + " delay=" + delay);
+                    return delay;
+                }
+                return -1;
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ProxySub", "testDelayViaApi: " + name + " error: " + e.getMessage());
             return -1;
         }
     }

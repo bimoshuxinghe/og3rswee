@@ -358,6 +358,17 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 playbackState = Player.STATE_ENDED;
                 loading = false;
             }
+            if ("paused-for-cache".equals(property)) {
+                if (value) {
+                    playbackState = Player.STATE_BUFFERING;
+                    loading = true;
+                } else {
+                    if (playbackState == Player.STATE_BUFFERING) {
+                        playbackState = Player.STATE_READY;
+                        loading = false;
+                    }
+                }
+            }
             invalidateState();
         });
     }
@@ -416,6 +427,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 markRenderedFirstFrame();
                 hlsAbortRetryAttempted = false;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_SEEK) {
+                playbackState = Player.STATE_BUFFERING;
                 loading = true;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_VIDEO_RECONFIG) {
                 updateVideoSize();
@@ -498,6 +510,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         MPVLib.observeProperty("demuxer-cache-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("pause", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         MPVLib.observeProperty("eof-reached", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
+        MPVLib.observeProperty("paused-for-cache", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         MPVLib.observeProperty("width", MPVLib.MpvFormat.MPV_FORMAT_INT64);
         MPVLib.observeProperty("height", MPVLib.MpvFormat.MPV_FORMAT_INT64);
         MPVLib.observeProperty("video-params", MPVLib.MpvFormat.MPV_FORMAT_NONE);

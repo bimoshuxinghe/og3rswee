@@ -46,6 +46,10 @@ public class MihomoManager {
         return MIXED_PORT;
     }
 
+    public static int getControllerPort() {
+        return CONTROLLER_PORT;
+    }
+
     public static String getProxyUrl(String name) {
         return "http://127.0.0.1:" + MIXED_PORT + "#" + Uri.encode(TextUtils.isEmpty(name) ? "Mihomo" : name);
     }

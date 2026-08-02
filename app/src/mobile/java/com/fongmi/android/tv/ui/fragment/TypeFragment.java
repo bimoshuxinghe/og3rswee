@@ -121,24 +121,15 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     }
 
     private void updateBottomPadding() {
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(mBinding.recycler, (v, insets) -> {
-            int bottom = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom;
-            boolean capsule = com.fongmi.android.tv.setting.Setting.isHomeCapsule();
-            int paddingBottom;
-            if (capsule) {
-                paddingBottom = bottom + ResUtil.dp2px(56) + ResUtil.dp2px(16) + ResUtil.dp2px(16);
-            } else {
-                paddingBottom = ResUtil.dp2px(16);
-            }
-            mBinding.recycler.setPadding(
-                mBinding.recycler.getPaddingLeft(),
-                mBinding.recycler.getPaddingTop(),
-                mBinding.recycler.getPaddingRight(),
-                paddingBottom
-            );
-            return insets;
-        });
-        androidx.core.view.ViewCompat.requestApplyInsets(mBinding.recycler);
+        // 底部padding由VodFragment的contentLayout paddingBottom补偿translationY裁剪
+        // 这里只需保持少量间距，胶囊模式的导航栏由activity布局处理（container layout_above navigation）
+        int paddingBottom = ResUtil.dp2px(16);
+        mBinding.recycler.setPadding(
+            mBinding.recycler.getPaddingLeft(),
+            mBinding.recycler.getPaddingTop(),
+            mBinding.recycler.getPaddingRight(),
+            paddingBottom
+        );
     }
 
     private void setStyle(Style style) {

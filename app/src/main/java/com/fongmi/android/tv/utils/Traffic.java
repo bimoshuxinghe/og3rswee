@@ -34,7 +34,7 @@ public class Traffic {
     }
 
     public static void reset() {
-        lastTotalRxBytes = 0;
-        lastTimeStamp = 0;
+        lastTotalRxBytes = TrafficStats.getUidRxBytes(UID) / 1024;
+        lastTimeStamp = System.currentTimeMillis();
     }
 }

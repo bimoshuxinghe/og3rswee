@@ -1464,7 +1464,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private boolean isPlayingNow() {
         if (service() == null || !isOwner()) return false;
-        return player().isPlaying() || player().getPlaybackState() == Player.STATE_READY || player().getPosition() > 0;
+        return player().isPlaying();
     }
 
     private void setOrient() {
