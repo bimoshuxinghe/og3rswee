@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.presenter;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,6 +28,12 @@ import android.widget.LinearLayout;
 
 import java.util.List;
 
+/**
+ * 首页 Banner Presenter：
+ *  - 横向 Cover Flow 走马灯（左小-中大-右小，竖向海报卡片）
+ *  - 切换：向左平移 + 左侧渐隐退出 / 中间缩放到左 / 右侧放大到中间，依次接替
+ *  - 获焦暂停，点击跳转，详情异步补全
+ */
 public class HomeBannerPresenter extends Presenter {
 
     private final HomeActivity activity;
@@ -47,10 +54,10 @@ public class HomeBannerPresenter extends Presenter {
         HomeBanner item = (HomeBanner) object;
         ViewHolder holder = (ViewHolder) viewHolder;
 
-        // 1. 计算布局宽度：隐藏快捷入口栏，让中间海报卡片+右侧推荐卡片占满空间
+        // 1. 隐藏快捷入口栏，让中间走马灯 + 右侧推荐卡片占满空间
         int screenWidth = ResUtil.getScreenWidth();
-        int parentWidth = screenWidth - ResUtil.dp2px(48); // VerticalGridView左右各24dp padding
-        int totalContentWidth = parentWidth - ResUtil.dp2px(16); // adapter_home_banner.xml 根布局8dp padding
+        int parentWidth = screenWidth - ResUtil.dp2px(48);
+        int totalContentWidth = parentWidth - ResUtil.dp2px(16);
         int rightWidth = Math.min(ResUtil.dp2px(560), Math.max(ResUtil.dp2px(360), (int) (totalContentWidth * 0.32f)));
 
         LinearLayout.LayoutParams leftParams = (LinearLayout.LayoutParams) holder.binding.leftLayout.getLayoutParams();
@@ -71,9 +78,9 @@ public class HomeBannerPresenter extends Presenter {
         rightParams.weight = 0;
         holder.binding.rightLayout.setLayoutParams(rightParams);
 
-        // 右栏始终显示推荐布局
         holder.binding.recommendLayout.setVisibility(View.VISIBLE);
 
+        // 2. 切分推荐：右栏 2 张，其余进走马灯
         List<Vod> recommends = item.getRecommends();
         List<Vod> rightList = new java.util.ArrayList<>();
         List<Vod> carouselList = new java.util.ArrayList<>();
@@ -96,40 +103,37 @@ public class HomeBannerPresenter extends Presenter {
             }
         }
 
-        // 绑定右侧推荐卡片
         bindRecommend(holder.binding.card1, rightList.size() > 0 ? rightList.get(0) : null, holder.binding.recommendImage1, holder.binding.recommendText1, holder);
         bindRecommend(holder.binding.card2, rightList.size() > 1 ? rightList.get(1) : null, holder.binding.recommendImage2, holder.binding.recommendText2, holder);
         bindRecommend(holder.binding.card3, null, holder.binding.recommendImage3, holder.binding.recommendText3, holder);
 
         if (item.isLivePreview()) {
-            // 直播预览模式：在中间卡片显示播放器，隐藏详情布局
+            // 直播预览模式
             holder.binding.detailLayout.setVisibility(View.GONE);
             holder.binding.livePreviewLayout.setVisibility(View.VISIBLE);
-
             stopMarquee(holder);
-
             holder.binding.middleCard.setFocusable(true);
             holder.binding.middleCard.setOnClickListener(view -> {
                 activity.stopPreview();
                 LiveActivity.start(activity);
             });
-            holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> {
-                animateScale(v, hasFocus, 1.05f);
-            });
-
+            holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> animateScale(v, hasFocus, 1.05f));
             activity.attachPreviewPlayer(holder.binding.previewExo);
         } else {
-            // 推荐模式：中间卡片显示详情/跑马灯，隐藏播放器
+            // 推荐 + 走马灯模式
             holder.binding.detailLayout.setVisibility(View.VISIBLE);
             holder.binding.livePreviewLayout.setVisibility(View.GONE);
 
-            if (recommends.isEmpty()) {
-                // 无推荐：显示占位内容
-                bindPage(holder, 0, createNoRecommendVod(), true);
+            if (carouselList.isEmpty() || carouselList.size() < 2) {
+                // 不足2张时不启动走马灯，只显示一张主海报
+                if (!carouselList.isEmpty()) {
+                    showStaticBanner(holder, carouselList.get(0));
+                } else {
+                    showStaticBanner(holder, createNoRecommendVod());
+                }
                 stopMarquee(holder);
             } else {
-                // 竖版跑马灯模式：上下滚动切换海报
-                startMarquee(holder, carouselList);
+                startCoverFlowMarquee(holder, carouselList);
             }
         }
     }
@@ -139,6 +143,25 @@ public class HomeBannerPresenter extends Presenter {
         v.setName(ResUtil.getString(R.string.home_no_recommend));
         v.setContent(ResUtil.getString(R.string.home_no_recommend_desc));
         return v;
+    }
+
+    /** 静态单张显示（走马灯数据不足时使用） */
+    private void showStaticBanner(ViewHolder holder, Vod vod) {
+        holder.binding.cardLeft.setVisibility(View.GONE);
+        holder.binding.cardRight.setVisibility(View.GONE);
+        // 居中卡片充满走马灯区域
+        FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams) holder.binding.cardCenter.getLayoutParams();
+        cp.width = FrameLayout.LayoutParams.MATCH_PARENT;
+        cp.gravity = android.view.Gravity.CENTER;
+        holder.binding.cardCenter.setLayoutParams(cp);
+        holder.binding.cardCenter.setScaleX(1f);
+        holder.binding.cardCenter.setScaleY(1f);
+        holder.binding.cardCenter.setTranslationX(0f);
+        holder.binding.cardCenter.setTranslationZ(8f);
+        holder.binding.indicatorLayout.setVisibility(View.GONE);
+
+        bindCenterDetails(holder, vod);
+        holder.binding.cardCenter.setOnClickListener(v -> activity.onItemClick(vod));
     }
 
     private void animateScale(View v, boolean hasFocus, float scale) {
@@ -182,10 +205,8 @@ public class HomeBannerPresenter extends Presenter {
             return;
         }
         card.setVisibility(View.VISIBLE);
-
         text.setText(vod.getName());
         ImgUtil.load(vod.getName(), vod.getPic(), bg);
-
         card.setOnClickListener(v -> {
             if ("placeholder".equals(vod.getSiteKey())) {
                 SearchActivity.start(activity);
@@ -193,81 +214,15 @@ public class HomeBannerPresenter extends Presenter {
                 activity.onItemClick(vod);
             }
         });
-
         card.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
-                mCurrentVodId = vod.getId();
-            }
+            if (hasFocus) mCurrentVodId = vod.getId();
             animateScale(v, hasFocus, 1.1f);
         });
     }
 
-    /**
-     * 绑定指定页(0=前面/1=后面)的海报详情与图片
-     */
-    private void bindPage(ViewHolder holder, int page, Vod vod, boolean setClickListener) {
-        androidx.appcompat.widget.AppCompatImageView imageView = (page == 0) ? holder.binding.middleImage : holder.binding.middleImage2;
-        com.google.android.material.textview.MaterialTextView nameView = (page == 0) ? holder.binding.middleName : holder.binding.middleName2;
-        com.google.android.material.textview.MaterialTextView directorView = (page == 0) ? holder.binding.middleDirector : holder.binding.middleDirector2;
-        com.google.android.material.textview.MaterialTextView actorView = (page == 0) ? holder.binding.middleActor : holder.binding.middleActor2;
-        com.google.android.material.textview.MaterialTextView contentView = (page == 0) ? holder.binding.middleContent : holder.binding.middleContent2;
-
-        nameView.setText(vod.getName());
-        if (isExternalRecommend(vod)) {
-            directorView.setVisibility(View.GONE);
-            actorView.setVisibility(View.GONE);
-            contentView.setText(vod.getRemarks());
-        } else {
-            directorView.setVisibility(View.VISIBLE);
-            actorView.setVisibility(View.VISIBLE);
-            directorView.setText("导演: " + getNonNullString(vod.getDirector()));
-            actorView.setText("演员: " + getNonNullString(vod.getActor()));
-            contentView.setText(getNonNullString(vod.getContent()));
-        }
-        ImgUtil.load(vod.getName(), vod.getPic(), imageView);
-
-        if (setClickListener && page == 0) {
-            holder.binding.marqueePage0.setOnClickListener(v -> activity.onItemClick(vod));
-        } else if (setClickListener) {
-            holder.binding.marqueePage1.setOnClickListener(v -> activity.onItemClick(vod));
-        }
-    }
-
-    private void loadDetails(Vod vod, ViewHolder holder, int page) {
-        if (isExternalRecommend(vod)) return;
-        String key = android.text.TextUtils.isEmpty(vod.getSiteKey()) ? com.fongmi.android.tv.api.config.VodConfig.get().getHome().getKey() : vod.getSiteKey();
-        String id = vod.getId();
-
-        if (!android.text.TextUtils.isEmpty(vod.getDirector()) ||
-            !android.text.TextUtils.isEmpty(vod.getActor()) ||
-            !android.text.TextUtils.isEmpty(vod.getContent())) {
-            return;
-        }
-
-        com.fongmi.android.tv.utils.Task.executor().submit(() -> {
-            try {
-                com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.detailContent(key, id);
-                if (result != null && result.getList() != null && !result.getList().isEmpty()) {
-                    Vod detailVod = result.getList().get(0);
-                    vod.setDirector(detailVod.getDirector());
-                    vod.setActor(detailVod.getActor());
-                    vod.setContent(detailVod.getContent());
-
-                    // 仅当该页仍然是当前页时才更新UI（避免滚动后错位）
-                    if (page == holder.marqueeDisplayPage || id.equals(mCurrentVodId)) {
-                        activity.runOnUiThread(() -> {
-                            if (page == 0) updatePage0Details(vod, holder);
-                            else updatePage1Details(vod, holder);
-                        });
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    private void updatePage0Details(Vod vod, ViewHolder holder) {
+    /** 绑定中间卡片（主海报）详情文字与图片 */
+    private void bindCenterDetails(ViewHolder holder, Vod vod) {
+        holder.binding.middleName.setText(vod.getName());
         if (isExternalRecommend(vod)) {
             holder.binding.middleDirector.setVisibility(View.GONE);
             holder.binding.middleActor.setVisibility(View.GONE);
@@ -279,20 +234,47 @@ public class HomeBannerPresenter extends Presenter {
             holder.binding.middleActor.setText("演员: " + getNonNullString(vod.getActor()));
             holder.binding.middleContent.setText(getNonNullString(vod.getContent()));
         }
+        ImgUtil.load(vod.getName(), vod.getPic(), holder.binding.imgCenter);
+        loadDetails(vod, holder);
     }
 
-    private void updatePage1Details(Vod vod, ViewHolder holder) {
-        if (isExternalRecommend(vod)) {
-            holder.binding.middleDirector2.setVisibility(View.GONE);
-            holder.binding.middleActor2.setVisibility(View.GONE);
-            holder.binding.middleContent2.setText(vod.getRemarks());
-        } else {
-            holder.binding.middleDirector2.setVisibility(View.VISIBLE);
-            holder.binding.middleActor2.setVisibility(View.VISIBLE);
-            holder.binding.middleDirector2.setText("导演: " + getNonNullString(vod.getDirector()));
-            holder.binding.middleActor2.setText("演员: " + getNonNullString(vod.getActor()));
-            holder.binding.middleContent2.setText(getNonNullString(vod.getContent()));
+    private void loadDetails(Vod vod, ViewHolder holder) {
+        if (isExternalRecommend(vod)) return;
+        String key = android.text.TextUtils.isEmpty(vod.getSiteKey()) ? com.fongmi.android.tv.api.config.VodConfig.get().getHome().getKey() : vod.getSiteKey();
+        String id = vod.getId();
+        if (!android.text.TextUtils.isEmpty(vod.getDirector()) ||
+            !android.text.TextUtils.isEmpty(vod.getActor()) ||
+            !android.text.TextUtils.isEmpty(vod.getContent())) {
+            return;
         }
+        com.fongmi.android.tv.utils.Task.executor().submit(() -> {
+            try {
+                com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.detailContent(key, id);
+                if (result != null && result.getList() != null && !result.getList().isEmpty()) {
+                    Vod d = result.getList().get(0);
+                    vod.setDirector(d.getDirector());
+                    vod.setActor(d.getActor());
+                    vod.setContent(d.getContent());
+                    if (id.equals(mCurrentVodId)) {
+                        activity.runOnUiThread(() -> {
+                            if (isExternalRecommend(vod)) {
+                                holder.binding.middleDirector.setVisibility(View.GONE);
+                                holder.binding.middleActor.setVisibility(View.GONE);
+                                holder.binding.middleContent.setText(vod.getRemarks());
+                            } else {
+                                holder.binding.middleDirector.setVisibility(View.VISIBLE);
+                                holder.binding.middleActor.setVisibility(View.VISIBLE);
+                                holder.binding.middleDirector.setText("导演: " + getNonNullString(vod.getDirector()));
+                                holder.binding.middleActor.setText("演员: " + getNonNullString(vod.getActor()));
+                                holder.binding.middleContent.setText(getNonNullString(vod.getContent()));
+                            }
+                        });
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private String getNonNullString(String val) {
@@ -304,130 +286,257 @@ public class HomeBannerPresenter extends Presenter {
     }
 
     // ========================================================================
-    // 竖版跑马灯核心逻辑：双页容器 + translationY 向上滚动 + 循环数据
+    // Cover Flow 走马灯核心逻辑
+    // 布局：[左小 cardLeft(scale 0.82)] - [中大 cardCenter(scale 1.0)] - [右小 cardRight(scale 0.82)]
+    // 切换一次向左：
+    //   1) 左卡片向左淡出消失（alpha 1->0 + translateX 负方向）
+    //   2) 中卡片向左移动并缩小（scale 1.0 -> 0.82，位置变到左卡片）
+    //   3) 右卡片向左移动并放大（scale 0.82 -> 1.0，位置变到中卡片，始终最高Z）
+    //   4) 原左卡片回收 + 在最右侧补入新的 cardRight 对应下一张数据（从无到有 alpha 0->1）
     // ========================================================================
 
-    private static final int MARQUEE_INTERVAL_MS = 5000;     // 滚动间隔
-    private static final int MARQUEE_ANIM_DURATION_MS = 700;  // 滚动动画时长
+    private static final int MARQUEE_INTERVAL_MS = 5000;   // 切换间隔
+    private static final int MARQUEE_ANIM_MS = 650;         // 动画时长
+    private static final float SCALE_SIDE = 0.82f;          // 两侧卡片缩放
+    private static final float SCALE_CENTER = 1.0f;         // 中间卡片缩放
 
-    private void startMarquee(ViewHolder holder, List<Vod> carouselVods) {
+    /** 计算左/中/右 三张卡片的横向基准位置（相对于marqueeContainer的left=0），以容器宽度为准 */
+    private void layoutCoverFlowCards(ViewHolder holder) {
+        int containerW = holder.binding.marqueeContainer.getWidth();
+        if (containerW <= 0) {
+            // 首次布局还没测量，估算一下（稍后布局会再次触发onBind或重新布局）
+            int screenW = ResUtil.getScreenWidth();
+            int middleCardW = (int) ((screenW - ResUtil.dp2px(48) - ResUtil.dp2px(16)
+                - Math.min(ResUtil.dp2px(560), Math.max(ResUtil.dp2px(360),
+                    (int) ((screenW - ResUtil.dp2px(48) - ResUtil.dp2px(16)) * 0.32f))) * 1.0f);
+            containerW = middleCardW;
+        }
+        int centerCardW = ResUtil.dp2px(240);  // XML中cardCenter宽度
+        int sideCardW = ResUtil.dp2px(180);    // XML中cardLeft/cardRight宽度
+        int sideMargin = ResUtil.dp2px(12);
+        int gap = ResUtil.dp2px(16);            // 中间与两侧之间的间距
+
+        // 三张水平排列，总宽度 = center + side*2 + gap*2
+        int totalCoverW = centerCardW + sideCardW * 2 + gap * 2;
+        int startX = (containerW - totalCoverW) / 2;   // 整体水平居中
+
+        // 左侧卡片基准X
+        int leftX = startX;
+        // 中间卡片基准X
+        int centerX = leftX + sideCardW + gap;
+        // 右侧卡片基准X
+        int rightX = centerX + centerCardW + gap;
+
+        holder.baseLeftX = leftX;
+        holder.baseCenterX = centerX;
+        holder.baseRightX = rightX;
+        holder.centerCardWidth = centerCardW;
+        holder.sideCardWidth = sideCardW;
+    }
+
+    /** 初始摆放三张卡片（左-中-右），设置好scale、translationX、Z */
+    private void applyStaticCardLayouts(ViewHolder holder) {
+        // 左
+        holder.binding.cardLeft.setVisibility(View.VISIBLE);
+        holder.binding.cardLeft.setTranslationX(holder.baseLeftX);
+        holder.binding.cardLeft.setScaleX(SCALE_SIDE);
+        holder.binding.cardLeft.setScaleY(SCALE_SIDE);
+        holder.binding.cardLeft.setAlpha(1.0f);
+        holder.binding.cardLeft.setTranslationZ(2f);
+        // 中
+        FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams) holder.binding.cardCenter.getLayoutParams();
+        cp.width = ResUtil.dp2px(240);
+        cp.gravity = android.view.Gravity.START | android.view.Gravity.TOP;
+        holder.binding.cardCenter.setLayoutParams(cp);
+        holder.binding.cardCenter.setVisibility(View.VISIBLE);
+        holder.binding.cardCenter.setTranslationX(holder.baseCenterX);
+        holder.binding.cardCenter.setScaleX(SCALE_CENTER);
+        holder.binding.cardCenter.setScaleY(SCALE_CENTER);
+        holder.binding.cardCenter.setAlpha(1.0f);
+        holder.binding.cardCenter.setTranslationZ(8f);  // 中间最高
+        // 右
+        holder.binding.cardRight.setVisibility(View.VISIBLE);
+        holder.binding.cardRight.setTranslationX(holder.baseRightX);
+        holder.binding.cardRight.setScaleX(SCALE_SIDE);
+        holder.binding.cardRight.setScaleY(SCALE_SIDE);
+        holder.binding.cardRight.setAlpha(1.0f);
+        holder.binding.cardRight.setTranslationZ(2f);
+    }
+
+    private void startCoverFlowMarquee(ViewHolder holder, List<Vod> carouselVods) {
         stopMarquee(holder);
-        if (carouselVods.isEmpty()) return;
 
         holder.carouselVods = carouselVods;
-        holder.carouselIndex = 0;
-        holder.marqueeDisplayPage = 0;
+        holder.carouselSize = carouselVods.size();
+        holder.currentIndex = 0;
         holder.isMarqueePaused = false;
-        holder.marqueeHeight = ResUtil.dp2px(304); // 与XML中每页高度一致
+        holder.indicatorLayout = holder.binding.indicatorLayout;
+        holder.binding.indicatorLayout.setVisibility(View.VISIBLE);
 
-        // 初始化指示器圆点
+        // 计算初始卡片位置（等view布局完成）
+        layoutCoverFlowCards(holder);
+        applyStaticCardLayouts(holder);
+
+        // 初始化指示器
         holder.binding.indicatorLayout.removeAllViews();
         int dotSize = ResUtil.dp2px(6);
         int dotMargin = ResUtil.dp2px(4);
-        int size = carouselVods.size();
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < holder.carouselSize; i++) {
             View dot = new View(holder.binding.getRoot().getContext());
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dotSize, dotSize);
             if (i > 0) params.leftMargin = dotMargin;
             dot.setLayoutParams(params);
-            dot.setBackgroundResource(R.drawable.shape_dot_inactive);
+            dot.setBackgroundResource(i == 0 ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
             holder.binding.indicatorLayout.addView(dot);
         }
 
-        // 重置容器位置
-        holder.binding.marqueeContainer.setTranslationY(0);
+        // 初始三张数据
+        Vod leftVod   = carouselVods.get(mod(-1, holder.carouselSize));
+        Vod centerVod = carouselVods.get(0);
+        Vod rightVod  = carouselVods.get(mod(1, holder.carouselSize));
+        ImgUtil.load(leftVod.getName(),   leftVod.getPic(),   holder.binding.imgLeft);
+        ImgUtil.load(rightVod.getName(),  rightVod.getPic(),  holder.binding.imgRight);
+        bindCenterDetails(holder, centerVod);
 
-        // 初始显示第一页(index=0)在page0，第二页(index=1)在page1
-        Vod current = carouselVods.get(0 % size);
-        Vod next = carouselVods.get(1 % size);
-        bindPage(holder, 0, current, true);
-        bindPage(holder, 1, next, true);
-        loadDetails(current, holder, 0);
-        loadDetails(next, holder, 1);
-        updateIndicator(holder, size, 0);
+        // 点击跳转：三张卡片均可点击
+        holder.binding.cardLeft.setOnClickListener(v -> activity.onItemClick(leftVod));
+        holder.binding.cardCenter.setOnClickListener(v -> activity.onItemClick(centerVod));
+        holder.binding.cardRight.setOnClickListener(v -> activity.onItemClick(rightVod));
 
-        // 中间卡片获焦时暂停跑马灯
+        // 中间卡片获焦 -> 暂停走马灯 + 放大
         holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> {
             holder.isMarqueePaused = hasFocus;
-            animateScale(v, hasFocus, 1.05f);
+            animateScale(v, hasFocus, 1.03f);
         });
 
-        // 点击当前可见的page也跳转（整个卡片可点）
-        holder.binding.middleCard.setOnClickListener(v -> {
-            int realIdx = holder.carouselIndex % size;
-            if (realIdx < 0) realIdx += size;
-            if (!carouselVods.isEmpty()) {
-                activity.onItemClick(carouselVods.get(realIdx));
-            }
-        });
-
-        // 递归调度下一次滚动
+        // 循环切换
         holder.marqueeRunnable = new Runnable() {
             @Override
             public void run() {
-                if (holder.marqueeRunnable == null) return; // 已停止
-                if (carouselVods.isEmpty()) return;
-
+                if (holder.marqueeRunnable == null) return;
                 if (!holder.isMarqueePaused) {
-                    performMarqueeScroll(holder, carouselVods);
+                    advanceCoverFlow(holder, carouselVods);
                 }
                 holder.binding.getRoot().postDelayed(this, MARQUEE_INTERVAL_MS);
             }
         };
-
         holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
     }
 
-    /**
-     * 执行一次向上滚动：marqueeContainer translationY 从 0 → -pageHeight
-     * 动画结束后：重置为0，更新page0内容为新index，更新指示器
-     */
-    private void performMarqueeScroll(ViewHolder holder, List<Vod> carouselVods) {
-        int size = carouselVods.size();
-        if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) return;
-
-        int target = -holder.marqueeHeight;
-        ObjectAnimator anim = ObjectAnimator.ofFloat(holder.binding.marqueeContainer, "translationY", 0f, (float) target);
-        anim.setDuration(MARQUEE_ANIM_DURATION_MS);
-        anim.setInterpolator(new DecelerateInterpolator(1.5f));
-        anim.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                // 动画完成：
-                // 1. 把 page0 数据替换为原来 page1 的下一个（index+2）
-                // 2. 把 translationY 瞬间恢复为 0（视觉上无缝衔接）
-                // 3. 指示器更新为 index+1
-                holder.carouselIndex = (holder.carouselIndex + 1) % size;
-                int nextNextIdx = (holder.carouselIndex + 1) % size;
-                Vod nextNextVod = carouselVods.get(nextNextIdx);
-
-                // 先把page0的内容设为即将显示的下一个（page1当前是新的carouselIndex）
-                bindPage(holder, 0, nextNextVod, true);
-                loadDetails(nextNextVod, holder, 0);
-
-                // 瞬间复位，无缝衔接
-                holder.binding.marqueeContainer.setTranslationY(0);
-                holder.marqueeDisplayPage = 1 - holder.marqueeDisplayPage; // 逻辑页翻转
-
-                // 指示器更新为当前carouselIndex
-                updateIndicator(holder, size, holder.carouselIndex);
-            }
-        });
-        holder.marqueeAnimator = anim;
-        anim.start();
-
-        // 滚动过程中，当前显示的已经是page1了，把点击事件也交给page1
-        Vod currentVod = carouselVods.get((holder.carouselIndex + 1) % size);
-        holder.binding.marqueePage1.setOnClickListener(v -> activity.onItemClick(currentVod));
+    private static int mod(int a, int n) {
+        int r = a % n;
+        return r < 0 ? r + n : r;
     }
 
-    private void updateIndicator(ViewHolder holder, int size, int currentIndex) {
-        for (int i = 0; i < size; i++) {
-            View dot = holder.binding.indicatorLayout.getChildAt(i);
-            if (dot != null) {
-                dot.setBackgroundResource(i == currentIndex ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
+    /**
+     * 执行一次向左切换的 Cover Flow 动画：
+     *   左  -> 飘出屏幕左侧（scale进一步缩小+alpha淡出）
+     *   中  -> 平移到原左位置，同时scale 1.0→0.82（变成新的左）
+     *   右  -> 平移到原中位置，同时scale 0.82→1.0（变成新的中）
+     *   动画结束后：
+     *     用"原右"作为新的"现中"显示详情文字
+     *     把"原中"的图片/点击事件复制给"现左"卡片
+     *     把"下一张"（currentIndex+2）图片加载给"现右"卡片
+     *     把三卡片translationX/scale瞬间重置为静态位置（alpha恢复为1），无缝衔接
+     */
+    private void advanceCoverFlow(ViewHolder holder, List<Vod> vods) {
+        if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) return;
+        layoutCoverFlowCards(holder);  // 重新确认基准坐标（防止尺寸变化）
+
+        int n = holder.carouselSize;
+        int cur = holder.currentIndex;
+        Vod newCenterVod = vods.get(mod(cur + 1, n));   // 原右 = 新的中
+        Vod newRightVod  = vods.get(mod(cur + 2, n));   // 将在右侧补入
+
+        // === 各卡片动画目标 ===
+        // 左：从 baseLeftX -> baseLeftX - sideCardW（飘出左边界），scale 0.82 -> 0.7，alpha 1->0
+        float leftTargetX = holder.baseLeftX - (holder.sideCardWidth + ResUtil.dp2px(20));
+        ObjectAnimator leftTX = ObjectAnimator.ofFloat(holder.binding.cardLeft, "translationX",
+            holder.binding.cardLeft.getTranslationX(), leftTargetX);
+        ObjectAnimator leftSX = ObjectAnimator.ofFloat(holder.binding.cardLeft, "scaleX", SCALE_SIDE, 0.7f);
+        ObjectAnimator leftSY = ObjectAnimator.ofFloat(holder.binding.cardLeft, "scaleY", SCALE_SIDE, 0.7f);
+        ObjectAnimator leftAlpha = ObjectAnimator.ofFloat(holder.binding.cardLeft, "alpha", 1f, 0f);
+
+        // 中：从 baseCenterX -> baseLeftX，scale 1.0 -> 0.82
+        ObjectAnimator centerTX = ObjectAnimator.ofFloat(holder.binding.cardCenter, "translationX",
+            holder.binding.cardCenter.getTranslationX(), holder.baseLeftX);
+        ObjectAnimator centerSX = ObjectAnimator.ofFloat(holder.binding.cardCenter, "scaleX", SCALE_CENTER, SCALE_SIDE);
+        ObjectAnimator centerSY = ObjectAnimator.ofFloat(holder.binding.cardCenter, "scaleY", SCALE_CENTER, SCALE_SIDE);
+        ObjectAnimator centerTZ = ObjectAnimator.ofFloat(holder.binding.cardCenter, "translationZ", 8f, 2f);
+
+        // 右：从 baseRightX -> baseCenterX，scale 0.82 -> 1.0，Z提到最高
+        ObjectAnimator rightTX = ObjectAnimator.ofFloat(holder.binding.cardRight, "translationX",
+            holder.binding.cardRight.getTranslationX(), holder.baseCenterX);
+        ObjectAnimator rightSX = ObjectAnimator.ofFloat(holder.binding.cardRight, "scaleX", SCALE_SIDE, SCALE_CENTER);
+        ObjectAnimator rightSY = ObjectAnimator.ofFloat(holder.binding.cardRight, "scaleY", SCALE_SIDE, SCALE_CENTER);
+        ObjectAnimator rightTZ = ObjectAnimator.ofFloat(holder.binding.cardRight, "translationZ", 2f, 8f);
+
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(leftTX, leftSX, leftSY, leftAlpha,
+                         centerTX, centerSX, centerSY, centerTZ,
+                         rightTX, rightSX, rightSY, rightTZ);
+        set.setDuration(MARQUEE_ANIM_MS);
+        set.setInterpolator(new DecelerateInterpolator(1.4f));
+        set.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                // === 动画结束，循环交接：内容交换 + 瞬间复位位置 ===
+                // 1. 把"原中"的图片 / 内容 / 点击事件 交给"现左"（即 holder.binding.cardLeft）
+                //    原右 已经是新的中（显示在中间位置），现在把它的图片 / 点击事件 交给 cardCenter
+                //    然后把新的下一张 交给 cardRight
+                // 为简化，我们交换图片数据引用而非真的交换View引用：
+                //   - imgLeft  <-- 原 cardCenter 那张图 (即 vods[cur])
+                //   - imgCenter <-- 原 cardRight 那张图 (即 vods[cur+1])，并bind详情文字
+                //   - imgRight <-- vods[cur+2]
+                Vod vLeft  = vods.get(mod(cur + 0, n));  // 原中 -> 新左
+                Vod vCtr   = vods.get(mod(cur + 1, n));  // 原右 -> 新中
+                Vod vRight = vods.get(mod(cur + 2, n));  // 新数据 -> 新右
+
+                // 给左卡片（新左）加载原中图片（原已经在cardCenter显示过，glide命中缓存）
+                ImgUtil.load(vLeft.getName(), vLeft.getPic(), holder.binding.imgLeft);
+                // 给右卡片（新右）加载下一张
+                ImgUtil.load(vRight.getName(), vRight.getPic(), holder.binding.imgRight);
+
+                // 中间卡片详情更新（主海报文字等都在cardCenter里）
+                bindCenterDetails(holder, vCtr);
+
+                // 更新点击事件
+                holder.binding.cardLeft.setOnClickListener(v -> activity.onItemClick(vLeft));
+                holder.binding.cardCenter.setOnClickListener(v -> activity.onItemClick(vCtr));
+                holder.binding.cardRight.setOnClickListener(v -> activity.onItemClick(vRight));
+
+                // 2. 三张卡片位置/缩放/alpha 瞬间复位到基准状态（视觉无缝：新的左和中已经和动画结束位置一致，只有右卡片需要从左侧飘入 -> 直接设为 baseRightX + alpha 1）
+                holder.binding.cardLeft.setTranslationX(holder.baseLeftX);
+                holder.binding.cardLeft.setScaleX(SCALE_SIDE);
+                holder.binding.cardLeft.setScaleY(SCALE_SIDE);
+                holder.binding.cardLeft.setAlpha(1f);
+                holder.binding.cardLeft.setTranslationZ(2f);
+
+                holder.binding.cardCenter.setTranslationX(holder.baseCenterX);
+                holder.binding.cardCenter.setScaleX(SCALE_CENTER);
+                holder.binding.cardCenter.setScaleY(SCALE_CENTER);
+                holder.binding.cardCenter.setAlpha(1f);
+                holder.binding.cardCenter.setTranslationZ(8f);
+
+                holder.binding.cardRight.setTranslationX(holder.baseRightX);
+                holder.binding.cardRight.setScaleX(SCALE_SIDE);
+                holder.binding.cardRight.setScaleY(SCALE_SIDE);
+                holder.binding.cardRight.setAlpha(1f);
+                holder.binding.cardRight.setTranslationZ(2f);
+
+                // 3. 更新索引与指示器
+                holder.currentIndex = mod(cur + 1, n);
+                for (int i = 0; i < holder.carouselSize; i++) {
+                    View dot = holder.binding.indicatorLayout.getChildAt(i);
+                    if (dot != null) {
+                        dot.setBackgroundResource(i == holder.currentIndex ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
+                    }
+                }
+                holder.marqueeAnimator = null;
             }
-        }
+        });
+        holder.marqueeAnimator = set;
+        set.start();
     }
 
     private void stopMarquee(ViewHolder holder) {
@@ -439,20 +548,20 @@ public class HomeBannerPresenter extends Presenter {
             holder.marqueeAnimator.cancel();
         }
         holder.marqueeAnimator = null;
-        holder.binding.indicatorLayout.removeAllViews();
-        holder.binding.marqueeContainer.setTranslationY(0);
+        if (holder.indicatorLayout != null) {
+            holder.indicatorLayout.removeAllViews();
+        }
     }
 
     @Override
     public void onUnbindViewHolder(@NonNull Presenter.ViewHolder viewHolder) {
         ViewHolder holder = (ViewHolder) viewHolder;
         stopMarquee(holder);
-        Glide.with(holder.binding.middleImage).clear(holder.binding.middleImage);
-        Glide.with(holder.binding.middleImage2).clear(holder.binding.middleImage2);
+        Glide.with(holder.binding.imgCenter).clear(holder.binding.imgCenter);
+        Glide.with(holder.binding.imgLeft).clear(holder.binding.imgLeft);
+        Glide.with(holder.binding.imgRight).clear(holder.binding.imgRight);
         Glide.with(holder.binding.previewExo).clear(holder.binding.previewExo);
         activity.detachPreviewPlayer();
-
-        // 重置缩放和translationZ
         resetScale(holder.binding.btnVod);
         resetScale(holder.binding.btnLive);
         resetScale(holder.binding.btnKeep);
@@ -466,17 +575,22 @@ public class HomeBannerPresenter extends Presenter {
         v.setScaleX(1.0f);
         v.setScaleY(1.0f);
         v.setTranslationZ(0f);
+        v.setTranslationX(0f);
+        v.setAlpha(1f);
     }
 
     public static class ViewHolder extends Presenter.ViewHolder {
         public final AdapterHomeBannerBinding binding;
-        public Runnable marqueeRunnable;           // 跑马灯循环任务
-        public ObjectAnimator marqueeAnimator;     // 滚动动画
-        public List<Vod> carouselVods;             // 轮播数据源
-        public int carouselIndex = 0;              // 当前数据源索引
-        public int marqueeDisplayPage = 0;         // 逻辑上当前显示的是page0还是page1
-        public boolean isMarqueePaused = false;    // 获焦时暂停
-        public int marqueeHeight = 0;              // 每页高度(px)
+        public Runnable marqueeRunnable;
+        public AnimatorSet marqueeAnimator;
+        public LinearLayout indicatorLayout;
+        public List<Vod> carouselVods;
+        public int carouselSize;
+        public int currentIndex;
+        public boolean isMarqueePaused;
+        // 基准X坐标（三张卡片在CoverFlow中的起始位置）
+        public int baseLeftX, baseCenterX, baseRightX;
+        public int centerCardWidth, sideCardWidth;
 
         public ViewHolder(@NonNull AdapterHomeBannerBinding binding) {
             super(binding.getRoot());
