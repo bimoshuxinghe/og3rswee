@@ -81,7 +81,7 @@ public class Proxy implements Comparable<Proxy> {
     }
 
     private java.net.Proxy create(Uri uri) {
-        InetSocketAddress address = InetSocketAddress.createUnresolved(uri.getHost(), uri.getPort());
+        InetSocketAddress address = new InetSocketAddress(uri.getHost(), uri.getPort());
         if (isScheme(uri, "http")) return new java.net.Proxy(java.net.Proxy.Type.HTTP, address);
         if (isScheme(uri, "socks")) return new java.net.Proxy(java.net.Proxy.Type.SOCKS, address);
         return null;

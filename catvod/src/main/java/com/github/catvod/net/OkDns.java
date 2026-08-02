@@ -51,12 +51,32 @@ public class OkDns implements Dns {
     @NonNull
     @Override
     public List<InetAddress> lookup(@NonNull String hostname) throws UnknownHostException {
-        List<InetAddress> addresses = (doh != null ? doh : Dns.SYSTEM).lookup(get(hostname));
+        String target = get(hostname);
+        if (isIpAddress(target)) {
+            return Dns.SYSTEM.lookup(target);
+        }
+        List<InetAddress> addresses = (doh != null ? doh : Dns.SYSTEM).lookup(target);
         addresses.sort((a, b) -> {
             boolean aIsV4 = a instanceof Inet4Address;
             boolean bIsV4 = b instanceof Inet4Address;
             return aIsV4 == bIsV4 ? 0 : (aIsV4 ? -1 : 1);
         });
         return addresses;
+    }
+
+    private boolean isIpAddress(String text) {
+        if (text == null || text.isEmpty()) return false;
+        if (text.contains(":")) return true;
+        String[] parts = text.split("\\.");
+        if (parts.length != 4) return false;
+        for (String part : parts) {
+            try {
+                int val = Integer.parseInt(part);
+                if (val < 0 || val > 255) return false;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return true;
     }
 }
