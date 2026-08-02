@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class ProxySubscriptionManager {
 
@@ -157,11 +158,29 @@ public class ProxySubscriptionManager {
         }
         String config = getConfig();
         if (TextUtils.isEmpty(config)) {
-            android.util.Log.e("ProxySub", "select failed: config is empty");
-            return false;
+            config = generateClashConfig(getNodes());
+            if (!TextUtils.isEmpty(config)) { Setting.putProxySubscriptionConfig(config); android.util.Log.d("ProxySub", "select: regenerated config from nodes"); }
         }
+        if (TextUtils.isEmpty(config)) { android.util.Log.e("ProxySub", "select failed: config is empty"); return false; }
+        android.util.Log.d("ProxySub", "select: starting mihomo node=" + node.getName() + " configLen=" + config.length());
         if (!MihomoManager.get().start(config, node.getName())) {
-            android.util.Log.e("ProxySub", "select failed: mihomo start failed for node " + node.getName() + ": " + MihomoManager.get().getLastError());
+            android.util.Log.e("ProxySub", "select failed: mihomo start failed for " + node.getName() + ": " + MihomoManager.get().getLastError());
+            if (!TextUtils.isEmpty(node.getRawUri())) {
+                String singleConfig = generateClashConfig(Arrays.asList(node));
+                if (!TextUtils.isEmpty(singleConfig) && !singleConfig.equals(config)) {
+                    android.util.Log.d("ProxySub", "select: retrying with regenerated single-node config");
+                    Setting.putProxySubscriptionConfig(singleConfig);
+                    if (MihomoManager.get().start(singleConfig, node.getName())) {
+                        ProxyNode local = ProxyNode.mihomo(node.getName());
+                        Setting.putProxySubscriptionCoreName(node.getName());
+                        Setting.putProxySubscriptionSelected(local.getUrl());
+                        Setting.putProxySubscriptionEnabled(true);
+                        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(local.getUrl())));
+                        android.util.Log.d("ProxySub", "select success (retry): " + node.getName());
+                        return true;
+                    }
+                }
+            }
             return false;
         }
         ProxyNode local = ProxyNode.mihomo(node.getName());
@@ -196,6 +215,10 @@ public class ProxySubscriptionManager {
         }
         if (result.isEmpty()) throw new Exception("No valid proxy nodes found in subscription");
         if (TextUtils.isEmpty(config)) throw new Exception("Failed to generate config from parsed nodes");
+        android.util.Log.d("ProxySub", "refresh: directLink=" + isDirectProxyLink(url) + " nodes=" + result.size() + " configLen=" + config.length());
+        if (android.util.Log.isLoggable("ProxySub", android.util.Log.DEBUG)) {
+            android.util.Log.d("ProxySub", "refresh generated config:\n" + (config.length() > 2000 ? config.substring(0, 2000) + "..." : config));
+        }
         Setting.putProxySubscriptionConfig(config);
         saveNodes(result);
         return result;
@@ -740,94 +763,117 @@ public class ProxySubscriptionManager {
         }
     }
 
+    private String getParam(Uri uri, String... names) {
+        for (String name : names) {
+            String value = uri.getQueryParameter(name);
+            if (value != null) return value;
+        }
+        Set<String> paramNames = uri.getQueryParameterNames();
+        for (String name : names) {
+            for (String paramName : paramNames) {
+                if (paramName.equalsIgnoreCase(name)) return uri.getQueryParameter(paramName);
+            }
+        }
+        return null;
+    }
+
     private String vlessToClash(String uri, String name) {
         try {
+            android.util.Log.d("ProxySub", "vlessToClash input URI: " + uri);
             Uri u = Uri.parse(uri);
-            if (u.getHost() == null || u.getPort() <= 0) {
+            String host = u.getHost();
+            int port = u.getPort();
+            if (host == null || port <= 0) {
+                String afterScheme = uri.substring("vless://".length());
+                int queryIdx = afterScheme.indexOf('?');
+                int fragIdx = afterScheme.indexOf('#');
+                String authPart = queryIdx >= 0 ? afterScheme.substring(0, queryIdx) : (fragIdx >= 0 ? afterScheme.substring(0, fragIdx) : afterScheme);
+                int atIdx = authPart.indexOf('@');
+                String hostPort = atIdx >= 0 ? authPart.substring(atIdx + 1) : authPart;
+                if (hostPort.startsWith("[")) {
+                    int bracketEnd = hostPort.indexOf(']');
+                    if (bracketEnd > 0) {
+                        host = hostPort.substring(1, bracketEnd);
+                        String afterBracket = hostPort.substring(bracketEnd + 1);
+                        if (afterBracket.startsWith(":")) { try { port = Integer.parseInt(afterBracket.substring(1)); } catch (Exception ignored) {} }
+                    }
+                } else {
+                    int colonIdx = hostPort.lastIndexOf(':');
+                    if (colonIdx >= 0) {
+                        host = hostPort.substring(0, colonIdx);
+                        try { port = Integer.parseInt(hostPort.substring(colonIdx + 1)); } catch (Exception ignored) {}
+                    } else { host = hostPort; }
+                }
+                android.util.Log.d("ProxySub", "vlessToClash: Uri.parse fallback, host=" + host + " port=" + port);
+            }
+            if (host == null || host.isEmpty() || port <= 0) {
                 android.util.Log.e("ProxySub", "vlessToClash: invalid host or port in URI: " + uri);
                 return null;
             }
             String uuid = u.getUserInfo() != null ? u.getUserInfo() : "";
-            if (uuid.isEmpty() && u.getQueryParameter("uuid") != null) uuid = u.getQueryParameter("uuid");
+            if (uuid.isEmpty()) { String uuidParam = getParam(u, "uuid"); if (uuidParam != null) uuid = uuidParam; }
             StringBuilder sb = new StringBuilder();
             sb.append("  - name: ").append(quote(name)).append("\n");
             sb.append("    type: vless\n");
-            sb.append("    server: ").append(u.getHost() != null ? u.getHost() : "").append("\n");
-            sb.append("    port: ").append(u.getPort() > 0 ? u.getPort() : "").append("\n");
+            sb.append("    server: ").append(host).append("\n");
+            sb.append("    port: ").append(port).append("\n");
             sb.append("    uuid: ").append(quote(uuid)).append("\n");
             sb.append("    udp: true\n");
-            String network = u.getQueryParameter("type");
+            String network = getParam(u, "type");
             if (network == null) network = "tcp";
-            if (!"tcp".equals(network)) {
-                sb.append("    network: ").append(network).append("\n");
-                if ("ws".equals(network)) {
-                    sb.append("    ws-opts:\n");
-                    if (u.getQueryParameter("path") != null) sb.append("      path: ").append(quote(u.getQueryParameter("path"))).append("\n");
-                    else sb.append("      path: \"/\"\n");
-                    if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
-                }
-                if ("grpc".equals(network)) {
-                    sb.append("    grpc-opts:\n");
-                    String sn = u.getQueryParameter("serviceName");
-                    if (sn == null) sn = u.getQueryParameter("serviceName");
-                    sb.append("      grpc-service-name: ").append(quote(sn != null ? sn : "")).append("\n");
-                }
-                if ("http".equals(network)) {
-                    String headerType = u.getQueryParameter("headerType");
-                    if (headerType == null) headerType = u.getQueryParameter("header-type");
-                    if (headerType != null && "http".equals(headerType)) {
-                        sb.append("    http-opts:\n");
-                        if (u.getQueryParameter("path") != null) {
-                            sb.append("      path:\n        - ").append(quote(u.getQueryParameter("path"))).append("\n");
-                        }
-                        if (u.getQueryParameter("host") != null) {
-                            sb.append("      headers:\n        Host:\n          - ").append(quote(u.getQueryParameter("host"))).append("\n");
-                        }
-                    }
-                }
+            String headerType = getParam(u, "headerType", "header-type");
+            if ("ws".equals(network)) {
+                sb.append("    network: ws\n");
+                sb.append("    ws-opts:\n");
+                String path = getParam(u, "path");
+                if (path == null) path = "/";
+                String ed = getParam(u, "ed");
+                if (ed == null && path.contains("?ed=")) { int i = path.indexOf("?ed="); ed = path.substring(i + 4); int a = ed.indexOf('&'); if (a >= 0) ed = ed.substring(0, a); path = path.substring(0, i); }
+                else if (ed == null && path.contains("&ed=")) { int i = path.indexOf("&ed="); ed = path.substring(i + 4); int a = ed.indexOf('&'); if (a >= 0) ed = ed.substring(0, a); path = path.substring(0, i); }
+                sb.append("      path: ").append(quote(path)).append("\n");
+                String wsHost = getParam(u, "host");
+                if (wsHost != null) sb.append("      headers:\n        Host: ").append(quote(wsHost)).append("\n");
+                if (ed != null) { try { sb.append("      max-early-data: ").append(Integer.parseInt(ed.trim())).append("\n"); sb.append("      early-data-header-name: Sec-WebSocket-Protocol\n"); } catch (NumberFormatException ignored) {} }
+            } else if ("grpc".equals(network)) {
+                sb.append("    network: grpc\n");
+                sb.append("    grpc-opts:\n");
+                String sn = getParam(u, "serviceName", "service-name");
+                sb.append("      grpc-service-name: ").append(quote(sn != null ? sn : "")).append("\n");
+            } else if ("http".equals(network) || (headerType != null && "http".equals(headerType))) {
+                sb.append("    network: http\n");
+                sb.append("    http-opts:\n");
+                String path = getParam(u, "path");
+                if (path != null) sb.append("      path:\n        - ").append(quote(path)).append("\n");
+                String httpHost = getParam(u, "host");
+                if (httpHost != null) sb.append("      headers:\n        Host:\n          - ").append(quote(httpHost)).append("\n");
             } else {
                 sb.append("    network: tcp\n");
-                String headerType = u.getQueryParameter("headerType");
-                if (headerType == null) headerType = u.getQueryParameter("header-type");
-                if (headerType != null && "http".equals(headerType)) {
-                    sb.append("    network: http\n");
-                    sb.append("    http-opts:\n");
-                    if (u.getQueryParameter("path") != null) {
-                        sb.append("      path:\n        - ").append(quote(u.getQueryParameter("path"))).append("\n");
-                    }
-                    if (u.getQueryParameter("host") != null) {
-                        sb.append("      headers:\n        Host:\n          - ").append(quote(u.getQueryParameter("host"))).append("\n");
-                    }
-                }
             }
-            String security = u.getQueryParameter("security");
-            String sni = u.getQueryParameter("sni");
-            String pbk = u.getQueryParameter("pbk");
-            if (pbk == null) pbk = u.getQueryParameter("public-key");
-            String sid = u.getQueryParameter("sid");
-            if (sid == null) sid = u.getQueryParameter("short-id");
-            String seed = u.getQueryParameter("seed");
+            String security = getParam(u, "security");
+            String sni = getParam(u, "sni");
+            String pbk = getParam(u, "pbk", "public-key");
+            String sid = getParam(u, "sid", "short-id");
             boolean isReality = (security != null && "reality".equals(security)) || pbk != null;
-            String flow = u.getQueryParameter("flow");
+            boolean isTls = (security != null && "tls".equals(security)) || isReality;
+            String flow = getParam(u, "flow");
             if (flow == null && isReality) flow = "xtls-rprx-vision";
-            if (flow != null) sb.append("    flow: ").append(flow).append("\n");
-            if (security != null && "tls".equals(security)) {
+            if (flow != null && isTls) sb.append("    flow: ").append(flow).append("\n");
+            String allowInsecure = getParam(u, "allowInsecure", "allow-insecure", "insecure");
+            boolean skipCertVerify = "1".equals(allowInsecure) || "true".equalsIgnoreCase(allowInsecure);
+            if (isTls) {
                 sb.append("    tls: true\n");
-                if (sni != null) sb.append("    servername: ").append(quote(sni)).append("\n");
-                if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
-            } else if (isReality) {
-                sb.append("    tls: true\n");
-                if (sni != null) sb.append("    servername: ").append(quote(sni)).append("\n");
+                sb.append("    servername: ").append(quote(sni != null ? sni : host)).append("\n");
+                if (skipCertVerify) sb.append("    skip-cert-verify: true\n");
+            }
+            if (isReality) {
                 sb.append("    reality-opts:\n");
                 if (pbk != null) sb.append("      public-key: ").append(quote(pbk)).append("\n");
                 if (sid != null) sb.append("      short-id: ").append(quote(sid)).append("\n");
-                if (seed != null && sid == null) sb.append("      short-id: ").append(quote(seed)).append("\n");
             }
-            if (u.getQueryParameter("alpn") != null) {
-                sb.append("    alpn:\n");
-                for (String a : u.getQueryParameter("alpn").split(",")) sb.append("      - ").append(quote(a.trim())).append("\n");
-            }
-            if (u.getQueryParameter("fp") != null) sb.append("    client-fingerprint: ").append(u.getQueryParameter("fp")).append("\n");
+            String alpn = getParam(u, "alpn");
+            if (alpn != null) { sb.append("    alpn:\n"); for (String a : alpn.split(",")) sb.append("      - ").append(quote(a.trim())).append("\n"); }
+            String fp = getParam(u, "fp", "fingerprint");
+            if (fp != null) sb.append("    client-fingerprint: ").append(fp).append("\n");
             else if (isReality) sb.append("    client-fingerprint: chrome\n");
             android.util.Log.d("ProxySub", "vlessToClash: " + name + " -> " + sb.toString().replace("\n", " | "));
             return sb.toString();
