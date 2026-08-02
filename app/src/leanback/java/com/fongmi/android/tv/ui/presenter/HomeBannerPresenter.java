@@ -304,17 +304,18 @@ public class HomeBannerPresenter extends Presenter {
     private void layoutCoverFlowCards(ViewHolder holder) {
         int containerW = holder.binding.marqueeContainer.getWidth();
         if (containerW <= 0) {
-            // 首次布局还没测量，估算一下（稍后布局会再次触发onBind或重新布局）
             int screenW = ResUtil.getScreenWidth();
-            int middleCardW = (int) ((screenW - ResUtil.dp2px(48) - ResUtil.dp2px(16)
-                - Math.min(ResUtil.dp2px(560), Math.max(ResUtil.dp2px(360),
-                    (int) ((screenW - ResUtil.dp2px(48) - ResUtil.dp2px(16)) * 0.32f))) * 1.0f);
-            containerW = middleCardW;
+            int padding = ResUtil.dp2px(64);
+            int available = screenW - padding;
+            float rightRatio = 0.32f;
+            int rightW = Math.min(ResUtil.dp2px(560),
+                                   Math.max(ResUtil.dp2px(360),
+                                            (int) (available * rightRatio)));
+            containerW = available - rightW;
         }
-        int centerCardW = ResUtil.dp2px(240);  // XML中cardCenter宽度
-        int sideCardW = ResUtil.dp2px(180);    // XML中cardLeft/cardRight宽度
-        int sideMargin = ResUtil.dp2px(12);
-        int gap = ResUtil.dp2px(16);            // 中间与两侧之间的间距
+        int centerCardW = ResUtil.dp2px(240);
+        int sideCardW = ResUtil.dp2px(180);
+        int gap = ResUtil.dp2px(16);
 
         // 三张水平排列，总宽度 = center + side*2 + gap*2
         int totalCoverW = centerCardW + sideCardW * 2 + gap * 2;
