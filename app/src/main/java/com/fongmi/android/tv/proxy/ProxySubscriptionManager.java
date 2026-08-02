@@ -856,7 +856,8 @@ public class ProxySubscriptionManager {
             boolean isReality = (security != null && "reality".equals(security)) || pbk != null;
             boolean isTls = (security != null && "tls".equals(security)) || isReality;
             String flow = getParam(u, "flow");
-            android.util.Log.d("ProxySub", "vlessToClash: flow=" + flow + " isReality=" + isReality + " isTls=" + isTls);
+            if (flow == null && isReality && "tcp".equals(network)) flow = "xtls-rprx-vision";
+            android.util.Log.d("ProxySub", "vlessToClash: flow=" + flow + " isReality=" + isReality + " isTls=" + isTls + " network=" + network);
             if (flow != null && isTls) sb.append("    flow: ").append(flow).append("\n");
             String allowInsecure = getParam(u, "allowInsecure", "allow-insecure", "insecure");
             boolean skipCertVerify = "1".equals(allowInsecure) || "true".equalsIgnoreCase(allowInsecure);

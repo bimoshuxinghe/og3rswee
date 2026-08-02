@@ -87,11 +87,14 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
         Task.execute(() -> {
             try {
                 List<ProxyNode> nodes = ProxySubscriptionManager.get().refresh(url);
+                ProxyNode selected = ProxySubscriptionManager.get().autoSelect();
                 App.post(() -> {
                     Notify.dismiss();
+                    binding.enable.setChecked(true);
                     setStatus();
                     notifyChanged();
-                    Notify.show(getString(R.string.proxy_sub_parsed, nodes.size()));
+                    if (selected != null) Notify.show(getString(R.string.proxy_sub_selected, selected.getDisplay()));
+                    else Notify.show(getString(R.string.proxy_sub_parsed, nodes.size()));
                     showNodeList(nodes);
                 });
             } catch (Throwable e) {

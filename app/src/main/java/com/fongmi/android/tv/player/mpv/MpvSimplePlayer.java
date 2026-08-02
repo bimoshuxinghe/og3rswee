@@ -834,12 +834,40 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private String getTrackLabel(int index, int mpvId, int trackType) {
         String title = safeGetString("track-list/" + index + "/title");
+        String codec = safeGetString("track-list/" + index + "/codec");
+        String lang = safeGetString("track-list/" + index + "/lang");
         String prefix;
         if (trackType == C.TRACK_TYPE_AUDIO) prefix = "音轨";
         else if (trackType == C.TRACK_TYPE_TEXT) prefix = "字幕";
         else prefix = "视轨";
         StringBuilder builder = new StringBuilder(prefix).append(' ').append(mpvId);
-        if (!TextUtils.isEmpty(title)) builder.append(" - ").append(title);
+        if (!TextUtils.isEmpty(title)) {
+            builder.append(" - ").append(title);
+        } else {
+            if (!TextUtils.isEmpty(lang) && !"und".equals(lang)) builder.append(" [").append(lang).append("]");
+            if (!TextUtils.isEmpty(codec)) builder.append(" ").append(codec);
+            if (trackType == C.TRACK_TYPE_VIDEO) {
+                Integer w = safeGetInt("track-list/" + index + "/demux-w");
+                if (w == null || w <= 0) w = safeGetInt("track-list/" + index + "/w");
+                Integer h = safeGetInt("track-list/" + index + "/demux-h");
+                if (h == null || h <= 0) h = safeGetInt("track-list/" + index + "/h");
+                if (w != null && w > 0 && h != null && h > 0) builder.append(" ").append(w).append("x").append(h);
+                Integer fps = safeGetInt("track-list/" + index + "/demux-fps");
+                if (fps == null || fps <= 0) fps = safeGetInt("track-list/" + index + "/fps");
+                if (fps != null && fps > 0) builder.append(" ").append(String.format(java.util.Locale.ROOT, "%.0f", (double) fps)).append("fps");
+                Integer bps = safeGetInt("track-list/" + index + "/demux-bitrate");
+                if (bps != null && bps > 0) builder.append(" ").append(bps / 1000).append("kbps");
+            } else if (trackType == C.TRACK_TYPE_AUDIO) {
+                Integer ch = safeGetInt("track-list/" + index + "/demux-channel-count");
+                if (ch == null || ch <= 0) ch = safeGetInt("track-list/" + index + "/channel-count");
+                if (ch != null && ch > 0) builder.append(" ").append(ch).append("ch");
+                Integer sr = safeGetInt("track-list/" + index + "/demux-samplerate");
+                if (sr == null || sr <= 0) sr = safeGetInt("track-list/" + index + "/samplerate");
+                if (sr != null && sr > 0) builder.append(" ").append(sr / 1000).append("kHz");
+                Integer bps = safeGetInt("track-list/" + index + "/demux-bitrate");
+                if (bps != null && bps > 0) builder.append(" ").append(bps / 1000).append("kbps");
+            }
+        }
         return builder.toString();
     }
 
