@@ -1210,10 +1210,22 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void onChoose() {
         mClock.setCallback(null);
-        player().toggleEngine();
+        String[] items = {getString(R.string.play_exo), getString(R.string.play_mpv)};
+        int current = player().isMpv() ? 1 : 0;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.player)
+                .setSingleChoiceItems(items, current, (dialog, which) -> {
+                    int target = which == 0 ? PlayerSetting.ENGINE_EXO : PlayerSetting.ENGINE_MPV;
+                    if (which != current) {
+                        player().setEngine(target);
+                        setEngine();
+                        setDecode();
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.dialog_negative, null)
+                .show();
         setR1Callback();
-        setEngine();
-        setDecode();
     }
 
     private boolean onChooseExternal() {
@@ -1490,7 +1502,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 mBinding.bgPoster.setVisibility(View.GONE);
                 mBinding.bgOverlay.setVisibility(View.GONE);
             }
-            mBinding.getRoot().setBackgroundColor(android.graphics.Color.BLACK);
+            mBinding.getRoot().setBackgroundColor(android.graphics.Color.TRANSPARENT);
             return;
         }
         ImgUtil.load(this, mHistory.getVodPic(), new CustomTarget<>() {
