@@ -75,7 +75,11 @@ public class ProxySubscriptionManager {
 
     private String getConfig() {
         String saved = Setting.getProxySubscriptionConfig();
-        if (!TextUtils.isEmpty(saved)) return saved;
+        if (!TextUtils.isEmpty(saved) && saved.contains("proxies:")) {
+            android.util.Log.d("ProxySub", "getConfig: using saved config (" + saved.length() + " chars)");
+            return saved;
+        }
+        android.util.Log.d("ProxySub", "getConfig: saved config empty or invalid, regenerating from nodes");
         String config = generateClashConfig(getNodes());
         if (!TextUtils.isEmpty(config)) Setting.putProxySubscriptionConfig(config);
         return config;
@@ -370,18 +374,30 @@ public class ProxySubscriptionManager {
         String lower = line.toLowerCase(Locale.ROOT);
         if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("socks://") || lower.startsWith("socks5://") || lower.startsWith("socks5h://")) return ProxyNode.fromUri(line);
         if (lower.startsWith("vmess://")) return parseVmess(line);
-        if (lower.startsWith("ss://")) return ProxyNode.unsupported(getFragmentName(line, "SS"), "ss", "", -1, line);
-        if (lower.startsWith("ssr://")) return ProxyNode.unsupported(getFragmentName(line, "SSR"), "ssr", "", -1, line);
-        if (lower.startsWith("vless://")) return ProxyNode.unsupported(getFragmentName(line, "VLESS"), "vless", "", -1, line);
-        if (lower.startsWith("trojan://")) return ProxyNode.unsupported(getFragmentName(line, "Trojan"), "trojan", "", -1, line);
-        if (lower.startsWith("hysteria2://") || lower.startsWith("hy2://")) return ProxyNode.unsupported(getFragmentName(line, "Hysteria2"), "hysteria2", "", -1, line);
-        if (lower.startsWith("hysteria://") || lower.startsWith("hy://")) return ProxyNode.unsupported(getFragmentName(line, "Hysteria"), "hysteria", "", -1, line);
-        if (lower.startsWith("tuic://")) return ProxyNode.unsupported(getFragmentName(line, "TUIC"), "tuic", "", -1, line);
-        if (lower.startsWith("snell://")) return ProxyNode.unsupported(getFragmentName(line, "Snell"), "snell", "", -1, line);
-        if (lower.startsWith("anytls://")) return ProxyNode.unsupported(getFragmentName(line, "AnyTLS"), "anytls", "", -1, line);
-        if (lower.startsWith("wireguard://") || lower.startsWith("wg://")) return ProxyNode.unsupported(getFragmentName(line, "WireGuard"), "wireguard", "", -1, line);
-        if (lower.startsWith("juicity://")) return ProxyNode.unsupported(getFragmentName(line, "Juicity"), "juicity", "", -1, line);
+        if (lower.startsWith("ss://")) return makeNode(getFragmentName(line, "SS"), "ss", line);
+        if (lower.startsWith("ssr://")) return makeNode(getFragmentName(line, "SSR"), "ssr", line);
+        if (lower.startsWith("vless://")) return makeNode(getFragmentName(line, "VLESS"), "vless", line);
+        if (lower.startsWith("trojan://")) return makeNode(getFragmentName(line, "Trojan"), "trojan", line);
+        if (lower.startsWith("hysteria2://") || lower.startsWith("hy2://")) return makeNode(getFragmentName(line, "Hysteria2"), "hysteria2", line);
+        if (lower.startsWith("hysteria://") || lower.startsWith("hy://")) return makeNode(getFragmentName(line, "Hysteria"), "hysteria", line);
+        if (lower.startsWith("tuic://")) return makeNode(getFragmentName(line, "TUIC"), "tuic", line);
+        if (lower.startsWith("snell://")) return makeNode(getFragmentName(line, "Snell"), "snell", line);
+        if (lower.startsWith("anytls://")) return makeNode(getFragmentName(line, "AnyTLS"), "anytls", line);
+        if (lower.startsWith("wireguard://") || lower.startsWith("wg://")) return makeNode(getFragmentName(line, "WireGuard"), "wireguard", line);
+        if (lower.startsWith("juicity://")) return makeNode(getFragmentName(line, "Juicity"), "juicity", line);
         return null;
+    }
+
+    private ProxyNode makeNode(String name, String scheme, String rawUri) {
+        ProxyNode node = ProxyNode.unsupported(name, scheme, "", -1, rawUri);
+        String yaml = toClashProxy(node);
+        if (!TextUtils.isEmpty(yaml)) {
+            node.setProxyYaml(yaml);
+            android.util.Log.d("ProxySub", "makeNode: " + name + " [" + scheme + "] proxyYaml已设置");
+        } else {
+            android.util.Log.w("ProxySub", "makeNode: " + name + " [" + scheme + "] YAML生成失败，URI: " + rawUri);
+        }
+        return node;
     }
 
     private ProxyNode parseVmess(String line) {
@@ -389,9 +405,9 @@ public class ProxySubscriptionManager {
             String json = decode(line.substring("vmess://".length()));
             JsonObject object = App.gson().fromJson(json, JsonObject.class);
             String name = object != null && object.has("ps") ? object.get("ps").getAsString() : "VMess";
-            return ProxyNode.unsupported(name, "vmess", "", -1, line);
+            return makeNode(name, "vmess", line);
         } catch (Exception e) {
-            return ProxyNode.unsupported("VMess", "vmess", "", -1, line);
+            return makeNode("VMess", "vmess", line);
         }
     }
 
@@ -487,7 +503,7 @@ public class ProxySubscriptionManager {
                 String method = server.has("method") ? server.get("method").getAsString() : "";
                 String password = server.has("password") ? server.get("password").getAsString() : "";
                 String ssUri = "ss://" + android.util.Base64.encodeToString((method + ":" + password).getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP) + "@" + serverAddr + ":" + port + "#" + Uri.encode(name);
-                ProxyNode node = ProxyNode.unsupported(name, "ss", serverAddr, port, ssUri);
+                ProxyNode node = makeNode(name, "ss", ssUri);
                 result.putIfAbsent(ssUri, node);
             }
         } catch (Exception e) {
@@ -741,16 +757,48 @@ public class ProxySubscriptionManager {
             sb.append("    uuid: ").append(quote(uuid)).append("\n");
             sb.append("    udp: true\n");
             String network = u.getQueryParameter("type");
-            if (network != null && !"tcp".equals(network)) {
+            if (network == null) network = "tcp";
+            if (!"tcp".equals(network)) {
                 sb.append("    network: ").append(network).append("\n");
                 if ("ws".equals(network)) {
                     sb.append("    ws-opts:\n");
                     if (u.getQueryParameter("path") != null) sb.append("      path: ").append(quote(u.getQueryParameter("path"))).append("\n");
+                    else sb.append("      path: \"/\"\n");
                     if (u.getQueryParameter("host") != null) sb.append("      headers:\n        Host: ").append(quote(u.getQueryParameter("host"))).append("\n");
                 }
-                if ("grpc".equals(network) && u.getQueryParameter("serviceName") != null) sb.append("    grpc-opts:\n      grpc-service-name: ").append(quote(u.getQueryParameter("serviceName"))).append("\n");
+                if ("grpc".equals(network)) {
+                    sb.append("    grpc-opts:\n");
+                    String sn = u.getQueryParameter("serviceName");
+                    if (sn == null) sn = u.getQueryParameter("serviceName");
+                    sb.append("      grpc-service-name: ").append(quote(sn != null ? sn : "")).append("\n");
+                }
+                if ("http".equals(network)) {
+                    String headerType = u.getQueryParameter("headerType");
+                    if (headerType == null) headerType = u.getQueryParameter("header-type");
+                    if (headerType != null && "http".equals(headerType)) {
+                        sb.append("    http-opts:\n");
+                        if (u.getQueryParameter("path") != null) {
+                            sb.append("      path:\n        - ").append(quote(u.getQueryParameter("path"))).append("\n");
+                        }
+                        if (u.getQueryParameter("host") != null) {
+                            sb.append("      headers:\n        Host:\n          - ").append(quote(u.getQueryParameter("host"))).append("\n");
+                        }
+                    }
+                }
             } else {
                 sb.append("    network: tcp\n");
+                String headerType = u.getQueryParameter("headerType");
+                if (headerType == null) headerType = u.getQueryParameter("header-type");
+                if (headerType != null && "http".equals(headerType)) {
+                    sb.append("    network: http\n");
+                    sb.append("    http-opts:\n");
+                    if (u.getQueryParameter("path") != null) {
+                        sb.append("      path:\n        - ").append(quote(u.getQueryParameter("path"))).append("\n");
+                    }
+                    if (u.getQueryParameter("host") != null) {
+                        sb.append("      headers:\n        Host:\n          - ").append(quote(u.getQueryParameter("host"))).append("\n");
+                    }
+                }
             }
             String security = u.getQueryParameter("security");
             String sni = u.getQueryParameter("sni");
@@ -758,6 +806,7 @@ public class ProxySubscriptionManager {
             if (pbk == null) pbk = u.getQueryParameter("public-key");
             String sid = u.getQueryParameter("sid");
             if (sid == null) sid = u.getQueryParameter("short-id");
+            String seed = u.getQueryParameter("seed");
             boolean isReality = (security != null && "reality".equals(security)) || pbk != null;
             String flow = u.getQueryParameter("flow");
             if (flow == null && isReality) flow = "xtls-rprx-vision";
@@ -769,11 +818,10 @@ public class ProxySubscriptionManager {
             } else if (isReality) {
                 sb.append("    tls: true\n");
                 if (sni != null) sb.append("    servername: ").append(quote(sni)).append("\n");
-                if (pbk != null || sid != null) {
-                    sb.append("    reality-opts:\n");
-                    if (pbk != null) sb.append("      public-key: ").append(quote(pbk)).append("\n");
-                    if (sid != null) sb.append("      short-id: ").append(quote(sid)).append("\n");
-                }
+                sb.append("    reality-opts:\n");
+                if (pbk != null) sb.append("      public-key: ").append(quote(pbk)).append("\n");
+                if (sid != null) sb.append("      short-id: ").append(quote(sid)).append("\n");
+                if (seed != null && sid == null) sb.append("      short-id: ").append(quote(seed)).append("\n");
             }
             if (u.getQueryParameter("alpn") != null) {
                 sb.append("    alpn:\n");

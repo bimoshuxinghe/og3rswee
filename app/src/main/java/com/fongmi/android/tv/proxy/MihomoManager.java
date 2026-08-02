@@ -27,6 +27,8 @@ public class MihomoManager {
     private Process process;
     private final StringBuilder logBuffer = new StringBuilder();
     private String lastError = "";
+    private String lastConfig = "";
+    private String lastSelected = "";
 
     private static class Loader {
         static volatile MihomoManager INSTANCE = new MihomoManager();
@@ -65,7 +67,21 @@ public class MihomoManager {
             lastError = "配置为空";
             return false;
         }
-        if (isRunning() && canConnect()) return true;
+        // Check if already running with the SAME config and selected node
+        if (isRunning() && canConnect()) {
+            boolean configSame = config.equals(lastConfig);
+            boolean selectedSame = (selected == null ? "" : selected).equals(lastSelected);
+            if (configSame && selectedSame) {
+                appendLog("Mihomo已运行且配置未变，跳过重启");
+                return true;
+            }
+            appendLog("配置或选中节点已变化，重启Mihomo (configChanged=" + !configSame + ", selectedChanged=" + !selectedSame + ")");
+            stop();
+        } else if (canConnect() && !isRunning()) {
+            // Stale process from previous app session is occupying the port
+            appendLog("检测到旧Mihomo进程占用端口，尝试清理...");
+            killStaleProcess();
+        }
         boolean hadProcess = process != null;
         stop();
         lastError = "";
@@ -79,6 +95,7 @@ public class MihomoManager {
             Path.write(file, fixedConfig.getBytes(StandardCharsets.UTF_8));
             appendLog("配置文件: " + file.getAbsolutePath());
             appendLog("配置内容:\n" + fixedConfig);
+            appendLog("选中节点: " + (TextUtils.isEmpty(selected) ? "(无)" : selected));
 
             File binary = new File(App.get().getApplicationInfo().nativeLibraryDir, BINARY);
             if (!binary.exists()) {
@@ -91,13 +108,28 @@ public class MihomoManager {
 
             process = new ProcessBuilder(binary.getAbsolutePath(), "-d", dir.getAbsolutePath(), "-f", file.getAbsolutePath()).redirectErrorStream(true).start();
             drain(process);
-            return waitReady();
+            boolean ok = waitReady();
+            if (ok) {
+                lastConfig = config;
+                lastSelected = selected == null ? "" : selected;
+            }
+            return ok;
         } catch (Exception e) {
             lastError = "启动异常: " + e.getMessage();
             appendLog(lastError);
             Log.e(TAG, "start failed", e);
             stop();
             return false;
+        }
+    }
+
+    private void killStaleProcess() {
+        try {
+            Process killProc = new ProcessBuilder("sh", "-c", "pkill -f libmihomo.so 2>/dev/null || true").start();
+            killProc.waitFor(2, TimeUnit.SECONDS);
+            killProc.destroy();
+            Thread.sleep(500);
+        } catch (Exception ignored) {
         }
     }
 
