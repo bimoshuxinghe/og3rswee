@@ -212,129 +212,258 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- Detail / Carousel View -->
+            <!-- Detail / Carousel View (Vertical Marquee / 竖版跑马灯 - 向上滚动切换海报) -->
             <FrameLayout
                 android:id="@+id/detailLayout"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="match_parent"
+                android:clipChildren="true"
+                android:clipToPadding="true">
 
-                <androidx.appcompat.widget.AppCompatImageView
-                    android:id="@+id/middleImage"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    tools:src="@drawable/artwork" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/shape_banner_shadow"
-                    android:focusable="false"
-                    android:focusableInTouchMode="false" />
-
+                <!-- 跑马灯双页容器：前后两页上下堆叠，通过 translationY 向上滚动 -->
                 <LinearLayout
+                    android:id="@+id/marqueeContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="bottom"
-                    android:orientation="vertical"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:paddingBottom="16dp"
-                    android:paddingTop="8dp">
+                    android:orientation="vertical">
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/middleName"
+                    <!-- 第一页（前面，默认显示） -->
+                    <FrameLayout
+                        android:id="@+id/marqueePage0"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/white"
-                        android:textSize="24sp"
-                        android:textStyle="bold"
-                        android:singleLine="true"
-                        android:ellipsize="marquee"
-                        tools:text="影视名称" />
+                        android:layout_height="304dp">
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/middleDirector"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/white_70"
-                        android:textSize="12sp"
-                        android:singleLine="true"
-                        android:ellipsize="end"
-                        tools:text="导演: 张三" />
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:id="@+id/middleImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            tools:src="@drawable/artwork" />
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/middleActor"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/white_70"
-                        android:textSize="12sp"
-                        android:singleLine="true"
-                        android:ellipsize="end"
-                        tools:text="演员: 李四 / 王五" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/middleContent"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="@color/white_70"
-                        android:textSize="12sp"
-                        android:maxLines="2"
-                        android:ellipsize="end"
-                        tools:text="简介: 这里是该影视剧的详细介绍内容..." />
-
-                    <LinearLayout
-                        android:id="@+id/playButtonLayout"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginTop="8dp"
-                        android:background="@drawable/shape_play_button_bg"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="16dp">
-
-                        <FrameLayout
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:focusable="false"
-                            android:focusableInTouchMode="false"
-                            android:background="@drawable/shape_white_circle">
-
-                            <androidx.appcompat.widget.AppCompatImageView
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:layout_gravity="center"
-                                android:src="@drawable/ic_widget_play"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false"
-                                app:tint="@color/black" />
-                        </FrameLayout>
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/play"
-                            android:textColor="@color/white"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/shape_banner_shadow"
                             android:focusable="false"
                             android:focusableInTouchMode="false" />
-                    </LinearLayout>
 
-                    <LinearLayout
-                        android:id="@+id/indicatorLayout"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center_horizontal"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal" />
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom"
+                            android:orientation="vertical"
+                            android:paddingStart="20dp"
+                            android:paddingEnd="20dp"
+                            android:paddingBottom="16dp"
+                            android:paddingTop="8dp">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleName"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/white"
+                                android:textSize="24sp"
+                                android:textStyle="bold"
+                                android:singleLine="true"
+                                android:ellipsize="marquee"
+                                tools:text="影视名称" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleDirector"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="@color/white_70"
+                                android:textSize="12sp"
+                                android:singleLine="true"
+                                android:ellipsize="end"
+                                tools:text="导演: 张三" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleActor"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="@color/white_70"
+                                android:textSize="12sp"
+                                android:singleLine="true"
+                                android:ellipsize="end"
+                                tools:text="演员: 李四 / 王五" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleContent"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="@color/white_70"
+                                android:textSize="12sp"
+                                android:maxLines="2"
+                                android:ellipsize="end"
+                                tools:text="简介: 这里是该影视剧的详细介绍内容..." />
+
+                            <LinearLayout
+                                android:id="@+id/playButtonLayout"
+                                android:layout_width="wrap_content"
+                                android:layout_height="36dp"
+                                android:layout_marginTop="8dp"
+                                android:background="@drawable/shape_play_button_bg"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:focusable="false"
+                                android:focusableInTouchMode="false"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="16dp">
+
+                                <FrameLayout
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:focusable="false"
+                                    android:focusableInTouchMode="false"
+                                    android:background="@drawable/shape_white_circle">
+
+                                    <androidx.appcompat.widget.AppCompatImageView
+                                        android:layout_width="14dp"
+                                        android:layout_height="14dp"
+                                        android:layout_gravity="center"
+                                        android:src="@drawable/ic_widget_play"
+                                        android:focusable="false"
+                                        android:focusableInTouchMode="false"
+                                        app:tint="@color/black" />
+                                </FrameLayout>
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:text="@string/play"
+                                    android:textColor="@color/white"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:focusable="false"
+                                    android:focusableInTouchMode="false" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/indicatorLayout"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center_horizontal"
+                                android:layout_marginTop="8dp"
+                                android:orientation="horizontal" />
+                        </LinearLayout>
+                    </FrameLayout>
+
+                    <!-- 第二页（后面，默认在下方屏幕外，滚动后显示） -->
+                    <FrameLayout
+                        android:id="@+id/marqueePage1"
+                        android:layout_width="match_parent"
+                        android:layout_height="304dp">
+
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:id="@+id/middleImage2"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/shape_banner_shadow"
+                            android:focusable="false"
+                            android:focusableInTouchMode="false" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom"
+                            android:orientation="vertical"
+                            android:paddingStart="20dp"
+                            android:paddingEnd="20dp"
+                            android:paddingBottom="16dp"
+                            android:paddingTop="8dp">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleName2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/white"
+                                android:textSize="24sp"
+                                android:textStyle="bold"
+                                android:singleLine="true"
+                                android:ellipsize="marquee" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleDirector2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="@color/white_70"
+                                android:textSize="12sp"
+                                android:singleLine="true"
+                                android:ellipsize="end" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleActor2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="@color/white_70"
+                                android:textSize="12sp"
+                                android:singleLine="true"
+                                android:ellipsize="end" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/middleContent2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textColor="@color/white_70"
+                                android:textSize="12sp"
+                                android:maxLines="2"
+                                android:ellipsize="end" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="36dp"
+                                android:layout_marginTop="8dp"
+                                android:background="@drawable/shape_play_button_bg"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:focusable="false"
+                                android:focusableInTouchMode="false"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="16dp">
+
+                                <FrameLayout
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:focusable="false"
+                                    android:focusableInTouchMode="false"
+                                    android:background="@drawable/shape_white_circle">
+
+                                    <androidx.appcompat.widget.AppCompatImageView
+                                        android:layout_width="14dp"
+                                        android:layout_height="14dp"
+                                        android:layout_gravity="center"
+                                        android:src="@drawable/ic_widget_play"
+                                        android:focusable="false"
+                                        android:focusableInTouchMode="false"
+                                        app:tint="@color/black" />
+                                </FrameLayout>
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:text="@string/play"
+                                    android:textColor="@color/white"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:focusable="false"
+                                    android:focusableInTouchMode="false" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </FrameLayout>
                 </LinearLayout>
             </FrameLayout>
 

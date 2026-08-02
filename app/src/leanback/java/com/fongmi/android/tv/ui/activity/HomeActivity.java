@@ -231,7 +231,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     protected void initView(Bundle savedInstanceState) {
-        mResult = Result.empty();
         mClock = Clock.create(mBinding.clock).format("MM/dd E HH:mm");
         mBinding.progressLayout.showProgress();
         PermissionUtil.requestNotify(this);
@@ -241,6 +240,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         setTypeAdapter();
         setViewModel();
         setAdapter();
+        // 先尝试从 savedInstanceState 恢复保存的接口数据（避免播放返回后数据丢失）
+        restoreSavedState(savedInstanceState);
         if (com.fongmi.android.tv.setting.Setting.isSyncAutoSync()) {
             checkSync();
         } else {
@@ -250,6 +251,45 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         setLogo();
         bindPlaybackService();
         loadHomeRecommends();
+    }
+
+    /**
+     * 从 onSaveInstanceState 保存的数据中恢复首页结果与推荐海报
+     * 用于：进入播放页面后系统回收HomeActivity，返回时直接恢复上次数据而不用等新的网络请求
+     */
+    private void restoreSavedState(Bundle savedInstanceState) {
+        if (savedInstanceState == null) {
+            mResult = Result.empty();
+            return;
+        }
+        boolean restored = false;
+        try {
+            String savedResult = savedInstanceState.getString("saved_home_result");
+            if (savedResult != null && !savedResult.isEmpty()) {
+                Result cached = Result.fromJson(savedResult);
+                if (cached != null && cached.getList() != null && !cached.getList().isEmpty()) {
+                    addVideo(mResult = cached);
+                    restored = true;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            String savedRecommends = savedInstanceState.getString("saved_home_recommends");
+            if (savedRecommends != null && !savedRecommends.isEmpty()) {
+                java.lang.reflect.Type type = new com.google.gson.reflect.TypeToken<java.util.List<Vod>>() {}.getType();
+                java.util.List<Vod> list = com.fongmi.android.tv.App.gson().fromJson(savedRecommends, type);
+                if (list != null && !list.isEmpty()) {
+                    mHomeRecommends.clear();
+                    mHomeRecommends.addAll(list);
+                    setHomeBanner(mHomeRecommends);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (!restored) mResult = Result.empty();
     }
 
     private boolean mSyncDone;
@@ -798,18 +838,38 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // 保存首页API数据与推荐海报，防止系统回收Activity后返回丢失
+        try {
+            if (mResult != null && mResult.getList() != null && !mResult.getList().isEmpty()) {
+                outState.putString("saved_home_result", mResult.toString());
+            }
+            if (mHomeRecommends != null && !mHomeRecommends.isEmpty()) {
+                outState.putString("saved_home_recommends", com.fongmi.android.tv.App.gson().toJson(mHomeRecommends, new com.google.gson.reflect.TypeToken<java.util.List<Vod>>() {}.getType()));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         unbindPlaybackService();
         if (mLiveViewModel != null && mObserveLiveUrl != null) {
             mLiveViewModel.url().removeObserver(mObserveLiveUrl);
         }
         DLNARendererService.stop(this);
-        LiveConfig.get().clear();
-        VodConfig.get().clear();
+        // 仅在用户真正退出App时才清空单例配置与数据源
+        // 否则系统回收Activity（如播放视频时内存不足）后返回首页，VodConfig/LiveConfig为空会导致接口无数据
+        if (isFinishing() || isChangingConfigurations()) {
+            LiveConfig.get().clear();
+            VodConfig.get().clear();
+            OkHttp.get().clear();
+            Source.get().exit();
+            Server.get().stop();
+        }
         AppDatabase.backup();
-        OkHttp.get().clear();
-        Source.get().exit();
-        Server.get().stop();
         super.onDestroy();
     }
 
