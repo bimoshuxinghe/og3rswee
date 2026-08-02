@@ -146,6 +146,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     protected void initEvent() {
         mBinding.top.setOnClickListener(this::onTop);
         mBinding.logo.setOnClickListener(this::onLogo);
+        mBinding.logo.setOnLongClickListener(this::onLogoLongPress);
         mBinding.link.setOnClickListener(this::onLink);
         mBinding.title.setOnClickListener(this::onSite);
         mBinding.filter.setOnClickListener(this::onFilter);
@@ -402,6 +403,35 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void onLogo(View view) {
         HistoryDialog.create().vod().readOnly().show(this);
+    }
+
+    private boolean onLogoLongPress(View view) {
+        VodConfig.load(getConfig(), new Callback() {
+            @Override
+            public void start() {
+                if (!isViewReady()) return;
+                showProgress();
+                hideContent();
+            }
+
+            @Override
+            public void success() {
+                if (!isViewReady()) return;
+                setTitle();
+                setLogo();
+                homeContent();
+                loadHistory();
+                loadHomeRecommends();
+            }
+
+            @Override
+            public void error(String msg) {
+                if (!isViewReady()) return;
+                Notify.show(msg);
+                showContent();
+            }
+        });
+        return true;
     }
 
     private void onSite(View view) {
