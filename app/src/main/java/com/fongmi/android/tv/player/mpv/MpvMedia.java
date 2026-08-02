@@ -49,6 +49,35 @@ public final class MpvMedia {
         return true;
     }
 
+    /**
+     * 判断 URL 是否为常见视频文件格式。
+     */
+    public static boolean isVideoFile(@Nullable String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        String text = decode(stripFragment(url));
+        if (TextUtils.isEmpty(text)) return false;
+        text = text.toLowerCase(Locale.ROOT);
+        String path = text.split("[?#]", 2)[0];
+        return path.endsWith(".mp4") || path.endsWith(".mkv") || path.endsWith(".avi") || path.endsWith(".mov")
+                || path.endsWith(".flv") || path.endsWith(".webm") || path.endsWith(".ts") || path.endsWith(".m4v")
+                || path.endsWith(".wmv") || path.endsWith(".mpg") || path.endsWith(".mpeg") || path.endsWith(".3gp")
+                || path.endsWith(".rmvb") || path.endsWith(".rm") || path.endsWith(".vob") || path.endsWith(".f4v");
+    }
+
+    /**
+     * 判断 URL 是否为常见音频文件格式。
+     */
+    public static boolean isAudioFile(@Nullable String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        String text = decode(stripFragment(url));
+        if (TextUtils.isEmpty(text)) return false;
+        text = text.toLowerCase(Locale.ROOT);
+        String path = text.split("[?#]", 2)[0];
+        return path.endsWith(".mp3") || path.endsWith(".aac") || path.endsWith(".m4a") || path.endsWith(".ogg")
+                || path.endsWith(".oga") || path.endsWith(".opus") || path.endsWith(".flac") || path.endsWith(".wav")
+                || path.endsWith(".wma") || path.endsWith(".amr") || path.endsWith(".ape") || path.endsWith(".mka");
+    }
+
     public static boolean isRadioAudio(@Nullable String url) {
         if (TextUtils.isEmpty(url)) return false;
         String text = decode(stripFragment(url));

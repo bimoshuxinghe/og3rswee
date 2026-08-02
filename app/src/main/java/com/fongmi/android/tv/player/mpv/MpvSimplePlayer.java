@@ -633,6 +633,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         List<String> options = new ArrayList<>();
         if (positionMs > 0 && useStartOption) options.add("start=" + formatSeconds(positionMs));
         if (isHls(item, url)) {
+            // HLS 直播流：强制 lavf demuxer + HLS 格式，快速起播
             options.add("demuxer=lavf");
             options.add("demuxer-lavf-format=hls");
             options.add("demuxer-lavf-probesize=32");
@@ -641,12 +642,21 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             options.add("cache-secs=1");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
-        } else if (MpvMedia.isRadioAudio(url)) {
+        } else if (MpvMedia.isAudioFile(url) || MpvMedia.isRadioAudio(url)) {
+            // 音频文件：关闭视频轨，只保留音频
             options.add("demuxer=lavf");
             options.add("vid=no");
             options.add("aid=auto");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
+        } else {
+            // 未知格式或视频文件：用 lavf demuxer 自动探测，同时允许纯音频播放
+            options.add("demuxer=lavf");
+            options.add("keep-open=yes");
+            options.add("keep-open-pause=no");
+            // 如果没有视频轨，自动切换为纯音频模式
+            options.add("vid=auto");
+            options.add("aid=auto");
         }
         return TextUtils.join(",", options);
     }
