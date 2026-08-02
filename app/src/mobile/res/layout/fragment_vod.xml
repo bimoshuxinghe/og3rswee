@@ -126,14 +126,14 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/adapter_type" />
 
-    </com.google.android.material.appbar.AppBarLayout>
+        <!-- Pager positioned below AppBarLayout -->
+        <com.fongmi.android.tv.ui.custom.CustomViewPager
+            android:id="@+id/pager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Pager positioned below AppBarLayout -->
-    <com.fongmi.android.tv.ui.custom.CustomViewPager
-        android:id="@+id/pager"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+    </LinearLayout>
 
     <!-- 4. Floating Custom Top Bar on the top layer of CoordinatorLayout -->
     <LinearLayout
