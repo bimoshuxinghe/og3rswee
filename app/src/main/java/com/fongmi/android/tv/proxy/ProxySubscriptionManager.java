@@ -21,18 +21,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 public class ProxySubscriptionManager {
 
     private static final String NAME = "subscription";
     private static final int MAX_TEST = 60;
-    private static final String TEST_URL = "https://www.gstatic.com/generate_204";
-    private static final int TEST_TIMEOUT = 3500;
+    private static final String TEST_HOST = "www.gstatic.com";
+    private static final String TEST_URL = "https://" + TEST_HOST + "/generate_204";
+    private static final int TEST_TIMEOUT = 5000;
     private static final String[] FILTER_NAMES = {"更新订阅", "特殊时期", "如果是", "客户端太旧", "请到网站", "更新一下客户端"};
 
     private List<ProxyNode> nodes;
@@ -225,16 +221,38 @@ public class ProxySubscriptionManager {
     }
 
     private long requestByLocalProxy(long start) {
-        java.net.Proxy proxy = new java.net.Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()));
-        OkHttpClient client = OkHttp.client().newBuilder().proxy(proxy).connectTimeout(TEST_TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TEST_TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TEST_TIMEOUT, TimeUnit.MILLISECONDS).build();
-        Request request = new Request.Builder().url(TEST_URL).head().build();
-        try (Response response = client.newCall(request).execute()) {
-            long latency = response.isSuccessful() || response.code() == 204 ? System.currentTimeMillis() - start : -2;
-            android.util.Log.d("ProxySub", "requestByLocalProxy: code=" + response.code() + " latency=" + latency);
-            return latency;
+        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+        for (int attempt = 0; attempt < 3; attempt++) {
+            long result = testProxyConnect();
+            if (result > 0) {
+                long latency = System.currentTimeMillis() - start;
+                android.util.Log.d("ProxySub", "requestByLocalProxy: success on attempt " + attempt + " latency=" + latency);
+                return latency;
+            }
+            android.util.Log.w("ProxySub", "requestByLocalProxy: attempt " + attempt + " failed, retrying...");
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+        }
+        return -2;
+    }
+
+    private long testProxyConnect() {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()), TEST_TIMEOUT);
+            socket.setSoTimeout(TEST_TIMEOUT);
+            java.io.OutputStream out = socket.getOutputStream();
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
+            String connectRequest = "CONNECT " + TEST_HOST + ":443 HTTP/1.1\r\nHost: " + TEST_HOST + ":443\r\n\r\n";
+            out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            String statusLine = reader.readLine();
+            android.util.Log.d("ProxySub", "testProxyConnect: status=" + statusLine);
+            if (statusLine != null && statusLine.contains("200")) {
+                return 1;
+            }
+            return -1;
         } catch (Exception e) {
-            android.util.Log.e("ProxySub", "requestByLocalProxy failed", e);
-            return -2;
+            android.util.Log.e("ProxySub", "testProxyConnect failed", e);
+            return -1;
         }
     }
 
