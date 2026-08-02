@@ -32,6 +32,7 @@ public class ProxySubscriptionManager {
     private static final String[] FILTER_NAMES = {"更新订阅", "特殊时期", "如果是", "客户端太旧", "请到网站", "更新一下客户端"};
 
     private List<ProxyNode> nodes;
+    private volatile boolean mihomoStarting = false;
 
     private static class Loader {
         static volatile ProxySubscriptionManager INSTANCE = new ProxySubscriptionManager();
@@ -73,12 +74,10 @@ public class ProxySubscriptionManager {
     }
 
     private String getConfig() {
+        String saved = Setting.getProxySubscriptionConfig();
+        if (!TextUtils.isEmpty(saved)) return saved;
         String config = generateClashConfig(getNodes());
-        if (TextUtils.isEmpty(config)) {
-            config = Setting.getProxySubscriptionConfig();
-        } else {
-            Setting.putProxySubscriptionConfig(config);
-        }
+        if (!TextUtils.isEmpty(config)) Setting.putProxySubscriptionConfig(config);
         return config;
     }
 
@@ -91,9 +90,13 @@ public class ProxySubscriptionManager {
         if (TextUtils.isEmpty(url)) return;
         if (isMihomo(url)) {
             if (MihomoManager.get().isRunning()) {
+                mihomoStarting = false;
                 OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
             } else if (async) {
-                startMihomoAsync(url);
+                if (!mihomoStarting) {
+                    mihomoStarting = true;
+                    startMihomoAsync(url);
+                }
             } else {
                 startMihomoSync(url);
             }
@@ -103,6 +106,7 @@ public class ProxySubscriptionManager {
     }
 
     private void startMihomoSync(String url) {
+        mihomoStarting = false;
         String config = getConfig();
         if (TextUtils.isEmpty(config)) {
             android.util.Log.e("ProxySub", "startMihomoSync: config is empty");
@@ -113,23 +117,27 @@ public class ProxySubscriptionManager {
             OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
             android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
         } else {
-            android.util.Log.e("ProxySub", "startMihomoSync: mihomo start failed");
+            android.util.Log.e("ProxySub", "startMihomoSync: mihomo start failed: " + MihomoManager.get().getLastError());
         }
     }
 
     private void startMihomoAsync(String url) {
         new Thread(() -> {
-            String config = getConfig();
-            if (TextUtils.isEmpty(config)) {
-                android.util.Log.e("ProxySub", "startMihomoAsync: config is empty");
-                return;
-            }
-            boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
-            if (ok) {
-                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-                android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
-            } else {
-                android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed");
+            try {
+                String config = getConfig();
+                if (TextUtils.isEmpty(config)) {
+                    android.util.Log.e("ProxySub", "startMihomoAsync: config is empty");
+                    return;
+                }
+                boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
+                if (ok) {
+                    OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                    android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
+                } else {
+                    android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed: " + MihomoManager.get().getLastError());
+                }
+            } finally {
+                mihomoStarting = false;
             }
         }, "mihomo-async-start").start();
     }
@@ -149,7 +157,7 @@ public class ProxySubscriptionManager {
             return false;
         }
         if (!MihomoManager.get().start(config, node.getName())) {
-            android.util.Log.e("ProxySub", "select failed: mihomo start failed for node " + node.getName());
+            android.util.Log.e("ProxySub", "select failed: mihomo start failed for node " + node.getName() + ": " + MihomoManager.get().getLastError());
             return false;
         }
         ProxyNode local = ProxyNode.mihomo(node.getName());
@@ -719,6 +727,10 @@ public class ProxySubscriptionManager {
     private String vlessToClash(String uri, String name) {
         try {
             Uri u = Uri.parse(uri);
+            if (u.getHost() == null || u.getPort() <= 0) {
+                android.util.Log.e("ProxySub", "vlessToClash: invalid host or port in URI: " + uri);
+                return null;
+            }
             String uuid = u.getUserInfo() != null ? u.getUserInfo() : "";
             if (uuid.isEmpty() && u.getQueryParameter("uuid") != null) uuid = u.getQueryParameter("uuid");
             StringBuilder sb = new StringBuilder();
@@ -763,10 +775,16 @@ public class ProxySubscriptionManager {
                     if (sid != null) sb.append("      short-id: ").append(quote(sid)).append("\n");
                 }
             }
+            if (u.getQueryParameter("alpn") != null) {
+                sb.append("    alpn:\n");
+                for (String a : u.getQueryParameter("alpn").split(",")) sb.append("      - ").append(quote(a.trim())).append("\n");
+            }
             if (u.getQueryParameter("fp") != null) sb.append("    client-fingerprint: ").append(u.getQueryParameter("fp")).append("\n");
             else if (isReality) sb.append("    client-fingerprint: chrome\n");
+            android.util.Log.d("ProxySub", "vlessToClash: " + name + " -> " + sb.toString().replace("\n", " | "));
             return sb.toString();
         } catch (Exception e) {
+            android.util.Log.e("ProxySub", "vlessToClash failed: " + e.getMessage(), e);
             return null;
         }
     }

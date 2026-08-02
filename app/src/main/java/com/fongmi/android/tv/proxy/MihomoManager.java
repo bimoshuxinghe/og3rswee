@@ -66,11 +66,12 @@ public class MihomoManager {
             return false;
         }
         if (isRunning() && canConnect()) return true;
+        boolean hadProcess = process != null;
         stop();
         lastError = "";
         logBuffer.setLength(0);
         try {
-            Thread.sleep(300);
+            if (hadProcess) Thread.sleep(300);
             File dir = Path.files("mihomo");
             if (!dir.exists()) dir.mkdirs();
             File file = new File(dir, CONFIG);
