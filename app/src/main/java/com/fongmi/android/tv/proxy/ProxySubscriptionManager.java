@@ -202,7 +202,13 @@ public class ProxySubscriptionManager {
         if (isDirectProxyLink(url)) {
             text = url;
         } else {
-            text = fetch(url);
+            String decoded = decode(url.trim());
+            if (isDirectProxyLink(decoded)) {
+                android.util.Log.d("ProxySub", "refresh: input is base64-encoded proxy link");
+                text = decoded;
+            } else {
+                text = fetch(url);
+            }
         }
         if (TextUtils.isEmpty(text)) throw new Exception("Subscription returned empty content");
         String config = getClashConfig(text);
@@ -810,6 +816,7 @@ public class ProxySubscriptionManager {
                 android.util.Log.e("ProxySub", "vlessToClash: invalid host or port in URI: " + uri);
                 return null;
             }
+            while (host.startsWith(".")) host = host.substring(1);
             String uuid = u.getUserInfo() != null ? u.getUserInfo() : "";
             if (uuid.isEmpty()) { String uuidParam = getParam(u, "uuid"); if (uuidParam != null) uuid = uuidParam; }
             StringBuilder sb = new StringBuilder();
@@ -855,6 +862,14 @@ public class ProxySubscriptionManager {
             String sid = getParam(u, "sid", "short-id");
             boolean isReality = (security != null && "reality".equals(security)) || pbk != null;
             boolean isTls = (security != null && "tls".equals(security)) || isReality;
+            if (pbk != null) {
+                String originalPbk = pbk;
+                pbk = pbk.replace("-", "+").replace("_", "/");
+                int pad = pbk.length() % 4;
+                if (pad == 2) pbk += "==";
+                else if (pad == 3) pbk += "=";
+                android.util.Log.d("ProxySub", "vlessToClash: pbk original=" + originalPbk + " converted=" + pbk);
+            }
             String flow = getParam(u, "flow");
             if (flow == null && isReality && "tcp".equals(network)) flow = "xtls-rprx-vision";
             android.util.Log.d("ProxySub", "vlessToClash: flow=" + flow + " isReality=" + isReality + " isTls=" + isTls + " network=" + network);
