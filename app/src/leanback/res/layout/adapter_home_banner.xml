@@ -195,10 +195,10 @@
         </androidx.cardview.widget.CardView>
     </LinearLayout>
 
-    <!-- Middle Column: details preview / live preview -->
+    <!-- Middle Column: Marquee banner, occupies full remaining width -->
     <androidx.cardview.widget.CardView
         android:id="@+id/middleCard"
-        android:layout_width="480dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="true"
         android:focusableInTouchMode="true"
@@ -206,15 +206,13 @@
         app:cardBackgroundColor="@color/black_50"
         app:cardCornerRadius="8dp"
         app:cardElevation="0dp"
-        android:layout_marginEnd="12dp">
+        android:layout_marginEnd="0dp">
 
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- Cover Flow 走马灯（横向卡片画廊）：
-                 3张竖向海报水平排列 — 左小(0.8) → 中大(1.0) → 右小(0.8)
-                 切换时整体平移+缩放，中间始终最大，两侧依次变小 -->
+            <!-- Marquee detail layout -->
             <FrameLayout
                 android:id="@+id/detailLayout"
                 android:layout_width="match_parent"
@@ -222,7 +220,7 @@
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
-                <!-- 走马灯横向容器，通过 translationX 平移，每张卡片独立缩放 -->
+                <!-- Marquee horizontal container -->
                 <FrameLayout
                     android:id="@+id/marqueeContainer"
                     android:layout_width="match_parent"
@@ -230,45 +228,12 @@
                     android:clipChildren="false"
                     android:clipToPadding="false">
 
-                    <!-- 左卡片（scale小） -->
+                    <!-- Slot 0 -->
                     <FrameLayout
-                        android:id="@+id/cardLeft"
-                        android:layout_width="180dp"
+                        android:id="@+id/cardSlot0"
+                        android:layout_width="220dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
-
-                        <androidx.cardview.widget.CardView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            app:cardBackgroundColor="@color/black"
-                            app:cardCornerRadius="6dp"
-                            app:cardElevation="0dp"
-                            android:foreground="@drawable/selector_vod">
-
-                            <FrameLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent">
-
-                                <androidx.appcompat.widget.AppCompatImageView
-                                    android:id="@+id/imgLeft"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:scaleType="centerCrop" />
-
-                                <View
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:background="@drawable/shape_banner_shadow" />
-                            </FrameLayout>
-                        </androidx.cardview.widget.CardView>
-                    </FrameLayout>
-
-                    <!-- 中卡片（scale大，当前显示的主海报 + 详情文字） -->
-                    <FrameLayout
-                        android:id="@+id/cardCenter"
-                        android:layout_width="240dp"
-                        android:layout_height="match_parent">
-
                         <androidx.cardview.widget.CardView
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
@@ -276,152 +241,282 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-
-                            <FrameLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent">
-
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
-                                    android:id="@+id/imgCenter"
+                                    android:id="@+id/imgSlot0"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-
-                                <View
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:background="@drawable/shape_banner_shadow" />
-
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:layout_gravity="bottom"
-                                    android:orientation="vertical"
-                                    android:paddingStart="16dp"
-                                    android:paddingEnd="16dp"
-                                    android:paddingBottom="12dp"
-                                    android:paddingTop="24dp">
-
-                                    <com.google.android.material.textview.MaterialTextView
-                                        android:id="@+id/middleName"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:textColor="@color/white"
-                                        android:textSize="22sp"
-                                        android:textStyle="bold"
-                                        android:singleLine="true"
-                                        android:ellipsize="marquee" />
-
-                                    <com.google.android.material.textview.MaterialTextView
-                                        android:id="@+id/middleDirector"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="3dp"
-                                        android:textColor="@color/white_70"
-                                        android:textSize="11sp"
-                                        android:singleLine="true"
-                                        android:ellipsize="end" />
-
-                                    <com.google.android.material.textview.MaterialTextView
-                                        android:id="@+id/middleActor"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="2dp"
-                                        android:textColor="@color/white_70"
-                                        android:textSize="11sp"
-                                        android:singleLine="true"
-                                        android:ellipsize="end" />
-
-                                    <com.google.android.material.textview.MaterialTextView
-                                        android:id="@+id/middleContent"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:layout_marginTop="3dp"
-                                        android:textColor="@color/white_70"
-                                        android:textSize="11sp"
-                                        android:maxLines="2"
-                                        android:ellipsize="end" />
-
-                                    <LinearLayout
-                                        android:id="@+id/playButtonLayout"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="32dp"
-                                        android:layout_marginTop="6dp"
-                                        android:background="@drawable/shape_play_button_bg"
-                                        android:orientation="horizontal"
-                                        android:gravity="center_vertical"
-                                        android:paddingStart="10dp"
-                                        android:paddingEnd="14dp">
-
-                                        <FrameLayout
-                                            android:layout_width="20dp"
-                                            android:layout_height="20dp"
-                                            android:background="@drawable/shape_white_circle">
-
-                                            <androidx.appcompat.widget.AppCompatImageView
-                                                android:layout_width="12dp"
-                                                android:layout_height="12dp"
-                                                android:layout_gravity="center"
-                                                android:src="@drawable/ic_widget_play"
-                                                app:tint="@color/black" />
-                                        </FrameLayout>
-
-                                        <com.google.android.material.textview.MaterialTextView
-                                            android:layout_width="wrap_content"
-                                            android:layout_height="wrap_content"
-                                            android:layout_marginStart="6dp"
-                                            android:text="@string/play"
-                                            android:textColor="@color/white"
-                                            android:textSize="12sp"
-                                            android:textStyle="bold" />
-                                    </LinearLayout>
-                                </LinearLayout>
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
 
-                    <!-- 右卡片（scale小） -->
+                    <!-- Slot 1 -->
                     <FrameLayout
-                        android:id="@+id/cardRight"
-                        android:layout_width="180dp"
+                        android:id="@+id/cardSlot1"
+                        android:layout_width="220dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
-
                         <androidx.cardview.widget.CardView
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             app:cardBackgroundColor="@color/black"
-                            app:cardCornerRadius="6dp"
+                            app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-
-                            <FrameLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent">
-
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
-                                    android:id="@+id/imgRight"
+                                    android:id="@+id/imgSlot1"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-
-                                <View
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent"
-                                    android:background="@drawable/shape_banner_shadow" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
 
-                    <!-- 指示器圆点 -->
+                    <!-- Slot 2 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot2"
+                        android:layout_width="220dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 3 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot3"
+                        android:layout_width="220dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 4 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot4"
+                        android:layout_width="220dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 5 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot5"
+                        android:layout_width="220dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot5"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 6 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot6"
+                        android:layout_width="220dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot6"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 7 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot7"
+                        android:layout_width="220dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot7"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View android:layout_width="match_parent" android:layout_height="match_parent"
+                                      android:background="@drawable/shape_banner_shadow" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Center card details overlay (shown only on middle card, width=220dp) -->
                     <LinearLayout
-                        android:id="@+id/indicatorLayout"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/centerDetailsLayout"
+                        android:layout_width="220dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="bottom|center_horizontal"
-                        android:layout_marginBottom="4dp"
-                        android:orientation="horizontal" />
+                        android:layout_marginBottom="16dp"
+                        android:orientation="vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingBottom="10dp"
+                        android:paddingTop="20dp">
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/white"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:singleLine="true"
+                            android:ellipsize="marquee" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleDirector"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/white_70"
+                            android:textSize="10sp"
+                            android:singleLine="true"
+                            android:ellipsize="end" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleActor"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/white_70"
+                            android:textSize="10sp"
+                            android:singleLine="true"
+                            android:ellipsize="end" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleContent"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:textColor="@color/white_70"
+                            android:textSize="10sp"
+                            android:maxLines="2"
+                            android:ellipsize="end" />
+                        <LinearLayout
+                            android:id="@+id/playButtonLayout"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginTop="5dp"
+                            android:background="@drawable/shape_play_button_bg"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="12dp">
+                            <FrameLayout
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="@drawable/shape_white_circle">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:layout_width="10dp"
+                                    android:layout_height="10dp"
+                                    android:layout_gravity="center"
+                                    android:src="@drawable/ic_widget_play"
+                                    app:tint="@color/black" />
+                            </FrameLayout>
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="5dp"
+                                android:text="@string/play"
+                                android:textColor="@color/white"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
                 </FrameLayout>
+
+                <!-- Indicator dots, placed at bottom of detailLayout -->
+                <LinearLayout
+                    android:id="@+id/indicatorLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="3dp"
+                    android:orientation="horizontal" />
             </FrameLayout>
 
             <!-- Live Preview View -->
@@ -453,368 +548,4 @@
 
         </FrameLayout>
     </androidx.cardview.widget.CardView>
-
-    <!-- Right Column: switcher between recommended list and live preview -->
-    <FrameLayout
-        android:id="@+id/rightLayout"
-        android:layout_width="206dp"
-        android:layout_height="match_parent"
-        android:clipChildren="false"
-        android:clipToPadding="false">
-
-        <!-- Mode A: Recommended VOD Cards -->
-        <LinearLayout
-            android:id="@+id/recommendLayout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:visibility="visible"
-            android:clipChildren="false"
-            android:clipToPadding="false">
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/card1"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:layout_marginBottom="8dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:foreground="@drawable/selector_vod"
-                app:cardBackgroundColor="@color/black_50"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="0dp">
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <androidx.appcompat.widget.AppCompatImageView
-                        android:id="@+id/recommend_image1"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="centerCrop" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/shape_right_card_shadow"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="start|center_vertical"
-                        android:orientation="vertical"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/recommend_text1"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/white"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:singleLine="true"
-                            android:ellipsize="end"
-                            tools:text="推荐视频 1" />
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="18dp"
-                            android:layout_marginTop="6dp"
-                            android:background="@drawable/shape_play_button_bg"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingStart="5dp"
-                            android:paddingEnd="8dp"
-                            android:focusable="false"
-                            android:focusableInTouchMode="false">
-
-                            <FrameLayout
-                                android:layout_width="10dp"
-                                android:layout_height="10dp"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false"
-                                android:background="@drawable/shape_white_circle">
-
-                                <androidx.appcompat.widget.AppCompatImageView
-                                    android:layout_width="7dp"
-                                    android:layout_height="7dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_widget_play"
-                                    android:focusable="false"
-                                    android:focusableInTouchMode="false"
-                                    app:tint="@color/black" />
-                            </FrameLayout>
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="3dp"
-                                android:text="@string/play"
-                                android:textColor="@color/white"
-                                android:textSize="8sp"
-                                android:textStyle="bold"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="bottom|end"
-                        android:layout_marginEnd="4dp"
-                        android:layout_marginBottom="4dp"
-                        android:background="@drawable/shape_recommend_tag_bg"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:paddingTop="1dp"
-                        android:paddingBottom="1dp"
-                        android:text="热门推荐"
-                        android:textColor="@color/white"
-                        android:textSize="6sp"
-                        android:textStyle="bold"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false" />
-                </FrameLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/card2"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:foreground="@drawable/selector_vod"
-                app:cardBackgroundColor="@color/black_50"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="0dp">
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <androidx.appcompat.widget.AppCompatImageView
-                        android:id="@+id/recommend_image2"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="centerCrop" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/shape_right_card_shadow"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="start|center_vertical"
-                        android:orientation="vertical"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/recommend_text2"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/white"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:singleLine="true"
-                            android:ellipsize="end"
-                            tools:text="推荐视频 2" />
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="18dp"
-                            android:layout_marginTop="6dp"
-                            android:background="@drawable/shape_play_button_bg"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingStart="5dp"
-                            android:paddingEnd="8dp"
-                            android:focusable="false"
-                            android:focusableInTouchMode="false">
-
-                            <FrameLayout
-                                android:layout_width="10dp"
-                                android:layout_height="10dp"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false"
-                                android:background="@drawable/shape_white_circle">
-
-                                <androidx.appcompat.widget.AppCompatImageView
-                                    android:layout_width="7dp"
-                                    android:layout_height="7dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_widget_play"
-                                    android:focusable="false"
-                                    android:focusableInTouchMode="false"
-                                    app:tint="@color/black" />
-                            </FrameLayout>
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="3dp"
-                                android:text="@string/play"
-                                android:textColor="@color/white"
-                                android:textSize="8sp"
-                                android:textStyle="bold"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="bottom|end"
-                        android:layout_marginEnd="4dp"
-                        android:layout_marginBottom="4dp"
-                        android:background="@drawable/shape_recommend_tag_bg"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:paddingTop="1dp"
-                        android:paddingBottom="1dp"
-                        android:text="热门推荐"
-                        android:textColor="@color/white"
-                        android:textSize="6sp"
-                        android:textStyle="bold"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false" />
-                </FrameLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/card3"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:visibility="gone"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:foreground="@drawable/selector_vod"
-                app:cardBackgroundColor="@color/black_50"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="0dp">
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-
-                    <androidx.appcompat.widget.AppCompatImageView
-                        android:id="@+id/recommend_image3"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="centerCrop" />
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/shape_right_card_shadow"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false" />
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="start|center_vertical"
-                        android:orientation="vertical"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false">
-
-                        <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/recommend_text3"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/white"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:singleLine="true"
-                            android:ellipsize="end"
-                            tools:text="推荐视频 3" />
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="18dp"
-                            android:layout_marginTop="6dp"
-                            android:background="@drawable/shape_play_button_bg"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:paddingStart="5dp"
-                            android:paddingEnd="8dp"
-                            android:focusable="false"
-                            android:focusableInTouchMode="false">
-
-                            <FrameLayout
-                                android:layout_width="10dp"
-                                android:layout_height="10dp"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false"
-                                android:background="@drawable/shape_white_circle">
-
-                                <androidx.appcompat.widget.AppCompatImageView
-                                    android:layout_width="7dp"
-                                    android:layout_height="7dp"
-                                    android:layout_gravity="center"
-                                    android:src="@drawable/ic_widget_play"
-                                    android:focusable="false"
-                                    android:focusableInTouchMode="false"
-                                    app:tint="@color/black" />
-                            </FrameLayout>
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="3dp"
-                                android:text="@string/play"
-                                android:textColor="@color/white"
-                                android:textSize="8sp"
-                                android:textStyle="bold"
-                                android:focusable="false"
-                                android:focusableInTouchMode="false" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="bottom|end"
-                        android:layout_marginEnd="4dp"
-                        android:layout_marginBottom="4dp"
-                        android:background="@drawable/shape_recommend_tag_bg"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:paddingTop="1dp"
-                        android:paddingBottom="1dp"
-                        android:text="热门推荐"
-                        android:textColor="@color/white"
-                        android:textSize="6sp"
-                        android:textStyle="bold"
-                        android:focusable="false"
-                        android:focusableInTouchMode="false" />
-                </FrameLayout>
-            </androidx.cardview.widget.CardView>
-        </LinearLayout>
-    </FrameLayout>
 </LinearLayout>

@@ -8,7 +8,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.DecelerateInterpolator;
+import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.leanback.widget.Presenter;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestManager;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Func;
 import com.fongmi.android.tv.bean.HomeBanner;
@@ -31,10 +32,17 @@ import com.fongmi.android.tv.utils.ResUtil;
 import java.util.List;
 
 /**
- * 首页 Banner Presenter：
- *  - 横向 Cover Flow 走马灯（左小-中大-右小，竖向海报卡片）
- *  - 切换：向左平移 + 左侧渐隐退出 / 中间缩放到左 / 右侧放大到中间，依次接替
- *  - 获焦暂停，点击跳转，详情异步补全
+ * 首页 Banner Presenter — 8-Slot Cover Flow 走马灯
+ *
+ *   可见卡片（7张）：   [-3 小] [-2 中小] [-1 中] [0 大] [+1 中] [+2 中小] [+3 小]
+ *   缩放比例：           0.60    0.72     0.85   1.00   0.85    0.72     0.60
+ *   缓冲卡片（1张）：   [+4 缓冲，屏幕右侧外 alpha=0，scale=0.5]
+ *
+ *   切换（向左滚动）：所有 8 张卡片从 position p 平滑移动到 p-1，scale 对应改变
+ *     动画结束后：
+ *       最左飞出的 slot（新 pos -4，alpha=0） → 重新绑定数据到 (centerIdx+4) → 瞬间重置到 pos +4 作为新的缓冲
+ *       其余 slot 已在正确位置，无需视觉跳变
+ *       更新中间详情文字 / 指示器 / 点击事件
  */
 public class HomeBannerPresenter extends Presenter {
 
@@ -56,14 +64,8 @@ public class HomeBannerPresenter extends Presenter {
         HomeBanner item = (HomeBanner) object;
         ViewHolder holder = (ViewHolder) viewHolder;
 
-        // 1. 隐藏快捷入口栏，让中间走马灯 + 右侧推荐卡片占满空间
-        int screenWidth = ResUtil.getScreenWidth();
-        int parentWidth = screenWidth - ResUtil.dp2px(48);
-        int totalContentWidth = parentWidth - ResUtil.dp2px(16);
-        int rightWidth = Math.min(ResUtil.dp2px(560), Math.max(ResUtil.dp2px(360), (int) (totalContentWidth * 0.32f)));
-
+        // === 1. 布局：删除右侧推荐后，走马灯占满整个 Banner 宽度 ===
         LinearLayout.LayoutParams leftParams = (LinearLayout.LayoutParams) holder.binding.leftLayout.getLayoutParams();
-        LinearLayout.LayoutParams rightParams = (LinearLayout.LayoutParams) holder.binding.rightLayout.getLayoutParams();
         LinearLayout.LayoutParams middleParams = (LinearLayout.LayoutParams) holder.binding.middleCard.getLayoutParams();
 
         holder.binding.leftLayout.setVisibility(View.GONE);
@@ -72,42 +74,25 @@ public class HomeBannerPresenter extends Presenter {
         holder.binding.leftLayout.setLayoutParams(leftParams);
 
         holder.binding.middleCard.setVisibility(View.VISIBLE);
-        middleParams.width = 0;
-        middleParams.weight = 1;
+        middleParams.width = LinearLayout.LayoutParams.MATCH_PARENT;
+        middleParams.weight = 0;
+        middleParams.rightMargin = 0;
         holder.binding.middleCard.setLayoutParams(middleParams);
 
-        rightParams.width = rightWidth;
-        rightParams.weight = 0;
-        holder.binding.rightLayout.setLayoutParams(rightParams);
+        // 右侧推荐区已在 XML 删除，这里不需要再操作
 
-        holder.binding.recommendLayout.setVisibility(View.VISIBLE);
-
-        // 2. 切分推荐：右栏 2 张，其余进走马灯
-        List<Vod> recommends = item.getRecommends();
-        List<Vod> rightList = new java.util.ArrayList<>();
-        List<Vod> carouselList = new java.util.ArrayList<>();
-
-        if (recommends.isEmpty()) {
-            for (int i = 0; i < 2; i++) {
+        // === 2. 所有推荐都进走马灯（不再切分右栏） ===
+        List<Vod> carouselList = item.getRecommends();
+        if (carouselList == null || carouselList.isEmpty()) {
+            carouselList = new java.util.ArrayList<>();
+            for (int i = 0; i < 8; i++) {
                 Vod placeholder = new Vod();
                 placeholder.setId("placeholder_" + i);
                 placeholder.setName(ResUtil.getString(R.string.home_no_recommend));
                 placeholder.setSite(Site.get("placeholder", "placeholder"));
-                rightList.add(placeholder);
-            }
-        } else {
-            if (recommends.size() > 2) {
-                rightList = recommends.subList(recommends.size() - 2, recommends.size());
-                carouselList = recommends.subList(0, recommends.size() - 2);
-            } else {
-                rightList = recommends;
-                carouselList = recommends;
+                carouselList.add(placeholder);
             }
         }
-
-        bindRecommend(holder.binding.card1, rightList.size() > 0 ? rightList.get(0) : null, holder.binding.recommendImage1, holder.binding.recommendText1, holder);
-        bindRecommend(holder.binding.card2, rightList.size() > 1 ? rightList.get(1) : null, holder.binding.recommendImage2, holder.binding.recommendText2, holder);
-        bindRecommend(holder.binding.card3, null, holder.binding.recommendImage3, holder.binding.recommendText3, holder);
 
         if (item.isLivePreview()) {
             // 直播预览模式
@@ -122,17 +107,12 @@ public class HomeBannerPresenter extends Presenter {
             holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> animateScale(v, hasFocus, 1.05f));
             activity.attachPreviewPlayer(holder.binding.previewExo);
         } else {
-            // 推荐 + 走马灯模式
+            // Cover Flow 走马灯模式
             holder.binding.detailLayout.setVisibility(View.VISIBLE);
             holder.binding.livePreviewLayout.setVisibility(View.GONE);
 
-            if (carouselList.isEmpty() || carouselList.size() < 2) {
-                // 不足2张时不启动走马灯，只显示一张主海报
-                if (!carouselList.isEmpty()) {
-                    showStaticBanner(holder, carouselList.get(0));
-                } else {
-                    showStaticBanner(holder, createNoRecommendVod());
-                }
+            if (carouselList.size() < 2) {
+                showStaticBanner(holder, carouselList.isEmpty() ? createNoRecommendVod() : carouselList.get(0));
                 stopMarquee(holder);
             } else {
                 startCoverFlowMarquee(holder, carouselList);
@@ -147,23 +127,41 @@ public class HomeBannerPresenter extends Presenter {
         return v;
     }
 
-    /** 静态单张显示（走马灯数据不足时使用） */
+    /** 静态单张显示（走马灯数据不足时使用）——复用 slot3 居中展示 */
     private void showStaticBanner(ViewHolder holder, Vod vod) {
-        holder.binding.cardLeft.setVisibility(View.GONE);
-        holder.binding.cardRight.setVisibility(View.GONE);
-        // 居中卡片充满走马灯区域
-        FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams) holder.binding.cardCenter.getLayoutParams();
-        cp.width = FrameLayout.LayoutParams.MATCH_PARENT;
-        cp.gravity = Gravity.CENTER;
-        holder.binding.cardCenter.setLayoutParams(cp);
-        holder.binding.cardCenter.setScaleX(1f);
-        holder.binding.cardCenter.setScaleY(1f);
-        holder.binding.cardCenter.setTranslationX(0f);
-        holder.binding.cardCenter.setTranslationZ(8f);
-        holder.binding.indicatorLayout.setVisibility(View.GONE);
+        layoutCoverFlow(holder);
+        int containerW = holder.containerWidth;
+        int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
+        int centerTX = (containerW - cardW) / 2;
+
+        // 隐藏所有 slot，只显示 slot3
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            FrameLayout slot = holder.slots[i];
+            slot.setVisibility(View.INVISIBLE);
+            slot.setAlpha(1f);
+            slot.setTranslationZ(0f);
+            slot.setTranslationX(0f);
+            slot.setScaleX(1f);
+            slot.setScaleY(1f);
+            slot.setOnClickListener(null);
+            slot.setOnFocusChangeListener(null);
+        }
+        holder.slots[CENTER_SLOT].setVisibility(View.VISIBLE);
+        holder.slots[CENTER_SLOT].setTranslationX(centerTX);
+        holder.slots[CENTER_SLOT].setScaleX(1f);
+        holder.slots[CENTER_SLOT].setScaleY(1f);
+        holder.slots[CENTER_SLOT].setTranslationZ(8f);
+        ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[CENTER_SLOT]);
+
+        // 详情层（在 marqueeContainer 底部居中）宽度等于中间卡片宽度，位置也对齐 slot3
+        FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
+        dlp.width = cardW;
+        holder.binding.centerDetailsLayout.setLayoutParams(dlp);
 
         bindCenterDetails(holder, vod);
-        holder.binding.cardCenter.setOnClickListener(v -> activity.onItemClick(vod));
+        holder.binding.indicatorLayout.setVisibility(View.GONE);
+
+        holder.slots[CENTER_SLOT].setOnClickListener(v -> activity.onItemClick(vod));
     }
 
     private void animateScale(View v, boolean hasFocus, float scale) {
@@ -201,29 +199,9 @@ public class HomeBannerPresenter extends Presenter {
         setupFocus(view, 1.1f);
     }
 
-    private void bindRecommend(View card, Vod vod, android.widget.ImageView bg, android.widget.TextView text, ViewHolder holder) {
-        if (vod == null) {
-            card.setVisibility(View.GONE);
-            return;
-        }
-        card.setVisibility(View.VISIBLE);
-        text.setText(vod.getName());
-        ImgUtil.load(vod.getName(), vod.getPic(), bg);
-        card.setOnClickListener(v -> {
-            if ("placeholder".equals(vod.getSiteKey())) {
-                SearchActivity.start(activity);
-            } else {
-                activity.onItemClick(vod);
-            }
-        });
-        card.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) mCurrentVodId = vod.getId();
-            animateScale(v, hasFocus, 1.1f);
-        });
-    }
-
-    /** 绑定中间卡片（主海报）详情文字与图片 */
+    /** 绑定中间卡片（主海报）详情文字 — 文字层 centerDetailsLayout 悬浮在中间卡片上方 */
     private void bindCenterDetails(ViewHolder holder, Vod vod) {
+        mCurrentVodId = vod.getId();
         holder.binding.middleName.setText(vod.getName());
         if (isExternalRecommend(vod)) {
             holder.binding.middleDirector.setVisibility(View.GONE);
@@ -236,7 +214,6 @@ public class HomeBannerPresenter extends Presenter {
             holder.binding.middleActor.setText("演员: " + getNonNullString(vod.getActor()));
             holder.binding.middleContent.setText(getNonNullString(vod.getContent()));
         }
-        ImgUtil.load(vod.getName(), vod.getPic(), holder.binding.imgCenter);
         loadDetails(vod, holder);
     }
 
@@ -288,99 +265,132 @@ public class HomeBannerPresenter extends Presenter {
     }
 
     // ========================================================================
-    // Cover Flow 走马灯核心逻辑
-    // 布局：[左小 cardLeft(scale 0.82)] - [中大 cardCenter(scale 1.0)] - [右小 cardRight(scale 0.82)]
-    // 切换一次向左：
-    //   1) 左卡片向左淡出消失（alpha 1->0 + translateX 负方向）
-    //   2) 中卡片向左移动并缩小（scale 1.0 -> 0.82，位置变到左卡片）
-    //   3) 右卡片向左移动并放大（scale 0.82 -> 1.0，位置变到中卡片，始终最高Z）
-    //   4) 原左卡片回收 + 在最右侧补入新的 cardRight 对应下一张数据（从无到有 alpha 0->1）
+    // Cover Flow 走马灯核心：8-Slot 循环缓冲 + 丝滑左滑动画
     // ========================================================================
 
-    private static final int MARQUEE_INTERVAL_MS = 5000;   // 切换间隔
-    private static final int MARQUEE_ANIM_MS = 650;         // 动画时长
-    private static final float SCALE_SIDE = 0.82f;          // 两侧卡片缩放
-    private static final float SCALE_CENTER = 1.0f;         // 中间卡片缩放
+    private static final int MARQUEE_INTERVAL_MS = 5000;
+    private static final int MARQUEE_ANIM_MS    = 800;
+    private static final int CARD_WIDTH_DP      = 220;
+    private static final int CARD_GAP_DP        = 8;
+    private static final int NUM_SLOTS          = 8;
+    private static final int CENTER_SLOT        = 3;  // 静态时 slot3 承载中间卡片（position=0）
 
-    /** 计算左/中/右 三张卡片的横向基准位置（相对于marqueeContainer的left=0），以容器宽度为准 */
-    private void layoutCoverFlowCards(ViewHolder holder) {
+    /** 位置 -3..+3 (7个可见) 对应的缩放比例；位置 +4 buffer scale=0.5 位置 -4 exit scale=0.5 */
+    private static final float[] SCALE_BY_POS = {0.60f, 0.72f, 0.85f, 1.00f, 0.85f, 0.72f, 0.60f};
+    /** 每个物理 slot 8 张卡片在初始化/复位时对应的"逻辑位置"（-3,-2,-1,0,+1,+2,+3,+4） */
+    private static final int[] INITIAL_POSITION = {-3, -2, -1, 0, 1, 2, 3, 4};
+
+    /** Material fast-out-slow-in interpolator */
+    private static final PathInterpolator SMOOTH_INTERP = new PathInterpolator(0.25f, 0.1f, 0.25f, 1.0f);
+
+    /** 计算整个 Cover Flow 的容器尺寸、卡片间距、各逻辑位置的 translationX 基准 */
+    private void layoutCoverFlow(ViewHolder holder) {
         int containerW = holder.binding.marqueeContainer.getWidth();
         if (containerW <= 0) {
             int screenW = ResUtil.getScreenWidth();
-            int padding = ResUtil.dp2px(64);
-            int available = screenW - padding;
-            float rightRatio = 0.32f;
-            int rightW = Math.min(ResUtil.dp2px(560),
-                                   Math.max(ResUtil.dp2px(360),
-                                            (int) (available * rightRatio)));
-            containerW = available - rightW;
+            int padding = ResUtil.dp2px(48 + 16); // 外层padding + banner内部padding
+            containerW = Math.max(screenW - padding, ResUtil.dp2px(800));
         }
-        int centerCardW = ResUtil.dp2px(240);
-        int sideCardW = ResUtil.dp2px(180);
-        int gap = ResUtil.dp2px(16);
+        holder.containerWidth = containerW;
+        int cardW = ResUtil.dp2px(CARD_WIDTH_DP);
+        int step   = ResUtil.dp2px((int)(CARD_WIDTH_DP * 0.58f) + CARD_GAP_DP); // 相邻卡片中心点间距
+        holder.cardWidth = cardW;
+        holder.stepX = step;
+        // 中间卡片 (position 0) 的 translationX = 容器中心 - 卡片半宽
+        holder.centerTX = (containerW - cardW) / 2;
 
-        // 三张水平排列，总宽度 = center + side*2 + gap*2
-        int totalCoverW = centerCardW + sideCardW * 2 + gap * 2;
-        int startX = (containerW - totalCoverW) / 2;   // 整体水平居中
-
-        // 左侧卡片基准X
-        int leftX = startX;
-        // 中间卡片基准X
-        int centerX = leftX + sideCardW + gap;
-        // 右侧卡片基准X
-        int rightX = centerX + centerCardW + gap;
-
-        holder.baseLeftX = leftX;
-        holder.baseCenterX = centerX;
-        holder.baseRightX = rightX;
-        holder.centerCardWidth = centerCardW;
-        holder.sideCardWidth = sideCardW;
+        // 详情文字层宽度 = 中间卡片宽度
+        try {
+            FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
+            if (dlp != null) {
+                dlp.width = cardW;
+                holder.binding.centerDetailsLayout.setLayoutParams(dlp);
+            }
+        } catch (Exception ignored) {}
     }
 
-    /** 初始摆放三张卡片（左-中-右），设置好scale、translationX、Z */
-    private void applyStaticCardLayouts(ViewHolder holder) {
-        // 左
-        holder.binding.cardLeft.setVisibility(View.VISIBLE);
-        holder.binding.cardLeft.setTranslationX(holder.baseLeftX);
-        holder.binding.cardLeft.setScaleX(SCALE_SIDE);
-        holder.binding.cardLeft.setScaleY(SCALE_SIDE);
-        holder.binding.cardLeft.setAlpha(1.0f);
-        holder.binding.cardLeft.setTranslationZ(2f);
-        // 中
-        FrameLayout.LayoutParams cp = (FrameLayout.LayoutParams) holder.binding.cardCenter.getLayoutParams();
-        cp.width = ResUtil.dp2px(240);
-        cp.gravity = Gravity.START | Gravity.TOP;
-        holder.binding.cardCenter.setLayoutParams(cp);
-        holder.binding.cardCenter.setVisibility(View.VISIBLE);
-        holder.binding.cardCenter.setTranslationX(holder.baseCenterX);
-        holder.binding.cardCenter.setScaleX(SCALE_CENTER);
-        holder.binding.cardCenter.setScaleY(SCALE_CENTER);
-        holder.binding.cardCenter.setAlpha(1.0f);
-        holder.binding.cardCenter.setTranslationZ(8f);  // 中间最高
-        // 右
-        holder.binding.cardRight.setVisibility(View.VISIBLE);
-        holder.binding.cardRight.setTranslationX(holder.baseRightX);
-        holder.binding.cardRight.setScaleX(SCALE_SIDE);
-        holder.binding.cardRight.setScaleY(SCALE_SIDE);
-        holder.binding.cardRight.setAlpha(1.0f);
-        holder.binding.cardRight.setTranslationZ(2f);
+    /** 给定逻辑位置 pos（-3..+4），返回该 slot 的 translationX / scale / alpha / z */
+    private float posToTranslationX(ViewHolder holder, int pos) {
+        return holder.centerTX + pos * holder.stepX;
     }
+
+    private float posToScale(int pos) {
+        if (pos >= -3 && pos <= 3) return SCALE_BY_POS[pos + 3];
+        return 0.50f; // +4 buffer / -4 exit
+    }
+
+    private float posToAlpha(int pos) {
+        if (pos >= -3 && pos <= 3) return 1.0f;
+        return 0f; // +4 buffer / -4 exit
+    }
+
+    private float posToZ(int pos) {
+        if (pos == 0) return 10f;
+        int abs = Math.abs(pos);
+        if (abs == 1) return 6f;
+        if (abs == 2) return 3f;
+        return 1f;
+    }
+
+    private int posToVisibility(int pos) {
+        return (pos >= -3 && pos <= 4) ? View.VISIBLE : View.INVISIBLE;
+    }
+
+    private static int mod(int a, int n) {
+        int r = a % n;
+        return r < 0 ? r + n : r;
+    }
+
+    // ============ 初始化 & 预加载 ============
 
     private void startCoverFlowMarquee(ViewHolder holder, List<Vod> carouselVods) {
         stopMarquee(holder);
-
         holder.carouselVods = carouselVods;
         holder.carouselSize = carouselVods.size();
-        holder.currentIndex = 0;
+        holder.currentCenterIdx = 0;
         holder.isMarqueePaused = false;
-        holder.indicatorLayout = holder.binding.indicatorLayout;
+
+        // 计算位置参数
+        layoutCoverFlow(holder);
+        final int cardW = holder.cardWidth;
+
+        // 所有 slot 初始化为默认物理参数（避免之前的状态残留）
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            FrameLayout slot = holder.slots[i];
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) slot.getLayoutParams();
+            if (lp != null) {
+                lp.width = cardW;
+                lp.gravity = Gravity.TOP | Gravity.START;
+                slot.setLayoutParams(lp);
+            }
+            slot.setPivotX(cardW / 2f);
+            slot.setPivotY(slot.getHeight() > 0 ? slot.getHeight() / 2f : ResUtil.dp2px(150));
+        }
+
+        // 绑定初始数据：slot i 对应数据索引 = currentCenterIdx + INITIAL_POSITION[i]
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            int pos = INITIAL_POSITION[i];
+            int dataIdx = mod(holder.currentCenterIdx + pos, holder.carouselSize);
+            Vod vod = carouselVods.get(dataIdx);
+            holder.slotDataIndex[i] = dataIdx;
+            holder.slotPosition[i] = pos;
+            ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[i]);
+            final int fi = i;
+            slotClickListenerReset(holder, i);
+        }
+
+        // 把每个 slot 摆放到初始位置 + 缩放 + 透明度 + z
+        applyStaticPositions(holder, true);
+
+        // 中间卡片详情文字
+        Vod centerVod = carouselVods.get(holder.currentCenterIdx);
+        bindCenterDetails(holder, centerVod);
+
+        // 预加载整个轮播的所有海报（进 Glide 内存/磁盘缓存）
+        preloadAllPosters(holder, carouselVods);
+
+        // 指示器
         holder.binding.indicatorLayout.setVisibility(View.VISIBLE);
-
-        // 计算初始卡片位置（等view布局完成）
-        layoutCoverFlowCards(holder);
-        applyStaticCardLayouts(holder);
-
-        // 初始化指示器
         holder.binding.indicatorLayout.removeAllViews();
         int dotSize = ResUtil.dp2px(6);
         int dotMargin = ResUtil.dp2px(4);
@@ -393,149 +403,191 @@ public class HomeBannerPresenter extends Presenter {
             holder.binding.indicatorLayout.addView(dot);
         }
 
-        // 初始三张数据
-        Vod leftVod   = carouselVods.get(mod(-1, holder.carouselSize));
-        Vod centerVod = carouselVods.get(0);
-        Vod rightVod  = carouselVods.get(mod(1, holder.carouselSize));
-        ImgUtil.load(leftVod.getName(),   leftVod.getPic(),   holder.binding.imgLeft);
-        ImgUtil.load(rightVod.getName(),  rightVod.getPic(),  holder.binding.imgRight);
-        bindCenterDetails(holder, centerVod);
-
-        // 点击跳转：三张卡片均可点击
-        holder.binding.cardLeft.setOnClickListener(v -> activity.onItemClick(leftVod));
-        holder.binding.cardCenter.setOnClickListener(v -> activity.onItemClick(centerVod));
-        holder.binding.cardRight.setOnClickListener(v -> activity.onItemClick(rightVod));
-
-        // 中间卡片获焦 -> 暂停走马灯 + 放大
+        // 中间卡片获焦 → 暂停走马灯 + 放大
         holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> {
             holder.isMarqueePaused = hasFocus;
-            animateScale(v, hasFocus, 1.03f);
+            animateScale(v, hasFocus, 1.02f);
         });
 
-        // 循环切换
+        // 循环切换 runnable
         holder.marqueeRunnable = new Runnable() {
             @Override
             public void run() {
                 if (holder.marqueeRunnable == null) return;
                 if (!holder.isMarqueePaused) {
-                    advanceCoverFlow(holder, carouselVods);
+                    advanceCoverFlow(holder);
                 }
                 holder.binding.getRoot().postDelayed(this, MARQUEE_INTERVAL_MS);
             }
         };
-        holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
+        // 先等布局完成一次再启动（确保 getWidth 有效）
+        holder.binding.marqueeContainer.post(() -> {
+            layoutCoverFlow(holder);
+            applyStaticPositions(holder, true);
+            holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
+        });
     }
 
-    private static int mod(int a, int n) {
-        int r = a % n;
-        return r < 0 ? r + n : r;
+    /** 将所有 8 个 slot 设置到 holder.slotPosition[i] 对应的静态位置 */
+    private void applyStaticPositions(ViewHolder holder, boolean setVisibility) {
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            int pos = holder.slotPosition[i];
+            FrameLayout slot = holder.slots[i];
+            if (setVisibility) slot.setVisibility(posToVisibility(pos));
+            slot.setTranslationX(posToTranslationX(holder, pos));
+            slot.setScaleX(posToScale(pos));
+            slot.setScaleY(posToScale(pos));
+            slot.setAlpha(posToAlpha(pos));
+            slot.setTranslationZ(posToZ(pos));
+        }
     }
+
+    /** 预加载所有轮播海报到 Glide 缓存 */
+    private void preloadAllPosters(ViewHolder holder, List<Vod> vods) {
+        if (vods == null || vods.isEmpty()) return;
+        try {
+            RequestManager rm = Glide.with(holder.binding.getRoot().getContext());
+            for (Vod v : vods) {
+                String pic = v == null ? null : v.getPic();
+                if (pic != null && !pic.isEmpty()) {
+                    try { rm.load(pic).preload(); } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** 重置某个 slot 的点击事件（跳转到对应 vod） */
+    private void slotClickListenerReset(ViewHolder holder, int slotIdx) {
+        if (holder.carouselVods == null || holder.carouselSize <= 0) return;
+        int dataIdx = holder.slotDataIndex[slotIdx];
+        if (dataIdx < 0 || dataIdx >= holder.carouselVods.size()) return;
+        final Vod vod = holder.carouselVods.get(dataIdx);
+        holder.slots[slotIdx].setOnClickListener(v -> activity.onItemClick(vod));
+    }
+
+    // ============ 向左切换一次的动画 ============
 
     /**
-     * 执行一次向左切换的 Cover Flow 动画：
-     *   左  -> 飘出屏幕左侧（scale进一步缩小+alpha淡出）
-     *   中  -> 平移到原左位置，同时scale 1.0→0.82（变成新的左）
-     *   右  -> 平移到原中位置，同时scale 0.82→1.0（变成新的中）
+     * 向左前进一帧：
+     *   每个物理 slot 的逻辑位置从 p → p-1
+     *     pos -3 → -4 (飞出左侧，alpha→0，scale→0.5)
+     *     pos -2 → -3，pos -1 → -2，pos 0 → -1，pos +1 → 0，pos +2 → +1，pos +3 → +2
+     *     pos +4 → +3 (从右侧飞入，alpha 0→1，scale 0.5→0.6)
      *   动画结束后：
-     *     用"原右"作为新的"现中"显示详情文字
-     *     把"原中"的图片/点击事件复制给"现左"卡片
-     *     把"下一张"（currentIndex+2）图片加载给"现右"卡片
-     *     把三卡片translationX/scale瞬间重置为静态位置（alpha恢复为1），无缝衔接
+     *     飞出的 slot（现在 pos = -4）绑定新数据（currentCenterIdx + 4），
+     *     其逻辑位置重置为 +4（新缓冲），瞬间移动到 +4 位置（因为不可见所以无视觉跳变）。
+     *     其他 7 个 slot 已经停在它们的新静态位置（p-1）且可见，无需位移。
+     *     更新 currentCenterIdx++，详情文字，指示器，点击事件。
      */
-    private void advanceCoverFlow(ViewHolder holder, List<Vod> vods) {
+    private void advanceCoverFlow(ViewHolder holder) {
         if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) return;
-        layoutCoverFlowCards(holder);  // 重新确认基准坐标（防止尺寸变化）
+        layoutCoverFlow(holder); // 保险：刷新尺寸
 
-        int n = holder.carouselSize;
-        int cur = holder.currentIndex;
-        Vod newCenterVod = vods.get(mod(cur + 1, n));   // 原右 = 新的中
-        Vod newRightVod  = vods.get(mod(cur + 2, n));   // 将在右侧补入
-
-        // === 各卡片动画目标 ===
-        // 左：从 baseLeftX -> baseLeftX - sideCardW（飘出左边界），scale 0.82 -> 0.7，alpha 1->0
-        float leftTargetX = holder.baseLeftX - (holder.sideCardWidth + ResUtil.dp2px(20));
-        ObjectAnimator leftTX = ObjectAnimator.ofFloat(holder.binding.cardLeft, "translationX",
-            holder.binding.cardLeft.getTranslationX(), leftTargetX);
-        ObjectAnimator leftSX = ObjectAnimator.ofFloat(holder.binding.cardLeft, "scaleX", SCALE_SIDE, 0.7f);
-        ObjectAnimator leftSY = ObjectAnimator.ofFloat(holder.binding.cardLeft, "scaleY", SCALE_SIDE, 0.7f);
-        ObjectAnimator leftAlpha = ObjectAnimator.ofFloat(holder.binding.cardLeft, "alpha", 1f, 0f);
-
-        // 中：从 baseCenterX -> baseLeftX，scale 1.0 -> 0.82
-        ObjectAnimator centerTX = ObjectAnimator.ofFloat(holder.binding.cardCenter, "translationX",
-            holder.binding.cardCenter.getTranslationX(), holder.baseLeftX);
-        ObjectAnimator centerSX = ObjectAnimator.ofFloat(holder.binding.cardCenter, "scaleX", SCALE_CENTER, SCALE_SIDE);
-        ObjectAnimator centerSY = ObjectAnimator.ofFloat(holder.binding.cardCenter, "scaleY", SCALE_CENTER, SCALE_SIDE);
-        ObjectAnimator centerTZ = ObjectAnimator.ofFloat(holder.binding.cardCenter, "translationZ", 8f, 2f);
-
-        // 右：从 baseRightX -> baseCenterX，scale 0.82 -> 1.0，Z提到最高
-        ObjectAnimator rightTX = ObjectAnimator.ofFloat(holder.binding.cardRight, "translationX",
-            holder.binding.cardRight.getTranslationX(), holder.baseCenterX);
-        ObjectAnimator rightSX = ObjectAnimator.ofFloat(holder.binding.cardRight, "scaleX", SCALE_SIDE, SCALE_CENTER);
-        ObjectAnimator rightSY = ObjectAnimator.ofFloat(holder.binding.cardRight, "scaleY", SCALE_SIDE, SCALE_CENTER);
-        ObjectAnimator rightTZ = ObjectAnimator.ofFloat(holder.binding.cardRight, "translationZ", 2f, 8f);
-
+        final int n = holder.carouselSize;
         AnimatorSet set = new AnimatorSet();
-        set.playTogether(leftTX, leftSX, leftSY, leftAlpha,
-                         centerTX, centerSX, centerSY, centerTZ,
-                         rightTX, rightSX, rightSY, rightTZ);
+        List<Animator> anims = new java.util.ArrayList<>(NUM_SLOTS * 5);
+
+        // 对每个 slot 创建从当前 pos → pos-1 的动画
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            int fromPos = holder.slotPosition[i];
+            int toPos   = fromPos - 1;
+            FrameLayout slot = holder.slots[i];
+            slot.setVisibility(View.VISIBLE); // 动画期间都保持 VISIBLE（靠 alpha 控制显隐）
+
+            float fromTX = slot.getTranslationX();
+            float toTX   = posToTranslationX(holder, toPos);
+            float fromSX = slot.getScaleX();
+            float toSX   = posToScale(toPos);
+            float fromSY = slot.getScaleY();
+            float toSY   = posToScale(toPos);
+            float fromA  = slot.getAlpha();
+            float toA    = posToAlpha(toPos);
+            float fromZ  = slot.getTranslationZ();
+            float toZ    = posToZ(toPos);
+
+            anims.add(ObjectAnimator.ofFloat(slot, "translationX", fromTX, toTX));
+            anims.add(ObjectAnimator.ofFloat(slot, "scaleX", fromSX, toSX));
+            anims.add(ObjectAnimator.ofFloat(slot, "scaleY", fromSY, toSY));
+            anims.add(ObjectAnimator.ofFloat(slot, "alpha", fromA, toA));
+            if (fromZ != toZ) {
+                anims.add(ObjectAnimator.ofFloat(slot, "translationZ", fromZ, toZ));
+            }
+        }
+        set.playTogether(anims);
         set.setDuration(MARQUEE_ANIM_MS);
-        set.setInterpolator(new DecelerateInterpolator(1.4f));
+        set.setInterpolator(SMOOTH_INTERP);
+
+        final int oldCenter = holder.currentCenterIdx;
         set.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                // === 动画结束，循环交接：内容交换 + 瞬间复位位置 ===
-                // 1. 把"原中"的图片 / 内容 / 点击事件 交给"现左"（即 holder.binding.cardLeft）
-                //    原右 已经是新的中（显示在中间位置），现在把它的图片 / 点击事件 交给 cardCenter
-                //    然后把新的下一张 交给 cardRight
-                // 为简化，我们交换图片数据引用而非真的交换View引用：
-                //   - imgLeft  <-- 原 cardCenter 那张图 (即 vods[cur])
-                //   - imgCenter <-- 原 cardRight 那张图 (即 vods[cur+1])，并bind详情文字
-                //   - imgRight <-- vods[cur+2]
-                Vod vLeft  = vods.get(mod(cur + 0, n));  // 原中 -> 新左
-                Vod vCtr   = vods.get(mod(cur + 1, n));  // 原右 -> 新中
-                Vod vRight = vods.get(mod(cur + 2, n));  // 新数据 -> 新右
+                // === 步骤 1：更新所有 slot 逻辑位置（p → p-1） ===
+                int exitSlotIdx = -1;
+                for (int i = 0; i < NUM_SLOTS; i++) {
+                    holder.slotPosition[i] -= 1;
+                    if (holder.slotPosition[i] == -4) exitSlotIdx = i;
+                }
 
-                // 给左卡片（新左）加载原中图片（原已经在cardCenter显示过，glide命中缓存）
-                ImgUtil.load(vLeft.getName(), vLeft.getPic(), holder.binding.imgLeft);
-                // 给右卡片（新右）加载下一张
-                ImgUtil.load(vRight.getName(), vRight.getPic(), holder.binding.imgRight);
+                // === 步骤 2：把退出的 slot（pos=-4）回收为新的缓冲（pos=+4） ===
+                if (exitSlotIdx >= 0) {
+                    int newCenter = mod(oldCenter + 1, n);
+                    // 这个 slot 应该承载数据：newCenter + 4
+                    int newDataIdx = mod(newCenter + 4, n);
+                    holder.slotDataIndex[exitSlotIdx] = newDataIdx;
+                    Vod newVod = holder.carouselVods.get(newDataIdx);
+                    ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
+                    // 逻辑位置从 -4 改为 +4，瞬间放置到 +4 位置（不可见，alpha=0）
+                    holder.slotPosition[exitSlotIdx] = 4;
+                    FrameLayout s = holder.slots[exitSlotIdx];
+                    s.setTranslationX(posToTranslationX(holder, 4));
+                    s.setScaleX(posToScale(4));
+                    s.setScaleY(posToScale(4));
+                    s.setAlpha(posToAlpha(4));
+                    s.setTranslationZ(posToZ(4));
+                    s.setVisibility(View.INVISIBLE); // 缓冲保持 INVISIBLE，下次动画时再改为 VISIBLE
+                    slotClickListenerReset(holder, exitSlotIdx);
+                }
 
-                // 中间卡片详情更新（主海报文字等都在cardCenter里）
-                bindCenterDetails(holder, vCtr);
+                // === 步骤 3：其余 7 个 slot 已在正确位置，修正 VISIBLE ===
+                for (int i = 0; i < NUM_SLOTS; i++) {
+                    int p = holder.slotPosition[i];
+                    if (p >= -3 && p <= 3) {
+                        holder.slots[i].setVisibility(View.VISIBLE);
+                        // 防动画浮点误差，强制对齐到精确静态值
+                        holder.slots[i].setTranslationX(posToTranslationX(holder, p));
+                        holder.slots[i].setScaleX(posToScale(p));
+                        holder.slots[i].setScaleY(posToScale(p));
+                        holder.slots[i].setAlpha(posToAlpha(p));
+                        holder.slots[i].setTranslationZ(posToZ(p));
+                    }
+                }
 
-                // 更新点击事件
-                holder.binding.cardLeft.setOnClickListener(v -> activity.onItemClick(vLeft));
-                holder.binding.cardCenter.setOnClickListener(v -> activity.onItemClick(vCtr));
-                holder.binding.cardRight.setOnClickListener(v -> activity.onItemClick(vRight));
+                // === 步骤 4：更新中间卡片详情 + 索引 + 指示器 ===
+                int newCenterIdx = mod(oldCenter + 1, n);
+                holder.currentCenterIdx = newCenterIdx;
+                Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
+                bindCenterDetails(holder, newCenterVod);
 
-                // 2. 三张卡片位置/缩放/alpha 瞬间复位到基准状态（视觉无缝：新的左和中已经和动画结束位置一致，只有右卡片需要从左侧飘入 -> 直接设为 baseRightX + alpha 1）
-                holder.binding.cardLeft.setTranslationX(holder.baseLeftX);
-                holder.binding.cardLeft.setScaleX(SCALE_SIDE);
-                holder.binding.cardLeft.setScaleY(SCALE_SIDE);
-                holder.binding.cardLeft.setAlpha(1f);
-                holder.binding.cardLeft.setTranslationZ(2f);
+                // 更新所有 slot 的点击事件（因为中间详情换了，所有 slot 也更新一遍保险）
+                for (int i = 0; i < NUM_SLOTS; i++) slotClickListenerReset(holder, i);
 
-                holder.binding.cardCenter.setTranslationX(holder.baseCenterX);
-                holder.binding.cardCenter.setScaleX(SCALE_CENTER);
-                holder.binding.cardCenter.setScaleY(SCALE_CENTER);
-                holder.binding.cardCenter.setAlpha(1f);
-                holder.binding.cardCenter.setTranslationZ(8f);
-
-                holder.binding.cardRight.setTranslationX(holder.baseRightX);
-                holder.binding.cardRight.setScaleX(SCALE_SIDE);
-                holder.binding.cardRight.setScaleY(SCALE_SIDE);
-                holder.binding.cardRight.setAlpha(1f);
-                holder.binding.cardRight.setTranslationZ(2f);
-
-                // 3. 更新索引与指示器
-                holder.currentIndex = mod(cur + 1, n);
+                // 指示器
                 for (int i = 0; i < holder.carouselSize; i++) {
                     View dot = holder.binding.indicatorLayout.getChildAt(i);
                     if (dot != null) {
-                        dot.setBackgroundResource(i == holder.currentIndex ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
+                        dot.setBackgroundResource(i == newCenterIdx ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
                     }
                 }
                 holder.marqueeAnimator = null;
+
+                // === 步骤 5：预加载后续可能出现的新海报（保险） ===
+                for (int k = 4; k <= 6; k++) {
+                    int idx = mod(newCenterIdx + k, n);
+                    Vod v = holder.carouselVods.get(idx);
+                    if (v != null && v.getPic() != null) {
+                        try { Glide.with(holder.binding.getRoot().getContext()).load(v.getPic()).preload(); } catch (Exception ignored) {}
+                    }
+                }
             }
         });
         holder.marqueeAnimator = set;
@@ -551,8 +603,8 @@ public class HomeBannerPresenter extends Presenter {
             holder.marqueeAnimator.cancel();
         }
         holder.marqueeAnimator = null;
-        if (holder.indicatorLayout != null) {
-            holder.indicatorLayout.removeAllViews();
+        if (holder.binding.indicatorLayout != null) {
+            holder.binding.indicatorLayout.removeAllViews();
         }
     }
 
@@ -560,21 +612,19 @@ public class HomeBannerPresenter extends Presenter {
     public void onUnbindViewHolder(@NonNull Presenter.ViewHolder viewHolder) {
         ViewHolder holder = (ViewHolder) viewHolder;
         stopMarquee(holder);
-        Glide.with(holder.binding.imgCenter).clear(holder.binding.imgCenter);
-        Glide.with(holder.binding.imgLeft).clear(holder.binding.imgLeft);
-        Glide.with(holder.binding.imgRight).clear(holder.binding.imgRight);
-        Glide.with(holder.binding.previewExo).clear(holder.binding.previewExo);
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            try { Glide.with(holder.binding.getRoot().getContext()).clear(holder.imgs[i]); } catch (Exception ignored) {}
+        }
+        try { Glide.with(holder.binding.previewExo).clear(holder.binding.previewExo); } catch (Exception ignored) {}
         activity.detachPreviewPlayer();
         resetScale(holder.binding.btnVod);
         resetScale(holder.binding.btnLive);
         resetScale(holder.binding.btnKeep);
         resetScale(holder.binding.middleCard);
-        resetScale(holder.binding.card1);
-        resetScale(holder.binding.card2);
-        resetScale(holder.binding.card3);
     }
 
     private void resetScale(View v) {
+        if (v == null) return;
         v.setScaleX(1.0f);
         v.setScaleY(1.0f);
         v.setTranslationZ(0f);
@@ -584,20 +634,45 @@ public class HomeBannerPresenter extends Presenter {
 
     public static class ViewHolder extends Presenter.ViewHolder {
         public final AdapterHomeBannerBinding binding;
+
+        public final FrameLayout[] slots = new FrameLayout[NUM_SLOTS];
+        public final android.widget.ImageView[] imgs = new android.widget.ImageView[NUM_SLOTS];
+        /** 每个物理 slot 当前承载的"逻辑位置"（-3..+4） */
+        public final int[] slotPosition = new int[NUM_SLOTS];
+        /** 每个物理 slot 当前绑定的数据索引（carouselVods 列表内的 index） */
+        public final int[] slotDataIndex = new int[NUM_SLOTS];
+
         public Runnable marqueeRunnable;
         public AnimatorSet marqueeAnimator;
-        public LinearLayout indicatorLayout;
         public List<Vod> carouselVods;
         public int carouselSize;
-        public int currentIndex;
+        public int currentCenterIdx;
         public boolean isMarqueePaused;
-        // 基准X坐标（三张卡片在CoverFlow中的起始位置）
-        public int baseLeftX, baseCenterX, baseRightX;
-        public int centerCardWidth, sideCardWidth;
+
+        // 布局参数缓存
+        public int containerWidth;
+        public int cardWidth;
+        public int stepX;
+        public int centerTX;
 
         public ViewHolder(@NonNull AdapterHomeBannerBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
+            // 通过 id 查找 8 个 slot 与对应 img（使用数组避免手写 binding 引用错误）
+            int[] slotIds = {
+                R.id.cardSlot0, R.id.cardSlot1, R.id.cardSlot2, R.id.cardSlot3,
+                R.id.cardSlot4, R.id.cardSlot5, R.id.cardSlot6, R.id.cardSlot7
+            };
+            int[] imgIds = {
+                R.id.imgSlot0, R.id.imgSlot1, R.id.imgSlot2, R.id.imgSlot3,
+                R.id.imgSlot4, R.id.imgSlot5, R.id.imgSlot6, R.id.imgSlot7
+            };
+            for (int i = 0; i < NUM_SLOTS; i++) {
+                slots[i] = binding.getRoot().findViewById(slotIds[i]);
+                imgs[i]  = binding.getRoot().findViewById(imgIds[i]);
+            }
+            java.util.Arrays.fill(slotPosition, 0);
+            java.util.Arrays.fill(slotDataIndex, 0);
         }
     }
 }

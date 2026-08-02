@@ -421,19 +421,28 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
         mViewModel.getResult().observe(this, result -> {
             mAdapter.remove("progress");
-            int index = getRecommendIndex();
-            if (mAdapter.size() > index) {
-                mAdapter.removeItems(index, mAdapter.size() - index);
-            }
-            addVideo(mResult = result);
-            Cache.clear().put(result);
-            setTypes(result.getTypes());
+            boolean hasValidResult = result != null && result.getList() != null && !result.getList().isEmpty();
+            boolean hasValidSavedData = mResult != null && mResult.getList() != null && !mResult.getList().isEmpty();
 
-            if (result != null && result.getList() != null && !result.getList().isEmpty()) {
+            if (hasValidResult) {
+                int index = getRecommendIndex();
+                if (mAdapter.size() > index) {
+                    mAdapter.removeItems(index, mAdapter.size() - index);
+                }
+                addVideo(mResult = result);
+                Cache.clear().put(result);
+                setTypes(result.getTypes());
+
                 Result cacheResult = new Result();
                 cacheResult.setList(result.getList());
                 com.fongmi.android.tv.setting.Setting.putHomeRecommend(getHome().getKey(), cacheResult.toString());
+            } else if (!hasValidSavedData) {
+                // 既无新数据也无已保存的 savedInstanceState 数据，至少尝试设置分类
+                if (result != null) {
+                    setTypes(result.getTypes());
+                }
             }
+            // else: result 为空但 mResult 有 savedInstanceState 恢复的有效数据，保留现有数据，仅移除 progress
         });
         mLiveViewModel = new ViewModelProvider(this).get(LiveViewModel.class);
         mObserveLiveUrl = this::startLivePreview;
@@ -915,7 +924,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void loadLivePreview() {
         if (mPlaybackService == null || !LiveSetting.isPreview()) return;
         if (mPreviewPlayerView != null) {
-            mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
+            try {
+                mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         Task.executor().submit(() -> {
             LiveConfig.get().ensureLoaded();
@@ -926,7 +939,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 Group group = groups.get(position[0]);
                 Channel channel = group.getChannel().get(position[1]);
                 mPreviewChannel = channel;
-                mPlaybackService.player().getPlayer().setVolume(PlayerSetting.isHomeMute() ? 0f : 1.0f);
+                try {
+                    mPlaybackService.player().getPlayer().setVolume(PlayerSetting.isHomeMute() ? 0f : 1.0f);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 mLiveViewModel.getUrl(channel);
             });
         });
@@ -934,15 +951,27 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void startLivePreview(Result result) {
         if (mPlaybackService == null || !LiveSetting.isPreview() || mPreviewPlayerView == null || mPreviewChannel == null) return;
-        mPlaybackService.player().getPlayer().setVolume(PlayerSetting.isHomeMute() ? 0f : 1.0f);
-        MediaMetadata metadata = PlayerManager.buildMetadata(mPreviewChannel.getName(), "", "");
-        mPlaybackService.player().start(com.fongmi.android.tv.player.engine.PlaySpec.from(result, result.getRealUrl(), metadata), LiveConfig.get().getHome().getTimeout());
+        try {
+            mPlaybackService.player().getPlayer().setVolume(PlayerSetting.isHomeMute() ? 0f : 1.0f);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            MediaMetadata metadata = PlayerManager.buildMetadata(mPreviewChannel.getName(), "", "");
+            mPlaybackService.player().start(com.fongmi.android.tv.player.engine.PlaySpec.from(result, result.getRealUrl(), metadata), LiveConfig.get().getHome().getTimeout());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void attachPreviewPlayer(PlayerView view) {
         this.mPreviewPlayerView = view;
         if (mPlaybackService != null && mPreviewPlayerView != null) {
-            mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
+            try {
+                mPreviewPlayerView.setPlayer(mPlaybackService.player().getPlayer());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             loadLivePreview();
         }
     }
