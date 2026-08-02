@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.leanback.widget.Presenter;
@@ -138,6 +139,9 @@ public class HomeBannerPresenter extends Presenter {
         holder.slots[CENTER_SLOT].setScaleY(1f);
         holder.slots[CENTER_SLOT].setTranslationZ(8f);
         ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[CENTER_SLOT]);
+        if (holder.names[CENTER_SLOT] != null) {
+            holder.names[CENTER_SLOT].setText(vod.getName() == null ? "" : vod.getName());
+        }
 
         // 详情层（在 marqueeContainer 底部居中）宽度等于中间卡片宽度，位置也对齐 slot3
         FrameLayout.LayoutParams dlp = (FrameLayout.LayoutParams) holder.binding.centerDetailsLayout.getLayoutParams();
@@ -256,7 +260,7 @@ public class HomeBannerPresenter extends Presenter {
 
     private static final int MARQUEE_INTERVAL_MS = 5000;
     private static final int MARQUEE_ANIM_MS    = 800;
-    private static final int CARD_WIDTH_DP      = 220;
+    private static final int CARD_WIDTH_DP      = 185;
     private static final int CARD_GAP_DP        = 14;
     private static final int NUM_SLOTS          = 8;
     private static final int CENTER_SLOT        = 3;  // 静态时 slot3 承载中间卡片（position=0）
@@ -361,6 +365,9 @@ public class HomeBannerPresenter extends Presenter {
             holder.slotDataIndex[i] = dataIdx;
             holder.slotPosition[i] = pos;
             ImgUtil.load(vod.getName(), vod.getPic(), holder.imgs[i]);
+            if (holder.names[i] != null) {
+                holder.names[i].setText(vod.getName() == null ? "" : vod.getName());
+            }
             slotClickListenerReset(holder, i);
         }
 
@@ -585,6 +592,9 @@ public class HomeBannerPresenter extends Presenter {
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
+                    if (holder.names[exitSlotIdx] != null) {
+                        holder.names[exitSlotIdx].setText(newVod.getName() == null ? "" : newVod.getName());
+                    }
                     // 逻辑位置从 -3 改为 +4，瞬间放置到 +4 位置（不可见，alpha=0）
                     holder.slotPosition[exitSlotIdx] = 4;
                     FrameLayout s = holder.slots[exitSlotIdx];
@@ -715,6 +725,9 @@ public class HomeBannerPresenter extends Presenter {
                     holder.slotDataIndex[exitSlotIdx] = newDataIdx;
                     Vod newVod = holder.carouselVods.get(newDataIdx);
                     ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
+                    if (holder.names[exitSlotIdx] != null) {
+                        holder.names[exitSlotIdx].setText(newVod.getName() == null ? "" : newVod.getName());
+                    }
                     // 逻辑位置从 +3 改为 -4，瞬间放置到 -4 位置（不可见，alpha=0）
                     holder.slotPosition[exitSlotIdx] = -4;
                     FrameLayout s = holder.slots[exitSlotIdx];
@@ -811,6 +824,7 @@ public class HomeBannerPresenter extends Presenter {
 
         public final FrameLayout[] slots = new FrameLayout[NUM_SLOTS];
         public final android.widget.ImageView[] imgs = new android.widget.ImageView[NUM_SLOTS];
+        public final TextView[] names = new TextView[NUM_SLOTS];
         /** 每个物理 slot 当前承载的"逻辑位置"（-4..+4 之间循环） */
         public final int[] slotPosition = new int[NUM_SLOTS];
         /** 每个物理 slot 当前绑定的数据索引（carouselVods 列表内的 index） */
@@ -832,7 +846,7 @@ public class HomeBannerPresenter extends Presenter {
         public ViewHolder(@NonNull AdapterHomeBannerBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
-            // 通过 id 查找 8 个 slot 与对应 img（使用数组避免手写 binding 引用错误）
+            // 通过 id 查找 8 个 slot 与对应 img / name（使用数组避免手写 binding 引用错误）
             int[] slotIds = {
                 R.id.cardSlot0, R.id.cardSlot1, R.id.cardSlot2, R.id.cardSlot3,
                 R.id.cardSlot4, R.id.cardSlot5, R.id.cardSlot6, R.id.cardSlot7
@@ -841,9 +855,14 @@ public class HomeBannerPresenter extends Presenter {
                 R.id.imgSlot0, R.id.imgSlot1, R.id.imgSlot2, R.id.imgSlot3,
                 R.id.imgSlot4, R.id.imgSlot5, R.id.imgSlot6, R.id.imgSlot7
             };
+            int[] nameIds = {
+                R.id.nameSlot0, R.id.nameSlot1, R.id.nameSlot2, R.id.nameSlot3,
+                R.id.nameSlot4, R.id.nameSlot5, R.id.nameSlot6, R.id.nameSlot7
+            };
             for (int i = 0; i < NUM_SLOTS; i++) {
                 slots[i] = binding.getRoot().findViewById(slotIds[i]);
                 imgs[i]  = binding.getRoot().findViewById(imgIds[i]);
+                names[i] = binding.getRoot().findViewById(nameIds[i]);
             }
             java.util.Arrays.fill(slotPosition, 0);
             java.util.Arrays.fill(slotDataIndex, 0);

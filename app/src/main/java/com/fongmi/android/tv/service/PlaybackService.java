@@ -170,8 +170,8 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
     public void onDestroy() {
         running = false;
         releaseSession();
-        player.stop();
-        player.release();
+        try { player.stop(); } catch (Exception e) { e.printStackTrace(); }
+        try { player.release(); } catch (Exception e) { e.printStackTrace(); }
         removeForeground();
         Server.get().setService(null);
         EventBus.getDefault().unregister(this);
@@ -179,8 +179,8 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
     }
 
     private void stopAndClear() {
-        player.stop();
-        player.clearMediaItems();
+        try { player.stop(); } catch (Exception e) { e.printStackTrace(); }
+        try { player.clearMediaItems(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void suspend() {
@@ -364,61 +364,78 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
 
     private ForwardingPlayer wrap(Player base) {
         return new ForwardingPlayer(base) {
+            private void ensureIdleOrEnded() {
+                int s = getPlaybackState();
+                if (s == Player.STATE_IDLE || s == Player.STATE_ENDED) return;
+                try { super.stop(); } catch (Exception ignored) {}
+                s = getPlaybackState();
+                if (s == Player.STATE_IDLE || s == Player.STATE_ENDED) return;
+                try { super.clearMediaItems(); } catch (Exception ignored) {}
+            }
             @Override
             public void setMediaItem(@NonNull MediaItem item) {
-                interceptItem(item, 0);
+                try { ensureIdleOrEnded(); interceptItem(item, 0); super.setMediaItem(item); } catch (Exception e) { e.printStackTrace(); }
             }
-
             @Override
             public void setMediaItem(@NonNull MediaItem item, boolean resetPosition) {
-                interceptItem(item, 0);
+                try { ensureIdleOrEnded(); interceptItem(item, 0); super.setMediaItem(item, resetPosition); } catch (Exception e) { e.printStackTrace(); }
             }
-
             @Override
             public void setMediaItem(@NonNull MediaItem item, long startPositionMs) {
-                interceptItem(item, startPositionMs);
+                try { ensureIdleOrEnded(); interceptItem(item, startPositionMs); super.setMediaItem(item, startPositionMs); } catch (Exception e) { e.printStackTrace(); }
             }
-
             @Override
             public void setMediaItems(@NonNull List<MediaItem> items) {
-                interceptItems(items, 0, 0);
+                if (items == null) return;
+                try { ensureIdleOrEnded(); interceptItems(items, 0, 0); super.setMediaItems(items); } catch (Exception e) { e.printStackTrace(); }
             }
-
             @Override
             public void setMediaItems(@NonNull List<MediaItem> items, boolean resetPosition) {
-                interceptItems(items, 0, 0);
+                if (items == null) return;
+                try { ensureIdleOrEnded(); interceptItems(items, 0, 0); super.setMediaItems(items, resetPosition); } catch (Exception e) { e.printStackTrace(); }
             }
-
             @Override
             public void setMediaItems(@NonNull List<MediaItem> items, int startIndex, long startPositionMs) {
-                interceptItems(items, startIndex, startPositionMs);
+                if (items == null) return;
+                try { ensureIdleOrEnded(); interceptItems(items, startIndex, startPositionMs); super.setMediaItems(items, startIndex, startPositionMs); } catch (Exception e) { e.printStackTrace(); }
             }
-
             @Override
             public void seekToPrevious() {
                 dispatchPrev();
             }
-
             @Override
             public void seekToPreviousMediaItem() {
                 dispatchPrev();
             }
-
             @Override
             public void seekToNext() {
                 dispatchNext();
             }
-
             @Override
             public void seekToNextMediaItem() {
                 dispatchNext();
             }
-
             @Override
             public void stop() {
+                try { super.stop(); } catch (Exception e) { e.printStackTrace(); }
                 dispatchStop();
             }
-
+            @Override
+            public void clearMediaItems() { try { super.clearMediaItems(); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void prepare() { try { super.prepare(); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void seekToDefaultPosition() { try { super.seekToDefaultPosition(); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void seekToDefaultPosition(int mediaItemIndex) { try { super.seekToDefaultPosition(mediaItemIndex); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void seekTo(long positionMs) { try { super.seekTo(positionMs); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void seekTo(int mediaItemIndex, long positionMs) { try { super.seekTo(mediaItemIndex, positionMs); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void play() { try { super.play(); } catch (Exception e) { e.printStackTrace(); } }
+            @Override
+            public void pause() { try { super.pause(); } catch (Exception e) { e.printStackTrace(); } }
             @NonNull
             @Override
             public Commands getAvailableCommands() {

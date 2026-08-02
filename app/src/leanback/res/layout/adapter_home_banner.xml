@@ -231,7 +231,7 @@
                     <!-- Slot 0 -->
                     <FrameLayout
                         android:id="@+id/cardSlot0"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -241,14 +241,41 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <!-- 图片：match_parent，保持比例裁剪 -->
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot0"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <!-- 全图阴影层（暗角） -->
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <!-- 底部半透明渐变遮罩（名字条背景，防止字和图混在一起看不清） -->
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <!-- 名字 TextView：底部、左右 padding 10dp、高度 36dp、gravity center_vertical|start -->
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot0"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -256,7 +283,7 @@
                     <!-- Slot 1 -->
                     <FrameLayout
                         android:id="@+id/cardSlot1"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -266,14 +293,37 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot1"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -281,7 +331,7 @@
                     <!-- Slot 2 -->
                     <FrameLayout
                         android:id="@+id/cardSlot2"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -291,14 +341,37 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot2"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -306,7 +379,7 @@
                     <!-- Slot 3 -->
                     <FrameLayout
                         android:id="@+id/cardSlot3"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -316,14 +389,37 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot3"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -331,7 +427,7 @@
                     <!-- Slot 4 -->
                     <FrameLayout
                         android:id="@+id/cardSlot4"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -341,14 +437,37 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot4"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -356,7 +475,7 @@
                     <!-- Slot 5 -->
                     <FrameLayout
                         android:id="@+id/cardSlot5"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -366,14 +485,37 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot5"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot5"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -381,7 +523,7 @@
                     <!-- Slot 6 -->
                     <FrameLayout
                         android:id="@+id/cardSlot6"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -391,14 +533,37 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot6"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot6"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
@@ -406,7 +571,7 @@
                     <!-- Slot 7 -->
                     <FrameLayout
                         android:id="@+id/cardSlot7"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="match_parent"
                         android:visibility="invisible">
                         <androidx.cardview.widget.CardView
@@ -416,25 +581,48 @@
                             app:cardCornerRadius="8dp"
                             app:cardElevation="0dp"
                             android:foreground="@drawable/selector_vod">
-                            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
                                 <androidx.appcompat.widget.AppCompatImageView
                                     android:id="@+id/imgSlot7"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:scaleType="centerCrop" />
-                                <View android:layout_width="match_parent" android:layout_height="match_parent"
-                                      android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot7"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
                             </FrameLayout>
                         </androidx.cardview.widget.CardView>
                     </FrameLayout>
 
-                    <!-- Center card details overlay (shown only on middle card, width=220dp) -->
+                    <!-- Center card details overlay (shown only on middle card, width=185dp) -->
                     <LinearLayout
                         android:id="@+id/centerDetailsLayout"
-                        android:layout_width="220dp"
+                        android:layout_width="185dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="bottom|center_horizontal"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="46dp"
                         android:orientation="vertical"
                         android:paddingStart="14dp"
                         android:paddingEnd="14dp"

@@ -77,11 +77,11 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void release() {
-        player.removeListener(listener);
+        try { if (player != null) player.removeListener(listener); } catch (Exception e) { e.printStackTrace(); }
         App.removeCallbacks(runnable);
         releaseDanmakuController();
         if (engine == null) return;
-        engine.release();
+        try { engine.release(); } catch (Exception e) { e.printStackTrace(); }
         engine = null;
         player = null;
     }
@@ -242,7 +242,7 @@ public class PlayerManager implements ParseCallback {
 
     public void setMetadata(MediaMetadata data) {
         if (spec != null) spec.setMetadata(data);
-        engine.setMetadata(data);
+        try { engine.setMetadata(data); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void setDanmakuController(DanmakuController controller) {
@@ -279,8 +279,10 @@ public class PlayerManager implements ParseCallback {
     }
 
     public String setSpeed(float speed) {
-        if (!player.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH)) return getSpeedText();
-        player.setPlaybackParameters(player.getPlaybackParameters().withSpeed(speed));
+        try {
+            if (!player.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH)) return getSpeedText();
+            player.setPlaybackParameters(player.getPlaybackParameters().withSpeed(speed));
+        } catch (Exception e) { e.printStackTrace(); }
         return getSpeedText();
     }
 
@@ -304,24 +306,24 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void setTrack(List<Track> tracks) {
-        if (!tracks.isEmpty()) engine.setTrack(tracks);
+        if (!tracks.isEmpty()) try { engine.setTrack(tracks); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void play() {
-        player.play();
+        try { player.play(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void pause() {
-        player.pause();
+        try { player.pause(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void stop() {
-        player.stop();
+        try { player.stop(); } catch (Exception e) { e.printStackTrace(); }
         stopParse();
     }
 
     public void clearMediaItems() {
-        player.clearMediaItems();
+        try { player.clearMediaItems(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public boolean isRepeatOne() {
@@ -329,51 +331,51 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void setRepeatOne(boolean repeat) {
-        engine.setRepeatOne(repeat);
+        try { engine.setRepeatOne(repeat); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void seekTo(long time) {
-        player.seekTo(time);
+        try { player.seekTo(time); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public long getTextOffsetMs() {
-        return engine.getTextOffsetMs();
+        try { return engine.getTextOffsetMs(); } catch (Exception e) { e.printStackTrace(); return 0; }
     }
 
     public void setTextOffsetMs(long offsetMs) {
-        engine.setTextOffsetMs(offsetMs);
+        try { engine.setTextOffsetMs(offsetMs); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public long getAudioOffsetMs() {
-        return engine.getAudioOffsetMs();
+        try { return engine.getAudioOffsetMs(); } catch (Exception e) { e.printStackTrace(); return 0; }
     }
 
     public void setAudioOffsetMs(long offsetMs) {
-        engine.setAudioOffsetMs(offsetMs);
+        try { engine.setAudioOffsetMs(offsetMs); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public boolean canSetSubtitleStyle() {
-        return engine.canSetSubtitleStyle();
+        try { return engine.canSetSubtitleStyle(); } catch (Exception e) { e.printStackTrace(); return false; }
     }
 
     public void addSubtitleSize() {
-        engine.addSubtitleSize();
+        try { engine.addSubtitleSize(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void subSubtitleSize() {
-        engine.subSubtitleSize();
+        try { engine.subSubtitleSize(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void addSubtitlePosition() {
-        engine.addSubtitlePosition();
+        try { engine.addSubtitlePosition(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void subSubtitlePosition() {
-        engine.subSubtitlePosition();
+        try { engine.subSubtitlePosition(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void resetSubtitleStyle() {
-        engine.resetSubtitleStyle();
+        try { engine.resetSubtitleStyle(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void reset() {
@@ -386,11 +388,11 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void resetTrack() {
-        engine.resetTrack();
+        try { engine.resetTrack(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     public void toggleDecode() {
-        engine.setDecode(engine.isHard() ? PlayerEngine.SOFT : PlayerEngine.HARD);
+        try { engine.setDecode(engine.isHard() ? PlayerEngine.SOFT : PlayerEngine.HARD); } catch (Exception e) { e.printStackTrace(); }
         if (engine.canSetDecodeWithoutRebuild()) return;
         rebuildPlayer();
         setMediaItem();
@@ -415,8 +417,13 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void rebuildPlayer() {
-        player = engine.rebuild(listener);
-        callback.onPlayerRebuild(player);
+        try {
+            player = engine.rebuild(listener);
+            callback.onPlayerRebuild(player);
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (callback != null) callback.onError(engine == null ? e.getMessage() : engine.getErrorMessage(e));
+        }
     }
 
     private void switchEngine() {
@@ -427,11 +434,16 @@ public class PlayerManager implements ParseCallback {
 
     private void switchEngineOnly() {
         PlayerEngine old = engine;
-        if (player != null) player.removeListener(listener);
-        engine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
-        player = engine.getPlayer();
-        callback.onPlayerRebuild(player);
-        if (old != null) old.release();
+        try { if (player != null) player.removeListener(listener); } catch (Exception e) { e.printStackTrace(); }
+        try {
+            engine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
+            player = engine.getPlayer();
+            callback.onPlayerRebuild(player);
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (callback != null) callback.onError(e.getMessage());
+        }
+        try { if (old != null) old.release(); } catch (Exception e) { e.printStackTrace(); }
     }
 
     private long getSwitchPosition() {
@@ -515,7 +527,12 @@ public class PlayerManager implements ParseCallback {
         if (spec == null || spec.getUrl() == null) return;
         ensureEngineForSpec();
         setDanmakus(spec.getDanmakus());
-        engine.start(spec.checkUa(), positionMs);
+        try {
+            engine.start(spec.checkUa(), positionMs);
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (callback != null) callback.onError(engine == null ? e.getMessage() : engine.getErrorMessage(e));
+        }
         pendingStartPositionMs = C.TIME_UNSET;
         App.post(runnable, timeout);
         callback.onPrepare();
