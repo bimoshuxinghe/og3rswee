@@ -290,10 +290,24 @@ public class MihomoManager {
                 "    proxies:\n" +
                 "      - " + quote(selected) + "\n" +
                 "rules:\n" +
-                "  - GEOSITE,private,DIRECT\n" +
-                "  - GEOSITE,cn,DIRECT\n" +
-                "  - GEOIP,private,DIRECT,no-resolve\n" +
-                "  - GEOIP,cn,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve\n" +
+                "  - DOMAIN-SUFFIX,cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,iqiyipic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,iqiyi.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qpic.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qq.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,youku.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bilibili.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,hdslb.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,gtimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,taobao.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,alicdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,aliyuncs.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,aliyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pages.dev,DIRECT\n" +
                 "  - MATCH,XYS_PROXY\n";
     }
 
