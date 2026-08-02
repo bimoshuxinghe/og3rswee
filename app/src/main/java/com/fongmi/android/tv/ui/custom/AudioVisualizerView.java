@@ -79,7 +79,7 @@ public class AudioVisualizerView extends View {
             visualizer.setCaptureSize(Visualizer.getCaptureSizeRange()[0]);
             visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
                 @Override
-                public void onWaveFormData(Visualizer visualizer, byte[] waveform, int samplingRate) {
+                public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
                     processWaveform(waveform);
                 }
 
