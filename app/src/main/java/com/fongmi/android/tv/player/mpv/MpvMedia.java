@@ -36,6 +36,19 @@ public final class MpvMedia {
         return isLikelyPhpProxyHls(text);
     }
 
+    /**
+     * 判断 URL 是否为 PHP 代理直播流（用于直播场景下强制按 HLS 处理）。
+     * 任何包含 .php 的 HTTP(S) 链接都视为可能的直播代理。
+     */
+    public static boolean isPhpProxyStream(@Nullable String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        String text = decode(stripFragment(url));
+        if (TextUtils.isEmpty(text)) return false;
+        text = text.toLowerCase(Locale.ROOT);
+        if (!text.contains(".php")) return false;
+        return true;
+    }
+
     public static boolean isRadioAudio(@Nullable String url) {
         if (TextUtils.isEmpty(url)) return false;
         String text = decode(stripFragment(url));

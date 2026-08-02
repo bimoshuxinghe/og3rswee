@@ -582,6 +582,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             if (fields.length() > 0) fields.append(',');
             fields.append(entry.getKey()).append(": ").append(entry.getValue().replace(",", "\\,"));
         }
+        // 确保 UA 始终设置：若 headers 中没有 UA，使用默认 UA
+        if (TextUtils.isEmpty(userAgent)) {
+            String defaultUa = com.fongmi.android.tv.setting.Setting.getUa();
+            if (TextUtils.isEmpty(defaultUa)) defaultUa = com.fongmi.android.tv.player.PlayerHelper.getDefaultUa();
+            userAgent = defaultUa;
+        }
         if (!TextUtils.isEmpty(userAgent)) setMpvOption("user-agent", userAgent);
         if (fields.length() > 0) setMpvOption("http-header-fields", fields.toString());
     }
@@ -629,6 +635,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (isHls(item, url)) {
             options.add("demuxer=lavf");
             options.add("demuxer-lavf-format=hls");
+            options.add("demuxer-lavf-probesize=32");
+            options.add("demuxer-lavf-analyzeduration=0");
+            options.add("cache=yes");
+            options.add("cache-secs=1");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
         } else if (MpvMedia.isRadioAudio(url)) {
@@ -645,7 +655,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         String mimeType = item.localConfiguration == null ? null : item.localConfiguration.mimeType;
         if (MimeTypes.APPLICATION_M3U8.equals(mimeType)) return true;
         if (!TextUtils.isEmpty(mimeType) && mimeType.toLowerCase(Locale.ROOT).contains("mpegurl")) return true;
-        return MpvMedia.isHls(MpvMedia.getPlayableUrl(url));
+        if (MpvMedia.isHls(MpvMedia.getPlayableUrl(url))) return true;
+        // PHP 代理直播链接强制按 HLS 处理
+        return MpvMedia.isPhpProxyStream(url);
     }
 
     private void applyAudioOptions() {

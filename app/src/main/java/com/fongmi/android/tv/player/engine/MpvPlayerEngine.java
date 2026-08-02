@@ -89,21 +89,14 @@ public class MpvPlayerEngine implements PlayerEngine {
     @Override
     public void start(PlaySpec spec, long positionMs) {
         MediaItem item = ExoUtil.getMediaItem(spec, decode);
-        ensureIdleOrEnded(player);
+        // 先尝试直接加载（MPV 的 loadfile replace 会立即替换上一画面，实现挤掉起播）
         try {
             player.setMediaItem(item, positionMs);
             player.prepare();
             player.play();
         } catch (Exception e) {
-            Log.w("MpvPlayerEngine", "start failed, retry after stop+clear.", e);
-            try {
-                player.stop();
-            } catch (Exception ignored) {
-            }
-            try {
-                player.clearMediaItems();
-            } catch (Exception ignored) {
-            }
+            Log.w("MpvPlayerEngine", "direct load failed, fallback to stop+clear.", e);
+            ensureIdleOrEnded(player);
             try {
                 player.setMediaItem(item, positionMs);
                 player.prepare();
