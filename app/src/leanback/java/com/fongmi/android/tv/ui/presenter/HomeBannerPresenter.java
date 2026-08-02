@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -391,7 +392,70 @@ public class HomeBannerPresenter extends Presenter {
         holder.binding.middleCard.setOnFocusChangeListener((v, hasFocus) -> {
             holder.isMarqueePaused = hasFocus;
             animateScale(v, hasFocus, 1.02f);
+            // 失焦时重置自动轮播计时（避免马上就切）
+            if (!hasFocus && holder.marqueeRunnable != null) {
+                holder.binding.getRoot().removeCallbacks(holder.marqueeRunnable);
+                holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
+            }
         });
+
+        // ===== 遥控器左右键 → 手动切换轮播 =====
+        // 在 middleCard 聚焦状态下：
+        //   按 DPAD_RIGHT → 选中"下一张"（即 advanceCoverFlow，向左整体平移，右侧卡片放大为中间）
+        //   按 DPAD_LEFT  → 选中"上一张"（即 retreatCoverFlow，向右整体平移，左侧卡片放大为中间）
+        //   按 DPAD_CENTER / ENTER → 跳转到当前中间那张详情页
+        // （UP/DOWN 不拦截，让焦点按正常逻辑跳出到 toolbar 或下方分类）
+        holder.binding.middleCard.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (holder.carouselSize <= 0) return false;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (holder.marqueeAnimator == null || !holder.marqueeAnimator.isRunning()) {
+                    advanceCoverFlow(holder);
+                    // 手动切换后重置自动轮播计时
+                    if (holder.marqueeRunnable != null) {
+                        holder.binding.getRoot().removeCallbacks(holder.marqueeRunnable);
+                        if (!holder.isMarqueePaused) {
+                            holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
+                        }
+                    }
+                }
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                if (holder.marqueeAnimator == null || !holder.marqueeAnimator.isRunning()) {
+                    retreatCoverFlow(holder);
+                    if (holder.marqueeRunnable != null) {
+                        holder.binding.getRoot().removeCallbacks(holder.marqueeRunnable);
+                        if (!holder.isMarqueePaused) {
+                            holder.binding.getRoot().postDelayed(holder.marqueeRunnable, MARQUEE_INTERVAL_MS);
+                        }
+                    }
+                }
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                // 回车/OK/Enter → 跳转当前中间海报的详情
+                int dataIdx = mod(holder.currentCenterIdx, holder.carouselSize);
+                if (holder.carouselVods != null && dataIdx >= 0 && dataIdx < holder.carouselVods.size()) {
+                    Vod vod = holder.carouselVods.get(dataIdx);
+                    if (vod != null) {
+                        activity.onItemClick(vod);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+
+        // ===== 点击中间详情层（文字/播放按钮区域）同样跳转到当前中间详情 =====
+        holder.binding.centerDetailsLayout.setOnClickListener(v -> {
+            int dataIdx = mod(holder.currentCenterIdx, holder.carouselSize);
+            if (holder.carouselVods != null && dataIdx >= 0 && dataIdx < holder.carouselVods.size()) {
+                Vod vod = holder.carouselVods.get(dataIdx);
+                if (vod != null) activity.onItemClick(vod);
+            }
+        });
+        // 中间详情层的按键也让它透传到 middleCard 的处理（虽然通常 middleCard 是父级）
+        holder.binding.centerDetailsLayout.setFocusable(false);
+        holder.binding.playButtonLayout.setFocusable(false);
 
         // 循环切换 runnable
         holder.marqueeRunnable = new Runnable() {
@@ -567,6 +631,133 @@ public class HomeBannerPresenter extends Presenter {
 
                 // === 步骤 5：预加载后续可能出现的新海报（保险） ===
                 for (int k = 3; k <= 5; k++) {
+                    int idx = mod(newCenterIdx + k, n);
+                    Vod v = holder.carouselVods.get(idx);
+                    if (v != null && v.getPic() != null) {
+                        try { Glide.with(holder.binding.getRoot().getContext()).load(v.getPic()).preload(); } catch (Exception ignored) {}
+                    }
+                }
+            }
+        });
+        holder.marqueeAnimator = set;
+        set.start();
+    }
+
+    // ============ 向右切换一次的动画（与 advanceCoverFlow 对称） ============
+
+    /**
+     * 向右后退一帧：
+     *   每个物理 slot 的逻辑位置从 p → p+1
+     *     pos +2 → +3 (飞出可见区右侧，alpha→0，scale→0.5)
+     *     pos +1 → +2，pos 0 → +1，pos -1 → 0，pos -2 → -1
+     *     pos -3 → -2 (从左侧缓冲区进入可见区，alpha 0→1，scale 0.5→0.72)
+     *     pos -4 → -3 (进入左侧缓冲区)
+     *   动画结束后：
+     *     刚飞出可见区的 slot（现在 pos = +3）绑定新数据（currentCenterIdx - 4），
+     *     其逻辑位置重置为 -4（新最左缓冲），瞬间移动到 -4 位置（因为不可见所以无视觉跳变）。
+     *     其他 7 个 slot 已经停在它们的新静态位置（p+1），可见的 5 张（-2..+2）修正对齐。
+     *     更新 currentCenterIdx--，详情文字，指示器，点击事件。
+     */
+    private void retreatCoverFlow(ViewHolder holder) {
+        if (holder.marqueeAnimator != null && holder.marqueeAnimator.isRunning()) return;
+        layoutCoverFlow(holder); // 保险：刷新尺寸
+
+        final int n = holder.carouselSize;
+        AnimatorSet set = new AnimatorSet();
+        List<Animator> anims = new java.util.ArrayList<>(NUM_SLOTS * 5);
+
+        // 对每个 slot 创建从当前 pos → pos+1 的动画
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            int fromPos = holder.slotPosition[i];
+            int toPos   = fromPos + 1;
+            FrameLayout slot = holder.slots[i];
+            slot.setVisibility(View.VISIBLE); // 动画期间保持 VISIBLE（靠 alpha 控制显隐）
+
+            float fromTX = slot.getTranslationX();
+            float toTX   = posToTranslationX(holder, toPos);
+            float fromSX = slot.getScaleX();
+            float toSX   = posToScale(toPos);
+            float fromSY = slot.getScaleY();
+            float toSY   = posToScale(toPos);
+            float fromA  = slot.getAlpha();
+            float toA    = posToAlpha(toPos);
+            float fromZ  = slot.getTranslationZ();
+            float toZ    = posToZ(toPos);
+
+            anims.add(ObjectAnimator.ofFloat(slot, "translationX", fromTX, toTX));
+            anims.add(ObjectAnimator.ofFloat(slot, "scaleX", fromSX, toSX));
+            anims.add(ObjectAnimator.ofFloat(slot, "scaleY", fromSY, toSY));
+            anims.add(ObjectAnimator.ofFloat(slot, "alpha", fromA, toA));
+            if (fromZ != toZ) {
+                anims.add(ObjectAnimator.ofFloat(slot, "translationZ", fromZ, toZ));
+            }
+        }
+        set.playTogether(anims);
+        set.setDuration(MARQUEE_ANIM_MS);
+        set.setInterpolator(SMOOTH_INTERP);
+
+        final int oldCenter = holder.currentCenterIdx;
+        set.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                // === 步骤 1：更新所有 slot 逻辑位置（p → p+1） ===
+                int exitSlotIdx = -1;
+                for (int i = 0; i < NUM_SLOTS; i++) {
+                    holder.slotPosition[i] += 1;
+                    if (holder.slotPosition[i] == 3) exitSlotIdx = i; // 飞出可见区右侧（刚从+2出来）
+                }
+
+                // === 步骤 2：把退出可见区的 slot（pos=+3）回收为新的最左缓冲（pos=-4） ===
+                if (exitSlotIdx >= 0) {
+                    int newCenter = mod(oldCenter - 1, n);
+                    // 这个 slot 应该承载数据：newCenter - 4（对应位置 -4，作为最左侧缓冲）
+                    int newDataIdx = mod(newCenter - 4, n);
+                    holder.slotDataIndex[exitSlotIdx] = newDataIdx;
+                    Vod newVod = holder.carouselVods.get(newDataIdx);
+                    ImgUtil.load(newVod.getName(), newVod.getPic(), holder.imgs[exitSlotIdx]);
+                    // 逻辑位置从 +3 改为 -4，瞬间放置到 -4 位置（不可见，alpha=0）
+                    holder.slotPosition[exitSlotIdx] = -4;
+                    FrameLayout s = holder.slots[exitSlotIdx];
+                    s.setTranslationX(posToTranslationX(holder, -4));
+                    s.setScaleX(posToScale(-4));
+                    s.setScaleY(posToScale(-4));
+                    s.setAlpha(posToAlpha(-4));
+                    s.setTranslationZ(posToZ(-4));
+                    s.setVisibility(View.INVISIBLE); // 缓冲保持 INVISIBLE，下次动画时再改为 VISIBLE
+                    slotClickListenerReset(holder, exitSlotIdx);
+                }
+
+                // === 步骤 3：5 张可见 slot（-2..+2）修正 VISIBLE + 精确对齐 ===
+                for (int i = 0; i < NUM_SLOTS; i++) {
+                    int p = holder.slotPosition[i];
+                    if (p >= -2 && p <= 2) {
+                        holder.slots[i].setVisibility(View.VISIBLE);
+                        holder.slots[i].setTranslationX(posToTranslationX(holder, p));
+                        holder.slots[i].setScaleX(posToScale(p));
+                        holder.slots[i].setScaleY(posToScale(p));
+                        holder.slots[i].setAlpha(posToAlpha(p));
+                        holder.slots[i].setTranslationZ(posToZ(p));
+                    }
+                }
+
+                // === 步骤 4：更新中间卡片详情 + 索引 + 指示器 ===
+                int newCenterIdx = mod(oldCenter - 1, n);
+                holder.currentCenterIdx = newCenterIdx;
+                Vod newCenterVod = holder.carouselVods.get(newCenterIdx);
+                bindCenterDetails(holder, newCenterVod);
+
+                for (int i = 0; i < NUM_SLOTS; i++) slotClickListenerReset(holder, i);
+
+                for (int i = 0; i < holder.carouselSize; i++) {
+                    View dot = holder.binding.indicatorLayout.getChildAt(i);
+                    if (dot != null) {
+                        dot.setBackgroundResource(i == newCenterIdx ? R.drawable.shape_dot_active : R.drawable.shape_dot_inactive);
+                    }
+                }
+                holder.marqueeAnimator = null;
+
+                // === 步骤 5：反向预加载（向左缓冲） ===
+                for (int k = -5; k <= -3; k++) {
                     int idx = mod(newCenterIdx + k, n);
                     Vod v = holder.carouselVods.get(idx);
                     if (v != null && v.getPic() != null) {
