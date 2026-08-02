@@ -334,7 +334,13 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     @Override
     public void eventProperty(String property) {
         if (isVideoSizeProperty(property)) updateVideoSize();
-        if ("track-list".equals(property)) buildTracks();
+        if ("track-list".equals(property)) {
+            handler.post(() -> {
+                if (released) return;
+                buildTracks();
+                invalidateState();
+            });
+        }
         postInvalidate();
     }
 
@@ -778,7 +784,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             Integer mpvId = safeGetInt("track-list/" + index + "/id");
             String type = safeGetString("track-list/" + index + "/type");
             int trackType = getTrackType(type);
-            if (mpvId == null || trackType == C.TRACK_TYPE_UNKNOWN) continue;
+            if (mpvId == null || mpvId <= 0 || trackType == C.TRACK_TYPE_UNKNOWN) continue;
             if (trackType == C.TRACK_TYPE_AUDIO) hasAudio = true;
             if (trackType == C.TRACK_TYPE_VIDEO) hasVideo = true;
             Format format = buildFormat(index, mpvId, trackType);
@@ -812,9 +818,13 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 .setCodecs(codec)
                 .setSampleMimeType(getSampleMimeType(trackType, codec));
         Integer width = safeGetInt("track-list/" + index + "/demux-w");
+        if (width == null || width <= 0) width = safeGetInt("track-list/" + index + "/w");
         Integer height = safeGetInt("track-list/" + index + "/demux-h");
+        if (height == null || height <= 0) height = safeGetInt("track-list/" + index + "/h");
         Integer channels = safeGetInt("track-list/" + index + "/demux-channel-count");
+        if (channels == null || channels <= 0) channels = safeGetInt("track-list/" + index + "/channel-count");
         Integer sampleRate = safeGetInt("track-list/" + index + "/demux-samplerate");
+        if (sampleRate == null || sampleRate <= 0) sampleRate = safeGetInt("track-list/" + index + "/samplerate");
         if (width != null && width > 0) builder.setWidth(width);
         if (height != null && height > 0) builder.setHeight(height);
         if (channels != null && channels > 0) builder.setChannelCount(channels);
@@ -824,7 +834,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private String getTrackLabel(int index, int mpvId, int trackType) {
         String title = safeGetString("track-list/" + index + "/title");
-        String prefix = trackType == C.TRACK_TYPE_AUDIO ? "Audio" : trackType == C.TRACK_TYPE_TEXT ? "Sub" : "Video";
+        String prefix;
+        if (trackType == C.TRACK_TYPE_AUDIO) prefix = "音轨";
+        else if (trackType == C.TRACK_TYPE_TEXT) prefix = "字幕";
+        else prefix = "视轨";
         StringBuilder builder = new StringBuilder(prefix).append(' ').append(mpvId);
         if (!TextUtils.isEmpty(title)) builder.append(" - ").append(title);
         return builder.toString();
