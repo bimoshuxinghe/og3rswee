@@ -175,6 +175,7 @@ public class MihomoManager {
     private String fixConfig(String config, String selected) {
         String text = config.replace("\r\n", "\n").replace("\r", "\n");
         if (!TextUtils.isEmpty(selected)) text = buildSelectedConfig(text, selected);
+        text = fixServerName(text);
         text = fixVlessFlow(text);
         text = putTopLevel(text, "mixed-port", String.valueOf(MIXED_PORT));
         text = putTopLevel(text, "allow-lan", "false");
@@ -184,6 +185,37 @@ public class MihomoManager {
         text = putTopLevel(text, "find-process-mode", "off");
         text = ensureDns(text);
         return text;
+    }
+
+    private String fixServerName(String text) {
+        String[] lines = text.split("\n", -1);
+        StringBuilder result = new StringBuilder();
+        boolean inProxies = false;
+        String currentType = "";
+        for (String line : lines) {
+            String trimmed = line.trim();
+            boolean isTopLevel = !TextUtils.isEmpty(line) && !Character.isWhitespace(line.charAt(0)) && line.contains(":");
+            if (isTopLevel) {
+                inProxies = trimmed.startsWith("proxies:");
+                currentType = "";
+                result.append(line).append("\n");
+                continue;
+            }
+            if (inProxies) {
+                if (trimmed.startsWith("- ")) {
+                    currentType = "";
+                } else if (trimmed.startsWith("type:")) {
+                    currentType = trimmed.substring("type:".length()).trim();
+                } else if (trimmed.startsWith("server-name:")) {
+                    boolean useSni = "trojan".equals(currentType) || "hysteria2".equals(currentType) || "hysteria".equals(currentType) || "tuic".equals(currentType) || "snell".equals(currentType);
+                    String value = trimmed.substring("server-name:".length()).trim();
+                    result.append(line.substring(0, line.length() - trimmed.length())).append(useSni ? "sni: " : "servername: ").append(value).append("\n");
+                    continue;
+                }
+            }
+            result.append(line).append("\n");
+        }
+        return result.toString();
     }
 
     private String fixVlessFlow(String text) {

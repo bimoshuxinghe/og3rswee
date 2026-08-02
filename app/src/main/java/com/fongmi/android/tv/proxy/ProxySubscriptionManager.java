@@ -569,7 +569,7 @@ public class ProxySubscriptionManager {
             }
             if (o.has("tls") && ("tls".equals(str(o, "tls")) || "1".equals(str(o, "tls")))) {
                 sb.append("    tls: true\n");
-                if (o.has("sni")) sb.append("    server-name: ").append(quote(str(o, "sni"))).append("\n");
+                if (o.has("sni")) sb.append("    servername: ").append(quote(str(o, "sni"))).append("\n");
                 if (o.has("allowInsecure") && ("1".equals(str(o, "allowInsecure")) || "true".equals(str(o, "allowInsecure")))) sb.append("    skip-cert-verify: true\n");
             }
             return sb.toString();
@@ -689,11 +689,11 @@ public class ProxySubscriptionManager {
             if (flow != null) sb.append("    flow: ").append(flow).append("\n");
             if (security != null && "tls".equals(security)) {
                 sb.append("    tls: true\n");
-                if (sni != null) sb.append("    server-name: ").append(quote(sni)).append("\n");
+                if (sni != null) sb.append("    servername: ").append(quote(sni)).append("\n");
                 if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
             } else if (isReality) {
                 sb.append("    tls: true\n");
-                if (sni != null) sb.append("    server-name: ").append(quote(sni)).append("\n");
+                if (sni != null) sb.append("    servername: ").append(quote(sni)).append("\n");
                 if (pbk != null || sid != null) {
                     sb.append("    reality-opts:\n");
                     if (pbk != null) sb.append("      public-key: ").append(quote(pbk)).append("\n");
@@ -718,7 +718,7 @@ public class ProxySubscriptionManager {
             sb.append("    port: ").append(u.getPort()).append("\n");
             sb.append("    password: ").append(quote(u.getUserInfo() != null ? u.getUserInfo() : "")).append("\n");
             sb.append("    udp: true\n");
-            if (u.getQueryParameter("sni") != null) sb.append("    server-name: ").append(quote(u.getQueryParameter("sni"))).append("\n");
+            if (u.getQueryParameter("sni") != null) sb.append("    sni: ").append(quote(u.getQueryParameter("sni"))).append("\n");
             if (u.getQueryParameter("allowInsecure") != null && "1".equals(u.getQueryParameter("allowInsecure"))) sb.append("    skip-cert-verify: true\n");
             String network = u.getQueryParameter("type");
             if (network != null && !"tcp".equals(network)) {
