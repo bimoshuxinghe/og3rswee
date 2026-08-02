@@ -90,11 +90,17 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                 ProxyNode selected = ProxySubscriptionManager.get().autoSelect();
                 App.post(() -> {
                     Notify.dismiss();
-                    binding.enable.setChecked(true);
+                    if (selected != null) {
+                        binding.enable.setChecked(true);
+                        Notify.show(getString(R.string.proxy_sub_selected, selected.getDisplay()));
+                    } else {
+                        if (binding.enable.isChecked()) binding.enable.setChecked(false);
+                        String error = MihomoManager.get().getLastError();
+                        if (TextUtils.isEmpty(error)) error = "节点连接测试失败，未启用代理";
+                        showErrorDialog("代理不可用", "已解析" + nodes.size() + "个节点，但连接测试失败\n\n" + error);
+                    }
                     setStatus();
                     notifyChanged();
-                    if (selected != null) Notify.show(getString(R.string.proxy_sub_selected, selected.getDisplay()));
-                    else Notify.show(getString(R.string.proxy_sub_parsed, nodes.size()));
                     showNodeList(nodes);
                 });
             } catch (Throwable e) {
@@ -115,12 +121,15 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
         Task.execute(() -> {
             List<ProxyNode> nodes = ProxySubscriptionManager.get().testAll();
             ProxyNode fastest = getFastest(nodes);
-            if (fastest != null) ProxySubscriptionManager.get().select(fastest);
+            boolean applied = false;
+            if (fastest != null) applied = ProxySubscriptionManager.get().select(fastest);
+            boolean finalApplied = applied;
             App.post(() -> {
                 Notify.dismiss();
                 setStatus();
                 notifyChanged();
-                if (fastest != null) Notify.show(getString(R.string.proxy_sub_test_done, fastest.getDisplay()));
+                if (fastest != null && finalApplied) Notify.show(getString(R.string.proxy_sub_test_done, fastest.getDisplay()));
+                else if (fastest != null && !finalApplied) showErrorDialog("连接失败: " + fastest.getName(), "测速通过但代理应用失败\n\n" + MihomoManager.get().getLastError());
                 else showErrorDialog("测速失败", "所有节点均无法连接\n\n" + MihomoManager.get().getLastError());
             });
         });
@@ -171,8 +180,10 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
         Notify.progress(requireActivity());
         Task.execute(() -> {
             long latency = ProxySubscriptionManager.get().testOne(node);
-            boolean ok = latency > 0 && ProxySubscriptionManager.get().select(node);
-            if (!ok && !node.isSupported()) {
+            boolean ok = false;
+            if (latency > 0) {
+                ok = ProxySubscriptionManager.get().select(node);
+            } else if (node.isSupported()) {
                 ok = ProxySubscriptionManager.get().select(node);
             }
             boolean finalOk = ok;
@@ -180,7 +191,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
                 Notify.dismiss();
                 if (!finalOk) {
                     String error = MihomoManager.get().getLastError();
-                    if (TextUtils.isEmpty(error)) error = "延迟=" + latency + "ms\n选择节点失败";
+                    if (TextUtils.isEmpty(error)) error = "延迟=" + latency + "ms\n节点连接测试失败，未应用代理";
                     showErrorDialog("连接失败: " + node.getName(), error);
                     setStatus();
                     return;

@@ -96,7 +96,20 @@ public class ProxySubscriptionManager {
         if (isMihomo(url)) {
             if (MihomoManager.get().isRunning()) {
                 mihomoStarting = false;
-                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                if (quickTestProxy() > 0) {
+                    OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                    android.util.Log.d("ProxySub", "applySaved: mihomo running and connection verified, proxy applied");
+                } else {
+                    android.util.Log.w("ProxySub", "applySaved: mihomo running but connection test failed, restarting");
+                    if (async) {
+                        if (!mihomoStarting) {
+                            mihomoStarting = true;
+                            startMihomoAsync(url);
+                        }
+                    } else {
+                        startMihomoSync(url);
+                    }
+                }
             } else if (async) {
                 if (!mihomoStarting) {
                     mihomoStarting = true;
@@ -119,8 +132,13 @@ public class ProxySubscriptionManager {
         }
         boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
         if (ok) {
-            OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-            android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+            if (quickTestProxy() > 0) {
+                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
+            } else {
+                android.util.Log.e("ProxySub", "startMihomoSync: mihomo started but connection test failed, proxy NOT applied");
+            }
         } else {
             android.util.Log.e("ProxySub", "startMihomoSync: mihomo start failed: " + MihomoManager.get().getLastError());
         }
@@ -136,8 +154,13 @@ public class ProxySubscriptionManager {
                 }
                 boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
                 if (ok) {
-                    OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-                    android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                    if (quickTestProxy() > 0) {
+                        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                        android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
+                    } else {
+                        android.util.Log.e("ProxySub", "startMihomoAsync: mihomo started but connection test failed, proxy NOT applied");
+                    }
                 } else {
                     android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed: " + MihomoManager.get().getLastError());
                 }
@@ -145,6 +168,30 @@ public class ProxySubscriptionManager {
                 mihomoStarting = false;
             }
         }, "mihomo-async-start").start();
+    }
+
+    private long quickTestProxy() {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()), 1000);
+            socket.setSoTimeout(3000);
+            java.io.OutputStream out = socket.getOutputStream();
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
+            String connectRequest = "CONNECT " + TEST_HOST + ":443 HTTP/1.1\r\nHost: " + TEST_HOST + ":443\r\n\r\n";
+            out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            String statusLine = reader.readLine();
+            android.util.Log.d("ProxySub", "quickTestProxy: status=" + statusLine);
+            if (statusLine != null && statusLine.contains("200")) return 1;
+            return -1;
+        } catch (Exception e) {
+            android.util.Log.e("ProxySub", "quickTestProxy failed: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    public boolean testConnection() {
+        if (!MihomoManager.get().isRunning()) return false;
+        return quickTestProxy() > 0;
     }
 
     public boolean select(ProxyNode node) {
@@ -157,30 +204,24 @@ public class ProxySubscriptionManager {
             return true;
         }
         String config = getConfig();
-        if (TextUtils.isEmpty(config)) {
-            config = generateClashConfig(getNodes());
-            if (!TextUtils.isEmpty(config)) { Setting.putProxySubscriptionConfig(config); android.util.Log.d("ProxySub", "select: regenerated config from nodes"); }
-        }
-        if (TextUtils.isEmpty(config)) { android.util.Log.e("ProxySub", "select failed: config is empty"); return false; }
         android.util.Log.d("ProxySub", "select: starting mihomo node=" + node.getName() + " configLen=" + config.length());
         if (!MihomoManager.get().start(config, node.getName())) {
-            android.util.Log.e("ProxySub", "select failed: mihomo start failed for " + node.getName() + ": " + MihomoManager.get().getLastError());
-            if (!TextUtils.isEmpty(node.getRawUri())) {
-                String singleConfig = generateClashConfig(Arrays.asList(node));
-                if (!TextUtils.isEmpty(singleConfig) && !singleConfig.equals(config)) {
-                    android.util.Log.d("ProxySub", "select: retrying with regenerated single-node config");
-                    Setting.putProxySubscriptionConfig(singleConfig);
-                    if (MihomoManager.get().start(singleConfig, node.getName())) {
-                        ProxyNode local = ProxyNode.mihomo(node.getName());
-                        Setting.putProxySubscriptionCoreName(node.getName());
-                        Setting.putProxySubscriptionSelected(local.getUrl());
-                        Setting.putProxySubscriptionEnabled(true);
-                        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(local.getUrl())));
-                        android.util.Log.d("ProxySub", "select success (retry): " + node.getName());
-                        return true;
-                    }
-                }
+            android.util.Log.e("ProxySub", "select: mihomo start failed, regenerating config. Error: " + MihomoManager.get().getLastError());
+            config = generateClashConfig(Arrays.asList(node));
+            if (TextUtils.isEmpty(config)) {
+                android.util.Log.e("ProxySub", "select: regenerated config is empty");
+                return false;
             }
+            android.util.Log.d("ProxySub", "select: retrying with freshly generated config:\n" + (config.length() > 1000 ? config.substring(0, 1000) + "..." : config));
+            Setting.putProxySubscriptionConfig(config);
+            if (!MihomoManager.get().start(config, node.getName())) {
+                android.util.Log.e("ProxySub", "select: mihomo start failed even with regenerated config: " + MihomoManager.get().getLastError());
+                return false;
+            }
+        }
+        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+        if (quickTestProxy() <= 0) {
+            android.util.Log.e("ProxySub", "select: connection test failed after mihomo start, proxy NOT applied. Node: " + node.getName());
             return false;
         }
         ProxyNode local = ProxyNode.mihomo(node.getName());
@@ -222,9 +263,8 @@ public class ProxySubscriptionManager {
         if (result.isEmpty()) throw new Exception("No valid proxy nodes found in subscription");
         if (TextUtils.isEmpty(config)) throw new Exception("Failed to generate config from parsed nodes");
         android.util.Log.d("ProxySub", "refresh: directLink=" + isDirectProxyLink(url) + " nodes=" + result.size() + " configLen=" + config.length());
-        if (android.util.Log.isLoggable("ProxySub", android.util.Log.DEBUG)) {
-            android.util.Log.d("ProxySub", "refresh generated config:\n" + (config.length() > 2000 ? config.substring(0, 2000) + "..." : config));
-        }
+        android.util.Log.d("ProxySub", "refresh generated config:\n" + (config.length() > 3000 ? config.substring(0, 3000) + "..." : config));
+        nodes = null;
         Setting.putProxySubscriptionConfig(config);
         saveNodes(result);
         return result;
@@ -257,8 +297,7 @@ public class ProxySubscriptionManager {
         ProxyNode best = null;
         for (ProxyNode node : getNodes()) if (node.getLatency() > 0 && (best == null || node.getLatency() < best.getLatency())) best = node;
         if (best != null) {
-            select(best);
-            return best;
+            return select(best) ? best : null;
         }
         ProxyNode first = firstCoreNode();
         return first != null && select(first) ? ProxyNode.mihomo(first.getName()) : null;
