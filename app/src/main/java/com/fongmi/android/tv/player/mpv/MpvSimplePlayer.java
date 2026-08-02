@@ -441,13 +441,15 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                     return;
                 } else if (manualStop || mediaItem == null) {
                     playbackState = Player.STATE_IDLE;
+                } else if (loading) {
+                    // 正在加载新流时收到的 END_FILE 是旧流被中断产生的，忽略不报错
+                    playbackState = Player.STATE_BUFFERING;
                 } else if (!manualStop && !renderedFirstFrame && !audioOnlyFallback && mediaItem != null) {
                     if (retryHlsAbortError()) return;
                     setError(lastErrorMessage == null ? "MPV 播放失败" : lastErrorMessage);
                 }
                 else playbackState = Player.STATE_ENDED;
                 loadedFileActive = false;
-                loading = false;
             }
             invalidateState();
         });
@@ -534,7 +536,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         positionMs = startPositionMs == C.TIME_UNSET ? 0 : Math.max(0, startPositionMs);
         pendingInitialSeekMs = positionMs > 0 && !useStartOption ? positionMs : C.TIME_UNSET;
         pendingStartPositionMs = C.TIME_UNSET;
-        ignoreNextEndFile = loadedFileActive;
+        // 始终忽略下一个 END_FILE 事件：切换频道时旧流被 replace 中断不应视为错误
+        ignoreNextEndFile = true;
         loadedFileActive = false;
         playbackState = Player.STATE_BUFFERING;
         loading = true;
