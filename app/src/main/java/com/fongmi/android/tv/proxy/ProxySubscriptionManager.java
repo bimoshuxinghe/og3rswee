@@ -83,10 +83,55 @@ public class ProxySubscriptionManager {
     }
 
     public void applySaved() {
+        applySaved(true);
+    }
+
+    public void applySaved(boolean async) {
         String url = getProxyUrl();
         if (TextUtils.isEmpty(url)) return;
-        if (isMihomo(url) && !MihomoManager.get().isRunning() && !MihomoManager.get().start(getConfig(), Setting.getProxySubscriptionCoreName())) return;
-        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+        if (isMihomo(url)) {
+            if (MihomoManager.get().isRunning()) {
+                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+            } else if (async) {
+                startMihomoAsync(url);
+            } else {
+                startMihomoSync(url);
+            }
+        } else {
+            OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+        }
+    }
+
+    private void startMihomoSync(String url) {
+        String config = getConfig();
+        if (TextUtils.isEmpty(config)) {
+            android.util.Log.e("ProxySub", "startMihomoSync: config is empty");
+            return;
+        }
+        boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
+        if (ok) {
+            OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+            android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
+        } else {
+            android.util.Log.e("ProxySub", "startMihomoSync: mihomo start failed");
+        }
+    }
+
+    private void startMihomoAsync(String url) {
+        new Thread(() -> {
+            String config = getConfig();
+            if (TextUtils.isEmpty(config)) {
+                android.util.Log.e("ProxySub", "startMihomoAsync: config is empty");
+                return;
+            }
+            boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
+            if (ok) {
+                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+                android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
+            } else {
+                android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed");
+            }
+        }, "mihomo-async-start").start();
     }
 
     public boolean select(ProxyNode node) {

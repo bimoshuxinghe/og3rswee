@@ -74,7 +74,7 @@ abstract class BaseConfig {
 
     protected void setProxy(List<Proxy> proxy) {
         OkHttp.selector().addAll(proxy);
-        ProxySubscriptionManager.get().applySaved();
+        ProxySubscriptionManager.get().applySaved(false);
     }
 
     protected void setHosts(List<String> hosts) {

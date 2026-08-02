@@ -65,6 +65,7 @@ public class MihomoManager {
             lastError = "配置为空";
             return false;
         }
+        if (isRunning() && canConnect()) return true;
         stop();
         lastError = "";
         logBuffer.setLength(0);
