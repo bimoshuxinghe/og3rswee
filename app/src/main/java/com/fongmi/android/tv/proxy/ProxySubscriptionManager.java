@@ -347,7 +347,7 @@ public class ProxySubscriptionManager {
         if (TextUtils.isEmpty(config)) {
             android.util.Log.e("ProxySub", "testMihomoNodesViaApi: config empty, fallback to sequential");
             for (ProxyNode node : mihomoNodes) {
-                node.setLatency(testMihomo(node));
+                node.setLatency(testOne(node));
             }
             return;
         }
@@ -356,7 +356,7 @@ public class ProxySubscriptionManager {
         if (!MihomoManager.get().start(config, firstName)) {
             android.util.Log.e("ProxySub", "testMihomoNodesViaApi: mihomo start failed, fallback to sequential");
             for (ProxyNode node : mihomoNodes) {
-                node.setLatency(testMihomo(node));
+                node.setLatency(testOne(node));
             }
             return;
         }
