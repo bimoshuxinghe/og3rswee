@@ -26,6 +26,18 @@ public class WebDavSync {
     private static final String FOLDER_NAME = "星落";
 
     /**
+     * 补全 URL scheme：如果用户输入的 URL 没有 http:// 或 https:// 前缀，自动补上 https://
+     */
+    private static String normalizeUrl(String url) {
+        if (TextUtils.isEmpty(url)) return url;
+        url = url.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "https://" + url;
+        }
+        return url;
+    }
+
+    /**
      * 创建不走代理的 OkHttpClient，避免应用内代理设置干扰 WebDAV 连接（如坚果云）
      */
     private static OkHttpClient noProxyClient(long timeoutMs) {
@@ -98,36 +110,44 @@ public class WebDavSync {
             App.post(callback::error);
             return;
         }
-        String backupUrl = getBackupUrl(url);
-        Request request = new Request.Builder()
-                .url(backupUrl)
-                .header("Authorization", Credentials.basic(user, pass))
-                .build();
+        url = normalizeUrl(url);
+        try {
+            String backupUrl = getBackupUrl(url);
+            Request request = new Request.Builder()
+                    .url(backupUrl)
+                    .header("Authorization", Credentials.basic(user, pass))
+                    .build();
 
-        noProxyClient(5000).newCall(request).enqueue(new okhttp3.Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                android.util.Log.e("WebDavSync", "test onFailure: " + e.getMessage(), e);
-                String msg = e.getMessage();
-                if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
-                String finalMsg = msg;
-                App.post(() -> callback.error(finalMsg));
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) {
-                int code = response.code();
-                response.close();
-                if (code == 200 || code == 404) {
-                    // 验证通过，自动创建星落文件夹
-                    boolean folderCreated = createFolder(url, user, pass);
-                    android.util.Log.d("WebDavSync", "test: connection ok, folder created=" + folderCreated);
-                    App.post(callback::success);
-                } else {
-                    App.post(callback::error);
+            noProxyClient(5000).newCall(request).enqueue(new okhttp3.Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    android.util.Log.e("WebDavSync", "test onFailure: " + e.getMessage(), e);
+                    String msg = e.getMessage();
+                    if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
+                    String finalMsg = msg;
+                    App.post(() -> callback.error(finalMsg));
                 }
-            }
-        });
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    int code = response.code();
+                    response.close();
+                    if (code == 200 || code == 404) {
+                        boolean folderCreated = createFolder(url, user, pass);
+                        android.util.Log.d("WebDavSync", "test: connection ok, folder created=" + folderCreated);
+                        App.post(callback::success);
+                    } else {
+                        App.post(() -> callback.error("HTTP " + code));
+                    }
+                }
+            });
+        } catch (Exception e) {
+            android.util.Log.e("WebDavSync", "test error: " + e.getMessage(), e);
+            String msg = e.getMessage();
+            if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
+            String finalMsg = msg;
+            App.post(() -> callback.error(finalMsg));
+        }
     }
 
     public static void upload(com.fongmi.android.tv.impl.Callback callback) {
@@ -138,6 +158,7 @@ public class WebDavSync {
             if (callback != null) App.post(callback::error);
             return;
         }
+        url = normalizeUrl(url);
 
         Task.execute(() -> {
             try {
@@ -178,6 +199,7 @@ public class WebDavSync {
             if (callback != null) App.post(callback::error);
             return;
         }
+        url = normalizeUrl(url);
 
         Task.execute(() -> {
             try {
