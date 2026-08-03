@@ -111,17 +111,21 @@ public class WebDavSync {
             return;
         }
         url = normalizeUrl(url);
+        if (!url.endsWith("/")) url += "/";
+
         try {
-            String backupUrl = getBackupUrl(url);
-            Request request = new Request.Builder()
-                    .url(backupUrl)
+            // 第一步：先测试基础 URL 是否能连上（验证账号密码）
+            Request authRequest = new Request.Builder()
+                    .url(url)
                     .header("Authorization", Credentials.basic(user, pass))
+                    .method("PROPFIND", null)
+                    .header("Depth", "0")
                     .build();
 
-            noProxyClient(5000).newCall(request).enqueue(new okhttp3.Callback() {
+            noProxyClient(8000).newCall(authRequest).enqueue(new okhttp3.Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    android.util.Log.e("WebDavSync", "test onFailure: " + e.getMessage(), e);
+                    android.util.Log.e("WebDavSync", "test auth onFailure: " + e.getMessage(), e);
                     String msg = e.getMessage();
                     if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
                     String finalMsg = msg;
@@ -132,12 +136,21 @@ public class WebDavSync {
                 public void onResponse(Call call, Response response) {
                     int code = response.code();
                     response.close();
-                    if (code == 200 || code == 404) {
+                    android.util.Log.d("WebDavSync", "test auth: code=" + code);
+
+                    if (code == 401) {
+                        App.post(() -> callback.error("账号或密码错误 (401)"));
+                        return;
+                    }
+                    if (code == 207 || code == 200 || code == 301 || code == 302 || code == 403 || code == 404) {
+                        // 207/200 = 认证成功，403/404 = 可能是路径问题但认证通过
+                        // 尝试创建星落文件夹
                         boolean folderCreated = createFolder(url, user, pass);
-                        android.util.Log.d("WebDavSync", "test: connection ok, folder created=" + folderCreated);
+                        android.util.Log.d("WebDavSync", "test: auth ok, folder created=" + folderCreated);
                         App.post(callback::success);
                     } else {
-                        App.post(() -> callback.error("HTTP " + code));
+                        final int finalCode = code;
+                        App.post(() -> callback.error("服务器返回 HTTP " + finalCode));
                     }
                 }
             });
