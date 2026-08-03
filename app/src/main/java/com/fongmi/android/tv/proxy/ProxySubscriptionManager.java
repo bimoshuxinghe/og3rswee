@@ -35,7 +35,6 @@ public class ProxySubscriptionManager {
     private static final String[] FILTER_NAMES = {"更新订阅", "特殊时期", "如果是", "客户端太旧", "请到网站", "更新一下客户端"};
 
     private volatile List<ProxyNode> nodes;
-    private volatile boolean mihomoStarting = false;
     private volatile boolean testing = false;
     private final java.util.concurrent.atomic.AtomicInteger testedCount = new java.util.concurrent.atomic.AtomicInteger(0);
     private volatile Runnable progressCallback;
@@ -124,139 +123,51 @@ public class ProxySubscriptionManager {
         return config;
     }
 
+    /**
+     * 完全对齐反编译版 f.b() — 同步应用已保存的代理
+     * 1. 取选中节点, 若启用且为支持的代理类型 → 取URL
+     * 2. 若URL指向mihomo(127.0.0.1:18890)且mihomo未运行 → 同步启动mihomo
+     * 3. 启动失败则return, 不应用代理; 成功则应用代理到OkHttp
+     */
     public void applySaved() {
-        applySaved(true);
-    }
-
-    public void applySaved(boolean async) {
-        String url = getProxyUrl();
+        ProxyNode node = getSelected();
+        String url = (Setting.isProxySubscriptionEnabled() && node != null && node.isSupported()) ? node.getUrl() : "";
         if (TextUtils.isEmpty(url)) return;
-        if (isMihomo(url)) {
-            if (MihomoManager.get().isRunning()) {
-                // mihomo已在运行，直接应用代理
-                mihomoStarting = false;
-                OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-            } else if (async) {
-                if (!mihomoStarting) {
-                    mihomoStarting = true;
-                    startMihomoAsync(url);
-                }
-                // 如果mihomoStarting为true，说明上一个异步启动还在进行中，不需要重复启动
-            } else {
-                startMihomoSync(url);
+        // 若是mihomo代理且mihomo未运行 → 先同步启动
+        if (url.startsWith("http://127.0.0.1:" + MihomoManager.getMixedPort()) && !MihomoManager.get().isRunning()) {
+            String config = getConfig();
+            String coreName = Setting.getProxySubscriptionCoreName();
+            if (!MihomoManager.get().start(config, coreName)) {
+                android.util.Log.e("ProxySub", "applySaved: mihomo start failed, proxy not applied");
+                return;
             }
-        } else {
-            OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
         }
+        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
+        android.util.Log.d("ProxySub", "applySaved: proxy applied -> " + url);
     }
 
-    private void startMihomoSync(String url) {
-        mihomoStarting = false;
-        String config = getConfig();
-        if (TextUtils.isEmpty(config)) {
-            android.util.Log.e("ProxySub", "startMihomoSync: config is empty");
-            return;
-        }
-        boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
-        if (ok) {
-            OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-            android.util.Log.d("ProxySub", "startMihomoSync: success, proxy applied");
-        } else {
-            android.util.Log.e("ProxySub", "startMihomoSync: mihomo start failed: " + MihomoManager.get().getLastError());
-        }
-    }
-
-    private void startMihomoAsync(String url) {
-        new Thread(() -> {
-            try {
-                String config = getConfig();
-                if (TextUtils.isEmpty(config)) {
-                    android.util.Log.e("ProxySub", "startMihomoAsync: config is empty, retrying with regenerated config");
-                    // 尝试从保存的节点重新生成配置
-                    config = generateClashConfig(getNodes());
-                    if (!TextUtils.isEmpty(config)) {
-                        Setting.putProxySubscriptionConfig(config);
-                    }
-                }
-                if (TextUtils.isEmpty(config)) {
-                    android.util.Log.e("ProxySub", "startMihomoAsync: config still empty after retry, abort");
-                    return;
-                }
-                String coreName = Setting.getProxySubscriptionCoreName();
-                boolean ok = MihomoManager.get().start(config, coreName);
-                if (!ok) {
-                    // 第一次启动失败，可能是旧进程残留或配置问题，清理后重试一次
-                    android.util.Log.w("ProxySub", "startMihomoAsync: first attempt failed, retrying after cleanup: " + MihomoManager.get().getLastError());
-                    MihomoManager.get().stop();
-                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-                    // 重新生成配置（可能旧的配置有问题）
-                    config = generateClashConfig(getNodes());
-                    if (!TextUtils.isEmpty(config)) {
-                        Setting.putProxySubscriptionConfig(config);
-                        ok = MihomoManager.get().start(config, coreName);
-                    }
-                }
-                if (ok) {
-                    OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-                    android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
-                } else {
-                    android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed after retry: " + MihomoManager.get().getLastError());
-                }
-            } catch (Exception e) {
-                android.util.Log.e("ProxySub", "startMihomoAsync: exception", e);
-            } finally {
-                mihomoStarting = false;
-            }
-        }, "mihomo-async-start").start();
-    }
-
-    private long quickTestProxy() {
-        for (int attempt = 0; attempt < 3; attempt++) {
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()), 1000);
-                socket.setSoTimeout(3000);
-                java.io.OutputStream out = socket.getOutputStream();
-                java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
-                String connectRequest = "CONNECT " + TEST_HOST + ":443 HTTP/1.1\r\nHost: " + TEST_HOST + ":443\r\n\r\n";
-                out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
-                out.flush();
-                String statusLine = reader.readLine();
-                android.util.Log.d("ProxySub", "quickTestProxy attempt=" + attempt + " status=" + statusLine);
-                if (statusLine != null && statusLine.contains("200")) return 1;
-            } catch (Exception e) {
-                android.util.Log.e("ProxySub", "quickTestProxy attempt=" + attempt + " failed: " + e.getMessage());
-            }
-            try { Thread.sleep(1000); } catch (InterruptedException ignored) { return -1; }
-        }
-        return -1;
-    }
-
-    public boolean testConnection() {
-        if (!MihomoManager.get().isRunning()) return false;
-        return quickTestProxy() > 0;
-    }
-
+    /**
+     * 完全对齐反编译版 f.l() — 选中节点
+     * 对于支持的节点(http/socks5): 直接保存, 启用, 清除coreName, 调用applySaved()
+     * 对于不支持的节点(vmess/ss等): 先启动mihomo, 再创建mihomo URL, 保存, 应用代理
+     */
     public boolean select(ProxyNode node) {
         if (node == null) return false;
-        // 所有节点类型都通过 mihomo 转发, 使 clash 规则(国内DIRECT)对所有节点生效
-        String config = getConfig();
-        android.util.Log.d("ProxySub", "select: starting mihomo node=" + node.getName() + " configLen=" + config.length());
-        if (!MihomoManager.get().start(config, node.getName())) {
-            android.util.Log.e("ProxySub", "select: mihomo start failed, regenerating config. Error: " + MihomoManager.get().getLastError());
-            config = generateClashConfig(Arrays.asList(node));
-            if (TextUtils.isEmpty(config)) {
-                android.util.Log.e("ProxySub", "select: regenerated config is empty");
-                return false;
-            }
-            android.util.Log.d("ProxySub", "select: retrying with freshly generated config:\n" + (config.length() > 1000 ? config.substring(0, 1000) + "..." : config));
-            Setting.putProxySubscriptionConfig(config);
-            if (!MihomoManager.get().start(config, node.getName())) {
-                android.util.Log.e("ProxySub", "select: mihomo start failed even with regenerated config: " + MihomoManager.get().getLastError());
-                return false;
-            }
+        if (node.isSupported()) {
+            // http/socks5 代理: 直接应用, 不经过mihomo
+            Setting.putProxySubscriptionSelected(node.getUrl());
+            Setting.putProxySubscriptionEnabled(true);
+            Setting.putProxySubscriptionCoreName("");
+            applySaved();
+            return true;
         }
-        // mihomo 启动成功后直接应用代理，不再做 quickTestProxy() 连接测试
-        // TCP 测速已验证节点可达性，连接测试可能因 mihomo 刚启动未就绪而误判失败
+        // vmess/ss/vless等: 需要mihomo转发
+        String config = getConfig();
+        if (TextUtils.isEmpty(config) || !MihomoManager.get().start(config, node.getName())) {
+            android.util.Log.e("ProxySub", "select: mihomo start failed for " + node.getName());
+            return false;
+        }
+        // mihomo启动成功, 创建本地mihomo代理URL
         ProxyNode local = ProxyNode.mihomo(node.getName());
         Setting.putProxySubscriptionCoreName(node.getName());
         Setting.putProxySubscriptionSelected(local.getUrl());
@@ -340,9 +251,18 @@ public class ProxySubscriptionManager {
         return OkHttp.string(url);
     }
 
+    /**
+     * 完全对齐反编译版 f.c() — 自动选择最优节点
+     * 1. 找延迟最低的节点, 调用select()
+     * 2. 若无, 找第一个需要mihomo的节点, 调用select()
+     */
     public ProxyNode autoSelect() {
         ProxyNode best = null;
-        for (ProxyNode node : getNodes()) if (node.getLatency() > 0 && (best == null || node.getLatency() < best.getLatency())) best = node;
+        for (ProxyNode node : getNodes()) {
+            if (node.getLatency() > 0 && (best == null || node.getLatency() < best.getLatency())) {
+                best = node;
+            }
+        }
         if (best != null) {
             return select(best) ? best : null;
         }
@@ -540,64 +460,64 @@ public class ProxySubscriptionManager {
         }
     }
 
+    /**
+     * 完全对齐反编译版 f.m() — 测试单个节点延迟
+     * 对于支持的节点(http/socks5): 直接TCP测试
+     * 对于不支持的节点(vmess/ss等): 先启动mihomo, 再通过mihomo代理发HTTP HEAD请求
+     */
     public long testOne(ProxyNode node) {
-        long latency = testTcpReachability(node);
-        node.setLatency(latency);
-        saveNodes(getNodes());
-        return latency;
-    }
-
-    public long test(ProxyNode node) {
         if (node == null) return -1;
-        return testTcpReachability(node);
-    }
-
-    private long testMihomo(ProxyNode node) {
+        if (node.isSupported()) {
+            // http/socks5: 直接TCP测试
+            long latency = testTcpReachability(node);
+            node.setLatency(latency);
+            saveNodes(getNodes());
+            return latency;
+        }
+        // vmess/ss等: 通过mihomo测试
         String config = getConfig();
-        if (TextUtils.isEmpty(config)) return -1;
-        long start = System.currentTimeMillis();
-        if (!MihomoManager.get().start(config, node.getName())) {
-            android.util.Log.e("ProxySub", "testMihomo: mihomo start failed for " + node.getName());
+        if (TextUtils.isEmpty(config)) {
+            node.setLatency(-1);
             return -1;
         }
-        long result = requestByLocalProxy(start);
-        android.util.Log.d("ProxySub", "testMihomo: " + node.getName() + " result=" + result);
+        long start = System.currentTimeMillis();
+        if (!MihomoManager.get().start(config, node.getName())) {
+            android.util.Log.e("ProxySub", "testOne: mihomo start failed for " + node.getName());
+            node.setLatency(-1);
+            return -1;
+        }
+        // 通过mihomo代理发HTTP HEAD请求测试
+        long result = testViaMihomoProxy(start);
+        node.setLatency(result);
+        saveNodes(getNodes());
         return result;
     }
 
-    private long requestByLocalProxy(long start) {
-        try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-        for (int attempt = 0; attempt < 3; attempt++) {
-            long result = testProxyConnect();
-            if (result > 0) {
-                long latency = System.currentTimeMillis() - start;
-                android.util.Log.d("ProxySub", "requestByLocalProxy: success on attempt " + attempt + " latency=" + latency);
-                return latency;
+    /**
+     * 通过mihomo本地代理(127.0.0.1:18890)发HTTP HEAD请求测试连通性
+     * 对齐反编译版: OkHttpClient.Builder.proxy(HTTP, 127.0.0.1:18890) → HEAD gstatic.com/generate_204
+     */
+    private long testViaMihomoProxy(long startTime) {
+        try {
+            okhttp3.OkHttpClient proxyClient = OkHttp.client().newBuilder()
+                    .proxy(new java.net.Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort())))
+                    .connectTimeout(3500, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .readTimeout(3500, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .writeTimeout(3500, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .build();
+            okhttp3.Request request = new okhttp3.Request.Builder()
+                    .url(TEST_URL)
+                    .head()
+                    .build();
+            try (okhttp3.Response response = proxyClient.newCall(request).execute()) {
+                if (response.isSuccessful() || response.code() == 204) {
+                    return System.currentTimeMillis() - startTime;
+                }
+                return -2;
             }
-            android.util.Log.w("ProxySub", "requestByLocalProxy: attempt " + attempt + " failed, retrying...");
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-        }
-        return -2;
-    }
-
-    private long testProxyConnect() {
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress("127.0.0.1", MihomoManager.getMixedPort()), TEST_TIMEOUT);
-            socket.setSoTimeout(TEST_TIMEOUT);
-            java.io.OutputStream out = socket.getOutputStream();
-            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
-            String connectRequest = "CONNECT " + TEST_HOST + ":443 HTTP/1.1\r\nHost: " + TEST_HOST + ":443\r\n\r\n";
-            out.write(connectRequest.getBytes(StandardCharsets.UTF_8));
-            out.flush();
-            String statusLine = reader.readLine();
-            android.util.Log.d("ProxySub", "testProxyConnect: status=" + statusLine);
-            if (statusLine != null && statusLine.contains("200")) {
-                return 1;
-            }
-            return -1;
         } catch (Exception e) {
-            android.util.Log.e("ProxySub", "testProxyConnect failed", e);
-            return -1;
+            android.util.Log.e("ProxySub", "testViaMihomoProxy: " + e.getMessage());
+            return -2;
         }
     }
 

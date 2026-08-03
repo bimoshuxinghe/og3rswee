@@ -62,48 +62,34 @@ public class MihomoManager {
         return logBuffer.toString();
     }
 
-    public synchronized boolean start(String config) {
-        return start(config, "");
-    }
-
+    /**
+     * 完全对齐反编译版 b.d() — 启动mihomo
+     * 1. 检查配置非空
+     * 2. 停止已有进程
+     * 3. 写入配置文件
+     * 4. 启动进程
+     * 5. 等待就绪
+     */
     public synchronized boolean start(String config, String selected) {
         if (TextUtils.isEmpty(config)) {
             lastError = "配置为空";
             return false;
         }
-        // Check if already running with the SAME config and selected node
-        if (isRunning() && canConnect()) {
-            boolean configSame = config.equals(lastConfig);
-            boolean selectedSame = (selected == null ? "" : selected).equals(lastSelected);
-            if (configSame && selectedSame) {
-                appendLog("Mihomo已运行且配置未变，跳过重启");
-                return true;
-            }
-            appendLog("配置或选中节点已变化，重启Mihomo (configChanged=" + !configSame + ", selectedChanged=" + !selectedSame + ")");
-            stop();
-        } else if (canConnect() && !isRunning()) {
-            // Stale process from previous app session is occupying the port
-            appendLog("检测到旧Mihomo进程占用端口，尝试清理...");
-            killStaleProcess();
-        }
-        boolean hadProcess = process != null;
         stop();
         lastError = "";
         logBuffer.setLength(0);
         try {
-            if (hadProcess) Thread.sleep(300);
             File dir = Path.files("mihomo");
             if (!dir.exists()) dir.mkdirs();
             File file = new File(dir, CONFIG);
             String fixedConfig = fixConfig(config, selected);
             Path.write(file, fixedConfig.getBytes(StandardCharsets.UTF_8));
             appendLog("配置文件: " + file.getAbsolutePath());
-            appendLog("配置内容:\n" + fixedConfig);
             appendLog("选中节点: " + (TextUtils.isEmpty(selected) ? "(无)" : selected));
 
             File binary = new File(App.get().getApplicationInfo().nativeLibraryDir, BINARY);
             if (!binary.exists()) {
-                lastError = "二进制文件不存在: " + binary.getAbsolutePath() + "\nnativeLibraryDir: " + App.get().getApplicationInfo().nativeLibraryDir;
+                lastError = "二进制文件不存在: " + binary.getAbsolutePath();
                 appendLog(lastError);
                 return false;
             }
@@ -127,16 +113,6 @@ public class MihomoManager {
         }
     }
 
-    private void killStaleProcess() {
-        try {
-            Process killProc = new ProcessBuilder("sh", "-c", "pkill -f libmihomo.so 2>/dev/null || true").start();
-            killProc.waitFor(2, TimeUnit.SECONDS);
-            killProc.destroy();
-            Thread.sleep(500);
-        } catch (Exception ignored) {
-        }
-    }
-
     public synchronized void stop() {
         if (process == null) return;
         process.destroy();
@@ -154,10 +130,14 @@ public class MihomoManager {
         return process != null && process.isAlive();
     }
 
+    /**
+     * 完全对齐反编译版 b.f() — 等待mihomo就绪
+     * 50次尝试, 每次100ms, 共5秒
+     */
     private boolean waitReady() throws InterruptedException {
-        for (int i = 0; i < 80; i++) {
+        for (int i = 0; i < 50; i++) {
             if (!isRunning()) {
-                lastError = "Mihomo进程启动后立即退出\n可能原因: 配置错误/二进制不兼容/权限不足\n\n日志:\n" + logBuffer.toString();
+                lastError = "Mihomo进程启动后退出\n日志:\n" + logBuffer.toString();
                 appendLog(lastError);
                 return false;
             }
@@ -167,7 +147,7 @@ public class MihomoManager {
             }
             Thread.sleep(100);
         }
-        lastError = "Mihomo在8秒内未就绪\n进程状态: " + (isRunning() ? "运行中" : "已退出") + "\n\n日志:\n" + logBuffer.toString();
+        lastError = "Mihomo在5秒内未就绪\n进程状态: " + (isRunning() ? "运行中" : "已退出") + "\n日志:\n" + logBuffer.toString();
         appendLog(lastError);
         return isRunning();
     }
