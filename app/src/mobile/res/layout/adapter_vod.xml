@@ -81,6 +81,7 @@
         android:paddingStart="6dp"
         android:paddingEnd="6dp"
         android:textColor="@color/white"
+        android:background="@drawable/shape_vod_name"
         app:autoSizeMaxTextSize="14sp"
         app:autoSizeMinTextSize="12sp"
         app:autoSizeStepGranularity="1sp"

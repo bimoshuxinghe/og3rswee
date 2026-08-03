@@ -152,6 +152,7 @@
     <string name="setting_proxy">Proxy</string>
     <string name="setting_proxy_subscription">代理訂閱</string>
     <string name="setting_cache">暫存</string>
+    <string name="setting_download_manager">下載管理</string>
     <string name="setting_backup">備份</string>
     <string name="setting_restore">還原</string>
     <string name="setting_version">版本</string>

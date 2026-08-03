@@ -1004,8 +1004,31 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         }
 
         DownloadSelectAdapter adapter = new DownloadSelectAdapter(this, episodes, downloadMap, checked);
+
+        // 创建自定义标题视图，包含"首页显示下载"复选框
+        android.widget.LinearLayout titleView = new android.widget.LinearLayout(this);
+        titleView.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        titleView.setPadding(pad, pad / 2, pad, pad / 4);
+
+        android.widget.TextView titleText = new android.widget.TextView(this);
+        titleText.setText("选择下载剧集");
+        titleText.setTextSize(18);
+        titleView.addView(titleText);
+
+        android.widget.CheckBox homeDownloadCheck = new android.widget.CheckBox(this);
+        homeDownloadCheck.setText("首页显示下载");
+        homeDownloadCheck.setChecked(Setting.isHomeDownload());
+        homeDownloadCheck.setOnCheckedChangeListener((button, isChecked) -> {
+            Setting.putHomeDownload(isChecked);
+            if (mBinding.download != null) {
+                mBinding.download.setVisibility(isChecked && mEpisodeAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);
+            }
+        });
+        titleView.addView(homeDownloadCheck);
+
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("选择下载剧集")
+                .setCustomTitle(titleView)
                 .setAdapter(adapter, null)
                 .setPositiveButton("内置下载", (dialog, which) -> {
                     boolean added = false;

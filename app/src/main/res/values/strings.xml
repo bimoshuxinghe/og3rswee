@@ -154,6 +154,7 @@
     <string name="setting_proxy">Proxy</string>
     <string name="setting_proxy_subscription">Proxy Subscription</string>
     <string name="setting_cache">Cache</string>
+    <string name="setting_download_manager">Download Manager</string>
     <string name="setting_backup">Backup</string>
     <string name="setting_restore">Restore</string>
     <string name="setting_version">Version</string>
