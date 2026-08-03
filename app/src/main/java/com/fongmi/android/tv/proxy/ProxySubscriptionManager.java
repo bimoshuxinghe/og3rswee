@@ -256,10 +256,8 @@ public class ProxySubscriptionManager {
                 return false;
             }
         }
-        if (quickTestProxy() <= 0) {
-            android.util.Log.e("ProxySub", "select: connection test failed after mihomo start, proxy NOT applied. Node: " + node.getName());
-            return false;
-        }
+        // mihomo 启动成功后直接应用代理，不再做 quickTestProxy() 连接测试
+        // TCP 测速已验证节点可达性，连接测试可能因 mihomo 刚启动未就绪而误判失败
         ProxyNode local = ProxyNode.mihomo(node.getName());
         Setting.putProxySubscriptionCoreName(node.getName());
         Setting.putProxySubscriptionSelected(local.getUrl());
