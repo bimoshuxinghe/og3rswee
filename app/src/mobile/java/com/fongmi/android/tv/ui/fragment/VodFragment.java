@@ -301,18 +301,24 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                 padBottom
             );
         }
+        // 当topBar还未测量时(topBarHeight<=0)，延迟重试
+        if (topBarHeight <= 0) {
+            mBinding.topBar.postDelayed(this::updateTypePinnedMargin, 50);
+        }
     }
 
     private void updateTypePinnedMargin(int verticalOffset, int totalRange) {
         if (mBinding.contentLayout == null || mBinding.topBar == null) return;
         int topBarHeight = mBinding.topBar.getHeight();
-        if (topBarHeight <= 0 || totalRange <= 0) return;
+        if (topBarHeight <= 0) return;
         boolean carousel = PlayerSetting.isHomeCarousel();
         float translation;
         if (carousel) {
+            if (totalRange <= 0) return;
             float progress = Math.min(1f, Math.max(0f, -verticalOffset / (float) totalRange));
             translation = topBarHeight * progress;
         } else {
+            // 关闭轮播时，不论totalRange如何，始终将分类标签推到topBar下方
             translation = topBarHeight;
         }
         if (mBinding.contentLayout.getTranslationY() != translation) {

@@ -125,6 +125,7 @@ public class ProxySubscriptionManager {
         if (TextUtils.isEmpty(url)) return;
         if (isMihomo(url)) {
             if (MihomoManager.get().isRunning()) {
+                // mihomo已在运行，直接应用代理
                 mihomoStarting = false;
                 OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
             } else if (async) {
@@ -132,6 +133,7 @@ public class ProxySubscriptionManager {
                     mihomoStarting = true;
                     startMihomoAsync(url);
                 }
+                // 如果mihomoStarting为true，说明上一个异步启动还在进行中，不需要重复启动
             } else {
                 startMihomoSync(url);
             }
@@ -161,16 +163,39 @@ public class ProxySubscriptionManager {
             try {
                 String config = getConfig();
                 if (TextUtils.isEmpty(config)) {
-                    android.util.Log.e("ProxySub", "startMihomoAsync: config is empty");
+                    android.util.Log.e("ProxySub", "startMihomoAsync: config is empty, retrying with regenerated config");
+                    // 尝试从保存的节点重新生成配置
+                    config = generateClashConfig(getNodes());
+                    if (!TextUtils.isEmpty(config)) {
+                        Setting.putProxySubscriptionConfig(config);
+                    }
+                }
+                if (TextUtils.isEmpty(config)) {
+                    android.util.Log.e("ProxySub", "startMihomoAsync: config still empty after retry, abort");
                     return;
                 }
-                boolean ok = MihomoManager.get().start(config, Setting.getProxySubscriptionCoreName());
+                String coreName = Setting.getProxySubscriptionCoreName();
+                boolean ok = MihomoManager.get().start(config, coreName);
+                if (!ok) {
+                    // 第一次启动失败，可能是旧进程残留或配置问题，清理后重试一次
+                    android.util.Log.w("ProxySub", "startMihomoAsync: first attempt failed, retrying after cleanup: " + MihomoManager.get().getLastError());
+                    MihomoManager.get().stop();
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                    // 重新生成配置（可能旧的配置有问题）
+                    config = generateClashConfig(getNodes());
+                    if (!TextUtils.isEmpty(config)) {
+                        Setting.putProxySubscriptionConfig(config);
+                        ok = MihomoManager.get().start(config, coreName);
+                    }
+                }
                 if (ok) {
                     OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
                     android.util.Log.d("ProxySub", "startMihomoAsync: success, proxy applied");
                 } else {
-                    android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed: " + MihomoManager.get().getLastError());
+                    android.util.Log.e("ProxySub", "startMihomoAsync: mihomo start failed after retry: " + MihomoManager.get().getLastError());
                 }
+            } catch (Exception e) {
+                android.util.Log.e("ProxySub", "startMihomoAsync: exception", e);
             } finally {
                 mihomoStarting = false;
             }
