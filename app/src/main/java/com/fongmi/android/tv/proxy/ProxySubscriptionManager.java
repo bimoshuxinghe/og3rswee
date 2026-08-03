@@ -34,11 +34,12 @@ public class ProxySubscriptionManager {
     private static final int TEST_TIMEOUT = 3000;
     private static final String[] FILTER_NAMES = {"更新订阅", "特殊时期", "如果是", "客户端太旧", "请到网站", "更新一下客户端"};
 
-    private List<ProxyNode> nodes;
+    private volatile List<ProxyNode> nodes;
     private volatile boolean mihomoStarting = false;
     private volatile boolean testing = false;
-    private volatile int testedCount = 0;
-    private Runnable progressCallback;
+    private final java.util.concurrent.atomic.AtomicInteger testedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+    private volatile Runnable progressCallback;
+    private volatile long lastNotifyTime = 0;
 
     private static class Loader {
         static volatile ProxySubscriptionManager INSTANCE = new ProxySubscriptionManager();
@@ -57,14 +58,16 @@ public class ProxySubscriptionManager {
     }
 
     private void notifyProgress() {
-        if (progressCallback != null) {
-            testedCount++;
-            App.post(progressCallback);
-        }
+        if (progressCallback == null) return;
+        // 节流：最多每300ms通知一次，避免主线程消息队列洪水
+        long now = System.currentTimeMillis();
+        if (now - lastNotifyTime < 300) return;
+        lastNotifyTime = now;
+        App.post(progressCallback);
     }
 
     public int getTestedCount() {
-        return testedCount;
+        return testedCount.get();
     }
 
     public boolean hasNodes() {
@@ -78,14 +81,20 @@ public class ProxySubscriptionManager {
         return node.getDisplay();
     }
 
-    public synchronized List<ProxyNode> getNodes() {
-        if (nodes != null) return nodes;
-        Type type = new TypeToken<List<ProxyNode>>() {}.getType();
-        List<ProxyNode> items = App.gson().fromJson(Setting.getProxySubscriptionNodes(), type);
-        return nodes = items == null ? new ArrayList<>() : items;
+    public List<ProxyNode> getNodes() {
+        List<ProxyNode> snapshot = nodes;
+        if (snapshot != null) return new ArrayList<>(snapshot);
+        synchronized (this) {
+            if (nodes == null) {
+                Type type = new TypeToken<List<ProxyNode>>() {}.getType();
+                List<ProxyNode> items = App.gson().fromJson(Setting.getProxySubscriptionNodes(), type);
+                nodes = items == null ? new ArrayList<>() : items;
+            }
+            return new ArrayList<>(nodes);
+        }
     }
 
-    public synchronized ProxyNode getSelected() {
+    public ProxyNode getSelected() {
         String selected = Setting.getProxySubscriptionSelected();
         if (TextUtils.isEmpty(selected)) return null;
         if (selected.startsWith("http://127.0.0.1:" + MihomoManager.getMixedPort())) {
@@ -344,30 +353,31 @@ public class ProxySubscriptionManager {
         return first != null && select(first) ? ProxyNode.mihomo(first.getName()) : null;
     }
 
-    public synchronized List<ProxyNode> testAll() {
+    public List<ProxyNode> testAll() {
+        if (testing) return getNodes();
         List<ProxyNode> allNodes = getNodes();
         if (allNodes.isEmpty()) return allNodes;
         testing = true;
+        testedCount.set(0);
+        lastNotifyTime = 0;
         try {
             return testAllInternal(allNodes);
         } finally {
             testing = false;
+            notifyProgress();
         }
     }
 
     private List<ProxyNode> testAllInternal(List<ProxyNode> allNodes) {
         long startTime = System.currentTimeMillis();
-        testedCount = 0;
         int totalNodes = allNodes.size();
 
-        // 通知开始测速
-        notifyProgress();
+        android.util.Log.d("ProxySub", "testAll: TCP test for " + totalNodes + " nodes (no lock, lightweight)");
 
-        // 使用轻量级TCP连接测试，不经过 mihomo，不创建 OkHttpClient
-        android.util.Log.d("ProxySub", "testAll: TCP test for " + totalNodes + " nodes (no mihomo, lightweight)");
         int tcpThreads = Math.min(MAX_THREADS, totalNodes);
         java.util.concurrent.ExecutorService tcpExecutor = java.util.concurrent.Executors.newFixedThreadPool(tcpThreads);
         java.util.concurrent.CountDownLatch tcpLatch = new java.util.concurrent.CountDownLatch(totalNodes);
+
         for (ProxyNode node : allNodes) {
             tcpExecutor.submit(() -> {
                 try {
@@ -376,13 +386,12 @@ public class ProxySubscriptionManager {
                     node.setLatency(-1);
                 } finally {
                     tcpLatch.countDown();
-                    synchronized (this) {
-                        testedCount++;
-                    }
+                    testedCount.incrementAndGet();
                     notifyProgress();
                 }
             });
         }
+
         try {
             tcpLatch.await(120, java.util.concurrent.TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -390,16 +399,15 @@ public class ProxySubscriptionManager {
         }
         tcpExecutor.shutdownNow();
 
-        // 确保testedCount等于总数
-        testedCount = totalNodes;
+        testedCount.set(totalNodes);
 
         int reachable = 0;
         for (ProxyNode node : allNodes) {
             if (node.getLatency() > 0) reachable++;
         }
         android.util.Log.d("ProxySub", "testAll: done in " + (System.currentTimeMillis() - startTime) + "ms, " + reachable + " reachable, " + (totalNodes - reachable) + " unreachable");
-        saveNodes(getNodes());
-        return getNodes();
+        saveNodes(allNodes);
+        return allNodes;
     }
 
     /**
@@ -459,6 +467,7 @@ public class ProxySubscriptionManager {
                     node.setLatency(-1);
                 } finally {
                     delayLatch.countDown();
+                    testedCount.incrementAndGet();
                     notifyProgress();
                 }
             });
@@ -534,7 +543,7 @@ public class ProxySubscriptionManager {
         }
     }
 
-    public synchronized long testOne(ProxyNode node) {
+    public long testOne(ProxyNode node) {
         long latency = testTcpReachability(node);
         node.setLatency(latency);
         saveNodes(getNodes());
@@ -615,7 +624,7 @@ public class ProxySubscriptionManager {
         return value.isEmpty() || "system".equals(value) || "vpn".equals(value) || "direct".equals(value) || "none".equals(value);
     }
 
-    private synchronized void saveNodes(List<ProxyNode> items) {
+    private void saveNodes(List<ProxyNode> items) {
         nodes = items;
         Setting.putProxySubscriptionNodes(App.gson().toJson(items));
     }
