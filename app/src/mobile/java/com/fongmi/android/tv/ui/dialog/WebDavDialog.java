@@ -101,6 +101,11 @@ public class WebDavDialog extends BaseBottomSheetDialog {
             public void error() {
                 Notify.show(R.string.sync_test_fail);
             }
+
+            @Override
+            public void error(String msg) {
+                Notify.show(getString(R.string.sync_test_fail) + ": " + msg);
+            }
         });
     }
 

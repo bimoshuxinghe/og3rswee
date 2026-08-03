@@ -26,8 +26,8 @@ import java.util.Set;
 public class ProxySubscriptionManager {
 
     private static final String NAME = "subscription";
-    private static final int MAX_THREADS = 50;
-    private static final int TCP_TIMEOUT = 1000;
+    private static final int MAX_THREADS = 20;
+    private static final int TCP_TIMEOUT = 2000;
     private static final int DELAY_TIMEOUT = 3000;
     private static final String TEST_HOST = "www.gstatic.com";
     private static final String TEST_URL = "https://" + TEST_HOST + "/generate_204";
@@ -363,23 +363,15 @@ public class ProxySubscriptionManager {
         // 通知开始测速
         notifyProgress();
 
-        // 对所有节点进行TCP可达性测试（并发），直接测量连接延迟，不经过 mihomo
-        android.util.Log.d("ProxySub", "testAll: TCP reachability test for " + allNodes.size() + " nodes (no mihomo)");
-        int tcpThreads = Math.min(MAX_THREADS, allNodes.size());
+        // 使用轻量级TCP连接测试，不经过 mihomo，不创建 OkHttpClient
+        android.util.Log.d("ProxySub", "testAll: TCP test for " + totalNodes + " nodes (no mihomo, lightweight)");
+        int tcpThreads = Math.min(MAX_THREADS, totalNodes);
         java.util.concurrent.ExecutorService tcpExecutor = java.util.concurrent.Executors.newFixedThreadPool(tcpThreads);
-        java.util.concurrent.CountDownLatch tcpLatch = new java.util.concurrent.CountDownLatch(allNodes.size());
+        java.util.concurrent.CountDownLatch tcpLatch = new java.util.concurrent.CountDownLatch(totalNodes);
         for (ProxyNode node : allNodes) {
             tcpExecutor.submit(() -> {
                 try {
-                    long latency = testTcpReachability(node);
-                    node.setLatency(latency);
-                    // 对可达节点进一步测试 HTTP CONNECT 延迟（仅对 http/socks5 类型有效）
-                    if (latency > 0 && node.isSupported()) {
-                        long httpLatency = testHttpProxy(node);
-                        if (httpLatency > 0) {
-                            node.setLatency(httpLatency);
-                        }
-                    }
+                    node.setLatency(testTcpReachability(node));
                 } catch (Exception e) {
                     node.setLatency(-1);
                 } finally {
@@ -392,7 +384,7 @@ public class ProxySubscriptionManager {
             });
         }
         try {
-            tcpLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+            tcpLatch.await(120, java.util.concurrent.TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -421,63 +413,6 @@ public class ProxySubscriptionManager {
             socket.connect(new InetSocketAddress(node.getHost(), node.getPort()), TCP_TIMEOUT);
             return System.currentTimeMillis() - start;
         } catch (Exception e) {
-            return -1;
-        }
-    }
-
-    /**
-     * 通过节点代理发送 HTTP CONNECT 请求测试实际代理延迟（不经过 mihomo）
-     * 仅对 http/https/socks5 类型的节点有效
-     */
-    private long testHttpProxy(ProxyNode node) {
-        if (node == null || !node.isSupported()) return -1;
-        long start = System.currentTimeMillis();
-        try {
-            java.net.Proxy.Type proxyType;
-            if ("socks5".equals(node.getScheme())) {
-                proxyType = java.net.Proxy.Type.SOCKS;
-            } else {
-                proxyType = java.net.Proxy.Type.HTTP;
-            }
-
-            java.net.Proxy proxy = new java.net.Proxy(proxyType, new InetSocketAddress(node.getHost(), node.getPort()));
-
-            okhttp3.OkHttpClient.Builder clientBuilder = new okhttp3.OkHttpClient.Builder()
-                    .proxy(proxy)
-                    .connectTimeout(DELAY_TIMEOUT, java.util.concurrent.TimeUnit.MILLISECONDS)
-                    .readTimeout(DELAY_TIMEOUT, java.util.concurrent.TimeUnit.MILLISECONDS);
-
-            // 如果有认证信息，设置 OkHttp 的 proxyAuthenticator（线程安全）
-            if (!TextUtils.isEmpty(node.getUserInfo())) {
-                String[] parts = node.getUserInfo().split(":");
-                if (parts.length >= 2) {
-                    final String user = parts[0];
-                    final String pass = parts[1];
-                    clientBuilder.proxyAuthenticator((route, response) -> {
-                        String credential = okhttp3.Credentials.basic(user, pass);
-                        return response.request().newBuilder()
-                                .header("Proxy-Authorization", credential)
-                                .build();
-                    });
-                }
-            }
-
-            okhttp3.OkHttpClient client = clientBuilder.build();
-
-            okhttp3.Request request = new okhttp3.Request.Builder()
-                    .url(TEST_URL)
-                    .head()
-                    .build();
-
-            try (okhttp3.Response response = client.newCall(request).execute()) {
-                long latency = System.currentTimeMillis() - start;
-                if (response.isSuccessful() || response.code() == 204) {
-                    return latency;
-                }
-                return latency; // 即使非204也返回延迟，说明代理可用
-            }
-        } catch (Exception e) {
-            android.util.Log.d("ProxySub", "testHttpProxy: " + node.getName() + " error: " + e.getMessage());
             return -1;
         }
     }
@@ -601,12 +536,6 @@ public class ProxySubscriptionManager {
 
     public synchronized long testOne(ProxyNode node) {
         long latency = testTcpReachability(node);
-        if (latency > 0 && node.isSupported()) {
-            long httpLatency = testHttpProxy(node);
-            if (httpLatency > 0) {
-                latency = httpLatency;
-            }
-        }
         node.setLatency(latency);
         saveNodes(getNodes());
         return latency;
@@ -614,14 +543,7 @@ public class ProxySubscriptionManager {
 
     public long test(ProxyNode node) {
         if (node == null) return -1;
-        long latency = testTcpReachability(node);
-        if (latency > 0 && node.isSupported()) {
-            long httpLatency = testHttpProxy(node);
-            if (httpLatency > 0) {
-                latency = httpLatency;
-            }
-        }
-        return latency;
+        return testTcpReachability(node);
     }
 
     private long testMihomo(ProxyNode node) {

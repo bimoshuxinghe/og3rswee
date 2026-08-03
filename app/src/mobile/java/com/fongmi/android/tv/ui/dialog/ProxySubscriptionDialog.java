@@ -126,6 +126,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
         ProxySubscriptionManager.get().setProgressCallback(this::setStatus);
         binding.test.setEnabled(false);
         binding.test.setText("测速中...");
+        Notify.progress(requireActivity());
         setStatus();
         Task.execute(() -> {
             List<ProxyNode> nodes = ProxySubscriptionManager.get().testAll();
@@ -134,6 +135,7 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             if (fastest != null) applied = ProxySubscriptionManager.get().select(fastest);
             boolean finalApplied = applied;
             App.post(() -> {
+                Notify.dismiss();
                 ProxySubscriptionManager.get().setProgressCallback(null);
                 binding.test.setEnabled(true);
                 binding.test.setText(R.string.proxy_sub_test);

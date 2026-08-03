@@ -46,6 +46,9 @@ public class WebDavSync {
                     .proxy(Proxy.NO_PROXY)
                     .hostnameVerifier((hostname, session) -> true)
                     .sslSocketFactory(sslContext.getSocketFactory(), (javax.net.ssl.X509TrustManager) trustAll[0])
+                    .followRedirects(true)
+                    .followSslRedirects(true)
+                    .retryOnConnectionFailure(true)
                     .build();
         } catch (Exception e) {
             return new OkHttpClient.Builder()
@@ -53,6 +56,8 @@ public class WebDavSync {
                     .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
                     .writeTimeout(timeoutMs, TimeUnit.MILLISECONDS)
                     .proxy(Proxy.NO_PROXY)
+                    .followRedirects(true)
+                    .followSslRedirects(true)
                     .build();
         }
     }
@@ -102,7 +107,11 @@ public class WebDavSync {
         noProxyClient(5000).newCall(request).enqueue(new okhttp3.Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                App.post(() -> callback.error(e.getMessage()));
+                android.util.Log.e("WebDavSync", "test onFailure: " + e.getMessage(), e);
+                String msg = e.getMessage();
+                if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
+                String finalMsg = msg;
+                App.post(() -> callback.error(finalMsg));
             }
 
             @Override
