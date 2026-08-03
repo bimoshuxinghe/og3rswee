@@ -84,6 +84,13 @@ public class WebDavSync {
     }
 
     /**
+     * 空请求体（用于 PROPFIND、MKCOL 等 WebDAV 方法，OkHttp 要求非 GET/HEAD 方法必须有 body）
+     */
+    private static RequestBody emptyBody() {
+        return RequestBody.create(new byte[0], null);
+    }
+
+    /**
      * 创建星落文件夹（MKCOL），已存在则忽略
      */
     private static boolean createFolder(String url, String user, String pass) {
@@ -93,14 +100,16 @@ public class WebDavSync {
             Request request = new Request.Builder()
                     .url(folderUrl)
                     .header("Authorization", Credentials.basic(user, pass))
-                    .method("MKCOL", null)
+                    .method("MKCOL", emptyBody())
                     .build();
             Response response = noProxyClient(5000).newCall(request).execute();
             int code = response.code();
             response.close();
-            // 201=创建成功, 405=已存在, 301=重定向(部分服务端) 都视为成功
+            android.util.Log.d("WebDavSync", "createFolder: code=" + code);
+            // 201=创建成功, 405=已存在(MKCOL已支持), 301=重定向 都视为成功
             return code == 201 || code == 200 || code == 405;
         } catch (Exception e) {
+            android.util.Log.e("WebDavSync", "createFolder error: " + e.getMessage(), e);
             return false;
         }
     }
@@ -113,54 +122,103 @@ public class WebDavSync {
         url = normalizeUrl(url);
         if (!url.endsWith("/")) url += "/";
 
-        try {
-            // 第一步：先测试基础 URL 是否能连上（验证账号密码）
-            Request authRequest = new Request.Builder()
-                    .url(url)
-                    .header("Authorization", Credentials.basic(user, pass))
-                    .method("PROPFIND", null)
-                    .header("Depth", "0")
-                    .build();
+        final String finalUrl = url;
+        final String finalUser = user;
+        final String finalPass = pass;
 
-            noProxyClient(8000).newCall(authRequest).enqueue(new okhttp3.Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    android.util.Log.e("WebDavSync", "test auth onFailure: " + e.getMessage(), e);
-                    String msg = e.getMessage();
-                    if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
-                    String finalMsg = msg;
-                    App.post(() -> callback.error(finalMsg));
+        Task.execute(() -> {
+            try {
+                android.util.Log.d("WebDavSync", "test: url=" + finalUrl + ", user=" + finalUser);
+
+                // 第一步：用 PROPFIND 测试认证（OkHttp 需要非 null body）
+                Request propfindRequest = new Request.Builder()
+                        .url(finalUrl)
+                        .header("Authorization", Credentials.basic(finalUser, finalPass))
+                        .method("PROPFIND", emptyBody())
+                        .header("Depth", "0")
+                        .header("Content-Type", "application/xml; charset=utf-8")
+                        .build();
+
+                Response response = noProxyClient(10000).newCall(propfindRequest).execute();
+                int code = response.code();
+                response.close();
+                android.util.Log.d("WebDavSync", "test PROPFIND: code=" + code);
+
+                // 401 = 认证失败
+                if (code == 401) {
+                    App.post(() -> callback.error("账号或密码错误 (401)，请检查用户名和应用密码"));
+                    return;
                 }
 
-                @Override
-                public void onResponse(Call call, Response response) {
-                    int code = response.code();
-                    response.close();
-                    android.util.Log.d("WebDavSync", "test auth: code=" + code);
-
-                    if (code == 401) {
-                        App.post(() -> callback.error("账号或密码错误 (401)"));
-                        return;
-                    }
-                    if (code == 207 || code == 200 || code == 301 || code == 302 || code == 403 || code == 404) {
-                        // 207/200 = 认证成功，403/404 = 可能是路径问题但认证通过
-                        // 尝试创建星落文件夹
-                        boolean folderCreated = createFolder(url, user, pass);
-                        android.util.Log.d("WebDavSync", "test: auth ok, folder created=" + folderCreated);
-                        App.post(callback::success);
-                    } else {
-                        final int finalCode = code;
-                        App.post(() -> callback.error("服务器返回 HTTP " + finalCode));
-                    }
+                // 207/200 = 认证成功且 WebDAV 可用
+                // 403/404 = 可能路径问题但认证通过
+                // 301/302 = 重定向（followRedirects 已开启，一般不会到这里）
+                if (code == 207 || code == 200 || code == 301 || code == 302 || code == 403 || code == 404) {
+                    android.util.Log.d("WebDavSync", "test: auth ok (code=" + code + "), creating folder...");
+                    boolean folderCreated = createFolder(finalUrl, finalUser, finalPass);
+                    android.util.Log.d("WebDavSync", "test: folder created=" + folderCreated);
+                    App.post(callback::success);
+                    return;
                 }
-            });
-        } catch (Exception e) {
-            android.util.Log.e("WebDavSync", "test error: " + e.getMessage(), e);
-            String msg = e.getMessage();
-            if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
-            String finalMsg = msg;
-            App.post(() -> callback.error(finalMsg));
-        }
+
+                // PROPFIND 失败，降级用 OPTIONS 测试
+                android.util.Log.d("WebDavSync", "test: PROPFIND failed with " + code + ", trying OPTIONS...");
+                Request optionsRequest = new Request.Builder()
+                        .url(finalUrl)
+                        .header("Authorization", Credentials.basic(finalUser, finalPass))
+                        .method("OPTIONS", emptyBody())
+                        .build();
+
+                Response optResponse = noProxyClient(10000).newCall(optionsRequest).execute();
+                int optCode = optResponse.code();
+                optResponse.close();
+                android.util.Log.d("WebDavSync", "test OPTIONS: code=" + optCode);
+
+                if (optCode == 401) {
+                    App.post(() -> callback.error("账号或密码错误 (401)，请检查用户名和应用密码"));
+                    return;
+                }
+                if (optCode == 200 || optCode == 204) {
+                    boolean folderCreated = createFolder(finalUrl, finalUser, finalPass);
+                    android.util.Log.d("WebDavSync", "test: OPTIONS ok, folder created=" + folderCreated);
+                    App.post(callback::success);
+                    return;
+                }
+
+                // OPTIONS 也失败，降级用 GET 测试
+                android.util.Log.d("WebDavSync", "test: OPTIONS failed with " + optCode + ", trying GET...");
+                Request getRequest = new Request.Builder()
+                        .url(finalUrl)
+                        .header("Authorization", Credentials.basic(finalUser, finalPass))
+                        .build();
+
+                Response getResponse = noProxyClient(10000).newCall(getRequest).execute();
+                int getCode = getResponse.code();
+                getResponse.close();
+                android.util.Log.d("WebDavSync", "test GET: code=" + getCode);
+
+                if (getCode == 401) {
+                    App.post(() -> callback.error("账号或密码错误 (401)，请检查用户名和应用密码"));
+                    return;
+                }
+                if (getCode == 200 || getCode == 207) {
+                    boolean folderCreated = createFolder(finalUrl, finalUser, finalPass);
+                    android.util.Log.d("WebDavSync", "test: GET ok, folder created=" + folderCreated);
+                    App.post(callback::success);
+                    return;
+                }
+
+                final int finalCode = getCode;
+                App.post(() -> callback.error("服务器返回 HTTP " + finalCode));
+
+            } catch (Exception e) {
+                android.util.Log.e("WebDavSync", "test error: " + e.getMessage(), e);
+                String msg = e.getMessage();
+                if (msg == null || msg.isEmpty()) msg = e.getClass().getSimpleName();
+                String finalMsg = msg;
+                App.post(() -> callback.error(finalMsg));
+            }
+        });
     }
 
     public static void upload(com.fongmi.android.tv.impl.Callback callback) {
