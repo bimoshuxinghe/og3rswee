@@ -26,12 +26,6 @@
         android:visible="false" />
 
     <item
-        android:id="@+id/download"
-        android:icon="@drawable/ic_sync_download"
-        android:title="@string/nav_download"
-        android:visible="false" />
-
-    <item
         android:id="@+id/setting"
         android:icon="@drawable/ic_nav_setting"
         android:title="@string/nav_setting"

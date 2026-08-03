@@ -242,7 +242,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         mBinding.navigation.getMenu().findItem(R.id.hot).setVisible(com.fongmi.android.tv.setting.Setting.isHomeHot());
         mBinding.navigation.getMenu().findItem(R.id.setting).setVisible(true);
         mBinding.navigation.getMenu().findItem(R.id.local).setVisible(com.fongmi.android.tv.setting.Setting.isHomeLocal());
-        mBinding.navigation.getMenu().findItem(R.id.download).setVisible(com.fongmi.android.tv.setting.Setting.isHomeDownload());
         mBinding.navigation.getMenu().findItem(R.id.live).setVisible(com.fongmi.android.tv.setting.Setting.isHomeLive() && LiveConfig.hasUrl());
 
         int visibleCount = 0;
@@ -298,18 +297,11 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             change(getHomePosition());
         } else if (currentId == R.id.local && !com.fongmi.android.tv.setting.Setting.isHomeLocal()) {
             change(getHomePosition());
-        } else if (currentId == R.id.download && !com.fongmi.android.tv.setting.Setting.isHomeDownload()) {
-            change(getHomePosition());
         } else if (currentId == R.id.live && (!com.fongmi.android.tv.setting.Setting.isHomeLive() || !LiveConfig.hasUrl())) {
             change(getHomePosition());
         }
 
         ViewCompat.requestApplyInsets(mBinding.navigation);
-    }
-
-    private boolean openDownload() {
-        DownloadActivity.start(this);
-        return false;
     }
 
     private boolean openLive() {
@@ -402,7 +394,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         if (item.getItemId() == R.id.vod) return mManager.change(0);
         if (item.getItemId() == R.id.hot) return mManager.change(7);
         if (item.getItemId() == R.id.local) return mManager.change(4);
-        if (item.getItemId() == R.id.download) return openDownload();
         if (item.getItemId() == R.id.live) return openLive();
         return false;
     }

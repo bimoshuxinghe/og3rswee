@@ -363,57 +363,49 @@ public class ProxySubscriptionManager {
         // 通知开始测速
         notifyProgress();
 
-        // 阶段1：对所有节点进行快速TCP可达性测试（50线程并发），过滤掉不可达的节点
-        android.util.Log.d("ProxySub", "testAll: phase 1 - TCP reachability test for " + allNodes.size() + " nodes");
+        // 对所有节点进行TCP可达性测试（并发），直接测量连接延迟，不经过 mihomo
+        android.util.Log.d("ProxySub", "testAll: TCP reachability test for " + allNodes.size() + " nodes (no mihomo)");
         int tcpThreads = Math.min(MAX_THREADS, allNodes.size());
         java.util.concurrent.ExecutorService tcpExecutor = java.util.concurrent.Executors.newFixedThreadPool(tcpThreads);
         java.util.concurrent.CountDownLatch tcpLatch = new java.util.concurrent.CountDownLatch(allNodes.size());
         for (ProxyNode node : allNodes) {
             tcpExecutor.submit(() -> {
                 try {
-                    node.setLatency(testTcpReachability(node));
+                    long latency = testTcpReachability(node);
+                    node.setLatency(latency);
+                    // 对可达节点进一步测试 HTTP CONNECT 延迟（仅对 http/socks5 类型有效）
+                    if (latency > 0 && node.isSupported()) {
+                        long httpLatency = testHttpProxy(node);
+                        if (httpLatency > 0) {
+                            node.setLatency(httpLatency);
+                        }
+                    }
                 } catch (Exception e) {
                     node.setLatency(-1);
                 } finally {
                     tcpLatch.countDown();
+                    synchronized (this) {
+                        testedCount++;
+                    }
+                    notifyProgress();
                 }
             });
         }
         try {
-            tcpLatch.await(20, java.util.concurrent.TimeUnit.SECONDS);
+            tcpLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
         tcpExecutor.shutdownNow();
-        android.util.Log.d("ProxySub", "testAll: phase 1 done in " + (System.currentTimeMillis() - startTime) + "ms");
-
-        // 分离结果
-        List<ProxyNode> mihomoNodes = new ArrayList<>();
-        for (ProxyNode node : allNodes) {
-            if (node.getLatency() > 0) {
-                // 所有可达节点都通过 mihomo 测试延迟
-                node.setLatency(0);
-                mihomoNodes.add(node);
-            }
-        }
-        int unreachable = allNodes.size() - mihomoNodes.size();
-        android.util.Log.d("ProxySub", "testAll: " + mihomoNodes.size() + " reachable, " + unreachable + " unreachable");
-
-        // 不可达节点直接算作已测（它们已经完成了测试，只是失败了）
-        testedCount = unreachable;
-
-        // 阶段2：对mihomo可达节点，通过mihomo delay API并行测试（无需切换selector）
-        if (!mihomoNodes.isEmpty()) {
-            long phase2Start = System.currentTimeMillis();
-            android.util.Log.d("ProxySub", "testAll: phase 2 - mihomo delay API test for " + mihomoNodes.size() + " nodes");
-            testMihomoNodesViaApi(mihomoNodes);
-            android.util.Log.d("ProxySub", "testAll: phase 2 done in " + (System.currentTimeMillis() - phase2Start) + "ms");
-        }
 
         // 确保testedCount等于总数
         testedCount = totalNodes;
 
-        android.util.Log.d("ProxySub", "testAll: total time " + (System.currentTimeMillis() - startTime) + "ms");
+        int reachable = 0;
+        for (ProxyNode node : allNodes) {
+            if (node.getLatency() > 0) reachable++;
+        }
+        android.util.Log.d("ProxySub", "testAll: done in " + (System.currentTimeMillis() - startTime) + "ms, " + reachable + " reachable, " + (totalNodes - reachable) + " unreachable");
         saveNodes(getNodes());
         return getNodes();
     }
@@ -429,6 +421,63 @@ public class ProxySubscriptionManager {
             socket.connect(new InetSocketAddress(node.getHost(), node.getPort()), TCP_TIMEOUT);
             return System.currentTimeMillis() - start;
         } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * 通过节点代理发送 HTTP CONNECT 请求测试实际代理延迟（不经过 mihomo）
+     * 仅对 http/https/socks5 类型的节点有效
+     */
+    private long testHttpProxy(ProxyNode node) {
+        if (node == null || !node.isSupported()) return -1;
+        long start = System.currentTimeMillis();
+        try {
+            java.net.Proxy.Type proxyType;
+            if ("socks5".equals(node.getScheme())) {
+                proxyType = java.net.Proxy.Type.SOCKS;
+            } else {
+                proxyType = java.net.Proxy.Type.HTTP;
+            }
+
+            java.net.Proxy proxy = new java.net.Proxy(proxyType, new InetSocketAddress(node.getHost(), node.getPort()));
+
+            okhttp3.OkHttpClient.Builder clientBuilder = new okhttp3.OkHttpClient.Builder()
+                    .proxy(proxy)
+                    .connectTimeout(DELAY_TIMEOUT, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .readTimeout(DELAY_TIMEOUT, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+            // 如果有认证信息，设置 OkHttp 的 proxyAuthenticator（线程安全）
+            if (!TextUtils.isEmpty(node.getUserInfo())) {
+                String[] parts = node.getUserInfo().split(":");
+                if (parts.length >= 2) {
+                    final String user = parts[0];
+                    final String pass = parts[1];
+                    clientBuilder.proxyAuthenticator((route, response) -> {
+                        String credential = okhttp3.Credentials.basic(user, pass);
+                        return response.request().newBuilder()
+                                .header("Proxy-Authorization", credential)
+                                .build();
+                    });
+                }
+            }
+
+            okhttp3.OkHttpClient client = clientBuilder.build();
+
+            okhttp3.Request request = new okhttp3.Request.Builder()
+                    .url(TEST_URL)
+                    .head()
+                    .build();
+
+            try (okhttp3.Response response = client.newCall(request).execute()) {
+                long latency = System.currentTimeMillis() - start;
+                if (response.isSuccessful() || response.code() == 204) {
+                    return latency;
+                }
+                return latency; // 即使非204也返回延迟，说明代理可用
+            }
+        } catch (Exception e) {
+            android.util.Log.d("ProxySub", "testHttpProxy: " + node.getName() + " error: " + e.getMessage());
             return -1;
         }
     }
@@ -551,7 +600,13 @@ public class ProxySubscriptionManager {
     }
 
     public synchronized long testOne(ProxyNode node) {
-        long latency = test(node);
+        long latency = testTcpReachability(node);
+        if (latency > 0 && node.isSupported()) {
+            long httpLatency = testHttpProxy(node);
+            if (httpLatency > 0) {
+                latency = httpLatency;
+            }
+        }
         node.setLatency(latency);
         saveNodes(getNodes());
         return latency;
@@ -559,14 +614,14 @@ public class ProxySubscriptionManager {
 
     public long test(ProxyNode node) {
         if (node == null) return -1;
-        if (!node.isSupported()) return testMihomo(node);
-        long start = System.currentTimeMillis();
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(node.getHost(), node.getPort()), 2500);
-            return System.currentTimeMillis() - start;
-        } catch (Exception e) {
-            return -1;
+        long latency = testTcpReachability(node);
+        if (latency > 0 && node.isSupported()) {
+            long httpLatency = testHttpProxy(node);
+            if (httpLatency > 0) {
+                latency = httpLatency;
+            }
         }
+        return latency;
     }
 
     private long testMihomo(ProxyNode node) {
