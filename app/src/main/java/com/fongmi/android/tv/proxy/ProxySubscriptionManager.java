@@ -110,17 +110,12 @@ public class ProxySubscriptionManager {
         return Setting.isProxySubscriptionEnabled() && node != null && node.isSupported() ? node.getUrl() : "";
     }
 
+    /**
+     * 完全对齐反编译版 f.b() 中的 z.B("proxy_subscription_config")
+     * 直接返回保存的订阅配置，不做任何验证或重新生成
+     */
     private String getConfig() {
-        String saved = Setting.getProxySubscriptionConfig();
-        // 检查保存的配置是否有效：必须包含proxies和GEOIP规则，且不能包含旧的DNS配置
-        if (!TextUtils.isEmpty(saved) && saved.contains("proxies:") && saved.contains("GEOIP,CN,DIRECT\n") && !saved.contains("dns:")) {
-            android.util.Log.d("ProxySub", "getConfig: using saved config (" + saved.length() + " chars)");
-            return saved;
-        }
-        android.util.Log.d("ProxySub", "getConfig: saved config empty or outdated, regenerating from nodes");
-        String config = generateClashConfig(getNodes());
-        if (!TextUtils.isEmpty(config)) Setting.putProxySubscriptionConfig(config);
-        return config;
+        return Setting.getProxySubscriptionConfig();
     }
 
     /**
