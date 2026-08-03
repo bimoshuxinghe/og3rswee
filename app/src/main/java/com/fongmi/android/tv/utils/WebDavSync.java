@@ -229,21 +229,23 @@ public class WebDavSync {
             if (callback != null) App.post(callback::error);
             return;
         }
-        url = normalizeUrl(url);
+        final String finalUrl = normalizeUrl(url);
+        final String finalUser = user;
+        final String finalPass = pass;
 
         Task.execute(() -> {
             try {
                 // 确保星落文件夹存在
-                createFolder(url, user, pass);
+                createFolder(finalUrl, finalUser, finalPass);
 
                 Backup backup = Backup.create();
                 String json = backup.toString();
                 byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
 
-                String backupUrl = getBackupUrl(url);
+                String backupUrl = getBackupUrl(finalUrl);
                 Request request = new Request.Builder()
                         .url(backupUrl)
-                        .header("Authorization", Credentials.basic(user, pass))
+                        .header("Authorization", Credentials.basic(finalUser, finalPass))
                         .put(RequestBody.create(bytes, MediaType.parse("application/json; charset=utf-8")))
                         .build();
 
@@ -270,14 +272,16 @@ public class WebDavSync {
             if (callback != null) App.post(callback::error);
             return;
         }
-        url = normalizeUrl(url);
+        final String finalUrl = normalizeUrl(url);
+        final String finalUser = user;
+        final String finalPass = pass;
 
         Task.execute(() -> {
             try {
-                String backupUrl = getBackupUrl(url);
+                String backupUrl = getBackupUrl(finalUrl);
                 Request request = new Request.Builder()
                         .url(backupUrl)
-                        .header("Authorization", Credentials.basic(user, pass))
+                        .header("Authorization", Credentials.basic(finalUser, finalPass))
                         .build();
 
                 Response response = noProxyClient(10000).newCall(request).execute();
@@ -294,10 +298,10 @@ public class WebDavSync {
                 } else {
                     response.close();
                     // 兼容旧备份：星落文件夹不存在时，尝试从根目录下载
-                    String oldUrl = url.endsWith("/") ? url + "fongmi_backup.json" : url + "/fongmi_backup.json";
+                    String oldUrl = finalUrl.endsWith("/") ? finalUrl + "fongmi_backup.json" : finalUrl + "/fongmi_backup.json";
                     Request oldRequest = new Request.Builder()
                             .url(oldUrl)
-                            .header("Authorization", Credentials.basic(user, pass))
+                            .header("Authorization", Credentials.basic(finalUser, finalPass))
                             .build();
                     Response oldResponse = noProxyClient(10000).newCall(oldRequest).execute();
                     if (oldResponse.isSuccessful()) {
@@ -307,7 +311,7 @@ public class WebDavSync {
                         if (!backup.getConfig().isEmpty() || !backup.getSite().isEmpty()) {
                             backup.restore();
                             // 迁移到星落文件夹
-                            createFolder(url, user, pass);
+                            createFolder(finalUrl, finalUser, finalPass);
                             if (callback != null) App.post(callback::success);
                             return;
                         }
