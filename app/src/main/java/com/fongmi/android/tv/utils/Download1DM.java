@@ -59,15 +59,15 @@ public class Download1DM {
 
     /**
      * 发送下载请求到 1DM+
+     * 使用 Application Context 和 FLAG_ACTIVITY_NEW_TASK，可从任意线程调用
      *
-     * @param activity 当前 Activity
      * @param url      下载地址
      * @param filename 文件名（可为空）
      * @param headers  HTTP 请求头（可为空）
      * @return true 表示成功发送 Intent
      */
-    public static boolean sendDownload(Activity activity, String url, String filename, Map<String, String> headers) {
-        if (activity == null || TextUtils.isEmpty(url)) return false;
+    public static boolean sendDownload(String url, String filename, Map<String, String> headers) {
+        if (TextUtils.isEmpty(url)) return false;
 
         String packageName = getInstalledPackage();
         if (TextUtils.isEmpty(packageName)) {
@@ -78,6 +78,7 @@ public class Download1DM {
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setComponent(new ComponentName(packageName, DOWNLOADER_CLASS));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             if (Build.VERSION.SDK_INT >= 30) {
                 intent.addCategory(Intent.CATEGORY_BROWSABLE);
@@ -100,12 +101,19 @@ public class Download1DM {
                 intent.putExtra("extra_headers", headersBundle);
             }
 
-            activity.startActivity(intent);
+            App.get().startActivity(intent);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
             Notify.show("调用 1DM+ 失败: " + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * 兼容旧接口：从 Activity 调用
+     */
+    public static boolean sendDownload(Activity activity, String url, String filename, Map<String, String> headers) {
+        return sendDownload(url, filename, headers);
     }
 }

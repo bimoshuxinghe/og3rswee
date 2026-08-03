@@ -84,7 +84,6 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
         binding.decode.setText(parent.control.action.decode.getText());
         binding.ending.setText(parent.control.action.ending.getText());
         binding.opening.setText(parent.control.action.opening.getText());
-        binding.ending.setVisibility(View.GONE);
         binding.repeat.setSelected(parent.control.action.repeat.isSelected());
         binding.timer.setSelected(Timer.get().isRunning());
         setTrackVisible();

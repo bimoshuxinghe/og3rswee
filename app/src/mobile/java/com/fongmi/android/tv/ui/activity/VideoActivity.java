@@ -1046,7 +1046,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     Notify.show("正在解析 " + count + " 个视频地址...");
                     com.fongmi.android.tv.utils.Task.execute(() -> {
                         int success = 0;
-                        int delay = 0;
                         for (int i = 0; i < checked.length; i++) {
                             if (!checked[i]) continue;
                             Episode episode = episodes.get(i);
@@ -1056,14 +1055,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                                     String url = result.getRealUrl();
                                     java.util.Map<String, String> headers = result.getHeader();
                                     String filename = getName() + " - " + episode.getName();
-                                    // 延迟发送避免 1DM+ 同时接收过多 Intent
-                                    if (delay > 0) { try { Thread.sleep(delay); } catch (InterruptedException ignored) {} }
-                                    delay = 500;
-                                    final String finalUrl = url;
-                                    final String finalFilename = filename;
-                                    final java.util.Map<String, String> finalHeaders = headers;
-                                    runOnUiThread(() -> com.fongmi.android.tv.utils.Download1DM.sendDownload(VideoActivity.this, finalUrl, finalFilename, finalHeaders));
-                                    success++;
+                                    // 每次发送间隔1.5秒, 确保1DM+能接收每个Intent
+                                    if (success > 0) { try { Thread.sleep(1500); } catch (InterruptedException ignored) {} }
+                                    boolean sent = com.fongmi.android.tv.utils.Download1DM.sendDownload(url, filename, headers);
+                                    if (sent) success++;
+                                    final int current = success;
+                                    runOnUiThread(() -> Notify.show("已发送 " + current + "/" + count + " 个下载到 1DM+"));
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -1071,7 +1068,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                         }
                         final int finalSuccess = success;
                         runOnUiThread(() -> {
-                            if (finalSuccess > 0) Notify.show("已发送 " + finalSuccess + " 个下载到 1DM+");
+                            if (finalSuccess > 0) Notify.show("完成: 共发送 " + finalSuccess + " 个下载到 1DM+");
                             else Notify.show("解析视频地址失败");
                         });
                     });

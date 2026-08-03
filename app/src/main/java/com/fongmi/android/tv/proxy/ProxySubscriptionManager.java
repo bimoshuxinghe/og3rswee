@@ -419,7 +419,7 @@ public class ProxySubscriptionManager {
         String originalName = Setting.getProxySubscriptionCoreName();
 
         // 并行调用delay API测试所有节点
-        int threads = Math.min(30, mihomoNodes.size());
+        int threads = Math.min(50, mihomoNodes.size());
         java.util.concurrent.ExecutorService delayExecutor = java.util.concurrent.Executors.newFixedThreadPool(threads);
         java.util.concurrent.CountDownLatch delayLatch = new java.util.concurrent.CountDownLatch(mihomoNodes.size());
         for (ProxyNode node : mihomoNodes) {
@@ -435,8 +435,11 @@ public class ProxySubscriptionManager {
             });
         }
         try {
-            // 每个请求最多DELAY_TIMEOUT+1秒，等待所有完成
-            delayLatch.await(DELAY_TIMEOUT + 1, java.util.concurrent.TimeUnit.SECONDS);
+            // 动态计算超时: 每批(threads个)最多需要 DELAY_TIMEOUT+2 秒, 加上基础等待时间
+            int batches = (mihomoNodes.size() + threads - 1) / threads;
+            long totalTimeout = (long) batches * (DELAY_TIMEOUT + 2) + 10;
+            android.util.Log.d("ProxySub", "testMihomoNodesViaApi: " + mihomoNodes.size() + " nodes, " + threads + " threads, timeout=" + totalTimeout + "s");
+            delayLatch.await(totalTimeout, java.util.concurrent.TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
