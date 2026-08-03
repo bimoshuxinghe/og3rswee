@@ -655,15 +655,101 @@ public class ProxySubscriptionManager {
     }
 
     private ProxyNode makeNode(String name, String scheme, String rawUri) {
-        ProxyNode node = ProxyNode.unsupported(name, scheme, "", -1, rawUri);
+        // 从 URI 中解析 host 和 port，用于 TCP 可达性测试
+        String[] hostPort = extractHostPort(scheme, rawUri);
+        String host = hostPort[0];
+        int port = -1;
+        try { if (!TextUtils.isEmpty(hostPort[1])) port = Integer.parseInt(hostPort[1]); } catch (Exception ignored) {}
+        ProxyNode node = ProxyNode.unsupported(name, scheme, host, port, rawUri);
         String yaml = toClashProxy(node);
         if (!TextUtils.isEmpty(yaml)) {
             node.setProxyYaml(yaml);
-            android.util.Log.d("ProxySub", "makeNode: " + name + " [" + scheme + "] proxyYaml已设置");
+            android.util.Log.d("ProxySub", "makeNode: " + name + " [" + scheme + "] host=" + host + " port=" + port + " proxyYaml已设置");
         } else {
             android.util.Log.w("ProxySub", "makeNode: " + name + " [" + scheme + "] YAML生成失败，URI: " + rawUri);
         }
         return node;
+    }
+
+    /**
+     * 从代理 URI 中提取 host 和 port，用于 TCP 可达性测试
+     */
+    private String[] extractHostPort(String scheme, String rawUri) {
+        String[] result = new String[]{"", null};
+        if (TextUtils.isEmpty(rawUri)) return result;
+        try {
+            if ("vmess".equals(scheme)) {
+                String json = decode(rawUri.substring("vmess://".length()));
+                JsonObject o = App.gson().fromJson(json, JsonObject.class);
+                if (o != null) {
+                    result[0] = str(o, "add");
+                    result[1] = intStr(o, "port");
+                }
+            } else if ("ss".equals(scheme)) {
+                String body = rawUri.substring("ss://".length());
+                int hashIdx = body.indexOf('#');
+                String main = hashIdx >= 0 ? body.substring(0, hashIdx) : body;
+                int atIdx = main.indexOf('@');
+                if (atIdx >= 0) {
+                    String serverPort = main.substring(atIdx + 1);
+                    String[] sp = serverPort.split(":");
+                    if (sp.length >= 2) { result[0] = sp[0]; result[1] = sp[1]; }
+                } else {
+                    String decoded = decode(main);
+                    if (decoded.contains("@")) {
+                        atIdx = decoded.lastIndexOf('@');
+                        String serverPort = decoded.substring(atIdx + 1);
+                        String[] sp = serverPort.split(":");
+                        if (sp.length >= 2) { result[0] = sp[0]; result[1] = sp[1]; }
+                    }
+                }
+            } else if ("ssr".equals(scheme)) {
+                String decoded = decode(rawUri.substring("ssr://".length()));
+                String main = decoded.contains("/?") ? decoded.substring(0, decoded.indexOf("/?")) : decoded;
+                String[] parts = main.split(":");
+                if (parts.length >= 2) { result[0] = parts[0]; result[1] = parts[1]; }
+            } else {
+                // vless, trojan, hysteria2, hysteria, tuic, snell, anytls, wireguard, juicity
+                Uri u = Uri.parse(rawUri);
+                String h = u.getHost();
+                int p = u.getPort();
+                if (!TextUtils.isEmpty(h) && p > 0) {
+                    result[0] = h;
+                    result[1] = String.valueOf(p);
+                } else {
+                    // Uri.parse fallback for URIs it can't parse properly
+                    String afterScheme = rawUri.substring(scheme.length() + 3);
+                    int queryIdx = afterScheme.indexOf('?');
+                    int fragIdx = afterScheme.indexOf('#');
+                    String authPart = queryIdx >= 0 ? afterScheme.substring(0, queryIdx) : (fragIdx >= 0 ? afterScheme.substring(0, fragIdx) : afterScheme);
+                    int atIdx = authPart.indexOf('@');
+                    String hostPortStr = atIdx >= 0 ? authPart.substring(atIdx + 1) : authPart;
+                    if (hostPortStr.startsWith("[")) {
+                        int bracketEnd = hostPortStr.indexOf(']');
+                        if (bracketEnd > 0) {
+                            result[0] = hostPortStr.substring(1, bracketEnd);
+                            String afterBracket = hostPortStr.substring(bracketEnd + 1);
+                            if (afterBracket.startsWith(":")) result[1] = afterBracket.substring(1);
+                        }
+                    } else {
+                        int colonIdx = hostPortStr.lastIndexOf(':');
+                        if (colonIdx >= 0) {
+                            result[0] = hostPortStr.substring(0, colonIdx);
+                            result[1] = hostPortStr.substring(colonIdx + 1);
+                        } else {
+                            result[0] = hostPortStr;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ProxySub", "extractHostPort: failed for " + scheme + " - " + e.getMessage());
+        }
+        // 清理 host 前面的点
+        if (!TextUtils.isEmpty(result[0])) {
+            while (result[0].startsWith(".")) result[0] = result[0].substring(1);
+        }
+        return result;
     }
 
     private ProxyNode parseVmess(String line) {

@@ -318,7 +318,7 @@ public class Setting {
     }
 
     public static boolean isHomeDownload() {
-        return false;
+        return Prefers.getBoolean("home_download", true);
     }
 
     public static void putHomeDownload(boolean value) {

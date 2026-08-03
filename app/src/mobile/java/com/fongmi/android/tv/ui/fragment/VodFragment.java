@@ -276,7 +276,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         com.google.android.material.appbar.AppBarLayout.LayoutParams params =
                 (com.google.android.material.appbar.AppBarLayout.LayoutParams) mBinding.collapsingToolbar.getLayoutParams();
         boolean carousel = PlayerSetting.isHomeCarousel();
-        int targetHeight = carousel ? ResUtil.dp2px(240) : ResUtil.dp2px(1);
+        int targetHeight = carousel ? ResUtil.dp2px(240) : 0;
         if (params.height != targetHeight) {
             params.height = targetHeight;
             mBinding.collapsingToolbar.setLayoutParams(params);

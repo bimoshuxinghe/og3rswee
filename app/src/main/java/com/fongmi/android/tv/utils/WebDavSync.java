@@ -8,12 +8,15 @@ import com.fongmi.android.tv.setting.Setting;
 import com.github.catvod.net.OkHttp;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Credentials;
 import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
@@ -21,6 +24,38 @@ import okhttp3.Response;
 public class WebDavSync {
 
     private static final String FOLDER_NAME = "星落";
+
+    /**
+     * 创建不走代理的 OkHttpClient，避免应用内代理设置干扰 WebDAV 连接（如坚果云）
+     */
+    private static OkHttpClient noProxyClient(long timeoutMs) {
+        try {
+            javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+            javax.net.ssl.TrustManager[] trustAll = new javax.net.ssl.TrustManager[]{
+                new javax.net.ssl.X509TrustManager() {
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                }
+            };
+            sslContext.init(null, trustAll, new java.security.SecureRandom());
+            return new OkHttpClient.Builder()
+                    .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                    .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                    .writeTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                    .proxy(Proxy.NO_PROXY)
+                    .hostnameVerifier((hostname, session) -> true)
+                    .sslSocketFactory(sslContext.getSocketFactory(), (javax.net.ssl.X509TrustManager) trustAll[0])
+                    .build();
+        } catch (Exception e) {
+            return new OkHttpClient.Builder()
+                    .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                    .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                    .writeTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                    .proxy(Proxy.NO_PROXY)
+                    .build();
+        }
+    }
 
     private static String getFolderUrl(String url) {
         if (!url.endsWith("/")) url += "/";
@@ -43,7 +78,7 @@ public class WebDavSync {
                     .header("Authorization", Credentials.basic(user, pass))
                     .method("MKCOL", null)
                     .build();
-            Response response = OkHttp.client(5000).newCall(request).execute();
+            Response response = noProxyClient(5000).newCall(request).execute();
             int code = response.code();
             response.close();
             // 201=创建成功, 405=已存在, 301=重定向(部分服务端) 都视为成功
@@ -64,7 +99,7 @@ public class WebDavSync {
                 .header("Authorization", Credentials.basic(user, pass))
                 .build();
 
-        OkHttp.client(5000).newCall(request).enqueue(new okhttp3.Callback() {
+        noProxyClient(5000).newCall(request).enqueue(new okhttp3.Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 App.post(() -> callback.error(e.getMessage()));
@@ -111,7 +146,7 @@ public class WebDavSync {
                         .put(RequestBody.create(bytes, MediaType.parse("application/json; charset=utf-8")))
                         .build();
 
-                Response response = OkHttp.client(10000).newCall(request).execute();
+                Response response = noProxyClient(10000).newCall(request).execute();
                 boolean isSuccessful = response.isSuccessful();
                 response.close();
                 if (isSuccessful) {
@@ -143,7 +178,7 @@ public class WebDavSync {
                         .header("Authorization", Credentials.basic(user, pass))
                         .build();
 
-                Response response = OkHttp.client(10000).newCall(request).execute();
+                Response response = noProxyClient(10000).newCall(request).execute();
                 if (response.isSuccessful()) {
                     String json = response.body().string();
                     response.close();
@@ -162,7 +197,7 @@ public class WebDavSync {
                             .url(oldUrl)
                             .header("Authorization", Credentials.basic(user, pass))
                             .build();
-                    Response oldResponse = OkHttp.client(10000).newCall(oldRequest).execute();
+                    Response oldResponse = noProxyClient(10000).newCall(oldRequest).execute();
                     if (oldResponse.isSuccessful()) {
                         String json = oldResponse.body().string();
                         oldResponse.close();

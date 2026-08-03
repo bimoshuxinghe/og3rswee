@@ -32,8 +32,8 @@
     <!-- Play -->
     <string name="play">Play</string>
     <string name="pause">Pause</string>
-    <string name="play_op">Intro/outro setting</string>
-    <string name="play_ed">Skip outro</string>
+    <string name="play_op">Intro</string>
+    <string name="play_ed">Outro</string>
     <string name="skip_setting">Intro/outro setting</string>
     <string name="skip_opening">Intro</string>
     <string name="skip_ending">Outro</string>

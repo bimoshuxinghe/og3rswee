@@ -32,8 +32,8 @@
     <!-- Play -->
     <string name="play">播放</string>
     <string name="pause">暂停</string>
-    <string name="play_op">&#x7247;&#x5934;&#x002F;&#x7247;&#x5C3E;&#x8BBE;&#x7F6E;</string>
-    <string name="play_ed">&#x8DF3;&#x8FC7;&#x7247;&#x5C3E;</string>
+    <string name="play_op">片头</string>
+    <string name="play_ed">片尾</string>
     <string name="skip_setting">&#x7247;&#x5934;&#x002F;&#x7247;&#x5C3E;&#x8BBE;&#x7F6E;</string>
     <string name="skip_opening">&#x7247;&#x5934;</string>
     <string name="skip_ending">&#x7247;&#x5C3E;</string>

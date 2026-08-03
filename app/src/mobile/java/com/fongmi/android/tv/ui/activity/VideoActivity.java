@@ -1007,7 +1007,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("选择下载剧集")
                 .setAdapter(adapter, null)
-                .setPositiveButton("开始下载", (dialog, which) -> {
+                .setPositiveButton("内置下载", (dialog, which) -> {
                     boolean added = false;
                     for (int i = 0; i < checked.length; i++) {
                         if (checked[i]) {
@@ -1030,6 +1030,51 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                         }
                     }
                     if (added) Notify.show("已加入下载队列");
+                })
+                .setNeutralButton("1DM+下载", (dialog, which) -> {
+                    if (!com.fongmi.android.tv.utils.Download1DM.isInstalled()) {
+                        Notify.show("未安装 1DM+ 下载管理器");
+                        return;
+                    }
+                    int selectedCount = 0;
+                    for (boolean b : checked) if (b) selectedCount++;
+                    if (selectedCount == 0) {
+                        Notify.show("请先选择要下载的剧集");
+                        return;
+                    }
+                    final int count = selectedCount;
+                    Notify.show("正在解析 " + count + " 个视频地址...");
+                    com.fongmi.android.tv.utils.Task.execute(() -> {
+                        int success = 0;
+                        int delay = 0;
+                        for (int i = 0; i < checked.length; i++) {
+                            if (!checked[i]) continue;
+                            Episode episode = episodes.get(i);
+                            try {
+                                com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.playerContent(getKey(), flag.getFlag(), episode.getUrl());
+                                if (result != null && !result.getRealUrl().isEmpty()) {
+                                    String url = result.getRealUrl();
+                                    java.util.Map<String, String> headers = result.getHeader();
+                                    String filename = getName() + " - " + episode.getName();
+                                    // 延迟发送避免 1DM+ 同时接收过多 Intent
+                                    if (delay > 0) { try { Thread.sleep(delay); } catch (InterruptedException ignored) {} }
+                                    delay = 500;
+                                    final String finalUrl = url;
+                                    final String finalFilename = filename;
+                                    final java.util.Map<String, String> finalHeaders = headers;
+                                    runOnUiThread(() -> com.fongmi.android.tv.utils.Download1DM.sendDownload(VideoActivity.this, finalUrl, finalFilename, finalHeaders));
+                                    success++;
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        final int finalSuccess = success;
+                        runOnUiThread(() -> {
+                            if (finalSuccess > 0) Notify.show("已发送 " + finalSuccess + " 个下载到 1DM+");
+                            else Notify.show("解析视频地址失败");
+                        });
+                    });
                 })
                 .setNegativeButton("取消", null)
                 .show();
@@ -1235,37 +1280,50 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onEnding() {
-        showSkipDialog();
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        if (position > 0 && duration > 0) {
+            long remaining = duration - position;
+            if (remaining > 0) {
+                setEnding(remaining);
+                syncHistory(true);
+            }
+        }
         setR1Callback();
     }
 
     private boolean onEndingReset() {
         setR1Callback();
         setEnding(0);
+        syncHistory(true);
         return true;
     }
 
     private void setEnding(long ending) {
         mHistory.setEnding(ending);
-        mBinding.control.action.ending.setText(getSkipText(R.string.play_ed, ending));
-        setSkipText();
+        mBinding.control.action.ending.setText(ending > 0 ? SkipDialog.format(ending) : getString(R.string.play_ed));
     }
 
     private void onOpening() {
-        showSkipDialog();
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        if (position > 0 && duration > 0 && player().canSetOpening(position, duration)) {
+            setOpening(position);
+            syncHistory(true);
+        }
         setR1Callback();
     }
 
     private boolean onOpeningReset() {
         setR1Callback();
         setOpening(0);
-        setEnding(0);
+        syncHistory(true);
         return true;
     }
 
     private void setOpening(long opening) {
         mHistory.setOpening(opening);
-        setSkipText();
+        mBinding.control.action.opening.setText(opening > 0 ? SkipDialog.format(opening) : getString(R.string.play_op));
     }
 
     private void showSkipDialog() {
@@ -1279,9 +1337,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void setSkipText() {
         long opening = mHistory.getOpening();
         long ending = mHistory.getEnding();
-        String text = getString(R.string.play_op);
-        if (opening > 0 || ending > 0) text += " " + SkipDialog.format(opening) + " / " + SkipDialog.format(ending);
-        mBinding.control.action.opening.setText(text);
+        mBinding.control.action.opening.setText(opening > 0 ? SkipDialog.format(opening) : getString(R.string.play_op));
+        mBinding.control.action.ending.setText(ending > 0 ? SkipDialog.format(ending) : getString(R.string.play_ed));
     }
 
     @Override
@@ -1564,7 +1621,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!TextUtils.isEmpty(getMark())) mHistory.setVodRemarks(getMark());
         if (Setting.isIncognito() && mHistory.getKey().equals(getHistoryKey())) mHistory.delete();
         setSkipText();
-        mBinding.control.action.ending.setText(getSkipText(R.string.play_ed, mHistory.getEnding()));
         mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
         mHistory.setVodName(item.getName());
         setArtwork(item.getPic());

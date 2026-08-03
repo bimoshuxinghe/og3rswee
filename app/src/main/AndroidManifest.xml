@@ -30,6 +30,9 @@
             <action android:name="android.intent.action.SEND" />
             <data android:mimeType="text/plain" />
         </intent>
+        <package android:name="idm.internet.download.manager.plus"/>
+        <package android:name="idm.internet.download.manager"/>
+        <package android:name="idm.internet.download.manager.adm.lite"/>
     </queries>
 
     <application
