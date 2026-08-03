@@ -213,72 +213,12 @@ public class MihomoManager {
     private String fixConfig(String config, String selected) {
         String text = config.replace("\r\n", "\n").replace("\r", "\n");
         if (!TextUtils.isEmpty(selected)) text = buildSelectedConfig(text, selected);
-        text = fixServerName(text);
-        text = fixVlessFlow(text);
         text = putTopLevel(text, "mixed-port", String.valueOf(MIXED_PORT));
         text = putTopLevel(text, "allow-lan", "false");
         text = putTopLevel(text, "bind-address", "'127.0.0.1'");
         text = putTopLevel(text, "external-controller", "'127.0.0.1:" + CONTROLLER_PORT + "'");
-        text = putTopLevel(text, "log-level", "info");
-        text = putTopLevel(text, "find-process-mode", "off");
-        text = ensureDns(text);
+        text = putTopLevel(text, "log-level", "warning");
         return text;
-    }
-
-    private String fixServerName(String text) {
-        String[] lines = text.split("\n", -1);
-        StringBuilder result = new StringBuilder();
-        boolean inProxies = false;
-        String currentType = "";
-        for (String line : lines) {
-            String trimmed = line.trim();
-            boolean isTopLevel = !TextUtils.isEmpty(line) && !Character.isWhitespace(line.charAt(0)) && line.contains(":");
-            if (isTopLevel) {
-                inProxies = trimmed.startsWith("proxies:");
-                currentType = "";
-                result.append(line).append("\n");
-                continue;
-            }
-            if (inProxies) {
-                if (trimmed.startsWith("- ")) {
-                    currentType = "";
-                } else if (trimmed.startsWith("type:")) {
-                    currentType = trimmed.substring("type:".length()).trim();
-                } else if (trimmed.startsWith("server-name:")) {
-                    boolean useSni = "trojan".equals(currentType) || "hysteria2".equals(currentType) || "hysteria".equals(currentType) || "tuic".equals(currentType) || "snell".equals(currentType);
-                    String value = trimmed.substring("server-name:".length()).trim();
-                    result.append(line.substring(0, line.length() - trimmed.length())).append(useSni ? "sni: " : "servername: ").append(value).append("\n");
-                    continue;
-                }
-            }
-            result.append(line).append("\n");
-        }
-        return result.toString();
-    }
-
-    private String fixVlessFlow(String text) {
-        return text;
-    }
-
-    private String ensureDns(String text) {
-        if (text.contains("\ndns:") || text.startsWith("dns:")) return text;
-        String dns = "dns:\n" +
-                "  enable: true\n" +
-                "  listen: 0.0.0.0:1053\n" +
-                "  enhanced-mode: fake-ip\n" +
-                "  fake-ip-range: 198.18.0.1/16\n" +
-                "  nameserver:\n" +
-                "    - 223.5.5.5\n" +
-                "    - 119.29.29.29\n" +
-                "    - https://dns.alidns.com/dns-query\n" +
-                "  fallback:\n" +
-                "    - https://1.1.1.1/dns-query\n" +
-                "    - https://8.8.8.8/dns-query\n" +
-                "  fallback-filter:\n" +
-                "    geoip: false\n" +
-                "    ipcidr:\n" +
-                "      - 240.0.0.0/4\n";
-        return dns + text;
     }
 
     private String buildSelectedConfig(String text, String selected) {

@@ -113,9 +113,8 @@ public class ProxySubscriptionManager {
 
     private String getConfig() {
         String saved = Setting.getProxySubscriptionConfig();
-        // 检查保存的配置是否包含DNS设置和GEOIP规则（不带no-resolve）
-        // 旧版配置缺少这些关键配置，需要重新生成
-        if (!TextUtils.isEmpty(saved) && saved.contains("proxies:") && saved.contains("dns:") && saved.contains("GEOIP,CN,DIRECT\n")) {
+        // 检查保存的配置是否有效：必须包含proxies和GEOIP规则，且不能包含旧的DNS配置
+        if (!TextUtils.isEmpty(saved) && saved.contains("proxies:") && saved.contains("GEOIP,CN,DIRECT\n") && !saved.contains("dns:")) {
             android.util.Log.d("ProxySub", "getConfig: using saved config (" + saved.length() + " chars)");
             return saved;
         }
@@ -1037,31 +1036,6 @@ public class ProxySubscriptionManager {
         return "mode: rule\n" +
                 "ipv6: false\n" +
                 "allow-lan: false\n" +
-                "dns:\n" +
-                "  enable: true\n" +
-                "  ipv6: false\n" +
-                "  listen: 0.0.0.0:1053\n" +
-                "  enhanced-mode: fake-ip\n" +
-                "  fake-ip-range: 198.18.0.1/16\n" +
-                "  fake-ip-filter:\n" +
-                "    - '*.lan'\n" +
-                "    - localhost.ptlogin2.qq.com\n" +
-                "    - '+.srv.nintendo.net'\n" +
-                "    - '+.stun.playstation.net'\n" +
-                "    - '+.msftconnecttest.com'\n" +
-                "    - '+.msftncsi.com'\n" +
-                "  nameserver:\n" +
-                "    - 223.5.5.5\n" +
-                "    - 119.29.29.29\n" +
-                "    - 180.76.76.76\n" +
-                "  fallback:\n" +
-                "    - 8.8.8.8\n" +
-                "    - 1.1.1.1\n" +
-                "  fallback-filter:\n" +
-                "    geoip: true\n" +
-                "    geoip-code: CN\n" +
-                "    ipcidr:\n" +
-                "      - 240.0.0.0/4\n" +
                 "proxies:\n" +
                 proxies +
                 "proxy-groups:\n" +
