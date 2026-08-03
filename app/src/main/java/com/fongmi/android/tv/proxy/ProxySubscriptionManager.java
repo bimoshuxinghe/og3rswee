@@ -37,6 +37,8 @@ public class ProxySubscriptionManager {
     private List<ProxyNode> nodes;
     private volatile boolean mihomoStarting = false;
     private volatile boolean testing = false;
+    private volatile int testedCount = 0;
+    private Runnable progressCallback;
 
     private static class Loader {
         static volatile ProxySubscriptionManager INSTANCE = new ProxySubscriptionManager();
@@ -48,6 +50,21 @@ public class ProxySubscriptionManager {
 
     public boolean isTesting() {
         return testing;
+    }
+
+    public void setProgressCallback(Runnable callback) {
+        this.progressCallback = callback;
+    }
+
+    private void notifyProgress() {
+        if (progressCallback != null) {
+            testedCount++;
+            App.post(progressCallback);
+        }
+    }
+
+    public int getTestedCount() {
+        return testedCount;
     }
 
     public boolean hasNodes() {
@@ -87,11 +104,13 @@ public class ProxySubscriptionManager {
 
     private String getConfig() {
         String saved = Setting.getProxySubscriptionConfig();
-        if (!TextUtils.isEmpty(saved) && saved.contains("proxies:")) {
+        // 检查保存的配置是否包含DNS设置和GEOIP规则（不带no-resolve）
+        // 旧版配置缺少这些关键配置，需要重新生成
+        if (!TextUtils.isEmpty(saved) && saved.contains("proxies:") && saved.contains("dns:") && saved.contains("GEOIP,CN,DIRECT\n")) {
             android.util.Log.d("ProxySub", "getConfig: using saved config (" + saved.length() + " chars)");
             return saved;
         }
-        android.util.Log.d("ProxySub", "getConfig: saved config empty or invalid, regenerating from nodes");
+        android.util.Log.d("ProxySub", "getConfig: saved config empty or outdated, regenerating from nodes");
         String config = generateClashConfig(getNodes());
         if (!TextUtils.isEmpty(config)) Setting.putProxySubscriptionConfig(config);
         return config;
@@ -186,13 +205,7 @@ public class ProxySubscriptionManager {
 
     public boolean select(ProxyNode node) {
         if (node == null) return false;
-        if (node.isSupported()) {
-            Setting.putProxySubscriptionSelected(node.getUrl());
-            Setting.putProxySubscriptionEnabled(true);
-            Setting.putProxySubscriptionCoreName("");
-            applySaved();
-            return true;
-        }
+        // 所有节点类型都通过 mihomo 转发, 使 clash 规则(国内DIRECT)对所有节点生效
         String config = getConfig();
         android.util.Log.d("ProxySub", "select: starting mihomo node=" + node.getName() + " configLen=" + config.length());
         if (!MihomoManager.get().start(config, node.getName())) {
@@ -319,6 +332,11 @@ public class ProxySubscriptionManager {
 
     private List<ProxyNode> testAllInternal(List<ProxyNode> allNodes) {
         long startTime = System.currentTimeMillis();
+        testedCount = 0;
+        int totalNodes = allNodes.size();
+
+        // 通知开始测速
+        notifyProgress();
 
         // 阶段1：对所有节点进行快速TCP可达性测试（50线程并发），过滤掉不可达的节点
         android.util.Log.d("ProxySub", "testAll: phase 1 - TCP reachability test for " + allNodes.size() + " nodes");
@@ -345,21 +363,19 @@ public class ProxySubscriptionManager {
         android.util.Log.d("ProxySub", "testAll: phase 1 done in " + (System.currentTimeMillis() - startTime) + "ms");
 
         // 分离结果
-        List<ProxyNode> reachableNodes = new ArrayList<>();
         List<ProxyNode> mihomoNodes = new ArrayList<>();
         for (ProxyNode node : allNodes) {
             if (node.getLatency() > 0) {
-                if (node.isSupported()) {
-                    // 直连节点：TCP延迟即为最终结果
-                    reachableNodes.add(node);
-                } else {
-                    // mihomo节点：重置为0，待阶段2测试
-                    node.setLatency(0);
-                    mihomoNodes.add(node);
-                }
+                // 所有可达节点都通过 mihomo 测试延迟
+                node.setLatency(0);
+                mihomoNodes.add(node);
             }
         }
-        android.util.Log.d("ProxySub", "testAll: " + reachableNodes.size() + " direct, " + mihomoNodes.size() + " mihomo, " + (allNodes.size() - reachableNodes.size() - mihomoNodes.size()) + " unreachable");
+        int unreachable = allNodes.size() - mihomoNodes.size();
+        android.util.Log.d("ProxySub", "testAll: " + mihomoNodes.size() + " reachable, " + unreachable + " unreachable");
+
+        // 不可达节点直接算作已测（它们已经完成了测试，只是失败了）
+        testedCount = unreachable;
 
         // 阶段2：对mihomo可达节点，通过mihomo delay API并行测试（无需切换selector）
         if (!mihomoNodes.isEmpty()) {
@@ -368,6 +384,9 @@ public class ProxySubscriptionManager {
             testMihomoNodesViaApi(mihomoNodes);
             android.util.Log.d("ProxySub", "testAll: phase 2 done in " + (System.currentTimeMillis() - phase2Start) + "ms");
         }
+
+        // 确保testedCount等于总数
+        testedCount = totalNodes;
 
         android.util.Log.d("ProxySub", "testAll: total time " + (System.currentTimeMillis() - startTime) + "ms");
         saveNodes(getNodes());
@@ -431,6 +450,7 @@ public class ProxySubscriptionManager {
                     node.setLatency(-1);
                 } finally {
                     delayLatch.countDown();
+                    notifyProgress();
                 }
             });
         }
@@ -1007,6 +1027,32 @@ public class ProxySubscriptionManager {
         if (proxies.length() == 0) return "";
         return "mode: rule\n" +
                 "ipv6: false\n" +
+                "allow-lan: false\n" +
+                "dns:\n" +
+                "  enable: true\n" +
+                "  ipv6: false\n" +
+                "  listen: 0.0.0.0:1053\n" +
+                "  enhanced-mode: fake-ip\n" +
+                "  fake-ip-range: 198.18.0.1/16\n" +
+                "  fake-ip-filter:\n" +
+                "    - '*.lan'\n" +
+                "    - localhost.ptlogin2.qq.com\n" +
+                "    - '+.srv.nintendo.net'\n" +
+                "    - '+.stun.playstation.net'\n" +
+                "    - '+.msftconnecttest.com'\n" +
+                "    - '+.msftncsi.com'\n" +
+                "  nameserver:\n" +
+                "    - 223.5.5.5\n" +
+                "    - 119.29.29.29\n" +
+                "    - 180.76.76.76\n" +
+                "  fallback:\n" +
+                "    - 8.8.8.8\n" +
+                "    - 1.1.1.1\n" +
+                "  fallback-filter:\n" +
+                "    geoip: true\n" +
+                "    geoip-code: CN\n" +
+                "    ipcidr:\n" +
+                "      - 240.0.0.0/4\n" +
                 "proxies:\n" +
                 proxies +
                 "proxy-groups:\n" +
@@ -1015,24 +1061,130 @@ public class ProxySubscriptionManager {
                 "    proxies:\n" +
                 names +
                 "rules:\n" +
+                // 本地网络直连
                 "  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve\n" +
                 "  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve\n" +
                 "  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve\n" +
                 "  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve\n" +
+                // 国内域名直连
                 "  - DOMAIN-SUFFIX,cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,com.cn,DIRECT\n" +
+                // 爱奇艺
                 "  - DOMAIN-SUFFIX,iqiyipic.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,iqiyi.com,DIRECT\n" +
-                "  - DOMAIN-SUFFIX,qpic.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,iq.com,DIRECT\n" +
+                "  - DOMAIN-KEYWORD,iqiyi,DIRECT\n" +
+                // 腾讯视频
                 "  - DOMAIN-SUFFIX,qq.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qpic.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,gtimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tencent.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,myqcloud.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tencdns.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,cdntip.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tencent-cloud.net,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,weishi.qq.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,txkt.cn,DIRECT\n" +
+                // 优酷
                 "  - DOMAIN-SUFFIX,youku.com,DIRECT\n" +
+                // B站
                 "  - DOMAIN-SUFFIX,bilibili.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,hdslb.com,DIRECT\n" +
-                "  - DOMAIN-SUFFIX,gtimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bilivideo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bilivideo.cn,DIRECT\n" +
+                // 湖南卫视/MGTV
+                "  - DOMAIN-SUFFIX,mgtv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,hunantv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tvmao.com,DIRECT\n" +
+                // 搜狐
+                "  - DOMAIN-SUFFIX,sohu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,sohucs.com,DIRECT\n" +
+                // 乐视/PPTV
+                "  - DOMAIN-SUFFIX,letv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,le.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pptv.com,DIRECT\n" +
+                // 咪咕
+                "  - DOMAIN-SUFFIX,miguvideo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,migu.cn,DIRECT\n" +
+                // 凤凰
+                "  - DOMAIN-SUFFIX,ifeng.com,DIRECT\n" +
+                // CCTV/央视
+                "  - DOMAIN-SUFFIX,cctv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,cntv.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,yangshipin.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,ipanda.com,DIRECT\n" +
+                // 快手
+                "  - DOMAIN-SUFFIX,kuaishou.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,gifshow.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,yximgs.com,DIRECT\n" +
+                // 抖音/字节
+                "  - DOMAIN-SUFFIX,douyin.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,douyincdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,douyinpic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,douyinstatic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytecdn.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,byteimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pstatp.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,snssdk.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,ixigua.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytedance.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytednsdoc.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytegoofy.com,DIRECT\n" +
+                // 阿里系
                 "  - DOMAIN-SUFFIX,taobao.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,alicdn.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,aliyuncs.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,aliyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,mmstat.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tmall.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,xiami.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,alibaba.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,aliexpress.com,DIRECT\n" +
+                // 百度系
+                "  - DOMAIN-SUFFIX,bdstatic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,baidu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bdimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bcelive.com,DIRECT\n" +
+                // 360
+                "  - DOMAIN-SUFFIX,360kan.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,haokan.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,360.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,360.com,DIRECT\n" +
+                // CDN
+                "  - DOMAIN-SUFFIX,ksyuncdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,ksyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qiniudn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qiniucdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,upyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,upaiyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,hapame.com,DIRECT\n" +
+                // 小米/华为
+                "  - DOMAIN-SUFFIX,xiaomi.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,mi.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,huawei.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,wdstm.com,DIRECT\n" +
+                // 其他国内
+                "  - DOMAIN-SUFFIX,1234567.com.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,jstv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,189.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,weibo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,sina.com.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,sinaimg.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,xhscdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,zhihu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,jd.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,jdcloud.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pinduoduo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,yangkeduo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,utm.cn,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,pages.dev,DIRECT\n" +
+                // GEOIP国内直连（不加no-resolve，对域名也生效，解析后判断IP归属地）
+                "  - GEOIP,CN,DIRECT\n" +
+                // 兜底走代理
                 "  - MATCH,XYS_PROXY\n";
     }
 

@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.utils;
 
 import android.os.StatFs;
+import android.text.TextUtils;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.api.SiteApi;
 import com.fongmi.android.tv.bean.Download;
@@ -199,8 +200,20 @@ public class DownloadManager {
     private void executeSingleFileTask(Download download, File downloadDir) {
         String suffix = ".mp4";
         if (download.getUrl().contains(".mkv") || download.getUrl().contains(".MKV")) suffix = ".mkv";
-        File targetFile = new File(downloadDir, "video" + suffix);
-        File tempFile = new File(downloadDir, "video" + suffix + ".tmp");
+        // 使用片名+集数作为文件名
+        String baseName = "";
+        if (!TextUtils.isEmpty(download.getVodName()) && !TextUtils.isEmpty(download.getEpisodeName())) {
+            baseName = download.getVodName() + " - " + download.getEpisodeName();
+        } else if (!TextUtils.isEmpty(download.getEpisodeName())) {
+            baseName = download.getEpisodeName();
+        } else if (!TextUtils.isEmpty(download.getVodName())) {
+            baseName = download.getVodName();
+        } else {
+            baseName = "video";
+        }
+        baseName = baseName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        File targetFile = new File(downloadDir, baseName + suffix);
+        File tempFile = new File(downloadDir, baseName + suffix + ".tmp");
 
         long startPosition = tempFile.exists() ? tempFile.length() : 0;
         long totalLength = getRemoteContentLength(download.getUrl(), download.getHeaders());

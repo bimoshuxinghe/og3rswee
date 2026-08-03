@@ -122,7 +122,11 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             Notify.show(R.string.proxy_sub_no_node);
             return;
         }
-        Notify.progress(requireActivity());
+        // 设置进度回调, 实时更新已测数量
+        ProxySubscriptionManager.get().setProgressCallback(this::setStatus);
+        binding.test.setEnabled(false);
+        binding.test.setText("测速中...");
+        setStatus();
         Task.execute(() -> {
             List<ProxyNode> nodes = ProxySubscriptionManager.get().testAll();
             ProxyNode fastest = getFastest(nodes);
@@ -130,12 +134,20 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
             if (fastest != null) applied = ProxySubscriptionManager.get().select(fastest);
             boolean finalApplied = applied;
             App.post(() -> {
-                Notify.dismiss();
+                ProxySubscriptionManager.get().setProgressCallback(null);
+                binding.test.setEnabled(true);
+                binding.test.setText(R.string.proxy_sub_test);
                 setStatus();
                 notifyChanged();
-                if (fastest != null && finalApplied) Notify.show(getString(R.string.proxy_sub_test_done, fastest.getDisplay()));
-                else if (fastest != null && !finalApplied) showErrorDialog("连接失败: " + fastest.getName(), "测速通过但代理应用失败\n\n" + MihomoManager.get().getLastError());
-                else showErrorDialog("测速失败", "所有节点均无法连接\n\n" + MihomoManager.get().getLastError());
+                if (fastest != null && finalApplied) {
+                    Notify.show(getString(R.string.proxy_sub_test_done, fastest.getDisplay()));
+                } else if (fastest != null && !finalApplied) {
+                    showErrorDialog("连接失败: " + fastest.getName(), "测速通过但代理应用失败\n\n" + MihomoManager.get().getLastError());
+                } else {
+                    showErrorDialog("测速失败", "所有节点均无法连接\n\n" + MihomoManager.get().getLastError());
+                }
+                // 测速完成后自动显示节点列表，方便查看每个节点的状态
+                showNodeList(nodes);
             });
         });
     }
@@ -272,8 +284,14 @@ public class ProxySubscriptionDialog extends BaseBottomSheetDialog {
     private void setStatus() {
         ProxySubscriptionManager manager = ProxySubscriptionManager.get();
         List<ProxyNode> nodes = manager.getNodes();
-        long tested = nodes.stream().filter(node -> node.getLatency() != -1).count();
-        binding.status.setText(getString(R.string.proxy_sub_status, nodes.size(), tested));
+        int tested = manager.getTestedCount();
+        int total = nodes.size();
+        if (manager.isTesting() && tested < total) {
+            binding.status.setText("共 " + total + " 个节点 · 测试中 " + tested + "/" + total);
+        } else {
+            long actualTested = nodes.stream().filter(node -> node.getLatency() != -1).count();
+            binding.status.setText(getString(R.string.proxy_sub_status, total, (int) actualTested));
+        }
         binding.hint.setVisibility(View.GONE);
     }
 

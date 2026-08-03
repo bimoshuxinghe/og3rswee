@@ -60,6 +60,7 @@ public class Download1DM {
     /**
      * 发送下载请求到 1DM+
      * 使用 Application Context 和 FLAG_ACTIVITY_NEW_TASK，可从任意线程调用
+     * 每次调用添加唯一时间戳，防止1DM+去重导致后续推送被吞掉
      *
      * @param url      下载地址
      * @param filename 文件名（可为空）
@@ -79,6 +80,7 @@ public class Download1DM {
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setComponent(new ComponentName(packageName, DOWNLOADER_CLASS));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 
             if (Build.VERSION.SDK_INT >= 30) {
                 intent.addCategory(Intent.CATEGORY_BROWSABLE);
@@ -86,6 +88,10 @@ public class Download1DM {
 
             intent.putExtra("secure_uri", false);
             intent.setData(Uri.parse(url));
+
+            // 添加唯一标识，防止1DM+去重导致后续推送被吞掉
+            intent.putExtra("extra_unique_id", System.currentTimeMillis());
+            intent.putExtra("extra_timestamp", System.nanoTime());
 
             if (!TextUtils.isEmpty(filename)) {
                 intent.putExtra("extra_filename", filename);
@@ -102,6 +108,10 @@ public class Download1DM {
             }
 
             App.get().startActivity(intent);
+
+            // 发送后等待短暂时间，确保1DM+ UI线程处理完当前Intent
+            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+
             return true;
         } catch (Exception e) {
             e.printStackTrace();
