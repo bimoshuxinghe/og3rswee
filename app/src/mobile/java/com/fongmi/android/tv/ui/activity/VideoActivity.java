@@ -1494,7 +1494,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         // Enable lrc mode so long press triggers lyrics adjustment instead of speed
         mKeyDown.setLrcMode(true);
         // Hide video UI elements to prevent overlap
-        mBinding.exo.setVisibility(View.GONE);
+        // Keep exo (PlayerView) visible to preserve video surface; musicDiscView covers it
         mBinding.widget.getRoot().setVisibility(View.GONE);
         mBinding.control.getRoot().setVisibility(View.GONE);
         mBinding.lrcView.setVisibility(View.GONE);
@@ -1632,8 +1632,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicVisualizer.stop();
         // Restore lrc mode based on actual lrc state
         mKeyDown.setLrcMode(mBinding.lrcView.hasLrc());
-        // Restore video UI elements
-        mBinding.exo.setVisibility(View.VISIBLE);
+        // Restore video UI elements (exo was never hidden, so no surface rebuild needed)
         mBinding.widget.getRoot().setVisibility(View.VISIBLE);
         mBinding.reader.getRoot().setVisibility(View.VISIBLE);
         if (mBinding.lrcView.hasLrc()) {
@@ -1646,9 +1645,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!isFullscreen()) {
             mBinding.video.setLayoutParams(mFrameParams);
         }
-        // Re-attach player to restore video surface after visibility change
-        mBinding.exo.setPlayer(null);
-        mBinding.exo.setPlayer(player().getPlayer());
     }
 
     private void showMusicTimerDialog() {
