@@ -56,7 +56,7 @@ public class EpisodeListDialog extends BaseSideSheetDialog implements EpisodeAda
         if (ResUtil.isLand(requireActivity())) return ResUtil.getScreenWidth() / 3;
         int minWidth = ResUtil.dp2px(320);
         int maxWidth = ResUtil.getScreenWidth() / 2;
-        for (Episode item : episodes) minWidth = Math.max(minWidth, ResUtil.getTextWidth(item.getName(), 14) * 2);
+        for (Episode item : episodes) minWidth = Math.max(minWidth, ResUtil.getTextWidth(item.getName(), 14) + ResUtil.dp2px(48));
         return Math.min(minWidth, maxWidth);
     }
 
@@ -69,7 +69,7 @@ public class EpisodeListDialog extends BaseSideSheetDialog implements EpisodeAda
     }
 
     private void setRecyclerView() {
-        spanCount = ResUtil.isLand(requireActivity()) ? 1 : 2;
+        spanCount = 1;
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setItemAnimator(null);
         binding.recycler.setLayoutManager(new GridLayoutManager(getContext(), spanCount));

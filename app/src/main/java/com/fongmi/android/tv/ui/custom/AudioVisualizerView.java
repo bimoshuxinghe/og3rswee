@@ -34,7 +34,9 @@ public class AudioVisualizerView extends View {
     private long lastDataTime = 0;
     private long frameCount = 0;
     private boolean usingFallback = false;
-    private static final long DATA_TIMEOUT_MS = 300;
+    private static final long DATA_TIMEOUT_MS = 2000;
+    private int originalSessionId = -1;
+    private boolean triedGlobalSession = false;
 
     public AudioVisualizerView(Context context) {
         this(context, null);
@@ -91,6 +93,8 @@ public class AudioVisualizerView extends View {
         }
         release();
         audioSessionId = sessionId;
+        originalSessionId = sessionId;
+        triedGlobalSession = false;
         if (sessionId < 0) return;
         createVisualizer(sessionId);
     }
@@ -245,8 +249,22 @@ public class AudioVisualizerView extends View {
         // Check if we need fallback animation (no real data received)
         if (isActive) {
             if (lastDataTime == 0 || (System.currentTimeMillis() - lastDataTime > DATA_TIMEOUT_MS)) {
-                usingFallback = true;
-                generateFallbackData();
+                // If specific session didn't produce data, try global audio session (0)
+                if (!triedGlobalSession && originalSessionId != 0) {
+                    triedGlobalSession = true;
+                    if (visualizer != null) {
+                        try { visualizer.release(); } catch (Exception ignored) {}
+                        visualizer = null;
+                    }
+                    audioSessionId = 0;
+                    createVisualizer(0);
+                    lastDataTime = 0;
+                } else {
+                    usingFallback = true;
+                    generateFallbackData();
+                }
+            } else {
+                usingFallback = false;
             }
         }
 

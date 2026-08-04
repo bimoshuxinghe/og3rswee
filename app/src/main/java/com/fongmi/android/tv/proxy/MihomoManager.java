@@ -203,7 +203,7 @@ public class MihomoManager {
 
     /**
      * 完全对齐反编译版 b.a() — 构建选中节点的最小化配置
-     * 提取proxies块, 构建只含选中节点的配置, 规则只有 MATCH,XYS_PROXY
+     * 提取proxies块, 构建只含选中节点的配置, 包含国内直连规则
      */
     private String buildSelectedConfig(String text, String selected) {
         String proxies = extractBlock(text, "proxies");
@@ -218,6 +218,125 @@ public class MihomoManager {
                 "    proxies:\n" +
                 "      - " + quote(selected) + "\n" +
                 "rules:\n" +
+                // 本地网络直连
+                "  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve\n" +
+                "  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve\n" +
+                // 国内域名直连
+                "  - DOMAIN-SUFFIX,cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,com.cn,DIRECT\n" +
+                // 爱奇艺
+                "  - DOMAIN-SUFFIX,iqiyipic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,iqiyi.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,iq.com,DIRECT\n" +
+                "  - DOMAIN-KEYWORD,iqiyi,DIRECT\n" +
+                // 腾讯视频
+                "  - DOMAIN-SUFFIX,qq.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qpic.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,gtimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tencent.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,myqcloud.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tencdns.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,cdntip.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tencent-cloud.net,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,txkt.cn,DIRECT\n" +
+                // 优酷
+                "  - DOMAIN-SUFFIX,youku.com,DIRECT\n" +
+                // B站
+                "  - DOMAIN-SUFFIX,bilibili.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,hdslb.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bilivideo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bilivideo.cn,DIRECT\n" +
+                // 湖南卫视/MGTV
+                "  - DOMAIN-SUFFIX,mgtv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,hunantv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tvmao.com,DIRECT\n" +
+                // 搜狐
+                "  - DOMAIN-SUFFIX,sohu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,sohucs.com,DIRECT\n" +
+                // 乐视/PPTV
+                "  - DOMAIN-SUFFIX,letv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,le.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pptv.com,DIRECT\n" +
+                // 咪咕
+                "  - DOMAIN-SUFFIX,miguvideo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,migu.cn,DIRECT\n" +
+                // 凤凰
+                "  - DOMAIN-SUFFIX,ifeng.com,DIRECT\n" +
+                // CCTV/央视
+                "  - DOMAIN-SUFFIX,cctv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,cntv.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,yangshipin.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,ipanda.com,DIRECT\n" +
+                // 快手
+                "  - DOMAIN-SUFFIX,kuaishou.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,gifshow.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,yximgs.com,DIRECT\n" +
+                // 抖音/字节
+                "  - DOMAIN-SUFFIX,douyin.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,douyincdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,douyinpic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,douyinstatic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytecdn.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,byteimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pstatp.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,snssdk.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,ixigua.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytedance.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytednsdoc.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bytegoofy.com,DIRECT\n" +
+                // 阿里系
+                "  - DOMAIN-SUFFIX,taobao.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,alicdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,aliyuncs.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,aliyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,mmstat.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,tmall.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,alibaba.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,aliexpress.com,DIRECT\n" +
+                // 百度系
+                "  - DOMAIN-SUFFIX,bdstatic.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,baidu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bdimg.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,bcelive.com,DIRECT\n" +
+                // 360
+                "  - DOMAIN-SUFFIX,360kan.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,haokan.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,360.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,360.com,DIRECT\n" +
+                // CDN
+                "  - DOMAIN-SUFFIX,ksyuncdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,ksyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qiniudn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,qiniucdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,upyun.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,upaiyun.com,DIRECT\n" +
+                // 小米/华为
+                "  - DOMAIN-SUFFIX,xiaomi.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,mi.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,huawei.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,wdstm.com,DIRECT\n" +
+                // 其他国内
+                "  - DOMAIN-SUFFIX,jstv.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,189.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,weibo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,sina.com.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,sinaimg.cn,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,xhscdn.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,zhihu.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,jd.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,jdcloud.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,pinduoduo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,yangkeduo.com,DIRECT\n" +
+                "  - DOMAIN-SUFFIX,utm.cn,DIRECT\n" +
+                // GEOIP国内直连
+                "  - GEOIP,CN,DIRECT\n" +
+                // 兜底走代理
                 "  - MATCH,XYS_PROXY\n";
     }
 
