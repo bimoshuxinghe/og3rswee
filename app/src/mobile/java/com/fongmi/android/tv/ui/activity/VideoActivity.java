@@ -349,6 +349,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.name.setOnLongClickListener(view -> onChange());
         mBinding.content.setOnLongClickListener(view -> onCopy());
         mBinding.control.back.setOnClickListener(view -> onBack());
+        mBinding.control.keep.setOnClickListener(view -> onKeep());
         mBinding.control.cast.setOnClickListener(view -> onCast());
         mBinding.control.info.setOnClickListener(view -> onInfo());
         mBinding.control.play.setOnClickListener(view -> checkPlay());
@@ -1692,6 +1693,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void checkKeepImg() {
+        mBinding.control.keep.setImageResource(Keep.find(getHistoryKey()) == null ? R.drawable.ic_control_keep_off : R.drawable.ic_control_keep_on);
     }
 
     private void checkLockImg() {

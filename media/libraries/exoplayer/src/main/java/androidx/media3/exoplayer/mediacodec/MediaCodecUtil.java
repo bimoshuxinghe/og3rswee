@@ -388,16 +388,18 @@ public final class MediaCodecUtil {
     }
     if (MimeTypes.VIDEO_DOLBY_VISION.equals(format.sampleMimeType)) {
       // H.264/AVC, H.265/HEVC or AV1 decoders can decode the base layer of some DV profiles.
-      // This can't be done for profile CodecProfileLevel.DolbyVisionProfileDvheStn and profile
-      // CodecProfileLevel.DolbyVisionProfileDvheDtb because the first one is not backward
-      // compatible and the second one is deprecated and is not always backward compatible.
+      // This can't be done for profile CodecProfileLevel.DolbyVisionProfileDvheStn because it
+      // is not backward compatible.
+      // DolbyVisionProfileDvheDtb (Profile 7) is deprecated but its base layer IS backward
+      // compatible with HEVC, so we map it to H.265 for devices without DV hardware decoder.
       @Nullable
       Pair<Integer, Integer> codecProfileAndLevel =
           CodecSpecificDataUtil.getCodecProfileAndLevel(format);
       if (codecProfileAndLevel != null) {
         int profile = codecProfileAndLevel.first;
         if (profile == CodecProfileLevel.DolbyVisionProfileDvheDtr
-            || profile == CodecProfileLevel.DolbyVisionProfileDvheSt) {
+            || profile == CodecProfileLevel.DolbyVisionProfileDvheSt
+            || profile == CodecProfileLevel.DolbyVisionProfileDvheDtb) {
           return MimeTypes.VIDEO_H265;
         } else if (profile == CodecProfileLevel.DolbyVisionProfileDvavSe) {
           return MimeTypes.VIDEO_H264;

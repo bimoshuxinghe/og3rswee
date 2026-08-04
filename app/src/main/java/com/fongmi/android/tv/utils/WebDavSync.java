@@ -80,7 +80,7 @@ public class WebDavSync {
     }
 
     private static String getBackupUrl(String url) {
-        return getFolderUrl(url) + "fongmi_backup.json";
+        return getFolderUrl(url) + "fongmi_backup.bk.gz";
     }
 
     /**
@@ -235,23 +235,39 @@ public class WebDavSync {
 
         Task.execute(() -> {
             try {
+                // 使用与本地备份完全相同的流程生成 .bk.gz 文件
+                java.io.File tempFile = com.github.catvod.utils.Path.cache("cloud_backup.bk");
+                com.fongmi.android.tv.bean.Backup backup = com.fongmi.android.tv.bean.Backup.create();
+                if (backup.getConfig().isEmpty()) {
+                    if (callback != null) App.post(callback::error);
+                    return;
+                }
+                com.github.catvod.utils.Path.write(tempFile, backup.toString().getBytes());
+                // GZIP 压缩：.bk → .bk.gz（与本地备份完全一致）
+                java.io.File gzFile = new java.io.File(tempFile.getAbsolutePath() + ".gz");
+                byte[] buffer = new byte[16384];
+                try (java.io.FileInputStream is = new java.io.FileInputStream(tempFile);
+                     java.util.zip.GZIPOutputStream os = new java.util.zip.GZIPOutputStream(new java.io.FileOutputStream(gzFile))) {
+                    int read;
+                    while ((read = is.read(buffer)) > 0) os.write(buffer, 0, read);
+                }
+                com.github.catvod.utils.Path.clear(tempFile);
+
                 // 确保星落文件夹存在
                 createFolder(finalUrl, finalUser, finalPass);
 
-                Backup backup = Backup.create();
-                String json = backup.toString();
-                byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-
+                // 上传 .bk.gz 文件
                 String backupUrl = getBackupUrl(finalUrl);
                 Request request = new Request.Builder()
                         .url(backupUrl)
                         .header("Authorization", Credentials.basic(finalUser, finalPass))
-                        .put(RequestBody.create(bytes, MediaType.parse("application/json; charset=utf-8")))
+                        .put(RequestBody.create(gzFile, MediaType.parse("application/gzip")))
                         .build();
 
-                Response response = noProxyClient(10000).newCall(request).execute();
+                Response response = noProxyClient(30000).newCall(request).execute();
                 boolean isSuccessful = response.isSuccessful();
                 response.close();
+                com.github.catvod.utils.Path.clear(gzFile);
                 if (isSuccessful) {
                     if (callback != null) App.post(callback::success);
                 } else {
@@ -278,32 +294,48 @@ public class WebDavSync {
 
         Task.execute(() -> {
             try {
+                // 下载 .bk.gz 文件到缓存
                 String backupUrl = getBackupUrl(finalUrl);
                 Request request = new Request.Builder()
                         .url(backupUrl)
                         .header("Authorization", Credentials.basic(finalUser, finalPass))
                         .build();
 
-                Response response = noProxyClient(10000).newCall(request).execute();
+                Response response = noProxyClient(30000).newCall(request).execute();
                 if (response.isSuccessful()) {
-                    String json = response.body().string();
+                    // 保存到缓存文件
+                    java.io.File gzFile = com.github.catvod.utils.Path.cache("cloud_restore.bk.gz");
+                    try (java.io.InputStream is = response.body().byteStream();
+                         java.io.FileOutputStream fos = new java.io.FileOutputStream(gzFile)) {
+                        byte[] buffer = new byte[16384];
+                        int read;
+                        while ((read = is.read(buffer)) > 0) fos.write(buffer, 0, read);
+                    }
                     response.close();
-                    Backup backup = Backup.objectFrom(json);
+
+                    // 使用与本地恢复完全相同的路径：GZIP解压 → 读取JSON → Backup.restore()
+                    java.io.File restoreFile = com.github.catvod.utils.Path.cache("restore");
+                    com.fongmi.android.tv.utils.FileUtil.gzipDecompress(gzFile, restoreFile);
+                    com.github.catvod.utils.Path.clear(gzFile);
+
+                    Backup backup = Backup.objectFrom(com.github.catvod.utils.Path.read(restoreFile));
                     if (backup.getConfig().isEmpty() && backup.getSite().isEmpty()) {
+                        com.github.catvod.utils.Path.clear(restoreFile);
                         if (callback != null) App.post(callback::error);
                     } else {
                         backup.restore();
+                        com.github.catvod.utils.Path.clear(restoreFile);
                         if (callback != null) App.post(callback::success);
                     }
                 } else {
                     response.close();
-                    // 兼容旧备份：星落文件夹不存在时，尝试从根目录下载
+                    // 兼容旧备份：尝试从根目录下载旧的 fongmi_backup.json
                     String oldUrl = finalUrl.endsWith("/") ? finalUrl + "fongmi_backup.json" : finalUrl + "/fongmi_backup.json";
                     Request oldRequest = new Request.Builder()
                             .url(oldUrl)
                             .header("Authorization", Credentials.basic(finalUser, finalPass))
                             .build();
-                    Response oldResponse = noProxyClient(10000).newCall(oldRequest).execute();
+                    Response oldResponse = noProxyClient(30000).newCall(oldRequest).execute();
                     if (oldResponse.isSuccessful()) {
                         String json = oldResponse.body().string();
                         oldResponse.close();
