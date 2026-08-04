@@ -334,8 +334,6 @@ public class MihomoManager {
                 "  - DOMAIN-SUFFIX,pinduoduo.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,yangkeduo.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,utm.cn,DIRECT\n" +
-                // GEOIP国内直连
-                "  - GEOIP,CN,DIRECT\n" +
                 // 兜底走代理
                 "  - MATCH,XYS_PROXY\n";
     }

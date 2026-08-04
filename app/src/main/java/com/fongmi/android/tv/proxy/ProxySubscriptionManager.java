@@ -1080,8 +1080,6 @@ public class ProxySubscriptionManager {
                 "  - DOMAIN-SUFFIX,yangkeduo.com,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,utm.cn,DIRECT\n" +
                 "  - DOMAIN-SUFFIX,pages.dev,DIRECT\n" +
-                // GEOIP国内直连（不加no-resolve，对域名也生效，解析后判断IP归属地）
-                "  - GEOIP,CN,DIRECT\n" +
                 // 兜底走代理
                 "  - MATCH,XYS_PROXY\n";
     }

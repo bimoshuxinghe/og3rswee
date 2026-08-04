@@ -35,8 +35,6 @@ public class AudioVisualizerView extends View {
     private long frameCount = 0;
     private boolean usingFallback = false;
     private static final long DATA_TIMEOUT_MS = 2000;
-    private int originalSessionId = -1;
-    private boolean triedGlobalSession = false;
 
     public AudioVisualizerView(Context context) {
         this(context, null);
@@ -93,8 +91,6 @@ public class AudioVisualizerView extends View {
         }
         release();
         audioSessionId = sessionId;
-        originalSessionId = sessionId;
-        triedGlobalSession = false;
         if (sessionId < 0) return;
         createVisualizer(sessionId);
     }
@@ -109,6 +105,7 @@ public class AudioVisualizerView extends View {
                     processWaveform(waveform);
                     lastDataTime = System.currentTimeMillis();
                     usingFallback = false;
+                    invalidate();
                 }
 
                 @Override
@@ -116,12 +113,12 @@ public class AudioVisualizerView extends View {
                     processFft(fft);
                     lastDataTime = System.currentTimeMillis();
                     usingFallback = false;
+                    invalidate();
                 }
             }, Visualizer.getMaxCaptureRate() / 2, true, true);
             visualizer.setEnabled(true);
         } catch (Exception e) {
             e.printStackTrace();
-            // Visualizer failed (likely permission), will use fallback animation
         }
     }
 
@@ -246,22 +243,13 @@ public class AudioVisualizerView extends View {
         int height = getHeight();
         if (width <= 0 || height <= 0) return;
 
-        // Check if we need fallback animation (no real data received)
+        // Only animate when we have real audio data; stay static otherwise
         if (isActive) {
             if (lastDataTime == 0 || (System.currentTimeMillis() - lastDataTime > DATA_TIMEOUT_MS)) {
-                // If specific session didn't produce data, try global audio session (0)
-                if (!triedGlobalSession && originalSessionId != 0) {
-                    triedGlobalSession = true;
-                    if (visualizer != null) {
-                        try { visualizer.release(); } catch (Exception ignored) {}
-                        visualizer = null;
-                    }
-                    audioSessionId = 0;
-                    createVisualizer(0);
-                    lastDataTime = 0;
-                } else {
-                    usingFallback = true;
-                    generateFallbackData();
+                // No real data — gradually reduce to minimum, then stop animating
+                usingFallback = true;
+                for (int i = 0; i < BAR_COUNT; i++) {
+                    targetMagnitudes[i] = 0;
                 }
             } else {
                 usingFallback = false;
@@ -291,8 +279,16 @@ public class AudioVisualizerView extends View {
             }
         }
 
-        if (isActive) {
+        // Keep animating if we have real data, or while fading down
+        if (isActive && !usingFallback) {
             invalidate();
+        } else if (isActive && usingFallback) {
+            // Keep animating only while bars are still fading down
+            boolean stillFading = false;
+            for (int i = 0; i < BAR_COUNT; i++) {
+                if (magnitudes[i] > 0.01f) { stillFading = true; break; }
+            }
+            if (stillFading) invalidate();
         }
     }
 
