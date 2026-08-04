@@ -19,12 +19,20 @@
         android:layout_height="match_parent"
         android:background="#D9000000" />
 
-    <!-- Top gradient -->
+    <!-- Top gradient for status bar -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="80dp"
+        android:layout_height="60dp"
         android:layout_alignParentTop="true"
         android:background="@drawable/music_gradient_top" />
+
+    <!-- Rotating album art (circular) -->
+    <com.fongmi.android.tv.ui.custom.MusicDiscView
+        android:id="@+id/musicDisc"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="40dp" />
 
     <!-- Song name -->
     <com.google.android.material.textview.MaterialTextView
@@ -34,12 +42,12 @@
         android:layout_below="@id/musicDisc"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="20dp"
         android:ellipsize="end"
         android:gravity="center"
         android:maxLines="1"
         android:textColor="@color/white"
-        android:textSize="22sp"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:shadowColor="#80000000"
         android:shadowDx="1"
@@ -63,77 +71,41 @@
         android:textSize="14sp"
         tools:text="歌手名" />
 
-    <!-- Vinyl disc view -->
-    <com.fongmi.android.tv.ui.custom.MusicDiscView
-        android:id="@+id/musicDisc"
-        android:layout_width="300dp"
-        android:layout_height="380dp"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp" />
-
     <!-- Lyrics view -->
     <com.fongmi.android.tv.ui.custom.LrcView
         android:id="@+id/musicLrcView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/musicArtistName"
-        android:layout_above="@id/musicControlBar"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
+        android:layout_above="@id/musicVisualizer"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="4dp"
         android:visibility="gone"
         tools:visibility="visible" />
 
-    <!-- Control bar -->
-    <androidx.appcompat.widget.LinearLayoutCompat
-        android:id="@+id/musicControlBar"
+    <!-- Audio visualizer -->
+    <com.fongmi.android.tv.ui.custom.AudioVisualizerView
+        android:id="@+id/musicVisualizer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="50dp"
         android:layout_above="@id/musicSeekBar"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:padding="12dp">
-
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/musicPrev"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:scaleType="center"
-            android:src="@drawable/exo_icon_previous" />
-
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/musicPlay"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:scaleType="center"
-            android:src="@drawable/exo_icon_play" />
-
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/musicNext"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:scaleType="center"
-            android:src="@drawable/exo_icon_next" />
-
-    </androidx.appcompat.widget.LinearLayoutCompat>
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:visibility="gone" />
 
     <!-- Seek bar -->
     <LinearLayout
         android:id="@+id/musicSeekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
+        android:layout_above="@id/musicControlBar"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="24dp"
         android:paddingEnd="24dp"
-        android:paddingBottom="24dp">
+        android:paddingTop="8dp">
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/musicCurrentTime"
@@ -164,5 +136,43 @@
             tools:text="00:00" />
 
     </LinearLayout>
+
+    <!-- Control bar -->
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/musicControlBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicPrev"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/exo_icon_previous" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicPlay"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/exo_icon_play" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicNext"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/exo_icon_next" />
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
 
 </RelativeLayout>
