@@ -98,6 +98,12 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <include
+            android:id="@+id/musicPlayer"
+            layout="@layout/view_music_player"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
     </FrameLayout>
 
     <View
@@ -341,6 +347,15 @@
                             android:src="@drawable/ic_action_layout_toggle"
                             android:visibility="gone"
                             tools:visibility="visible" />
+
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:id="@+id/musicBtn"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="12dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_music_note"
+                            app:tint="@color/white" />
 
                     </androidx.appcompat.widget.LinearLayoutCompat>
 

@@ -135,17 +135,26 @@ public class CollectFragment extends BaseFragment implements MenuProvider, Colle
 
     private void setCollect(Result result) {
         if (result == null || result.getList().isEmpty()) return;
-        if (mCollectAdapter.getPosition() == 0) mSearchAdapter.addAll(result.getList());
-        mCollectAdapter.add(Collect.create(result.getList()));
-        mCollectAdapter.add(result.getList());
+        List<Vod> filtered = filterExact(result.getList());
+        if (filtered.isEmpty()) return;
+        if (mCollectAdapter.getPosition() == 0) mSearchAdapter.addAll(filtered);
+        mCollectAdapter.add(Collect.create(filtered));
+        mCollectAdapter.add(filtered);
     }
 
     private void setSearch(Result result) {
         if (result == null) return;
         mScroller.endLoading(result);
-        boolean same = !result.getList().isEmpty() && mCollectAdapter.getActivated().getSite().equals(result.getVod().getSite());
-        if (same) mCollectAdapter.getActivated().getList().addAll(result.getList());
-        if (same) mSearchAdapter.addAll(result.getList());
+        List<Vod> filtered = filterExact(result.getList());
+        boolean same = !filtered.isEmpty() && mCollectAdapter.getActivated().getSite().equals(result.getVod().getSite());
+        if (same) mCollectAdapter.getActivated().getList().addAll(filtered);
+        if (same) mSearchAdapter.addAll(filtered);
+    }
+
+    private List<Vod> filterExact(List<Vod> items) {
+        String keyword = getKeyword();
+        items.removeIf(item -> !item.getName().equals(keyword));
+        return items;
     }
 
     @Override
