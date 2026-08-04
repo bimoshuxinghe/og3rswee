@@ -1502,9 +1502,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.visualizer.stop();
         mBinding.reader.getRoot().setVisibility(View.GONE);
         mBinding.alwaysProgressText.setVisibility(View.GONE);
-        // Expand video frame to full screen so music disc overlay fills entire screen
-        mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(
-                RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        // musicDiscView is at root level, covers entire screen — no need to change video frame layout
         // Show music disc overlay
         mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
         mBinding.musicDiscView.getRoot().bringToFront();
@@ -1632,7 +1630,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicVisualizer.stop();
         // Restore lrc mode based on actual lrc state
         mKeyDown.setLrcMode(mBinding.lrcView.hasLrc());
-        // Restore video UI elements (exo was never hidden, so no surface rebuild needed)
+        // Restore video UI elements — no layout changes were made, surface is intact
         mBinding.widget.getRoot().setVisibility(View.VISIBLE);
         mBinding.reader.getRoot().setVisibility(View.VISIBLE);
         if (mBinding.lrcView.hasLrc()) {
@@ -1641,13 +1639,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.visualizer.setVisibility(View.VISIBLE);
             setupVisualizer();
         }
-        // Restore video frame layout and rebuild surface
-        if (!isFullscreen()) {
-            mBinding.video.setLayoutParams(mFrameParams);
-        }
-        // setRender creates a fresh SurfaceView and re-binds the player to it,
-        // fixing the black screen caused by surface destruction during layout changes
-        setRender();
     }
 
     private void showMusicTimerDialog() {

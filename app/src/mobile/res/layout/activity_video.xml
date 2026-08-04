@@ -98,13 +98,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <include
-            android:id="@+id/musicDiscView"
-            layout="@layout/view_music_disc"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
-
     </FrameLayout>
 
     <View
@@ -392,4 +385,14 @@
             </androidx.core.widget.NestedScrollView>
         </com.fongmi.android.tv.ui.custom.ProgressLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Music disc overlay: placed at root level so it covers entire screen
+         without affecting the video frame's SurfaceView layout -->
+    <include
+        android:id="@+id/musicDiscView"
+        layout="@layout/view_music_disc"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
 </RelativeLayout>
