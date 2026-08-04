@@ -25,7 +25,7 @@ import java.util.Set;
 
 public class ProxySubscriptionManager {
 
-    private static final String NAME = "subscription";
+    public static final String NAME = "subscription";
     private static final int MAX_THREADS = 20;
     private static final int TCP_TIMEOUT = 2000;
     private static final int DELAY_TIMEOUT = 3000;

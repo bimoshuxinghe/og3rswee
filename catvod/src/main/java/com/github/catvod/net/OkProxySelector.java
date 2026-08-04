@@ -43,6 +43,10 @@ public class OkProxySelector extends ProxySelector {
         proxy.removeIf(item -> item.getName().equals(name));
     }
 
+    public synchronized void clearExcept(java.util.Set<String> keepNames) {
+        proxy.removeIf(item -> !keepNames.contains(item.getName()));
+    }
+
     public synchronized void clear() {
         Authenticator.setDefault(null);
         proxy.clear();
