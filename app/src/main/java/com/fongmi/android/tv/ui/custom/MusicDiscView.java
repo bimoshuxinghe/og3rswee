@@ -133,18 +133,20 @@ public class MusicDiscView extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int w = MeasureSpec.getSize(widthMeasureSpec);
-        int h = MeasureSpec.getSize(heightMeasureSpec);
-        if (w <= 0) w = 300;
-        if (h <= 0) h = 300;
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        int w = getMeasuredWidth();
+        int h = getMeasuredHeight();
         int size = Math.min(w, h);
+        if (size <= 0) size = 300;
         setMeasuredDimension(size, size);
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        discRadius = Math.min(w, h) / 2;
+        // Always use the smaller dimension to ensure perfect circle
+        int size = Math.min(w, h);
+        discRadius = size / 2;
         centerX = w / 2;
         centerY = h / 2;
         if (albumBitmap != null) {
@@ -155,6 +157,16 @@ public class MusicDiscView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        // Safety: recalculate dimensions if they seem stale
+        int w = getWidth();
+        int h = getHeight();
+        if (w > 0 && h > 0 && (centerX != w / 2 || centerY != h / 2 || discRadius != Math.min(w, h) / 2)) {
+            int size = Math.min(w, h);
+            discRadius = size / 2;
+            centerX = w / 2;
+            centerY = h / 2;
+        }
+        if (discRadius <= 0) return;
 
         // Outer glow ring (subtle accent color)
         glowPaint.setAntiAlias(true);

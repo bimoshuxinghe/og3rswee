@@ -15,7 +15,7 @@ import androidx.annotation.Nullable;
 public class AudioVisualizerView extends View {
 
     private static final int BAR_COUNT = 48;
-    private static final int MAX_BAR_HEIGHT_DP = 60;
+    private static final int MAX_BAR_HEIGHT_DP = 70;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float[] magnitudes = new float[BAR_COUNT];

@@ -402,6 +402,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
+        // Forward touch events from music disc view to mKeyDown for long press lyrics adjustment
+        mBinding.musicDiscView.getRoot().setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         mBinding.control.action.getRoot().setOnTouchListener(this::onActionTouch);
         mBinding.swipeLayout.setOnRefreshListener(this::onSwipeRefresh);
     }
@@ -744,6 +746,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 float size = 24f + prog;
                 binding.lrcSizeValue.setText(String.valueOf((int) size));
                 mBinding.lrcView.setTextSize(size);
+                if (isMusicDiscVisible) mBinding.musicDiscView.musicLrcView.setTextSize(size);
             }
             @Override
             public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
@@ -773,6 +776,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     applyColorCircle(child, childColor, childColor == color, density);
                 }
                 mBinding.lrcView.setCurrentColor(color);
+                if (isMusicDiscVisible) mBinding.musicDiscView.musicLrcView.setCurrentColor(color);
             });
             binding.lrcColorContainer.addView(circle);
         }
@@ -782,6 +786,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 .setNegativeButton(R.string.dialog_negative, (dialog, which) -> {
                     mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
                     mBinding.lrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    if (isMusicDiscVisible) {
+                        mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                        mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    }
                 })
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
                     float size = 24f + binding.lrcSizeSeek.getProgress();
@@ -791,6 +799,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 .setOnDismissListener(dialog -> {
                     mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
                     mBinding.lrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    if (isMusicDiscVisible) {
+                        mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                        mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    }
                 })
                 .show();
     }
@@ -1458,13 +1470,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         // Show music disc overlay
         mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
         mBinding.musicDiscView.getRoot().bringToFront();
-        // Set song name and artist
-        MediaMetadata meta = player().getMetadata();
-        String title = meta != null && meta.title != null ? meta.title.toString() : mBinding.name.getText().toString();
-        String artist = meta != null && meta.artist != null ? meta.artist.toString() : "";
-        mBinding.musicDiscView.musicSongName.setText(title);
-        mBinding.musicDiscView.musicArtistName.setText(artist);
-        mBinding.musicDiscView.musicArtistName.setVisibility(artist.isEmpty() ? View.GONE : View.VISIBLE);
+        // Set song name and artist - use episode name (actual song) instead of VodName (category)
+        updateMusicDiscSongInfo();
         // Load album art and apply dynamic colors
         loadMusicDiscArtwork();
         // Sync disc with current play state
@@ -1486,6 +1493,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
         }
         updateMusicDiscProgress();
+        // Restart progress timer (hideProgress may have removed it)
+        App.post(mR2, 1000);
         // Setup audio visualizer
         mBinding.musicDiscView.musicVisualizer.setVisibility(View.VISIBLE);
         setupMusicVisualizer();
@@ -1550,6 +1559,31 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         int g = (int) (Color.green(color) * (1 - amount));
         int b = (int) (Color.blue(color) * (1 - amount));
         return Color.rgb(r, g, b);
+    }
+
+    private void updateMusicDiscSongInfo() {
+        if (!isMusicDiscVisible) return;
+        String episodeName = getEpisode().getName();
+        String vodName = mHistory != null ? mHistory.getVodName() : "";
+        String songTitle;
+        String artistName;
+        if (!episodeName.isEmpty()) {
+            int start = episodeName.indexOf("《");
+            int end = episodeName.indexOf("》");
+            if (start >= 0 && end > start) {
+                songTitle = episodeName.substring(start + 1, end);
+                artistName = episodeName.substring(0, start).trim();
+            } else {
+                songTitle = episodeName;
+                artistName = vodName;
+            }
+        } else {
+            songTitle = vodName;
+            artistName = "";
+        }
+        mBinding.musicDiscView.musicSongName.setText(songTitle);
+        mBinding.musicDiscView.musicArtistName.setText(artistName);
+        mBinding.musicDiscView.musicArtistName.setVisibility(artistName.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     private void hideMusicDisc() {
@@ -2031,10 +2065,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.lrcView.start();
             setupVisualizer();
             if (isMusicDiscVisible) {
+                updateMusicDiscSongInfo();
                 mBinding.musicDiscView.musicDisc.play();
                 mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
                 mBinding.musicDiscView.musicLrcView.start();
                 setupMusicVisualizer();
+                // Restart progress timer since hideProgress removed it
+                App.post(mR2, 1000);
             }
         } else if (isPaused()) {
             mPiP.update(this, false);
@@ -2072,7 +2109,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void setupMusicVisualizer() {
         try {
             if (mBinding.musicDiscView.musicVisualizer.getVisibility() != View.VISIBLE) return;
-            if (!player().isPlaying()) return;
             androidx.media3.exoplayer.ExoPlayer exo = null;
             if (player().getPlayer() instanceof androidx.media3.exoplayer.ExoPlayer) {
                 exo = (androidx.media3.exoplayer.ExoPlayer) player().getPlayer();
@@ -2081,7 +2117,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 int sessionId = exo.getAudioSessionId();
                 if (sessionId != 0) {
                     mBinding.musicDiscView.musicVisualizer.setAudioSessionId(sessionId);
-                    mBinding.musicDiscView.musicVisualizer.start();
+                    if (player().isPlaying()) mBinding.musicDiscView.musicVisualizer.start();
+                } else {
+                    // Audio session not ready yet, retry after delay
+                    App.post(() -> {
+                        if (isMusicDiscVisible) setupMusicVisualizer();
+                    }, 500);
                 }
             }
         } catch (Exception e) {
