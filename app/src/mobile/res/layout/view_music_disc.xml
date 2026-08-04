@@ -26,6 +26,34 @@
         android:layout_alignParentTop="true"
         android:background="@drawable/music_gradient_top" />
 
+    <!-- Top right: timer button -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/musicTimerBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_music_timer" />
+
+    <!-- Top left: back button -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/musicBackBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_control_back" />
+
     <!-- Rotating album art (circular) -->
     <com.fongmi.android.tv.ui.custom.MusicDiscView
         android:id="@+id/musicDisc"
@@ -148,10 +176,19 @@
         android:padding="16dp">
 
         <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicListBtn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_music_list" />
+
+        <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/musicPrev"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginEnd="32dp"
+            android:layout_marginEnd="24dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="center"
             android:src="@drawable/exo_icon_previous" />
@@ -168,10 +205,19 @@
             android:id="@+id/musicNext"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginStart="32dp"
+            android:layout_marginStart="24dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="center"
             android:src="@drawable/exo_icon_next" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicExitBtn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_music_exit" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 

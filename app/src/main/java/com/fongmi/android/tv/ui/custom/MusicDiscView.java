@@ -200,14 +200,6 @@ public class MusicDiscView extends View {
             albumPaint.reset();
             albumPaint.setAntiAlias(true);
             canvas.drawBitmap(circleAlbum, left, top, albumPaint);
-
-            // Subtle glossy reflection on top half
-            Shader gloss = new LinearGradient(0, -discRadius, 0, 0,
-                    new int[]{0x30FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP);
-            albumPaint.setShader(gloss);
-            albumPaint.setColor(Color.WHITE);
-            canvas.drawCircle(0, 0, discRadius - 14, albumPaint);
-            albumPaint.setShader(null);
         } else {
             // Default - accent gradient
             Shader shader = new RadialGradient(0, 0, discRadius - 14,
@@ -218,14 +210,6 @@ public class MusicDiscView extends View {
             canvas.drawCircle(0, 0, discRadius - 14, albumPaint);
             albumPaint.setShader(null);
         }
-
-        // Center hole (CD-like)
-        float centerHoleR = discRadius * 0.08f;
-        borderPaint.setColor(0xFF1A1A1A);
-        borderPaint.setStyle(Paint.Style.FILL);
-        canvas.drawCircle(0, 0, centerHoleR, borderPaint);
-        borderPaint.setColor(accentColor);
-        canvas.drawCircle(0, 0, centerHoleR * 0.5f, borderPaint);
 
         canvas.restore();
     }

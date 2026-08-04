@@ -153,6 +153,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private boolean isReaderContent;
     private boolean isMusicDiscVisible;
     private static final int REQUEST_RECORD_AUDIO = 1002;
+    private android.os.CountDownTimer musicExitTimer;
+    private long musicExitRemaining;
 
     public static void push(FragmentActivity activity, String text) {
         if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
@@ -351,6 +353,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
         mBinding.musicDiscView.musicNext.setOnClickListener(view -> checkNext());
         mBinding.musicDiscView.musicPlay.setOnClickListener(view -> checkPlay());
+        mBinding.musicDiscView.musicTimerBtn.setOnClickListener(view -> showMusicTimerDialog());
+        mBinding.musicDiscView.musicListBtn.setOnClickListener(view -> onEpisodes());
+        mBinding.musicDiscView.musicBackBtn.setOnClickListener(view -> hideMusicDisc());
+        mBinding.musicDiscView.musicExitBtn.setOnClickListener(view -> onMusicExit());
         mBinding.musicDiscView.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
@@ -850,6 +856,22 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         notifyItemChanged(mBinding.episode, mEpisodeAdapter);
         scrollToPosition(mBinding.episode, mEpisodeAdapter.getPosition());
         if (isFullscreen()) Notify.show(getString(R.string.play_ready, item.getName()));
+        // Reload artwork and lyrics when switching episodes in music mode
+        if (isMusicDiscVisible) {
+            loadMusicDiscArtwork();
+            // Update lyrics for new episode
+            if (mBinding.lrcView.hasLrc()) {
+                mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                mBinding.musicDiscView.musicLrcView.setCallback(() -> {
+                    try { return player().getPosition(); } catch (Exception e) { return 0L; }
+                });
+                mBinding.musicDiscView.musicLrcView.setData(mBinding.lrcView.getData());
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
+            } else {
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
+            }
+        }
         onRefresh();
     }
 
@@ -1622,6 +1644,70 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!isFullscreen()) {
             mBinding.video.setLayoutParams(mFrameParams);
         }
+    }
+
+    private void showMusicTimerDialog() {
+        String[] items = {"15 分钟", "30 分钟", "45 分钟", "60 分钟", "90 分钟", "取消定时"};
+        int checkedItem = -1;
+        if (musicExitTimer != null) checkedItem = 0;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(musicExitTimer != null ? "定时关闭 (剩余 " + formatTime(musicExitRemaining) + ")" : "定时关闭")
+                .setSingleChoiceItems(items, checkedItem, (dialog, which) -> {
+                    switch (which) {
+                        case 0: setMusicExitTimer(15); break;
+                        case 1: setMusicExitTimer(30); break;
+                        case 2: setMusicExitTimer(45); break;
+                        case 3: setMusicExitTimer(60); break;
+                        case 4: setMusicExitTimer(90); break;
+                        case 5: cancelMusicExitTimer(); break;
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    private void setMusicExitTimer(int minutes) {
+        cancelMusicExitTimer();
+        long totalMillis = java.util.concurrent.TimeUnit.MINUTES.toMillis(minutes);
+        musicExitRemaining = totalMillis;
+        musicExitTimer = new android.os.CountDownTimer(totalMillis, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                musicExitRemaining = millisUntilFinished;
+            }
+            @Override
+            public void onFinish() {
+                musicExitRemaining = 0;
+                musicExitTimer = null;
+                onMusicExit();
+            }
+        }.start();
+        com.fongmi.android.tv.utils.Notify.show(minutes + " 分钟后自动退出");
+    }
+
+    private void cancelMusicExitTimer() {
+        if (musicExitTimer != null) {
+            musicExitTimer.cancel();
+            musicExitTimer = null;
+            musicExitRemaining = 0;
+            com.fongmi.android.tv.utils.Notify.show("已取消定时关闭");
+        }
+    }
+
+    private String formatTime(long millis) {
+        long totalSeconds = millis / 1000;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        return String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds);
+    }
+
+    private void onMusicExit() {
+        cancelMusicExitTimer();
+        // Stop playback and exit
+        leavingPlayback = true;
+        stopPlaybackIfLeaving();
+        finishAffinity();
     }
 
     private void updateMusicDiscProgress() {
@@ -2669,6 +2755,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.musicDiscView.musicVisualizer.release();
         }
         saveHistory(true);
+        cancelMusicExitTimer();
         Timer.get().reset();
         DanmakuApi.cancel();
         RefreshEvent.keep();
