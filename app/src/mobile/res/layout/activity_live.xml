@@ -54,6 +54,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
             android:background="@drawable/bg_live_portrait"
             android:orientation="vertical"
             android:padding="8dp">
@@ -87,7 +89,7 @@
                             android:layout_weight="1"
                             android:ellipsize="end"
                             android:singleLine="true"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="18sp"
                             android:textStyle="bold"
                             tools:text="CCTV2财经" />
@@ -97,7 +99,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:textColor="#CCFFFFFF"
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="14sp"
                             tools:text="002" />
 
@@ -110,7 +112,7 @@
                         android:layout_marginTop="4dp"
                         android:ellipsize="end"
                         android:maxLines="2"
-                        android:textColor="#99FFFFFF"
+                        android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="12sp"
                         tools:text="正在播放：2026精品财经纪录-完美早餐 10:48~11:06" />
 
@@ -136,7 +138,7 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:text="@string/live_prev_channel"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="10sp"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
 
@@ -150,7 +152,7 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:text="@string/live_next_channel"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="10sp"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
 
@@ -164,7 +166,7 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:text="@string/live_prev_source"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="10sp"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
 
@@ -178,7 +180,7 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:text="@string/live_next_source"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="10sp"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
 
@@ -191,7 +193,7 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:text="@string/live_epg"
-                    android:textColor="@color/white"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="10sp"
                     style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
 
@@ -202,6 +204,9 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:layout_marginBottom="6dp"
             android:background="@drawable/bg_live_portrait"
             android:paddingLeft="12dp"
             android:paddingRight="12dp">
@@ -249,7 +254,7 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:background="@drawable/shape_search_inner"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="12sp"
                             android:gravity="center_vertical"
                             android:paddingStart="8dp"
@@ -262,7 +267,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
                             android:text="搜索频道"
-                            android:textColor="@color/white"
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="13sp"/>
 
                     </LinearLayout>
@@ -283,7 +288,10 @@
                 android:id="@+id/port_epgData"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="?attr/colorSurface"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/bg_epg_popup"
+                android:elevation="6dp"
                 android:padding="8dp"
                 android:visibility="gone"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
