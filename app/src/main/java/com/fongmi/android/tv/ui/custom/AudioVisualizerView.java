@@ -76,10 +76,26 @@ public class AudioVisualizerView extends View {
     }
 
     public void setAudioSessionId(int sessionId) {
-        if (sessionId == audioSessionId) return;
+        // If same session and visualizer still alive, just re-enable
+        if (sessionId == audioSessionId && visualizer != null) {
+            try {
+                if (!visualizer.getEnabled()) visualizer.setEnabled(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+                // Re-create if re-enable fails
+                release();
+                audioSessionId = sessionId;
+                createVisualizer(sessionId);
+            }
+            return;
+        }
         release();
         audioSessionId = sessionId;
         if (sessionId < 0) return;
+        createVisualizer(sessionId);
+    }
+
+    private void createVisualizer(int sessionId) {
         try {
             visualizer = new Visualizer(sessionId);
             visualizer.setCaptureSize(Visualizer.getCaptureSizeRange()[0]);
@@ -142,23 +158,25 @@ public class AudioVisualizerView extends View {
 
     /**
      * Generate pseudo-random bar heights for fallback animation.
-     * This creates a music-like pulsing pattern that simulates audio visualization.
+     * Simulates music-like rhythmic pulsing with varied patterns.
      */
     private void generateFallbackData() {
         frameCount++;
-        float t = frameCount * 0.15f;
+        float t = frameCount * 0.12f;
         for (int i = 0; i < BAR_COUNT; i++) {
-            // Create a wave pattern with multiple frequencies for natural look
-            float base = 0.35f;
-            float wave1 = 0.25f * (float) (Math.sin(t + i * 0.3) * 0.5 + 0.5);
-            float wave2 = 0.20f * (float) (Math.sin(t * 1.3 + i * 0.5) * 0.5 + 0.5);
-            float wave3 = 0.15f * (float) (Math.sin(t * 0.7 + i * 0.15) * 0.5 + 0.5);
-            // Center bars are taller (like real music)
+            // Multiple sine waves at different frequencies for natural variation
+            float wave1 = 0.30f * (float) (Math.sin(t + i * 0.25) * 0.5 + 0.5);
+            float wave2 = 0.25f * (float) (Math.sin(t * 1.7 + i * 0.45) * 0.5 + 0.5);
+            float wave3 = 0.15f * (float) (Math.sin(t * 2.3 + i * 0.7) * 0.5 + 0.5);
+            // Random-ish jitter for organic feel
+            float jitter = 0.10f * (float) (Math.sin(t * 3.1 + i * 1.3) * Math.cos(t * 0.9 + i * 0.6));
+            // Center emphasis like real music spectrum
             float centerBoost = 1f - Math.abs(i - BAR_COUNT / 2f) / (BAR_COUNT / 2f);
-            centerBoost = 0.5f + centerBoost * 0.5f;
-            targetMagnitudes[i] = (base + wave1 + wave2 + wave3) * centerBoost;
-            // Clamp to reasonable range
-            targetMagnitudes[i] = Math.min(0.9f, Math.max(0.1f, targetMagnitudes[i]));
+            centerBoost = 0.4f + centerBoost * 0.6f;
+            // Beat pulse - simulates bass drum
+            float beat = 0.15f * (float) Math.max(0, Math.sin(t * 2.0));
+            targetMagnitudes[i] = (wave1 + wave2 + wave3 + jitter + beat) * centerBoost;
+            targetMagnitudes[i] = Math.min(0.95f, Math.max(0.08f, targetMagnitudes[i]));
         }
     }
 

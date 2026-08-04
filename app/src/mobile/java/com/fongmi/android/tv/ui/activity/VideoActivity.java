@@ -3,8 +3,10 @@ package com.fongmi.android.tv.ui.activity;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.Manifest;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -150,6 +152,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private VodReader mReader;
     private boolean isReaderContent;
     private boolean isMusicDiscVisible;
+    private static final int REQUEST_RECORD_AUDIO = 1002;
 
     public static void push(FragmentActivity activity, String text) {
         if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
@@ -2124,6 +2127,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void setupMusicVisualizer() {
         try {
             if (mBinding.musicDiscView.musicVisualizer.getVisibility() != View.VISIBLE) return;
+            // Check RECORD_AUDIO permission for Visualizer
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
+                return;
+            }
             androidx.media3.exoplayer.ExoPlayer exo = null;
             if (player().getPlayer() instanceof androidx.media3.exoplayer.ExoPlayer) {
                 exo = (androidx.media3.exoplayer.ExoPlayer) player().getPlayer();
@@ -2131,8 +2139,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             if (exo != null) {
                 int sessionId = exo.getAudioSessionId();
                 if (sessionId != 0) {
+                    // Always set session ID and start (handles pause/resume correctly)
                     mBinding.musicDiscView.musicVisualizer.setAudioSessionId(sessionId);
-                    if (player().isPlaying()) mBinding.musicDiscView.musicVisualizer.start();
+                    mBinding.musicDiscView.musicVisualizer.start();
                 } else {
                     // Audio session not ready yet, retry after delay
                     App.post(() -> {
@@ -2142,6 +2151,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, setup visualizer now
+                if (isMusicDiscVisible) setupMusicVisualizer();
+            }
         }
     }
 
