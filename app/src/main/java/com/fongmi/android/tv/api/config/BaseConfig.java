@@ -7,7 +7,6 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.impl.Callback;
-import com.fongmi.android.tv.proxy.ProxySubscriptionManager;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Task;
@@ -76,7 +75,8 @@ abstract class BaseConfig {
         // 清除所有旧代理，代理订阅不再添加全局代理
         OkHttp.selector().clear();
         OkHttp.selector().addAll(proxy);
-        ProxySubscriptionManager.get().applySaved();
+        // 不在配置加载时同步启动mihomo，避免阻塞配置加载导致启动卡顿
+        // mihomo启动由App.onCreate()中的异步调用处理
     }
 
     protected void setHosts(List<String> hosts) {

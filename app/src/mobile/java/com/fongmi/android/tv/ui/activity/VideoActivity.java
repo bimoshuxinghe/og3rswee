@@ -356,7 +356,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicTimerBtn.setOnClickListener(view -> showMusicTimerDialog());
         mBinding.musicDiscView.musicListBtn.setOnClickListener(view -> onEpisodes());
         mBinding.musicDiscView.musicBackBtn.setOnClickListener(view -> hideMusicDisc());
-        mBinding.musicDiscView.musicExitBtn.setOnClickListener(view -> onMusicExit());
+        mBinding.musicDiscView.musicTimerBtn2.setOnClickListener(view -> showMusicTimerDialog());
         mBinding.musicDiscView.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
@@ -1500,6 +1500,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.getRoot().setVisibility(View.GONE);
         mBinding.lrcView.setVisibility(View.GONE);
         mBinding.visualizer.setVisibility(View.GONE);
+        mBinding.visualizer.stop();
         mBinding.reader.getRoot().setVisibility(View.GONE);
         mBinding.alwaysProgressText.setVisibility(View.GONE);
         // Expand video frame to full screen
@@ -1639,6 +1640,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (mBinding.lrcView.hasLrc()) {
             mBinding.lrcView.setVisibility(View.VISIBLE);
             if (player().isPlaying()) mBinding.lrcView.start();
+            mBinding.visualizer.setVisibility(View.VISIBLE);
+            setupVisualizer();
         }
         // Restore video frame layout
         if (!isFullscreen()) {
@@ -2213,11 +2216,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void setupMusicVisualizer() {
         try {
             if (mBinding.musicDiscView.musicVisualizer.getVisibility() != View.VISIBLE) return;
-            // Check RECORD_AUDIO permission for Visualizer
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
-                return;
-            }
             androidx.media3.exoplayer.ExoPlayer exo = null;
             if (player().getPlayer() instanceof androidx.media3.exoplayer.ExoPlayer) {
                 exo = (androidx.media3.exoplayer.ExoPlayer) player().getPlayer();
@@ -2225,11 +2223,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             if (exo != null) {
                 int sessionId = exo.getAudioSessionId();
                 if (sessionId != 0) {
-                    // Always set session ID and start (handles pause/resume correctly)
                     mBinding.musicDiscView.musicVisualizer.setAudioSessionId(sessionId);
                     mBinding.musicDiscView.musicVisualizer.start();
                 } else {
-                    // Audio session not ready yet, retry after delay
                     App.post(() -> {
                         if (isMusicDiscVisible) setupMusicVisualizer();
                     }, 500);

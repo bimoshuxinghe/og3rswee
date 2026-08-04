@@ -211,13 +211,13 @@
             android:src="@drawable/exo_icon_next" />
 
         <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/musicExitBtn"
+            android:id="@+id/musicTimerBtn2"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="24dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="center"
-            android:src="@drawable/ic_music_exit" />
+            android:src="@drawable/ic_music_timer" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
