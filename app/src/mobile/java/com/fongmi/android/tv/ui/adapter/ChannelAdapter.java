@@ -106,6 +106,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         int textColorRes = com.fongmi.android.tv.R.color.selector_text;
         holder.binding.name.setTextColor(androidx.appcompat.content.res.AppCompatResources.getColorStateList(context, textColorRes));
         holder.binding.number.setTextColor(androidx.appcompat.content.res.AppCompatResources.getColorStateList(context, textColorRes));
+        holder.binding.epg.setTextColor(android.graphics.Color.parseColor("#CCFFFFFF"));
 
         Epg epg = item.getData();
         EpgData currentEpg = null;

@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_marginTop="4dp"
     android:layout_marginBottom="4dp"
-    android:background="@drawable/shape_live_portrait"
+    android:background="@drawable/shape_epg_item"
     android:orientation="vertical"
     android:padding="8dp">
 
