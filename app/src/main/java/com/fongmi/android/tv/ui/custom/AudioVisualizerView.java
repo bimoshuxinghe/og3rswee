@@ -30,6 +30,12 @@ public class AudioVisualizerView extends View {
     private float barSpacing;
     private float cornerRadius;
 
+    // Fallback animation state
+    private long lastDataTime = 0;
+    private long frameCount = 0;
+    private boolean usingFallback = false;
+    private static final long DATA_TIMEOUT_MS = 300;
+
     public AudioVisualizerView(Context context) {
         this(context, null);
     }
@@ -81,17 +87,21 @@ public class AudioVisualizerView extends View {
                 @Override
                 public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
                     processWaveform(waveform);
+                    lastDataTime = System.currentTimeMillis();
+                    usingFallback = false;
                 }
 
                 @Override
                 public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
                     processFft(fft);
+                    lastDataTime = System.currentTimeMillis();
+                    usingFallback = false;
                 }
             }, Visualizer.getMaxCaptureRate() / 2, true, true);
             visualizer.setEnabled(true);
-            isActive = true;
         } catch (Exception e) {
             e.printStackTrace();
+            // Visualizer failed (likely permission), will use fallback animation
         }
     }
 
@@ -112,7 +122,6 @@ public class AudioVisualizerView extends View {
     }
 
     private void processFft(byte[] fft) {
-        // FFT data: bytes[0]=real(0), bytes[1]=imag(0), bytes[2]=real(1), etc.
         int usableBins = (fft.length / 2) - 1;
         int binsPerBar = usableBins / BAR_COUNT;
         if (binsPerBar <= 0) binsPerBar = 1;
@@ -127,8 +136,29 @@ public class AudioVisualizerView extends View {
                     if (magnitude > max) max = magnitude;
                 }
             }
-            // Normalize to 0-1 range (byte values are -128 to 127, magnitude max ~181)
             targetMagnitudes[i] = Math.min(1f, max / 100f);
+        }
+    }
+
+    /**
+     * Generate pseudo-random bar heights for fallback animation.
+     * This creates a music-like pulsing pattern that simulates audio visualization.
+     */
+    private void generateFallbackData() {
+        frameCount++;
+        float t = frameCount * 0.15f;
+        for (int i = 0; i < BAR_COUNT; i++) {
+            // Create a wave pattern with multiple frequencies for natural look
+            float base = 0.35f;
+            float wave1 = 0.25f * (float) (Math.sin(t + i * 0.3) * 0.5 + 0.5);
+            float wave2 = 0.20f * (float) (Math.sin(t * 1.3 + i * 0.5) * 0.5 + 0.5);
+            float wave3 = 0.15f * (float) (Math.sin(t * 0.7 + i * 0.15) * 0.5 + 0.5);
+            // Center bars are taller (like real music)
+            float centerBoost = 1f - Math.abs(i - BAR_COUNT / 2f) / (BAR_COUNT / 2f);
+            centerBoost = 0.5f + centerBoost * 0.5f;
+            targetMagnitudes[i] = (base + wave1 + wave2 + wave3) * centerBoost;
+            // Clamp to reasonable range
+            targetMagnitudes[i] = Math.min(0.9f, Math.max(0.1f, targetMagnitudes[i]));
         }
     }
 
@@ -141,6 +171,8 @@ public class AudioVisualizerView extends View {
             }
         }
         isActive = true;
+        lastDataTime = 0;
+        frameCount = 0;
         invalidate();
     }
 
@@ -169,6 +201,7 @@ public class AudioVisualizerView extends View {
         }
         isActive = false;
         audioSessionId = -1;
+        usingFallback = false;
         for (int i = 0; i < BAR_COUNT; i++) {
             targetMagnitudes[i] = 0;
             magnitudes[i] = 0;
@@ -190,6 +223,14 @@ public class AudioVisualizerView extends View {
         int width = getWidth();
         int height = getHeight();
         if (width <= 0 || height <= 0) return;
+
+        // Check if we need fallback animation (no real data received)
+        if (isActive) {
+            if (lastDataTime == 0 || (System.currentTimeMillis() - lastDataTime > DATA_TIMEOUT_MS)) {
+                usingFallback = true;
+                generateFallbackData();
+            }
+        }
 
         // Smooth interpolation
         for (int i = 0; i < BAR_COUNT; i++) {

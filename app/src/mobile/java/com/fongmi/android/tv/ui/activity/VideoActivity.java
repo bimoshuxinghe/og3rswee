@@ -403,7 +403,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         // Forward touch events from music disc view to mKeyDown for long press lyrics adjustment
-        mBinding.musicDiscView.getRoot().setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
+        mBinding.musicDiscView.getRoot().setOnTouchListener((view, event) -> {
+            mKeyDown.onTouchEvent(event);
+            return false;
+        });
+        mBinding.musicDiscView.musicLrcView.setOnTouchListener((view, event) -> {
+            mKeyDown.onTouchEvent(event);
+            return false;
+        });
+        mBinding.musicDiscView.musicDisc.setOnTouchListener((view, event) -> {
+            mKeyDown.onTouchEvent(event);
+            return false;
+        });
         mBinding.control.action.getRoot().setOnTouchListener(this::onActionTouch);
         mBinding.swipeLayout.setOnRefreshListener(this::onSwipeRefresh);
     }
@@ -1456,6 +1467,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void showMusicDisc() {
         isMusicDiscVisible = true;
+        // Enable lrc mode so long press triggers lyrics adjustment instead of speed
+        mKeyDown.setLrcMode(true);
         // Hide video UI elements to prevent overlap
         mBinding.exo.setVisibility(View.GONE);
         mBinding.widget.getRoot().setVisibility(View.GONE);
@@ -1493,7 +1506,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
         }
         updateMusicDiscProgress();
-        // Restart progress timer (hideProgress may have removed it)
+        // Ensure progress timer is running (hideProgress won't remove it when music disc is visible)
         App.post(mR2, 1000);
         // Setup audio visualizer
         mBinding.musicDiscView.musicVisualizer.setVisibility(View.VISIBLE);
@@ -1592,6 +1605,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicDisc.pause();
         mBinding.musicDiscView.musicLrcView.stop();
         mBinding.musicDiscView.musicVisualizer.stop();
+        // Restore lrc mode based on actual lrc state
+        mKeyDown.setLrcMode(mBinding.lrcView.hasLrc());
         // Restore video UI elements
         mBinding.exo.setVisibility(View.VISIBLE);
         mBinding.widget.getRoot().setVisibility(View.VISIBLE);
@@ -1678,7 +1693,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void hideProgress() {
         mBinding.progress.getRoot().setVisibility(View.GONE);
-        App.removeCallbacks(mR2);
+        if (!isMusicDiscVisible) {
+            App.removeCallbacks(mR2);
+        }
         Traffic.reset();
     }
 
@@ -2070,8 +2087,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
                 mBinding.musicDiscView.musicLrcView.start();
                 setupMusicVisualizer();
-                // Restart progress timer since hideProgress removed it
-                App.post(mR2, 1000);
             }
         } else if (isPaused()) {
             mPiP.update(this, false);
