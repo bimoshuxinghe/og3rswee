@@ -1447,7 +1447,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.getRoot().setVisibility(View.GONE);
         mBinding.lrcView.setVisibility(View.GONE);
         mBinding.visualizer.setVisibility(View.GONE);
-        mBinding.reader.setVisibility(View.GONE);
+        mBinding.reader.getRoot().setVisibility(View.GONE);
         mBinding.alwaysProgressText.setVisibility(View.GONE);
         // Expand video frame to full screen
         mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(
@@ -1484,7 +1484,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         // Restore video UI elements
         mBinding.exo.setVisibility(View.VISIBLE);
         mBinding.widget.getRoot().setVisibility(View.VISIBLE);
-        mBinding.reader.setVisibility(View.VISIBLE);
+        mBinding.reader.getRoot().setVisibility(View.VISIBLE);
         if (mBinding.lrcView.hasLrc()) {
             mBinding.lrcView.setVisibility(View.VISIBLE);
             if (player().isPlaying()) mBinding.lrcView.start();
