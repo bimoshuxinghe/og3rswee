@@ -206,7 +206,6 @@ public class MusicDiscView extends View {
             discPaint.reset();
             discPaint.setAntiAlias(true);
             canvas.drawBitmap(circleAlbum, left, top, discPaint);
-            discPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         } else {
             // Default album art - gradient circle
             Shader shader = new RadialGradient(0, 0, albumRadius,
