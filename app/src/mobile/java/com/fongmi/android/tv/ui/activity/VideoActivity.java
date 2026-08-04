@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -24,6 +25,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.palette.graphics.Palette;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -1441,7 +1443,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void showMusicDisc() {
         isMusicDiscVisible = true;
-        // Hide video UI elements to prevent overlap (don't call enterFullscreen)
+        // Hide video UI elements to prevent overlap
         mBinding.exo.setVisibility(View.GONE);
         mBinding.widget.getRoot().setVisibility(View.GONE);
         mBinding.control.getRoot().setVisibility(View.GONE);
@@ -1455,6 +1457,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         // Show music disc overlay
         mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
         mBinding.musicDiscView.getRoot().bringToFront();
+        // Set song name and artist
+        MediaMetadata meta = player().getMetadata();
+        String title = meta != null && meta.title != null ? meta.title.toString() : mBinding.name.getText().toString();
+        String artist = meta != null && meta.artist != null ? meta.artist.toString() : "";
+        mBinding.musicDiscView.musicSongName.setText(title);
+        mBinding.musicDiscView.musicArtistName.setText(artist);
+        mBinding.musicDiscView.musicArtistName.setVisibility(artist.isEmpty() ? View.GONE : View.VISIBLE);
+        // Load album art and apply dynamic colors
+        loadMusicDiscArtwork();
         // Sync disc with current play state
         if (player().isPlaying()) mBinding.musicDiscView.musicDisc.play();
         else mBinding.musicDiscView.musicDisc.pause();
@@ -1474,6 +1485,68 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
         }
         updateMusicDiscProgress();
+    }
+
+    private void loadMusicDiscArtwork() {
+        String picUrl = mHistory != null ? mHistory.getVodPic() : "";
+        if (picUrl.isEmpty() && player().getMetadata() != null && player().getMetadata().artworkUri != null) {
+            picUrl = player().getMetadata().artworkUri.toString();
+        }
+        if (picUrl.isEmpty()) return;
+        // Load album art as bitmap for disc center and background
+        Glide.with(this).asBitmap().load(picUrl).override(512, 512).into(new CustomTarget<Bitmap>() {
+            @Override
+            public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                // Set album art on disc
+                mBinding.musicDiscView.musicDisc.setAlbumBitmap(resource);
+                // Set blurred background
+                mBinding.musicDiscView.musicBg.setImageBitmap(resource);
+                mBinding.musicDiscView.musicBg.setVisibility(View.VISIBLE);
+                // Extract palette colors for dynamic theming
+                applyMusicPalette(resource);
+            }
+            @Override
+            public void onLoadCleared(@Nullable Drawable placeholder) {}
+        });
+    }
+
+    private void applyMusicPalette(Bitmap bitmap) {
+        Palette.from(bitmap).generate(palette -> {
+            if (palette == null) return;
+            int dominant = palette.getDominantColor(0xFF1A1A1A);
+            int vibrant = palette.getVibrantColor(0xFFFF5722);
+            int darkVibrant = palette.getDarkVibrantColor(0xFF222222);
+            int darkMuted = palette.getDarkMutedColor(0xFF1A1A1A);
+            int lightVibrant = palette.getLightVibrantColor(0xFF444444);
+            // Apply colors to disc view
+            mBinding.musicDiscView.musicDisc.setAccentColor(vibrant);
+            mBinding.musicDiscView.musicDisc.setDiscColor(darkMuted);
+            mBinding.musicDiscView.musicDisc.setBaseColor(darkVibrant);
+            // Apply gradient background overlay
+            int bgColor = darkMuted;
+            int bgColor2 = dominant;
+            android.graphics.drawable.GradientDrawable bgDrawable = new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{lightenColor(bgColor2, 0.2f), bgColor, darkenColor(bgColor, 0.3f)});
+            mBinding.musicDiscView.musicBgOverlay.setBackground(bgDrawable);
+            // Apply accent color to progress bar
+            mBinding.musicDiscView.musicProgress.setProgressTint(vibrant);
+            mBinding.musicDiscView.musicProgress.setThumbTint(vibrant);
+        });
+    }
+
+    private int lightenColor(int color, float amount) {
+        int r = (int) (Color.red(color) + (255 - Color.red(color)) * amount);
+        int g = (int) (Color.green(color) + (255 - Color.green(color)) * amount);
+        int b = (int) (Color.blue(color) + (255 - Color.blue(color)) * amount);
+        return Color.rgb(r, g, b);
+    }
+
+    private int darkenColor(int color, float amount) {
+        int r = (int) (Color.red(color) * (1 - amount));
+        int g = (int) (Color.green(color) * (1 - amount));
+        int b = (int) (Color.blue(color) * (1 - amount));
+        return Color.rgb(r, g, b);
     }
 
     private void hideMusicDisc() {

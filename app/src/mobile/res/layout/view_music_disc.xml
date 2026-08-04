@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Background album art (blurred + darkened) -->
+    <!-- Background album art (blurred) -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/musicBg"
         android:layout_width="match_parent"
@@ -12,34 +12,71 @@
         android:scaleType="centerCrop"
         android:visibility="gone" />
 
-    <!-- Dark gradient overlay for readability -->
+    <!-- Dynamic gradient overlay (set programmatically) -->
     <View
         android:id="@+id/musicBgOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#E0000000" />
+        android:background="#D9000000" />
 
-    <!-- Top gradient for status bar area -->
+    <!-- Top gradient -->
     <View
         android:layout_width="match_parent"
         android:layout_height="80dp"
         android:layout_alignParentTop="true"
         android:background="@drawable/music_gradient_top" />
 
+    <!-- Song name -->
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/musicSongName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/musicDisc"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginTop="16dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/white"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:shadowColor="#80000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3"
+        tools:text="歌曲名称" />
+
+    <!-- Artist name -->
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/musicArtistName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/musicSongName"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="#B0FFFFFF"
+        android:textSize="14sp"
+        tools:text="歌手名" />
+
     <!-- Vinyl disc view -->
     <com.fongmi.android.tv.ui.custom.MusicDiscView
         android:id="@+id/musicDisc"
         android:layout_width="300dp"
-        android:layout_height="360dp"
+        android:layout_height="380dp"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="48dp" />
+        android:layout_marginTop="40dp" />
 
     <!-- Lyrics view -->
     <com.fongmi.android.tv.ui.custom.LrcView
         android:id="@+id/musicLrcView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/musicDisc"
+        android:layout_below="@id/musicArtistName"
         android:layout_above="@id/musicControlBar"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
