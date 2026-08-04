@@ -1493,17 +1493,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         isMusicDiscVisible = true;
         // Enable lrc mode so long press triggers lyrics adjustment instead of speed
         mKeyDown.setLrcMode(true);
-        // Hide video UI elements to prevent overlap
-        // Keep exo (PlayerView) visible to preserve video surface; musicDiscView covers it
-        mBinding.widget.getRoot().setVisibility(View.GONE);
-        mBinding.control.getRoot().setVisibility(View.GONE);
-        mBinding.lrcView.setVisibility(View.GONE);
-        mBinding.visualizer.setVisibility(View.GONE);
-        mBinding.visualizer.stop();
-        mBinding.reader.getRoot().setVisibility(View.GONE);
-        mBinding.alwaysProgressText.setVisibility(View.GONE);
-        // musicDiscView is at root level, covers entire screen — no need to change video frame layout
-        // Show music disc overlay
+        // musicDiscView is a pure overlay at root level — do NOT touch any views
+        // inside the video frame, otherwise SurfaceView gets re-laid-out and goes black.
         mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
         mBinding.musicDiscView.getRoot().bringToFront();
         // Set song name and artist - use episode name (actual song) instead of VodName (category)
@@ -1630,15 +1621,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicVisualizer.stop();
         // Restore lrc mode based on actual lrc state
         mKeyDown.setLrcMode(mBinding.lrcView.hasLrc());
-        // Restore video UI elements — no layout changes were made, surface is intact
-        mBinding.widget.getRoot().setVisibility(View.VISIBLE);
-        mBinding.reader.getRoot().setVisibility(View.VISIBLE);
-        if (mBinding.lrcView.hasLrc()) {
-            mBinding.lrcView.setVisibility(View.VISIBLE);
-            if (player().isPlaying()) mBinding.lrcView.start();
-            mBinding.visualizer.setVisibility(View.VISIBLE);
-            setupVisualizer();
-        }
+        // Do NOT restore/touch any views inside the video frame.
+        // They were never hidden, so the SurfaceView and artwork remain intact.
     }
 
     private void showMusicTimerDialog() {
