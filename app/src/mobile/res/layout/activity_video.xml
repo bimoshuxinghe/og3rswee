@@ -48,13 +48,6 @@
             android:layout_height="match_parent"
             android:visibility="gone" />
 
-        <com.fongmi.android.tv.ui.custom.AudioVisualizerView
-            android:id="@+id/visualizer"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_gravity="bottom"
-            android:visibility="gone" />
-
         <include
             android:id="@+id/widget"
             layout="@layout/view_widget_vod"

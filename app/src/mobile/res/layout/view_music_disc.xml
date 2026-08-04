@@ -91,23 +91,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/musicArtistName"
-        android:layout_above="@id/musicVisualizer"
+        android:layout_above="@id/musicSeekBar"
         android:layout_marginStart="28dp"
         android:layout_marginEnd="28dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="4dp"
         android:visibility="gone"
         tools:visibility="visible" />
-
-    <!-- Audio visualizer -->
-    <com.fongmi.android.tv.ui.custom.AudioVisualizerView
-        android:id="@+id/musicVisualizer"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_above="@id/musicSeekBar"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:visibility="gone" />
 
     <!-- Seek bar -->
     <LinearLayout

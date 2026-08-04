@@ -152,7 +152,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private VodReader mReader;
     private boolean isReaderContent;
     private boolean isMusicDiscVisible;
-    private static final int REQUEST_RECORD_AUDIO = 1002;
     private android.os.CountDownTimer musicExitTimer;
     private long musicExitRemaining;
 
@@ -488,7 +487,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.exo.setVisibility(View.GONE);
             mBinding.widget.getRoot().setVisibility(View.GONE);
             mBinding.lrcView.setVisibility(View.GONE);
-            mBinding.visualizer.setVisibility(View.GONE);
             mKeyDown.setLrcMode(false);
             if (!isFullscreen()) enterFullscreen();
         } else {
@@ -497,7 +495,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.widget.getRoot().setVisibility(View.VISIBLE);
             if (mBinding.lrcView.hasLrc()) {
                 mBinding.lrcView.setVisibility(View.VISIBLE);
-                mBinding.visualizer.setVisibility(View.VISIBLE);
                 mKeyDown.setLrcMode(true);
             }
         }
@@ -723,9 +720,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             });
             mBinding.lrcView.setData(result.getLrc());
             mBinding.lrcView.setVisibility(View.VISIBLE);
-            mBinding.visualizer.setVisibility(View.VISIBLE);
             mKeyDown.setLrcMode(true);
-            setupVisualizer();
             // Sync to music disc view if visible
             if (isMusicDiscVisible) {
                 mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
@@ -736,13 +731,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 mBinding.musicDiscView.musicLrcView.setData(result.getLrc());
                 mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
                 if (player().isPlaying()) mBinding.musicDiscView.musicLrcView.start();
-                setupMusicVisualizer();
             }
         } else {
             mBinding.lrcView.clear();
             mBinding.lrcView.setVisibility(View.GONE);
-            mBinding.visualizer.setVisibility(View.GONE);
-            mBinding.visualizer.stop();
             mKeyDown.setLrcMode(false);
             if (isMusicDiscVisible) {
                 mBinding.musicDiscView.musicLrcView.clear();
@@ -1522,9 +1514,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         updateMusicDiscProgress();
         // Ensure progress timer is running (hideProgress won't remove it when music disc is visible)
         App.post(mR2, 1000);
-        // Setup audio visualizer
-        mBinding.musicDiscView.musicVisualizer.setVisibility(View.VISIBLE);
-        setupMusicVisualizer();
     }
 
     private void loadMusicDiscArtwork() {
@@ -1569,8 +1558,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             // Apply accent color to progress bar
             mBinding.musicDiscView.musicProgress.setProgressTintList(android.content.res.ColorStateList.valueOf(vibrant));
             mBinding.musicDiscView.musicProgress.setThumbTintList(android.content.res.ColorStateList.valueOf(vibrant));
-            // Apply colors to audio visualizer
-            mBinding.musicDiscView.musicVisualizer.setColors(vibrant, lightVibrant);
         });
     }
 
@@ -1618,7 +1605,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.getRoot().setVisibility(View.GONE);
         mBinding.musicDiscView.musicDisc.pause();
         mBinding.musicDiscView.musicLrcView.stop();
-        mBinding.musicDiscView.musicVisualizer.stop();
         // Restore lrc mode based on actual lrc state
         mKeyDown.setLrcMode(mBinding.lrcView.hasLrc());
         // Do NOT restore/touch any views inside the video frame.
@@ -2148,77 +2134,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mPiP.update(this, true);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
             mBinding.lrcView.start();
-            setupVisualizer();
             if (isMusicDiscVisible) {
                 updateMusicDiscSongInfo();
                 mBinding.musicDiscView.musicDisc.play();
                 mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
                 mBinding.musicDiscView.musicLrcView.start();
-                setupMusicVisualizer();
             }
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
             mBinding.lrcView.stop();
-            mBinding.visualizer.stop();
             if (isMusicDiscVisible) {
                 mBinding.musicDiscView.musicDisc.pause();
                 mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
                 mBinding.musicDiscView.musicLrcView.stop();
-                mBinding.musicDiscView.musicVisualizer.stop();
-            }
-        }
-    }
-
-    private void setupVisualizer() {
-        try {
-            if (mBinding.visualizer.getVisibility() != View.VISIBLE) return;
-            androidx.media3.exoplayer.ExoPlayer exo = null;
-            if (player().getPlayer() instanceof androidx.media3.exoplayer.ExoPlayer) {
-                exo = (androidx.media3.exoplayer.ExoPlayer) player().getPlayer();
-            }
-            if (exo != null) {
-                int sessionId = exo.getAudioSessionId();
-                if (sessionId != 0) {
-                    mBinding.visualizer.setAudioSessionId(sessionId);
-                    mBinding.visualizer.start();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setupMusicVisualizer() {
-        try {
-            if (mBinding.musicDiscView.musicVisualizer.getVisibility() != View.VISIBLE) return;
-            androidx.media3.exoplayer.ExoPlayer exo = null;
-            if (player().getPlayer() instanceof androidx.media3.exoplayer.ExoPlayer) {
-                exo = (androidx.media3.exoplayer.ExoPlayer) player().getPlayer();
-            }
-            if (exo != null) {
-                int sessionId = exo.getAudioSessionId();
-                if (sessionId != 0) {
-                    mBinding.musicDiscView.musicVisualizer.setAudioSessionId(sessionId);
-                    mBinding.musicDiscView.musicVisualizer.start();
-                } else {
-                    App.post(() -> {
-                        if (isMusicDiscVisible) setupMusicVisualizer();
-                    }, 500);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_RECORD_AUDIO) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, setup visualizer now
-                if (isMusicDiscVisible) setupMusicVisualizer();
             }
         }
     }
@@ -2720,11 +2649,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mClock.release();
         if (mReader != null) mReader.clear();
         mBinding.lrcView.clear();
-        mBinding.visualizer.release();
         if (mBinding.musicDiscView != null) {
             mBinding.musicDiscView.musicLrcView.clear();
             mBinding.musicDiscView.musicDisc.pause();
-            mBinding.musicDiscView.musicVisualizer.release();
         }
         saveHistory(true);
         cancelMusicExitTimer();
