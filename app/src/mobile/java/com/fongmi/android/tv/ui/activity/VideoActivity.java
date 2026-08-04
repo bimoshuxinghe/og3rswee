@@ -1144,7 +1144,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onBack() {
-        if (isFullscreen()) exitFullscreen();
+        if (isMusicDiscVisible) hideMusicDisc();
+        else if (isFullscreen()) exitFullscreen();
         else {
             leavingPlayback = true;
             stopPlaybackIfLeaving();
@@ -1440,8 +1441,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void showMusicDisc() {
         isMusicDiscVisible = true;
-        if (!isFullscreen()) enterFullscreen();
+        // Hide video UI elements to prevent overlap (don't call enterFullscreen)
+        mBinding.exo.setVisibility(View.GONE);
+        mBinding.widget.getRoot().setVisibility(View.GONE);
+        mBinding.control.getRoot().setVisibility(View.GONE);
+        mBinding.lrcView.setVisibility(View.GONE);
+        mBinding.visualizer.setVisibility(View.GONE);
+        mBinding.reader.setVisibility(View.GONE);
+        mBinding.alwaysProgressText.setVisibility(View.GONE);
+        // Expand video frame to full screen
+        mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        // Show music disc overlay
         mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
+        mBinding.musicDiscView.getRoot().bringToFront();
         // Sync disc with current play state
         if (player().isPlaying()) mBinding.musicDiscView.musicDisc.play();
         else mBinding.musicDiscView.musicDisc.pause();
@@ -1468,6 +1481,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.getRoot().setVisibility(View.GONE);
         mBinding.musicDiscView.musicDisc.pause();
         mBinding.musicDiscView.musicLrcView.stop();
+        // Restore video UI elements
+        mBinding.exo.setVisibility(View.VISIBLE);
+        mBinding.widget.getRoot().setVisibility(View.VISIBLE);
+        mBinding.reader.setVisibility(View.VISIBLE);
+        if (mBinding.lrcView.hasLrc()) {
+            mBinding.lrcView.setVisibility(View.VISIBLE);
+            if (player().isPlaying()) mBinding.lrcView.start();
+        }
+        // Restore video frame layout
+        if (!isFullscreen()) {
+            mBinding.video.setLayoutParams(mFrameParams);
+        }
     }
 
     private void updateMusicDiscProgress() {
