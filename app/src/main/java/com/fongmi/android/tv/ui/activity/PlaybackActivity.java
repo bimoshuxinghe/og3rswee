@@ -229,7 +229,7 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
         getExoView().setPlayer(null);
     }
 
-    private void setRender() {
+    protected void setRender() {
         getExoView().setRender(PlayerSetting.getRender());
         detachSurface();
         attachSurface();

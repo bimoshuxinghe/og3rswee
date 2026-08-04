@@ -1502,7 +1502,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.visualizer.stop();
         mBinding.reader.getRoot().setVisibility(View.GONE);
         mBinding.alwaysProgressText.setVisibility(View.GONE);
-        // Show music disc overlay (covers entire screen, no need to change video frame layout)
+        // Expand video frame to full screen so music disc overlay fills entire screen
+        mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        // Show music disc overlay
         mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
         mBinding.musicDiscView.getRoot().bringToFront();
         // Set song name and artist - use episode name (actual song) instead of VodName (category)
@@ -1638,7 +1641,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.visualizer.setVisibility(View.VISIBLE);
             setupVisualizer();
         }
-        // No need to restore video frame layout — it was never changed
+        // Restore video frame layout and rebuild surface
+        if (!isFullscreen()) {
+            mBinding.video.setLayoutParams(mFrameParams);
+        }
+        // setRender creates a fresh SurfaceView and re-binds the player to it,
+        // fixing the black screen caused by surface destruction during layout changes
+        setRender();
     }
 
     private void showMusicTimerDialog() {
