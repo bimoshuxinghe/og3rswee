@@ -16,7 +16,7 @@
         android:layout_marginEnd="8dp"
         android:duplicateParentState="true"
         android:fontFeatureSettings="tnum"
-        android:textColor="@color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="14sp"
         tools:text="001" />
 
@@ -40,7 +40,7 @@
             android:duplicateParentState="true"
             android:ellipsize="marquee"
             android:singleLine="true"
-            android:textColor="@color/white"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             tools:text="CCTV1" />
 
@@ -52,7 +52,7 @@
             android:duplicateParentState="true"
             android:ellipsize="end"
             android:singleLine="true"
-            android:textColor="#CCFFFFFF"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="11sp"
             tools:text="新闻联播 19:00~19:30" />
 
