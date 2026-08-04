@@ -147,8 +147,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private int layoutMode = 0;
     private VodReader mReader;
     private boolean isReaderContent;
-    private boolean isMusicPlayerVisible;
-    private android.view.animation.Animation mDiscAnim;
 
     public static void push(FragmentActivity activity, String text) {
         if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
@@ -343,23 +341,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void initEvent() {
         mBinding.name.setOnClickListener(view -> onName());
         mBinding.more.setOnClickListener(view -> onMore());
-        mBinding.musicBtn.setOnClickListener(view -> toggleMusicPlayer());
-        mBinding.musicPlayer.musicBack.setOnClickListener(view -> hideMusicPlayer());
-        mBinding.musicPlayer.musicPlay.setOnClickListener(view -> checkPlay());
-        mBinding.musicPlayer.musicNext.setOnClickListener(view -> checkNext());
-        mBinding.musicPlayer.musicPrev.setOnClickListener(view -> checkPrev());
-        mBinding.musicPlayer.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
-                if (!fromUser) return;
-                long dur = player().getDuration();
-                if (dur > 0) player().seekTo(dur * prog / 100);
-            }
-            @Override
-            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
-            @Override
-            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
-        });
+        mBinding.musicBtn.setOnClickListener(view -> toggleFullscreen());
         mBinding.actor.setOnClickListener(view -> onActor());
         mBinding.content.setOnClickListener(view -> onContent());
         mBinding.reverse.setOnClickListener(view -> onReverse());
@@ -1420,45 +1402,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         else enterFullscreen();
     }
 
-    private void toggleMusicPlayer() {
-        if (isMusicPlayerVisible) hideMusicPlayer();
-        else showMusicPlayer();
-    }
-
-    private void showMusicPlayer() {
-        isMusicPlayerVisible = true;
-        if (isFullscreen()) exitFullscreen();
-        mBinding.musicPlayer.musicPlayerRoot.setVisibility(View.VISIBLE);
-        mBinding.musicPlayer.musicTitle.setText(mBinding.name.getText());
-        mDiscAnim = android.view.animation.AnimationUtils.loadAnimation(this, com.fongmi.android.tv.R.anim.anim_disc_rotate);
-        mBinding.musicPlayer.musicDisc.startAnimation(mDiscAnim);
-        if (!player().isPlaying()) mBinding.musicPlayer.musicDisc.clearAnimation();
-        mBinding.musicPlayer.musicPlay.setImageResource(player().isPlaying() ? com.fongmi.android.tv.R.drawable.ic_widget_pause : com.fongmi.android.tv.R.drawable.ic_widget_play);
-        updateMusicProgress();
-    }
-
-    private void hideMusicPlayer() {
-        isMusicPlayerVisible = false;
-        mBinding.musicPlayer.musicPlayerRoot.setVisibility(View.GONE);
-        if (mDiscAnim != null) mBinding.musicPlayer.musicDisc.clearAnimation();
-    }
-
-    private void updateMusicProgress() {
-        if (!isMusicPlayerVisible) return;
-        long pos = player().getPosition();
-        long dur = player().getDuration();
-        mBinding.musicPlayer.musicCurrentTime.setText(player().getPositionTime(0));
-        mBinding.musicPlayer.musicTotalTime.setText(player().getDurationTime());
-        if (dur > 0) mBinding.musicPlayer.musicProgress.setProgress((int) (pos * 100 / dur));
-        if (player().isPlaying()) {
-            if (mBinding.musicPlayer.musicDisc.getAnimation() == null) mBinding.musicPlayer.musicDisc.startAnimation(mDiscAnim);
-            mBinding.musicPlayer.musicPlay.setImageResource(com.fongmi.android.tv.R.drawable.ic_widget_pause);
-        } else {
-            mBinding.musicPlayer.musicDisc.clearAnimation();
-            mBinding.musicPlayer.musicPlay.setImageResource(com.fongmi.android.tv.R.drawable.ic_widget_play);
-        }
-    }
-
     private void enterPiP() {
         if (service() == null) return;
         if (!player().haveTrack(C.TRACK_TYPE_VIDEO)) return;
@@ -1605,7 +1548,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void setTraffic() {
         Traffic.setSpeed(mBinding.progress.traffic);
-        if (isMusicPlayerVisible) updateMusicProgress();
         App.post(mR2, 1000);
     }
 
@@ -1908,17 +1850,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
             mBinding.lrcView.start();
             setupVisualizer();
-            if (isMusicPlayerVisible && mDiscAnim != null && mBinding.musicPlayer.musicDisc.getAnimation() == null) {
-                mBinding.musicPlayer.musicDisc.startAnimation(mDiscAnim);
-            }
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
             mBinding.lrcView.stop();
             mBinding.visualizer.stop();
-            if (isMusicPlayerVisible) mBinding.musicPlayer.musicDisc.clearAnimation();
         }
-        if (isMusicPlayerVisible) updateMusicProgress();
     }
 
     private void setupVisualizer() {
@@ -2410,9 +2347,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onBackInvoked() {
-        if (isMusicPlayerVisible) {
-            hideMusicPlayer();
-        } else if (isVisible(mBinding.control.getRoot())) {
+        if (isVisible(mBinding.control.getRoot())) {
             hideControl();
         } else if (mReader != null && mReader.isActive() && !isLock()) {
             leavingPlayback = true;
