@@ -170,7 +170,11 @@ public class ExoUtil {
     }
 
     private static boolean allowDolbyVision() {
-        return PlayerSetting.isExoDolbyVisionPassthrough() && hasDolbyVisionDecoder() && hasDolbyVisionDisplay();
+        // Removed hasDolbyVisionDisplay() check: allow DV playback when device has
+        // DV hardware decoder, even if display doesn't report DV support. This enables
+        // DV on devices with DV decoders but non-DV-certified displays. The renderer's
+        // fallback mechanism handles decoder failures gracefully.
+        return PlayerSetting.isExoDolbyVisionPassthrough() && hasDolbyVisionDecoder();
     }
 
     private static boolean hasDolbyVisionDecoder() {

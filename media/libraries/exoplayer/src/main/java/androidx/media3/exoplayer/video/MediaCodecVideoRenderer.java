@@ -795,7 +795,10 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer
 
     if (SDK_INT >= 26
         && MimeTypes.VIDEO_DOLBY_VISION.equals(format.sampleMimeType)
-        && !Api26.doesDisplaySupportDolbyVision(context)) {
+        && !Api26.doesDisplaySupportDolbyVision(context)
+        && !MimeTypes.VIDEO_DOLBY_VISION.equals(decoderInfo.mimeType)) {
+      // Only mark alternative decoders (HEVC/H264/AV1) as fallback when display
+      // doesn't support DV. DV hardware decoders remain primary even without DV display.
       decoderSupport = DECODER_SUPPORT_FALLBACK_MIMETYPE;
     }
 
@@ -867,16 +870,10 @@ public class MediaCodecVideoRenderer extends MediaCodecRenderer
     if (format.sampleMimeType == null) {
       return ImmutableList.of();
     }
-    if (SDK_INT >= 26
-        && MimeTypes.VIDEO_DOLBY_VISION.equals(format.sampleMimeType)
-        && !Api26.doesDisplaySupportDolbyVision(context)) {
-      List<MediaCodecInfo> alternativeDecoderInfos =
-          MediaCodecUtil.getAlternativeDecoderInfos(
-              mediaCodecSelector, format, requiresSecureDecoder, requiresTunnelingDecoder);
-      if (!alternativeDecoderInfos.isEmpty()) {
-        return alternativeDecoderInfos;
-      }
-    }
+    // Removed display DV check: allow DV hardware decoder to be selected even when
+    // display doesn't report DV support. This enables DV playback on devices with
+    // DV hardware decoders but non-DV-certified displays. The fallback mechanism
+    // (setEnableDecoderFallback) handles cases where the DV decoder fails.
     return MediaCodecUtil.getDecoderInfosSoftMatch(
         mediaCodecSelector, format, requiresSecureDecoder, requiresTunnelingDecoder);
   }

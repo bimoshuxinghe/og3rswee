@@ -388,10 +388,11 @@ public final class MediaCodecUtil {
     }
     if (MimeTypes.VIDEO_DOLBY_VISION.equals(format.sampleMimeType)) {
       // H.264/AVC, H.265/HEVC or AV1 decoders can decode the base layer of some DV profiles.
-      // This can't be done for profile CodecProfileLevel.DolbyVisionProfileDvheStn because it
-      // is not backward compatible.
+      // DolbyVisionProfileDvheStn (Profile 5) uses IPTPQc2 color space and is not fully
+      // backward compatible, but its HEVC base layer can still be decoded (colors may differ).
       // DolbyVisionProfileDvheDtb (Profile 7) is deprecated but its base layer IS backward
-      // compatible with HEVC, so we map it to H.265 for devices without DV hardware decoder.
+      // compatible with HEVC.
+      // DolbyVisionProfileDvheDth (Profile 9) uses AVC base layer, maps to H.264.
       @Nullable
       Pair<Integer, Integer> codecProfileAndLevel =
           CodecSpecificDataUtil.getCodecProfileAndLevel(format);
@@ -399,9 +400,11 @@ public final class MediaCodecUtil {
         int profile = codecProfileAndLevel.first;
         if (profile == CodecProfileLevel.DolbyVisionProfileDvheDtr
             || profile == CodecProfileLevel.DolbyVisionProfileDvheSt
-            || profile == CodecProfileLevel.DolbyVisionProfileDvheDtb) {
+            || profile == CodecProfileLevel.DolbyVisionProfileDvheDtb
+            || profile == CodecProfileLevel.DolbyVisionProfileDvheStn) {
           return MimeTypes.VIDEO_H265;
-        } else if (profile == CodecProfileLevel.DolbyVisionProfileDvavSe) {
+        } else if (profile == CodecProfileLevel.DolbyVisionProfileDvavSe
+            || profile == CodecProfileLevel.DolbyVisionProfileDvheDth) {
           return MimeTypes.VIDEO_H264;
         } else if (profile == CodecProfileLevel.DolbyVisionProfileDvav110) {
           if (format.colorInfo != null
