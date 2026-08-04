@@ -353,7 +353,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
         mBinding.musicDiscView.musicNext.setOnClickListener(view -> checkNext());
         mBinding.musicDiscView.musicPlay.setOnClickListener(view -> checkPlay());
-        mBinding.musicDiscView.musicTimerBtn.setOnClickListener(view -> showMusicTimerDialog());
         mBinding.musicDiscView.musicListBtn.setOnClickListener(view -> onEpisodes());
         mBinding.musicDiscView.musicBackBtn.setOnClickListener(view -> hideMusicDisc());
         mBinding.musicDiscView.musicTimerBtn2.setOnClickListener(view -> showMusicTimerDialog());
@@ -1647,6 +1646,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!isFullscreen()) {
             mBinding.video.setLayoutParams(mFrameParams);
         }
+        // Re-attach player to restore video surface after visibility change
+        mBinding.exo.setPlayer(null);
+        mBinding.exo.setPlayer(player().getPlayer());
     }
 
     private void showMusicTimerDialog() {
