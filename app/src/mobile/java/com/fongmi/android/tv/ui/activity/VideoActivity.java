@@ -1530,8 +1530,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     new int[]{lightenColor(bgColor2, 0.2f), bgColor, darkenColor(bgColor, 0.3f)});
             mBinding.musicDiscView.musicBgOverlay.setBackground(bgDrawable);
             // Apply accent color to progress bar
-            mBinding.musicDiscView.musicProgress.setProgressTint(vibrant);
-            mBinding.musicDiscView.musicProgress.setThumbTint(vibrant);
+            mBinding.musicDiscView.musicProgress.setProgressTintList(android.content.res.ColorStateList.valueOf(vibrant));
+            mBinding.musicDiscView.musicProgress.setThumbTintList(android.content.res.ColorStateList.valueOf(vibrant));
         });
     }
 
