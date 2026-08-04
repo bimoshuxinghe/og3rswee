@@ -73,11 +73,8 @@ abstract class BaseConfig {
     }
 
     protected void setProxy(List<Proxy> proxy) {
-        // Clear old site-level proxies to prevent accumulation and interference,
-        // but keep the subscription proxy (name="subscription") intact.
-        // This ensures the proxy subscription (port 18890) works independently
-        // even when site/API-level proxies are removed or changed.
-        OkHttp.selector().clearExcept(new java.util.HashSet<>(java.util.Collections.singleton(ProxySubscriptionManager.NAME)));
+        // 清除所有旧代理，代理订阅不再添加全局代理
+        OkHttp.selector().clear();
         OkHttp.selector().addAll(proxy);
         ProxySubscriptionManager.get().applySaved();
     }

@@ -137,8 +137,8 @@ public class ProxySubscriptionManager {
                 return;
             }
         }
-        OkHttp.selector().addOrReplace(Proxy.create(NAME, Arrays.asList("*"), Arrays.asList(url)));
-        android.util.Log.d("ProxySub", "applySaved: proxy applied -> " + url);
+        // 不添加全局通配符代理，只有站点配置中明确写了proxy的才走代理
+        android.util.Log.d("ProxySub", "applySaved: mihomo started, port " + MihomoManager.getMixedPort() + " available for explicit proxy configs");
     }
 
     /**
@@ -517,17 +517,8 @@ public class ProxySubscriptionManager {
     }
 
     public String mergeExt(String ext) {
-        String proxy = getProxyUrl();
-        if (TextUtils.isEmpty(proxy)) return ext;
-        try {
-            JsonObject object = TextUtils.isEmpty(ext) ? new JsonObject() : App.gson().fromJson(ext, JsonObject.class);
-            if (object == null) object = new JsonObject();
-            if (!object.has("proxy") || isSystemProxy(object.get("proxy").getAsString())) object.addProperty("proxy", proxy);
-            object.addProperty("global_proxy", true);
-            return object.toString();
-        } catch (Exception e) {
-            return ext;
-        }
+        // 不自动给所有 spider 注入代理，只有站点自己配了 proxy 的才走代理
+        return ext;
     }
 
     private boolean isSystemProxy(String proxy) {
