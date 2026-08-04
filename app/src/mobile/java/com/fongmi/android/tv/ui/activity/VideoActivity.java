@@ -147,6 +147,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private int layoutMode = 0;
     private VodReader mReader;
     private boolean isReaderContent;
+    private boolean isMusicDiscVisible;
 
     public static void push(FragmentActivity activity, String text) {
         if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
@@ -341,7 +342,22 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void initEvent() {
         mBinding.name.setOnClickListener(view -> onName());
         mBinding.more.setOnClickListener(view -> onMore());
-        mBinding.musicBtn.setOnClickListener(view -> toggleFullscreen());
+        mBinding.musicBtn.setOnClickListener(view -> toggleMusicDisc());
+        mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
+        mBinding.musicDiscView.musicNext.setOnClickListener(view -> checkNext());
+        mBinding.musicDiscView.musicPlay.setOnClickListener(view -> checkPlay());
+        mBinding.musicDiscView.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                if (!fromUser) return;
+                long dur = player().getDuration();
+                if (dur > 0) player().seekTo(dur * prog / 100);
+            }
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
         mBinding.actor.setOnClickListener(view -> onActor());
         mBinding.content.setOnClickListener(view -> onContent());
         mBinding.reverse.setOnClickListener(view -> onReverse());
@@ -687,12 +703,27 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.visualizer.setVisibility(View.VISIBLE);
             mKeyDown.setLrcMode(true);
             setupVisualizer();
+            // Sync to music disc view if visible
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                mBinding.musicDiscView.musicLrcView.setCallback(() -> {
+                    try { return player().getPosition(); } catch (Exception e) { return 0L; }
+                });
+                mBinding.musicDiscView.musicLrcView.setData(result.getLrc());
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
+                if (player().isPlaying()) mBinding.musicDiscView.musicLrcView.start();
+            }
         } else {
             mBinding.lrcView.clear();
             mBinding.lrcView.setVisibility(View.GONE);
             mBinding.visualizer.setVisibility(View.GONE);
             mBinding.visualizer.stop();
             mKeyDown.setLrcMode(false);
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicLrcView.clear();
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
+            }
         }
     }
 
@@ -1402,6 +1433,52 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         else enterFullscreen();
     }
 
+    private void toggleMusicDisc() {
+        if (isMusicDiscVisible) hideMusicDisc();
+        else showMusicDisc();
+    }
+
+    private void showMusicDisc() {
+        isMusicDiscVisible = true;
+        if (!isFullscreen()) enterFullscreen();
+        mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
+        // Sync disc with current play state
+        if (player().isPlaying()) mBinding.musicDiscView.musicDisc.play();
+        else mBinding.musicDiscView.musicDisc.pause();
+        // Sync play button icon
+        mBinding.musicDiscView.musicPlay.setImageResource(player().isPlaying() ? androidx.media3.ui.R.drawable.exo_icon_pause : androidx.media3.ui.R.drawable.exo_icon_play);
+        // Setup lyrics in the disc view's LrcView
+        if (mBinding.lrcView.hasLrc()) {
+            mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+            mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+            mBinding.musicDiscView.musicLrcView.setCallback(() -> {
+                try { return player().getPosition(); } catch (Exception e) { return 0L; }
+            });
+            mBinding.musicDiscView.musicLrcView.setData(mBinding.lrcView.getData());
+            mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
+            if (player().isPlaying()) mBinding.musicDiscView.musicLrcView.start();
+        } else {
+            mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
+        }
+        updateMusicDiscProgress();
+    }
+
+    private void hideMusicDisc() {
+        isMusicDiscVisible = false;
+        mBinding.musicDiscView.getRoot().setVisibility(View.GONE);
+        mBinding.musicDiscView.musicDisc.pause();
+        mBinding.musicDiscView.musicLrcView.stop();
+    }
+
+    private void updateMusicDiscProgress() {
+        if (!isMusicDiscVisible) return;
+        long pos = player().getPosition();
+        long dur = player().getDuration();
+        mBinding.musicDiscView.musicCurrentTime.setText(player().getPositionTime(0));
+        mBinding.musicDiscView.musicTotalTime.setText(player().getDurationTime());
+        if (dur > 0) mBinding.musicDiscView.musicProgress.setProgress((int) (pos * 100 / dur));
+    }
+
     private void enterPiP() {
         if (service() == null) return;
         if (!player().haveTrack(C.TRACK_TYPE_VIDEO)) return;
@@ -1548,6 +1625,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void setTraffic() {
         Traffic.setSpeed(mBinding.progress.traffic);
+        if (isMusicDiscVisible) updateMusicDiscProgress();
         App.post(mR2, 1000);
     }
 
@@ -1850,11 +1928,21 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
             mBinding.lrcView.start();
             setupVisualizer();
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicDisc.play();
+                mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
+                mBinding.musicDiscView.musicLrcView.start();
+            }
         } else if (isPaused()) {
             mPiP.update(this, false);
             mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
             mBinding.lrcView.stop();
             mBinding.visualizer.stop();
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicDisc.pause();
+                mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
+                mBinding.musicDiscView.musicLrcView.stop();
+            }
         }
     }
 
@@ -2347,7 +2435,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onBackInvoked() {
-        if (isVisible(mBinding.control.getRoot())) {
+        if (isMusicDiscVisible) {
+            hideMusicDisc();
+        } else if (isVisible(mBinding.control.getRoot())) {
             hideControl();
         } else if (mReader != null && mReader.isActive() && !isLock()) {
             leavingPlayback = true;
@@ -2373,6 +2463,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (mReader != null) mReader.clear();
         mBinding.lrcView.clear();
         mBinding.visualizer.release();
+        if (mBinding.musicDiscView != null) {
+            mBinding.musicDiscView.musicLrcView.clear();
+            mBinding.musicDiscView.musicDisc.pause();
+        }
         saveHistory(true);
         Timer.get().reset();
         DanmakuApi.cancel();

@@ -45,6 +45,7 @@ public class LrcView extends View {
     };
 
     private List<LrcEntry> entries = new ArrayList<>();
+    private String lrcData;
     private Callback callback;
     private int currentIndex = -1;
     private float textSize = 56f;
@@ -113,12 +114,17 @@ public class LrcView extends View {
 
     public void setData(String data) {
         stop();
+        lrcData = data;
         entries = parseLrc(data);
         currentIndex = -1;
         invalidate();
         if (!entries.isEmpty()) {
             start();
         }
+    }
+
+    public String getData() {
+        return lrcData;
     }
 
     public void start() {
