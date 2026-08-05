@@ -151,7 +151,8 @@ public class CollectActivity extends BaseActivity {
             if (result.getList().isEmpty()) return;
             getFragment().addVideo(result.getList());
             mAdapter.add(Collect.create(result.getList()));
-            mBinding.pager.getAdapter().notifyDataSetChanged();
+            int pos = mAdapter.getList().size() - 1;
+            mBinding.pager.getAdapter().notifyItemInserted(pos);
         });
     }
 
@@ -215,10 +216,6 @@ public class CollectActivity extends BaseActivity {
         @Override
         public int getCount() {
             return mAdapter.getItemCount();
-        }
-
-        @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
         }
 
         @Nullable

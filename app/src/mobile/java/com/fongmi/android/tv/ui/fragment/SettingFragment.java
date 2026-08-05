@@ -56,6 +56,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
 
     private FragmentSettingBinding mBinding;
     private String[] size;
+    private String[] transition;
     private boolean showAuthor;
 
     public static SettingFragment newInstance() {
@@ -111,6 +112,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.dohText.setText(getDohList()[getDohIndex()]);
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
+        mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
     }
 
@@ -146,6 +148,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.liveHome.setOnClickListener(this::onLiveHome);
         mBinding.wall.setOnLongClickListener(this::onWallEdit);
         mBinding.incognito.setOnClickListener(this::setIncognito);
+        mBinding.transition.setOnClickListener(this::setTransition);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.themeColor.setOnClickListener(this::onThemeColor);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
@@ -309,6 +312,14 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
             mBinding.sizeText.setText(size[which]);
             PlayerSetting.putSize(which);
             RefreshEvent.size();
+            dialog.dismiss();
+        }).show();
+    }
+
+    private void setTransition(View view) {
+        new MaterialAlertDialogBuilder(requireActivity()).setTitle(R.string.setting_transition).setNegativeButton(R.string.dialog_negative, null).setSingleChoiceItems(transition, Setting.getTransition(), (dialog, which) -> {
+            mBinding.transitionText.setText(transition[which]);
+            Setting.putTransition(which);
             dialog.dismiss();
         }).show();
     }

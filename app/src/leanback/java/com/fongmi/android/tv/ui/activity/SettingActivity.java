@@ -53,6 +53,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private ActivitySettingBinding mBinding;
     private String[] size;
     private String[] search;
+    private String[] transition;
 
     public static void start(Activity activity) {
         activity.startActivity(new Intent(activity, SettingActivity.class));
@@ -94,6 +95,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.searchText.setText((search = ResUtil.getStringArray(R.array.select_search))[Setting.getSearchMode()]);
+        mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
     }
 
@@ -129,6 +131,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.incognito.setOnClickListener(this::setIncognito);
         mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.search.setOnClickListener(this::setSearch);
+        mBinding.transition.setOnClickListener(this::setTransition);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
         mBinding.wallDefault.setOnClickListener(this::setWallDefault);
@@ -283,6 +286,12 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         int index = (Setting.getSearchMode() + 1) % search.length;
         mBinding.searchText.setText(search[index]);
         Setting.putSearchMode(index);
+    }
+
+    private void setTransition(View view) {
+        int index = (Setting.getTransition() + 1) % transition.length;
+        mBinding.transitionText.setText(transition[index]);
+        Setting.putTransition(index);
     }
 
     private void setDoh(View view) {

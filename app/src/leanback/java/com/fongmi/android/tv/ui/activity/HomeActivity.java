@@ -987,9 +987,5 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         public int getCount() {
             return mTypes.size();
         }
-
-        @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-        }
     }
 }

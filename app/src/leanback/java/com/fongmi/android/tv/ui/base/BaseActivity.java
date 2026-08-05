@@ -4,6 +4,7 @@ import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,8 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.custom.CustomWallView;
 import com.fongmi.android.tv.utils.Util;
 
@@ -137,5 +140,44 @@ public abstract class BaseActivity extends AppCompatActivity {
     protected void onDestroy() {
         EventBus.getDefault().unregister(this);
         super.onDestroy();
+    }
+
+    @Override
+    public void startActivity(Intent intent) {
+        super.startActivity(intent);
+        applyTransition(true);
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        applyTransition(false);
+    }
+
+    private void applyTransition(boolean enter) {
+        int mode = Setting.getTransition();
+        if (mode == 0) return; // None
+        int enterAnim, exitAnim;
+        if (mode == 1) { // Fade
+            enterAnim = R.anim.transition_fade_enter;
+            exitAnim = R.anim.transition_fade_exit;
+        } else if (mode == 2) { // Slide
+            if (enter) {
+                enterAnim = R.anim.transition_slide_enter;
+                exitAnim = R.anim.transition_slide_exit;
+            } else {
+                enterAnim = R.anim.transition_slide_pop_enter;
+                exitAnim = R.anim.transition_slide_pop_exit;
+            }
+        } else { // Zoom
+            if (enter) {
+                enterAnim = R.anim.transition_zoom_enter;
+                exitAnim = R.anim.transition_zoom_exit;
+            } else {
+                enterAnim = R.anim.transition_zoom_pop_enter;
+                exitAnim = R.anim.transition_zoom_pop_exit;
+            }
+        }
+        overridePendingTransition(enterAnim, exitAnim);
     }
 }

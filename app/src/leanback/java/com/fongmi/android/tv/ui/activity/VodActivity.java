@@ -189,9 +189,5 @@ public class VodActivity extends BaseActivity implements TypeAdapter.OnClickList
         public int getCount() {
             return mAdapter.getItemCount();
         }
-
-        @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-        }
     }
 }

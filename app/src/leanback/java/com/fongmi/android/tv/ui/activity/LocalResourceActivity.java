@@ -316,10 +316,6 @@ public class LocalResourceActivity extends BaseActivity implements LocalTypeAdap
         public int getCount() {
             return mAdapter.getItemCount();
         }
-
-        @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-        }
     }
 }
 

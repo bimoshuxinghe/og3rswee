@@ -373,4 +373,12 @@
         <item>横向</item>
         <item>竖向</item>
     </string-array>
+
+    <string name="setting_transition">切换动画</string>
+    <string-array name="select_transition">
+        <item>无</item>
+        <item>淡入淡出</item>
+        <item>滑动</item>
+        <item>缩放</item>
+    </string-array>
 </resources>

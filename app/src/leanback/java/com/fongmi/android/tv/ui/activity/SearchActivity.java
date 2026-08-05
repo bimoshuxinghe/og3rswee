@@ -42,6 +42,10 @@ import okhttp3.Response;
 
 public class SearchActivity extends BaseActivity implements WordAdapter.OnClickListener, RecordAdapter.OnClickListener, CustomKeyboard.Callback {
 
+    private final android.os.Handler mDebounceHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable mDebounceRunnable;
+    private okhttp3.Call mCurrentCall;
+
     private ActivitySearchBinding mBinding;
     private RecordAdapter mRecordAdapter;
     private WordAdapter mWordAdapter;
@@ -88,7 +92,11 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
         mBinding.keyword.addTextChangedListener(new CustomTextListener() {
             @Override
             public void afterTextChanged(Editable s) {
-                getWord(s.toString());
+                // Debounce: cancel pending request and wait 300ms
+                if (mDebounceRunnable != null) mDebounceHandler.removeCallbacks(mDebounceRunnable);
+                final String text = s.toString();
+                mDebounceRunnable = () -> getWord(text);
+                mDebounceHandler.postDelayed(mDebounceRunnable, 300);
             }
         });
         mBinding.mic.setOnClickListener(v -> mBinding.mic.start());
@@ -133,8 +141,10 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
     }
 
     private void getSuggest(String text) {
+        if (mCurrentCall != null && !mCurrentCall.isCanceled()) mCurrentCall.cancel();
         mBinding.word.setText(R.string.search_suggest);
-        OkHttp.newCall("https://suggest.video.iqiyi.com/?if=mobile&key=" + URLEncoder.encode(ZhuToPin.get(text))).enqueue(getCallback(false));
+        mCurrentCall = OkHttp.newCall("https://suggest.video.iqiyi.com/?if=mobile&key=" + URLEncoder.encode(ZhuToPin.get(text)));
+        mCurrentCall.enqueue(getCallback(false));
     }
 
     private Callback getCallback(boolean hot) {

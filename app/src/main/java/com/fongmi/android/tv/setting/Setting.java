@@ -352,4 +352,12 @@ public class Setting {
     public static void putHomeRecommend(String key, String value) {
         Prefers.put("home_recommend_" + key, value);
     }
+
+    public static int getTransition() {
+        return Math.min(Math.max(Prefers.getInt("transition_anim", 0), 0), 3);
+    }
+
+    public static void putTransition(int value) {
+        Prefers.put("transition_anim", Math.min(Math.max(value, 0), 3));
+    }
 }

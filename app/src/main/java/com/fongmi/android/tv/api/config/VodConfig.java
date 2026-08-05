@@ -88,7 +88,8 @@ public class VodConfig extends BaseConfig {
         flags = null;
         rules = null;
         parses = null;
-        BaseLoader.get().clear();
+        // BaseLoader.get().clear() is now called synchronously in load(Config)
+        // to prevent race condition with spider creation during config reload
         RuleConfig.get().invalidate();
         return this;
     }
@@ -111,6 +112,10 @@ public class VodConfig extends BaseConfig {
 
     @Override
     protected void load(Config config) throws Throwable {
+        // Synchronously clear loaders BEFORE fetching new config
+        // This prevents the race condition where async clear destroys
+        // newly created spiders after config reload
+        BaseLoader.get().clear();
         String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
         checkJson(config, Json.parse(json).getAsJsonObject());
     }

@@ -28,6 +28,8 @@ import com.fongmi.android.tv.App;
 
 public class ResUtil {
 
+    private static final Paint sTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
     public static DisplayMetrics getDisplayMetrics() {
         return getDisplayMetrics(App.get());
     }
@@ -133,8 +135,9 @@ public class ResUtil {
     }
 
     public static int getTextWidth(String content, int size) {
-        Paint paint = new Paint();
-        paint.setTextSize(sp2px(size));
-        return (int) paint.measureText(content);
+        synchronized (sTextPaint) {
+            sTextPaint.setTextSize(sp2px(size));
+            return (int) sTextPaint.measureText(content);
+        }
     }
 }

@@ -378,4 +378,12 @@
         <item>Horizontal</item>
         <item>Vertical</item>
     </string-array>
+
+    <string name="setting_transition">Transition Animation</string>
+    <string-array name="select_transition">
+        <item>None</item>
+        <item>Fade</item>
+        <item>Slide</item>
+        <item>Zoom</item>
+    </string-array>
 </resources>

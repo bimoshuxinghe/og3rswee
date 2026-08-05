@@ -49,6 +49,10 @@ import okhttp3.Response;
 
 public class SearchFragment extends BaseFragment implements MenuProvider, WordAdapter.OnClickListener, RecordAdapter.OnClickListener {
 
+    private final android.os.Handler mDebounceHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable mDebounceRunnable;
+    private okhttp3.Call mCurrentCall;
+
     private FragmentSearchBinding mBinding;
     private RecordAdapter mRecordAdapter;
     private WordAdapter mWordAdapter;
@@ -111,7 +115,10 @@ public class SearchFragment extends BaseFragment implements MenuProvider, WordAd
             @Override
             public void afterTextChanged(Editable s) {
                 requireActivity().invalidateOptionsMenu();
-                getWord(s.toString());
+                if (mDebounceRunnable != null) mDebounceHandler.removeCallbacks(mDebounceRunnable);
+                final String text = s.toString();
+                mDebounceRunnable = () -> getWord(text);
+                mDebounceHandler.postDelayed(mDebounceRunnable, 300);
             }
         });
         getParentFragmentManager().setFragmentResultListener("result", getViewLifecycleOwner(), (requestKey, bundle) -> {
@@ -162,8 +169,10 @@ public class SearchFragment extends BaseFragment implements MenuProvider, WordAd
     }
 
     private void getSuggest(String text) {
+        if (mCurrentCall != null && !mCurrentCall.isCanceled()) mCurrentCall.cancel();
         mBinding.word.setText(R.string.search_suggest);
-        OkHttp.newCall("https://suggest.video.iqiyi.com/?if=mobile&key=" + URLEncoder.encode(text)).enqueue(getCallback(false));
+        mCurrentCall = OkHttp.newCall("https://suggest.video.iqiyi.com/?if=mobile&key=" + URLEncoder.encode(text));
+        mCurrentCall.enqueue(getCallback(false));
     }
 
     private Callback getCallback(boolean hot) {

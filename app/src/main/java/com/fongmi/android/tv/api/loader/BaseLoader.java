@@ -6,7 +6,6 @@ import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Site;
-import com.fongmi.android.tv.utils.Task;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
 import com.github.catvod.utils.Util;
@@ -48,11 +47,9 @@ public class BaseLoader {
     }
 
     public void clear() {
-        Task.execute(() -> {
-            jarLoader.clear();
-            pyLoader.clear();
-            jsLoader.clear();
-        });
+        jarLoader.clear();
+        pyLoader.clear();
+        jsLoader.clear();
     }
 
     public Spider getSpider(String key, String api, String ext, String jar) {
