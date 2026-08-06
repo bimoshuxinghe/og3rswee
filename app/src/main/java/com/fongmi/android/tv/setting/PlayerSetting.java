@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.setting;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.provider.Settings;
@@ -339,5 +340,151 @@ public class PlayerSetting {
 
     public static void putMpvSubtitlePosition(float value) {
         Prefers.put("mpv_subtitle_position", value);
+    }
+
+    // === Subtitle style settings (matching APK's l41/j41 configuration) ===
+
+    public static int getSubtitleStyleSource() {
+        int base = isCaption() ? 1 : 0;
+        return Math.min(Math.max(Prefers.getInt("subtitle_style_source", base), 0), 2);
+    }
+
+    public static void putSubtitleStyleSource(int source) {
+        Prefers.put("subtitle_style_source", Math.min(Math.max(source, 0), 2));
+    }
+
+    public static int getSubtitleForegroundColor() {
+        return Prefers.getInt("subtitle_foreground_color", -1);
+    }
+
+    public static void putSubtitleForegroundColor(int color) {
+        Prefers.put("subtitle_foreground_color", color);
+    }
+
+    public static float getSubtitleForegroundOpacity() {
+        return Math.min(Math.max(Prefers.getFloat("subtitle_foreground_opacity", 1.0f), 0.0f), 1.0f);
+    }
+
+    public static void putSubtitleForegroundOpacity(float opacity) {
+        Prefers.put("subtitle_foreground_opacity", Math.min(Math.max(opacity, 0.0f), 1.0f));
+    }
+
+    public static int getSubtitleBackgroundColor() {
+        return Prefers.getInt("subtitle_background_color", 0xFF000000);
+    }
+
+    public static void putSubtitleBackgroundColor(int color) {
+        Prefers.put("subtitle_background_color", color);
+    }
+
+    public static float getSubtitleBackgroundOpacity() {
+        return Math.min(Math.max(Prefers.getFloat("subtitle_background_opacity", 1.0f), 0.0f), 1.0f);
+    }
+
+    public static void putSubtitleBackgroundOpacity(float opacity) {
+        Prefers.put("subtitle_background_opacity", Math.min(Math.max(opacity, 0.0f), 1.0f));
+    }
+
+    public static int getSubtitleEdgeType() {
+        return Math.min(Math.max(Prefers.getInt("subtitle_edge_type", 1), 0), 2);
+    }
+
+    public static void putSubtitleEdgeType(int type) {
+        Prefers.put("subtitle_edge_type", Math.min(Math.max(type, 0), 2));
+    }
+
+    public static int getSubtitleEdgeColor() {
+        return Prefers.getInt("subtitle_edge_color", 0xFF000000);
+    }
+
+    public static void putSubtitleEdgeColor(int color) {
+        Prefers.put("subtitle_edge_color", color);
+    }
+
+    public static float getSubtitleEdgeOpacity() {
+        return Math.min(Math.max(Prefers.getFloat("subtitle_edge_opacity", 1.0f), 0.0f), 1.0f);
+    }
+
+    public static void putSubtitleEdgeOpacity(float opacity) {
+        Prefers.put("subtitle_edge_opacity", Math.min(Math.max(opacity, 0.0f), 1.0f));
+    }
+
+    public static float getSubtitleEdgeWidth() {
+        return Math.min(Math.max(Prefers.getFloat("subtitle_edge_width", 2.0f), 0.0f), 6.0f);
+    }
+
+    public static void putSubtitleEdgeWidth(float width) {
+        Prefers.put("subtitle_edge_width", Math.min(Math.max(width, 0.0f), 6.0f));
+    }
+
+    public static float getSubtitleShadow() {
+        return Math.min(Math.max(Prefers.getFloat("subtitle_shadow", 2.0f), 0.0f), 8.0f);
+    }
+
+    public static void putSubtitleShadow(float shadow) {
+        Prefers.put("subtitle_shadow", Math.min(Math.max(shadow, 0.0f), 8.0f));
+    }
+
+    public static int getSubtitleSecondaryTrack() {
+        return Math.max(Prefers.getInt("subtitle_secondary_track", -2), -2);
+    }
+
+    public static void putSubtitleSecondaryTrack(int track) {
+        Prefers.put("subtitle_secondary_track", Math.max(track, -2));
+    }
+
+    public static float getSubtitleSecondaryPosition() {
+        return Math.min(Math.max(Prefers.getFloat("subtitle_secondary_position", 10.0f), 0.0f), 150.0f);
+    }
+
+    public static void putSubtitleSecondaryPosition(float position) {
+        Prefers.put("subtitle_secondary_position", Math.min(Math.max(position, 0.0f), 150.0f));
+    }
+
+    // === Preload time setting (matching APK's k41.w() formula) ===
+
+    public static int getPreloadTime() {
+        return Math.min(Math.max(Prefers.getInt("preload_time", 120), 20), 120);
+    }
+
+    public static void putPreloadTime(int time) {
+        Prefers.put("preload_time", Math.min(Math.max(time, 20), 120));
+    }
+
+    public static int getMpvCacheSecs() {
+        int preloadTime = getPreloadTime();
+        int rounded = Math.round((preloadTime - 20) / 10.0f) * 10 + 20;
+        return Math.min(120, Math.max(rounded, 20));
+    }
+
+    // === MPV GPU settings (matching APK's separate boolean flags) ===
+
+    public static boolean isMpvGpuNext() {
+        return Prefers.getBoolean("mpv_gpu_next", getMpvRender() >= 1);
+    }
+
+    public static boolean isMpvVulkan() {
+        return Prefers.getBoolean("mpv_vulkan", getMpvRender() == 2);
+    }
+
+    // === Subtitle scale calculation (matching APK's l41.w() and l41.x()) ===
+
+    public static float getMpvSubtitleScaleValue(Context context) {
+        float textSize = Prefers.getFloat("subtitle_text_size", 0.0f);
+        float scale;
+        if (textSize == 0.0f) {
+            scale = 1.0f;
+        } else {
+            scale = textSize / 0.0533f;
+        }
+        scale = Prefers.getFloat("subtitle_scale", scale);
+        if (scale == 1.0f && getSubtitleStyleSource() == 1) {
+            android.view.accessibility.CaptioningManager cm = (android.view.accessibility.CaptioningManager)
+                    context.getSystemService(Context.CAPTIONING_SERVICE);
+            if (cm != null) {
+                scale *= cm.getFontScale();
+            }
+        }
+        return scale;
     }
 }

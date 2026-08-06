@@ -567,10 +567,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyCacheOptions() {
-        int cacheSecs = PlayerSetting.getBuffer() * 10;
+        if (!PlayerSetting.isPreload()) return;
+        int cacheSecs = PlayerSetting.getMpvCacheSecs();
         setMpvOption("cache", "yes");
+        setMpvOption("cache-on-disk", "yes");
         setMpvOption("cache-secs", String.valueOf(cacheSecs));
-        setMpvOption("cache-on-disk", "no");
         try {
             java.io.File cacheDir = new java.io.File(context.getCacheDir(), "mpv");
             if (!cacheDir.exists()) cacheDir.mkdirs();
@@ -582,8 +583,143 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private void applySubtitleConfig() {
         setMpvOption("embeddedfonts", "no");
         setMpvOption("sub-ass-override", "force");
-        setSubtitleScale(subtitleScale);
-        setSubtitlePosition(subtitlePosition);
+        applySubtitleStyle();
+        applySubtitleScaleAndPosition();
+        applySecondarySubtitle();
+    }
+
+    private void applySubtitleStyle() {
+        int styleSource = PlayerSetting.getSubtitleStyleSource();
+        if (styleSource == 0) return;
+        if (styleSource == 1) {
+            applySystemSubtitleStyle();
+        } else {
+            applyCustomSubtitleStyle();
+        }
+    }
+
+    private void applySystemSubtitleStyle() {
+        android.view.accessibility.CaptioningManager cm = (android.view.accessibility.CaptioningManager)
+                context.getSystemService(Context.CAPTIONING_SERVICE);
+        android.view.accessibility.CaptioningManager.CaptionStyle userStyle = null;
+        if (cm != null) userStyle = cm.getUserStyle();
+        int fgColor = (userStyle != null && userStyle.hasForegroundColor()) ? userStyle.foregroundColor : 0xFFFFFFFF;
+        int bgColor = (userStyle != null && userStyle.hasBackgroundColor()) ? userStyle.backgroundColor : 0xFF000000;
+        int edgeType = (userStyle != null && userStyle.hasEdgeType()) ? userStyle.edgeType : 0;
+        int edgeColor = (userStyle != null && userStyle.hasEdgeColor()) ? userStyle.edgeColor : 0xFFFFFFFF;
+        String borderStyle = "outline-and-shadow";
+        int actualBgColor = bgColor;
+        if (edgeType == 2) {
+            actualBgColor = edgeColor;
+        }
+        setMpvOption("sub-color", colorToHex(fgColor));
+        setMpvOption("sub-back-color", colorToHex(actualBgColor));
+        if (edgeType != 2 && android.graphics.Color.alpha(bgColor) != 0) {
+            borderStyle = "background-box";
+        }
+        setMpvOption("sub-border-style", borderStyle);
+        setMpvOption("sub-outline-color", colorToHex(edgeColor));
+        if (edgeType == 0) {
+            setMpvOption("sub-outline-size", "0");
+            setMpvOption("sub-shadow-offset", "0");
+        } else if (edgeType == 2) {
+            setMpvOption("sub-outline-size", "0");
+            setMpvOption("sub-shadow-offset", "2");
+        } else {
+            setMpvOption("sub-outline-size", "1.65");
+            setMpvOption("sub-shadow-offset", "0");
+        }
+    }
+
+    private void applyCustomSubtitleStyle() {
+        int fgColor = applyOpacity(PlayerSetting.getSubtitleForegroundOpacity(), PlayerSetting.getSubtitleForegroundColor());
+        int bgColor = applyOpacity(PlayerSetting.getSubtitleBackgroundOpacity(), PlayerSetting.getSubtitleBackgroundColor());
+        int edgeType = PlayerSetting.getSubtitleEdgeType();
+        int edgeColor = applyOpacity(PlayerSetting.getSubtitleEdgeOpacity(), PlayerSetting.getSubtitleEdgeColor());
+        String borderStyle = "outline-and-shadow";
+        int actualBgColor = bgColor;
+        if (edgeType == 2 && android.graphics.Color.alpha(bgColor) == 0) {
+            actualBgColor = edgeColor;
+        }
+        setMpvOption("sub-color", colorToHex(fgColor));
+        setMpvOption("sub-back-color", colorToHex(actualBgColor));
+        if (edgeType != 2 && android.graphics.Color.alpha(bgColor) != 0) {
+            borderStyle = "background-box";
+        }
+        setMpvOption("sub-border-style", borderStyle);
+        setMpvOption("sub-outline-color", colorToHex(edgeColor));
+        if (edgeType == 0) {
+            setMpvOption("sub-outline-size", "0");
+            setMpvOption("sub-shadow-offset", "0");
+        } else {
+            if (edgeType == 1) {
+                setMpvOption("sub-outline-size", String.valueOf(PlayerSetting.getSubtitleEdgeWidth()));
+            } else {
+                setMpvOption("sub-outline-size", "0");
+            }
+            if (edgeType == 2) {
+                setMpvOption("sub-shadow-offset", String.valueOf(PlayerSetting.getSubtitleShadow()));
+            } else {
+                setMpvOption("sub-shadow-offset", "0");
+            }
+        }
+    }
+
+    private void applySubtitleScaleAndPosition() {
+        float position = PlayerSetting.getSubtitlePosition();
+        float subPos;
+        if (position != 0.0f) {
+            if (Math.abs(position) < 0.5f) position *= 100.0f;
+            position = Math.min(30.0f, Math.max(position, -20.0f));
+            subPos = (float) Math.max(0.0, Math.min(100.0 - position, 150.0));
+        } else {
+            subPos = PlayerSetting.getMpvSubtitlePosition();
+        }
+        subtitlePosition = subPos;
+        setMpvProperty("sub-pos", subtitlePosition);
+        int styleSource = PlayerSetting.getSubtitleStyleSource();
+        float scaleValue = PlayerSetting.getMpvSubtitleScaleValue(context);
+        boolean enableScale = styleSource == 1 || scaleValue != 1.0f;
+        if (enableScale) {
+            subtitleScale = scaleValue;
+            setMpvProperty("sub-scale", subtitleScale);
+            setMpvOption("sub-scale-signs", "yes");
+        } else {
+            subtitleScale = PlayerSetting.getMpvSubtitleScale();
+            if (subtitleScale != 1.0f) {
+                setMpvProperty("sub-scale", subtitleScale);
+                setMpvOption("sub-scale-signs", "yes");
+            }
+        }
+    }
+
+    private void applySecondarySubtitle() {
+        int styleSource = PlayerSetting.getSubtitleStyleSource();
+        int secondaryTrack = PlayerSetting.getSubtitleSecondaryTrack();
+        String assOverride = styleSource != 0 ? "force" : "scale";
+        setMpvOption("secondary-sub-ass-override", assOverride);
+        if (secondaryTrack == -2) {
+            setMpvOption("secondary-sid", "no");
+        } else if (secondaryTrack == -1) {
+            setMpvOption("secondary-sid", "auto");
+        } else {
+            setMpvOption("secondary-sid", String.valueOf(secondaryTrack));
+        }
+        if (secondaryTrack != -2) {
+            setMpvOption("secondary-sub-pos", String.valueOf(PlayerSetting.getSubtitleSecondaryPosition()));
+        }
+    }
+
+    private static int applyOpacity(float opacity, int color) {
+        float clampedOpacity = Math.min(1.0f, Math.max(opacity, 0.0f));
+        int alpha = Math.round(clampedOpacity * android.graphics.Color.alpha(color));
+        return android.graphics.Color.argb(alpha, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color));
+    }
+
+    private static String colorToHex(int color) {
+        return String.format(Locale.US, "#%02X%02X%02X%02X",
+                android.graphics.Color.alpha(color), android.graphics.Color.red(color),
+                android.graphics.Color.green(color), android.graphics.Color.blue(color));
     }
 
     private void applyConfigOptions() {
@@ -761,9 +897,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyRenderOptions() {
-        int render = PlayerSetting.getMpvRender();
-        setMpvOption("vo", getMpvVo());
-        if (render == 2) {
+        boolean gpuNext = PlayerSetting.isMpvGpuNext();
+        boolean vulkan = PlayerSetting.isMpvVulkan();
+        setMpvOption("vo", gpuNext ? "gpu-next" : "gpu");
+        if (vulkan) {
             setMpvOption("gpu-api", "vulkan");
             setMpvOption("gpu-context", "androidvk");
         } else {
@@ -773,8 +910,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private String getMpvVo() {
-        int render = PlayerSetting.getMpvRender();
-        return render == 0 ? "gpu" : "gpu-next";
+        return PlayerSetting.isMpvGpuNext() ? "gpu-next" : "gpu";
     }
 
     private void applyProbeOptions() {
@@ -876,19 +1012,15 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         setAudioOffsetMs(audioOffsetMs);
     }
 
-    private void applySubtitleStyle() {
-        setSubtitleScale(subtitleScale);
-        setSubtitlePosition(subtitlePosition);
-    }
-
     private void setSubtitleScale(double scale) {
         subtitleScale = Math.max(0.5, Math.min(scale, 3.0));
         setMpvProperty("sub-scale", subtitleScale);
+        setMpvOption("sub-scale-signs", "yes");
         com.fongmi.android.tv.setting.PlayerSetting.putMpvSubtitleScale((float) subtitleScale);
     }
 
     private void setSubtitlePosition(double position) {
-        subtitlePosition = Math.max(0.0, Math.min(position, 100.0));
+        subtitlePosition = Math.max(0.0, Math.min(position, 150.0));
         setMpvProperty("sub-pos", subtitlePosition);
         com.fongmi.android.tv.setting.PlayerSetting.putMpvSubtitlePosition((float) subtitlePosition);
     }
