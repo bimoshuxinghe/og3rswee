@@ -1,5 +1,10 @@
 package com.fongmi.android.tv.player.engine;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+import android.util.Log;
+
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
@@ -14,26 +19,32 @@ import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.player.exo.ErrorMsgProvider;
 import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.player.exo.TrackUtil;
+import com.fongmi.android.tv.player.mpv.IsoStream;
+import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.ResUtil;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import android.util.Log;
 
 public class ExoPlayerEngine implements PlayerEngine {
 
     private final ErrorMsgProvider provider;
+    private final Handler handler;
     private PlaySpec spec;
     private Player player;
     private int decode;
     private boolean isRtspStream;
+    private volatile boolean isoResolving;
+    private volatile String isoOriginalUrl;
+    private volatile String isoProxyUrl;
 
     public ExoPlayerEngine(int decode, Player.Listener listener) {
         this.player = ExoUtil.buildPlayer(decode, listener);
         this.provider = new ErrorMsgProvider();
         this.decode = decode;
+        this.handler = new Handler(Looper.getMainLooper());
         this.player.addListener(new Player.Listener() {
             @Override
             public void onTracksChanged(Tracks tracks) {
@@ -105,7 +116,53 @@ public class ExoPlayerEngine implements PlayerEngine {
         this.spec = spec;
         // 检测是否为 RTSP 流
         this.isRtspStream = spec.getUrl() != null && spec.getUrl().startsWith("rtsp://");
-        startInternal(positionMs);
+        // 检测是否为 ISO 镜像，需要先解析文件系统再通过代理播放
+        String url = spec.getUrl();
+        if (url != null && MpvMedia.isBluRayIso(url)) {
+            if (isoResolving) return;
+            if (TextUtils.equals(url, isoOriginalUrl) && !TextUtils.isEmpty(isoProxyUrl)) {
+                startInternal(positionMs);
+            } else if (!TextUtils.equals(url, isoOriginalUrl)) {
+                resolveIso(url, positionMs);
+                return;
+            } else {
+                startInternal(positionMs);
+            }
+        } else {
+            isoOriginalUrl = null;
+            isoProxyUrl = null;
+            startInternal(positionMs);
+        }
+    }
+
+    /**
+     * 异步解析 ISO 镜像文件系统，找到内部视频文件并注册代理 URL。
+     * 解析完成后在主线程调用 startInternal 进行播放。
+     */
+    private void resolveIso(String url, long positionMs) {
+        isoResolving = true;
+        isoOriginalUrl = null;
+        isoProxyUrl = null;
+        new Thread(() -> {
+            try {
+                Map<String, String> hdrs = spec != null ? spec.getHeaders() : null;
+                String proxyUrl = IsoStream.register(url, hdrs);
+                if (!TextUtils.isEmpty(proxyUrl)) {
+                    isoOriginalUrl = url;
+                    isoProxyUrl = proxyUrl;
+                }
+            } catch (Exception e) {
+                Log.e("ExoPlayerEngine", "ISO resolution failed: " + e.getMessage(), e);
+            } finally {
+                isoResolving = false;
+                handler.post(() -> {
+                    if (spec == null) return;
+                    String currentUrl = spec.getUrl();
+                    if (!TextUtils.equals(currentUrl, url)) return;
+                    startInternal(positionMs);
+                });
+            }
+        }, "exo-iso-resolver").start();
     }
 
     @Override
@@ -179,40 +236,50 @@ public class ExoPlayerEngine implements PlayerEngine {
     }
 
     private void startInternal(long position) {
-        // 对于 RTSP 流，可能需要特殊处理
-        MediaItem item = ExoUtil.getMediaItem(spec, decode);
-        if (isRtspStream) {
-            MediaItem.Builder builder = item.buildUpon();
-            // 确保 RTSP 流使用正确的 MIME 类型
-            if (spec.getFormat() == null) {
-                builder.setMimeType(MimeTypes.APPLICATION_RTSP);
-            }
-            item = builder.build();
+        // ISO 代理 URL 替换：如果已解析出代理 URL，临时替换 spec 的 URL
+        String savedUrl = null;
+        if (spec != null && !TextUtils.isEmpty(isoProxyUrl) && TextUtils.equals(spec.getUrl(), isoOriginalUrl)) {
+            savedUrl = spec.getUrl();
+            spec.setUrl(isoProxyUrl);
         }
-
-        // 先确保播放器处于允许 setMediaItem(empty playlist) 的合法状态
-        ensureIdleOrEnded(player);
         try {
-            player.setMediaItem(item, position);
-            player.prepare();
-            player.play();
-        } catch (Exception e) {
-            Log.w("ExoPlayerEngine", "startInternal failed, retry after stop+clear.", e);
-            try {
-                player.stop();
-            } catch (Exception ignored) {
+            // 对于 RTSP 流，可能需要特殊处理
+            MediaItem item = ExoUtil.getMediaItem(spec, decode);
+            if (isRtspStream) {
+                MediaItem.Builder builder = item.buildUpon();
+                // 确保 RTSP 流使用正确的 MIME 类型
+                if (spec.getFormat() == null) {
+                    builder.setMimeType(MimeTypes.APPLICATION_RTSP);
+                }
+                item = builder.build();
             }
-            try {
-                player.clearMediaItems();
-            } catch (Exception ignored) {
-            }
+
+            // 先确保播放器处于允许 setMediaItem(empty playlist) 的合法状态
+            ensureIdleOrEnded(player);
             try {
                 player.setMediaItem(item, position);
                 player.prepare();
                 player.play();
-            } catch (Exception e2) {
-                Log.e("ExoPlayerEngine", "startInternal retry failed.", e2);
+            } catch (Exception e) {
+                Log.w("ExoPlayerEngine", "startInternal failed, retry after stop+clear.", e);
+                try {
+                    player.stop();
+                } catch (Exception ignored) {
+                }
+                try {
+                    player.clearMediaItems();
+                } catch (Exception ignored) {
+                }
+                try {
+                    player.setMediaItem(item, position);
+                    player.prepare();
+                    player.play();
+                } catch (Exception e2) {
+                    Log.e("ExoPlayerEngine", "startInternal retry failed.", e2);
+                }
             }
+        } finally {
+            if (savedUrl != null) spec.setUrl(savedUrl);
         }
     }
 

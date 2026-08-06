@@ -1,11 +1,13 @@
 package com.fongmi.android.tv.player.mpv;
 
+import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -110,22 +112,56 @@ public final class IsoParser {
 
     private final String url;
     private final Map<String, String> headers;
+    private final boolean isLocal;
+    private RandomAccessFile raf;
     private long partitionStart;
+
+    /**
+     * 判断 URL 是否指向本地文件（file:// 协议或无 scheme 的路径）。
+     */
+    public static boolean isLocalFile(@NonNull String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        return scheme == null || "file".equalsIgnoreCase(scheme);
+    }
+
+    /**
+     * 从 URL 中提取本地文件路径。
+     */
+    @NonNull
+    public static String getLocalPath(@NonNull String url) {
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        if (scheme == null) return url;
+        if ("file".equalsIgnoreCase(scheme)) return uri.getPath();
+        return url;
+    }
 
     @Nullable
     public static VideoFile findVideoFile(@NonNull String url, @Nullable Map<String, String> headers) {
+        IsoParser parser = new IsoParser(url, headers);
         try {
-            IsoParser parser = new IsoParser(url, headers);
             return parser.parse();
         } catch (Exception e) {
             Log.e(TAG, "Parse failed: " + e.getMessage(), e);
             return null;
+        } finally {
+            parser.close();
         }
     }
 
     private IsoParser(String url, Map<String, String> headers) {
         this.url = url;
         this.headers = headers;
+        this.isLocal = isLocalFile(url);
+    }
+
+    private void close() {
+        if (raf != null) {
+            try { raf.close(); } catch (Exception ignored) {}
+            raf = null;
+        }
     }
 
     @Nullable
@@ -493,6 +529,27 @@ public final class IsoParser {
 
     @NonNull
     private byte[] readRange(long offset, int length) throws Exception {
+        if (isLocal) return readFileRange(offset, length);
+        return readHttpRange(offset, length);
+    }
+
+    @NonNull
+    private byte[] readFileRange(long offset, int length) throws Exception {
+        if (raf == null) raf = new RandomAccessFile(getLocalPath(url), "r");
+        raf.seek(offset);
+        byte[] data = new byte[length];
+        int read = raf.read(data);
+        if (read < 0) return new byte[length];
+        if (read < length) {
+            byte[] padded = new byte[length];
+            System.arraycopy(data, 0, padded, 0, read);
+            return padded;
+        }
+        return data;
+    }
+
+    @NonNull
+    private byte[] readHttpRange(long offset, int length) throws Exception {
         Request.Builder rb = new Request.Builder().url(url)
                 .header("Range", "bytes=" + offset + "-" + (offset + length - 1));
         if (headers != null) {

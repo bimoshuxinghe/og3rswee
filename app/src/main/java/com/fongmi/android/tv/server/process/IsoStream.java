@@ -13,6 +13,7 @@ import com.github.catvod.Proxy;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,29 +51,35 @@ public class IsoStream implements Process {
 
     private static class Entry {
         final String url;
+        final String localPath;
         final Map<String, String> headers;
         final long startOffset;
         final long endOffset;
         final long size;
         final String mime;
 
-        Entry(String url, Map<String, String> headers, long startOffset, long size, String mime) {
+        Entry(String url, String localPath, Map<String, String> headers, long startOffset, long size, String mime) {
             this.url = url;
+            this.localPath = localPath;
             this.headers = headers;
             this.startOffset = startOffset;
             this.size = size;
             this.endOffset = startOffset + size;
             this.mime = mime;
         }
+
+        boolean isLocal() {
+            return localPath != null;
+        }
     }
 
     private static final ConcurrentHashMap<String, Entry> ENTRIES = new ConcurrentHashMap<>();
 
     /**
-     * 解析远程 ISO 镜像并注册代理条目。
+     * 解析 ISO 镜像（远程或本地）并注册代理条目。
      *
-     * @param url    远程 ISO 镜像的 HTTP(S) URL
-     * @param headers 请求所需的 headers（Cookie、UA 等）
+     * @param url    ISO 镜像的 URL（HTTP(S) 远程链接或本地文件路径）
+     * @param headers 请求所需的 headers（Cookie、UA 等，仅远程链接需要）
      * @return 本地代理 URL（如 http://127.0.0.1:9978/iso_stream?id=xxx），
      *         解析失败时返回 null
      */
@@ -85,7 +92,13 @@ public class IsoStream implements Process {
         }
         String id = UUID.randomUUID().toString().replace("-", "");
         String mime = getMimeForFormat(vf.format);
-        Entry entry = new Entry(url, headers, vf.offset, vf.size, mime);
+        Entry entry;
+        if (IsoParser.isLocalFile(url)) {
+            String localPath = IsoParser.getLocalPath(url);
+            entry = new Entry(null, localPath, null, vf.offset, vf.size, mime);
+        } else {
+            entry = new Entry(url, null, headers, vf.offset, vf.size, mime);
+        }
         ENTRIES.put(id, entry);
         cleanupOldEntries();
         String proxyUrl = "http://127.0.0.1:" + Proxy.getPort() + PATH_PREFIX + "?id=" + id;
@@ -171,6 +184,36 @@ public class IsoStream implements Process {
             }
         }
         long length = end - start + 1;
+        if (entry.isLocal()) return serveLocalStream(entry, start, end, length);
+        return serveRemoteStream(entry, start, end, length);
+    }
+
+    @NonNull
+    private NanoHTTPD.Response serveLocalStream(Entry entry, long start, long end, long length) {
+        try {
+            RandomAccessFile raf = new RandomAccessFile(entry.localPath, "r");
+            raf.seek(entry.startOffset + start);
+            InputStream is = new FileRangeInputStream(raf, length);
+            boolean partial = start > 0 || end < entry.size - 1;
+            NanoHTTPD.Response resp;
+            if (partial) {
+                resp = NanoHTTPD.newChunkedResponse(NanoHTTPD.Response.Status.PARTIAL_CONTENT, entry.mime, is);
+                resp.addHeader("Content-Range", "bytes " + start + "-" + end + "/" + entry.size);
+            } else {
+                resp = NanoHTTPD.newChunkedResponse(NanoHTTPD.Response.Status.OK, entry.mime, is);
+            }
+            resp.addHeader("Content-Length", String.valueOf(length));
+            resp.addHeader("Accept-Ranges", "bytes");
+            resp.addHeader("Cache-Control", "no-cache, no-store");
+            return resp;
+        } catch (IOException e) {
+            Log.e(TAG, "Local stream error: " + e.getMessage(), e);
+            return Nano.error("Local stream error: " + e.getMessage());
+        }
+    }
+
+    @NonNull
+    private NanoHTTPD.Response serveRemoteStream(Entry entry, long start, long end, long length) {
         long absStart = entry.startOffset + start;
         long absEnd = entry.startOffset + end;
         try {
@@ -197,11 +240,11 @@ public class IsoStream implements Process {
                 return Nano.error("Empty response body");
             }
             InputStream is = body.byteStream();
-            boolean partial = start > 0 || end < totalLen - 1;
+            boolean partial = start > 0 || end < entry.size - 1;
             NanoHTTPD.Response resp;
             if (partial) {
                 resp = NanoHTTPD.newChunkedResponse(NanoHTTPD.Response.Status.PARTIAL_CONTENT, entry.mime, is);
-                resp.addHeader("Content-Range", "bytes " + start + "-" + end + "/" + totalLen);
+                resp.addHeader("Content-Range", "bytes " + start + "-" + end + "/" + entry.size);
             } else {
                 resp = NanoHTTPD.newChunkedResponse(NanoHTTPD.Response.Status.OK, entry.mime, is);
             }
@@ -222,5 +265,40 @@ public class IsoStream implements Process {
                 NanoHTTPD.MIME_PLAINTEXT, "");
         resp.addHeader("Content-Range", "bytes */" + totalLen);
         return resp;
+    }
+
+    /**
+     * 从 RandomAccessFile 读取指定长度数据的 InputStream，读取完毕后自动关闭文件。
+     */
+    private static class FileRangeInputStream extends InputStream {
+        private final RandomAccessFile raf;
+        private long remaining;
+
+        FileRangeInputStream(RandomAccessFile raf, long length) {
+            this.raf = raf;
+            this.remaining = length;
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (remaining <= 0) return -1;
+            int b = raf.read();
+            if (b >= 0) remaining--;
+            return b;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            if (remaining <= 0) return -1;
+            int toRead = (int) Math.min(len, remaining);
+            int read = raf.read(b, off, toRead);
+            if (read > 0) remaining -= read;
+            return read;
+        }
+
+        @Override
+        public void close() throws IOException {
+            raf.close();
+        }
     }
 }

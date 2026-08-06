@@ -15,7 +15,9 @@ public final class MpvMedia {
     }
 
     public static boolean shouldPreferMpv(@Nullable String url) {
-        return isSpoofedSegment(url) || isBluRayIso(url) || isCoffeeM3u8(url);
+        // ISO 不再强制使用 MPV，改由 EXO 通过 IsoStream 代理播放（EXO 更稳定）。
+        // 用户仍可在设置中手动选择 MPV 引擎来播放 ISO。
+        return isSpoofedSegment(url) || isCoffeeM3u8(url);
     }
 
     public static boolean isCoffeeM3u8(@Nullable String url) {
