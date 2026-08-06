@@ -524,7 +524,14 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             case HOME:
                 setTitle();
             case SIZE:
-                homeContent();
+                // Defer homeContent() to the next main thread message cycle.
+                // When triggered from config reload (e.g. long-press logo),
+                // EventBus delivers RefreshEvent.HOME synchronously inside
+                // ConfigEvent.VOD dispatch. Calling setAdapter() inside that
+                // synchronous chain causes "FragmentManager is already
+                // executing transactions" crash because commitNowAllowingStateLoss()
+                // cannot run while FragmentManager is mid-transaction.
+                App.post(() -> { if (isViewReady()) homeContent(); });
                 break;
             case CATEGORY:
                 getFragment().onRefresh();
