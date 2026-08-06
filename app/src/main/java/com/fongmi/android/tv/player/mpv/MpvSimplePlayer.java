@@ -793,7 +793,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             hlsAbortRetryAttempted = false;
         }
         applyHeaders(mediaItem);
-        applyDecodeOption();
+        applyDecodeOption(isHls(mediaItem, url));
         positionMs = startPositionMs == C.TIME_UNSET ? 0 : Math.max(0, startPositionMs);
         pendingInitialSeekMs = positionMs > 0 && !useStartOption ? positionMs : C.TIME_UNSET;
         pendingStartPositionMs = C.TIME_UNSET;
@@ -891,9 +891,32 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyDecodeOption() {
-        String value = decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD ? "mediacodec,mediacodec-copy" : "no";
+        applyDecodeOption(false);
+    }
+
+    private void applyDecodeOption(boolean isHlsStream) {
+        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
+            setMpvOption("hwdec", "no");
+            if (initialized) {
+                setMpvProperty("hwdec", "no");
+                setMpvProperty("vf", "");
+            }
+            return;
+        }
+        // HLS 直播流使用 mediacodec-copy 避免底部绿线：
+        // mediacodec 直连 Surface 模式下，视频高度非 16 整数倍时解码器会在底部填充未初始化数据（绿线）。
+        // mediacodec-copy 模式将帧拷贝经过 MPV 渲染管线，正确裁剪到实际视频尺寸。
+        String value = isHlsStream ? "mediacodec-copy" : "mediacodec,mediacodec-copy";
         setMpvOption("hwdec", value);
-        if (initialized) setMpvProperty("hwdec", value);
+        if (initialized) {
+            setMpvProperty("hwdec", value);
+            // 对直播流添加裁剪滤镜，去除底部 1-2 像素的绿线
+            if (isHlsStream) {
+                setMpvProperty("vf", "lavfi=[crop=iw:ih-ih%2:0:0]");
+            } else {
+                setMpvProperty("vf", "");
+            }
+        }
     }
 
     private void applyRenderOptions() {
