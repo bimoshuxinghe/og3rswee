@@ -256,7 +256,13 @@ public final class IsoParser {
     @Nullable
     private VideoFile findLargestVideoInUdfDir(long dirBlock, String ext) throws Exception {
         List<DirEntry> entries = readUdfDirectory(dirBlock);
-        VideoFile best = null;
+        List<VideoFile> videos = collectUdfVideos(entries, ext);
+        return pickBestVideo(videos);
+    }
+
+    @NonNull
+    private List<VideoFile> collectUdfVideos(List<DirEntry> entries, String ext) throws Exception {
+        List<VideoFile> videos = new ArrayList<>();
         for (DirEntry e : entries) {
             if (e.directory || TextUtils.isEmpty(e.name)) continue;
             String lower = e.name.toLowerCase(Locale.ROOT);
@@ -266,11 +272,55 @@ public final class IsoParser {
             long absOffset = (partitionStart + getExtentBlock(fei)) * SECTOR_SIZE;
             String fmt = getFormat(lower);
             Log.d(TAG, "Found video: " + e.name + " offset=" + absOffset + " size=" + fei.infoLength);
-            if (best == null || fei.infoLength > best.size) {
-                best = new VideoFile(absOffset, fei.infoLength, e.name, fmt);
-            }
+            videos.add(new VideoFile(absOffset, fei.infoLength, e.name, fmt));
         }
-        return best;
+        return videos;
+    }
+
+    /**
+     * 从视频文件列表中选择最合适的一个。
+     * <p>
+     * 策略：
+     * 1. 过滤掉过小的文件（<10MB，通常是菜单或 extras）
+     * 2. 如果存在一个明显大于其他文件的文件（>2倍第二大），返回它（主feature）
+     * 3. 如果多个文件大小相近，按文件名排序后返回第一个（分集场景下选择第一集）
+     */
+    @Nullable
+    private static VideoFile pickBestVideo(List<VideoFile> videos) {
+        if (videos == null || videos.isEmpty()) return null;
+        if (videos.size() == 1) return videos.get(0);
+
+        List<VideoFile> sorted = new ArrayList<>(videos);
+        sorted.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
+
+        // 过滤掉过小的文件（<10MB）
+        List<VideoFile> candidates = new ArrayList<>();
+        for (VideoFile v : sorted) {
+            if (v.size > 10L * 1024 * 1024) candidates.add(v);
+        }
+        if (candidates.isEmpty()) candidates = sorted;
+
+        // 找到最大的文件
+        VideoFile largest = candidates.get(0);
+        for (VideoFile v : candidates) {
+            if (v.size > largest.size) largest = v;
+        }
+
+        // 找到第二大文件
+        long secondLargest = 0;
+        for (VideoFile v : candidates) {
+            if (v != largest && v.size > secondLargest) secondLargest = v.size;
+        }
+
+        // 如果最大文件远大于第二大文件（>2倍），说明是主feature，直接返回
+        if (secondLargest > 0 && largest.size > 2 * secondLargest) {
+            Log.d(TAG, "pickBestVideo: dominant file " + largest.name + " (" + largest.size + " bytes)");
+            return largest;
+        }
+
+        // 多个文件大小相近，可能是分集，返回按名称排序的第一个
+        Log.d(TAG, "pickBestVideo: similar-sized files, picking first: " + candidates.get(0).name);
+        return candidates.get(0);
     }
 
     @NonNull
@@ -459,17 +509,17 @@ public final class IsoParser {
     @Nullable
     private VideoFile findLargestVideoInIsoDir(byte[] dirData, String ext) throws Exception {
         List<Iso9660Entry> entries = parseIso9660Dir(dirData);
-        VideoFile best = null;
+        List<VideoFile> videos = new ArrayList<>();
         for (Iso9660Entry e : entries) {
             if (e.directory || TextUtils.isEmpty(e.name)) continue;
             String lower = e.name.toLowerCase(Locale.ROOT);
             if (!lower.endsWith(ext.toLowerCase(Locale.ROOT)) && !hasVideoExt(lower)) continue;
             String fmt = getFormat(lower);
-            if (best == null || e.size > best.size) {
-                best = new VideoFile(e.location * SECTOR_SIZE, e.size, e.name, fmt);
-            }
+            long offset = e.location * SECTOR_SIZE;
+            Log.d(TAG, "Found ISO9660 video: " + e.name + " offset=" + offset + " size=" + e.size);
+            videos.add(new VideoFile(offset, e.size, e.name, fmt));
         }
-        return best;
+        return pickBestVideo(videos);
     }
 
     private static class Iso9660Entry {

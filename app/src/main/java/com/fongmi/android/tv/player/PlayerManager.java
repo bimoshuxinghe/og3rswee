@@ -480,6 +480,7 @@ public class PlayerManager implements ParseCallback {
         if (spec == null) return "";
         if (spec.getDrm() != null) return "暂不支持 DRM 源";
         if ("smb".equals(UrlUtil.scheme(spec.getUrl()))) return "暂不支持 SMB 源";
+        if (MpvMedia.isBluRayIso(spec.getUrl())) return "ISO 镜像请使用 EXO 播放器";
         return "";
     }
 
