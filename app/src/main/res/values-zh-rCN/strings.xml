@@ -381,4 +381,19 @@
         <item>滑动</item>
         <item>缩放</item>
     </string-array>
+
+    <string name="setting_search_filter">搜索匹配</string>
+    <string-array name="select_search_filter">
+        <item>精确搜索</item>
+        <item>模糊搜索</item>
+    </string-array>
+
+    <string name="setting_search_thread">搜索线程</string>
+    <string-array name="select_search_thread">
+        <item>5</item>
+        <item>8</item>
+        <item>10</item>
+        <item>12</item>
+        <item>15</item>
+    </string-array>
 </resources>

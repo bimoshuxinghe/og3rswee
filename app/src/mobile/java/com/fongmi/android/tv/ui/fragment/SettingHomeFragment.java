@@ -26,6 +26,8 @@ public class SettingHomeFragment extends BaseFragment {
 
     private FragmentSettingHomeBinding mBinding;
     private String[] homeStyle;
+    private String[] searchFilterModes;
+    private String[] searchThreadCounts;
 
     public static SettingHomeFragment newInstance() {
         return new SettingHomeFragment();
@@ -42,6 +44,8 @@ public class SettingHomeFragment extends BaseFragment {
         setHomeStyleText();
         setHomeCarouselText();
         setDetailPosterText();
+        setSearchFilterText();
+        setSearchThreadText();
     }
 
     @Override
@@ -50,6 +54,8 @@ public class SettingHomeFragment extends BaseFragment {
         mBinding.homeStyle.setOnClickListener(this::onHomeStyle);
         mBinding.homeCarousel.setOnClickListener(this::setHomeCarousel);
         mBinding.detailPoster.setOnClickListener(this::setDetailPoster);
+        mBinding.searchFilter.setOnClickListener(this::onSearchFilter);
+        mBinding.searchThread.setOnClickListener(this::onSearchThread);
 
         ((NestedScrollView) mBinding.getRoot().findViewById(R.id.scrollView)).setOnScrollChangeListener((android.view.View.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             com.fongmi.android.tv.event.ScrollEvent.post(scrollY - oldScrollY);
@@ -143,6 +149,55 @@ public class SettingHomeFragment extends BaseFragment {
         PlayerSetting.putDetailPoster(!PlayerSetting.isDetailPoster());
         setDetailPosterText();
         Notify.show("重启后生效");
+    }
+
+    private void setSearchFilterText() {
+        searchFilterModes = ResUtil.getStringArray(R.array.select_search_filter);
+        mBinding.searchFilterText.setText(searchFilterModes[Setting.getSearchFilter()]);
+    }
+
+    private void onSearchFilter(View view) {
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.setting_search_filter)
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setSingleChoiceItems(searchFilterModes, Setting.getSearchFilter(), (dialog, which) -> {
+                    mBinding.searchFilterText.setText(searchFilterModes[which]);
+                    Setting.putSearchFilter(which);
+                    dialog.dismiss();
+                })
+                .show();
+    }
+
+    private void setSearchThreadText() {
+        searchThreadCounts = ResUtil.getStringArray(R.array.select_search_thread);
+        mBinding.searchThreadText.setText(String.valueOf(Setting.getSearchThread()));
+    }
+
+    private void onSearchThread(View view) {
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.setting_search_thread)
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setSingleChoiceItems(searchThreadCounts, getSearchThreadIndex(), (dialog, which) -> {
+                    int threads = getSearchThreadValue(which);
+                    Setting.putSearchThread(threads);
+                    mBinding.searchThreadText.setText(String.valueOf(threads));
+                    dialog.dismiss();
+                })
+                .show();
+    }
+
+    private int getSearchThreadIndex() {
+        int current = Setting.getSearchThread();
+        int[] values = {5, 8, 10, 12, 15};
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) return i;
+        }
+        return 2;
+    }
+
+    private int getSearchThreadValue(int index) {
+        int[] values = {5, 8, 10, 12, 15};
+        return values[Math.min(Math.max(index, 0), values.length - 1)];
     }
 
     @Override

@@ -360,4 +360,24 @@ public class Setting {
     public static void putTransition(int value) {
         Prefers.put("transition_anim", Math.min(Math.max(value, 0), 3));
     }
+
+    public static int getSearchFilter() {
+        return Prefers.getInt("search_filter", 1);
+    }
+
+    public static void putSearchFilter(int value) {
+        Prefers.put("search_filter", value);
+    }
+
+    public static boolean isSearchExact() {
+        return getSearchFilter() == 0;
+    }
+
+    public static int getSearchThread() {
+        return Math.min(Math.max(Prefers.getInt("search_thread", 10), 3), 15);
+    }
+
+    public static void putSearchThread(int value) {
+        Prefers.put("search_thread", Math.min(Math.max(value, 3), 15));
+    }
 }

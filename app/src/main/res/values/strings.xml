@@ -386,4 +386,19 @@
         <item>Slide</item>
         <item>Zoom</item>
     </string-array>
+
+    <string name="setting_search_filter">Search Filter</string>
+    <string-array name="select_search_filter">
+        <item>Exact</item>
+        <item>Fuzzy</item>
+    </string-array>
+
+    <string name="setting_search_thread">Search Threads</string>
+    <string-array name="select_search_thread">
+        <item>5</item>
+        <item>8</item>
+        <item>10</item>
+        <item>12</item>
+        <item>15</item>
+    </string-array>
 </resources>

@@ -124,55 +124,56 @@ public class JarLoader {
     public Spider getSpider(String key, String api, String ext, String jar) {
         String jaKey = Util.md5(jar);
         String spKey = jaKey + key;
-        return spiders.computeIfAbsent(spKey, k -> {
-            try {
-                Class<?> clazz = null;
-                if (jar != null && !jar.isEmpty()) {
-                    try {
-                        parseJar(jaKey, jar);
-                        DexClassLoader loader = loaders.get(jaKey);
-                        if (loader != null) {
-                            String className = "com.github.catvod.spider." + api.split("csp_")[1];
-                            try {
-                                clazz = loader.loadClass(className);
-                            } catch (ClassNotFoundException ignored) {
-                            }
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-                if (clazz == null) {
-                    if ("csp_LocalFile".equals(api) || "csp_Local".equals(api) || "csp_Smb".equals(api) || "csp_WebDav".equals(api)) {
+        Spider existing = spiders.get(spKey);
+        if (existing != null) return existing;
+        try {
+            Class<?> clazz = null;
+            if (jar != null && !jar.isEmpty()) {
+                try {
+                    parseJar(jaKey, jar);
+                    DexClassLoader loader = loaders.get(jaKey);
+                    if (loader != null) {
+                        String className = "com.github.catvod.spider." + api.split("csp_")[1];
                         try {
-                            if ("csp_LocalFile".equals(api)) {
-                                clazz = Class.forName("com.github.catvod.spider.LocalFile");
-                            } else if ("csp_Local".equals(api)) {
-                                clazz = Class.forName("com.github.catvod.spider.Local");
-                            } else if ("csp_Smb".equals(api)) {
-                                clazz = Class.forName("com.github.catvod.spider.Smb");
-                            } else if ("csp_WebDav".equals(api)) {
-                                clazz = Class.forName("com.github.catvod.spider.WebDav");
-                            }
+                            clazz = loader.loadClass(className);
                         } catch (ClassNotFoundException ignored) {
                         }
                     }
+                } catch (Throwable ignored) {
                 }
-                if (clazz == null) {
-                    parseJar(jaKey, jar);
-                    DexClassLoader loader = loaders.get(jaKey);
-                    if (loader == null) return new SpiderNull();
-                    String className = "com.github.catvod.spider." + api.split("csp_")[1];
-                    clazz = loader.loadClass(className);
-                }
-                Spider spider = (Spider) clazz.newInstance();
-                spider.siteKey = key;
-                spider.init(App.get(), ext);
-                return spider;
-            } catch (Throwable e) {
-                e.printStackTrace();
-                return new SpiderNull();
             }
-        });
+            if (clazz == null) {
+                if ("csp_LocalFile".equals(api) || "csp_Local".equals(api) || "csp_Smb".equals(api) || "csp_WebDav".equals(api)) {
+                    try {
+                        if ("csp_LocalFile".equals(api)) {
+                            clazz = Class.forName("com.github.catvod.spider.LocalFile");
+                        } else if ("csp_Local".equals(api)) {
+                            clazz = Class.forName("com.github.catvod.spider.Local");
+                        } else if ("csp_Smb".equals(api)) {
+                            clazz = Class.forName("com.github.catvod.spider.Smb");
+                        } else if ("csp_WebDav".equals(api)) {
+                            clazz = Class.forName("com.github.catvod.spider.WebDav");
+                        }
+                    } catch (ClassNotFoundException ignored) {
+                    }
+                }
+            }
+            if (clazz == null) {
+                parseJar(jaKey, jar);
+                DexClassLoader loader = loaders.get(jaKey);
+                if (loader == null) return new SpiderNull();
+                String className = "com.github.catvod.spider." + api.split("csp_")[1];
+                clazz = loader.loadClass(className);
+            }
+            Spider spider = (Spider) clazz.newInstance();
+            spider.siteKey = key;
+            spider.init(App.get(), ext);
+            spiders.put(spKey, spider);
+            return spider;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return new SpiderNull();
+        }
     }
 
     private DexClassLoader requireRecentLoader() {

@@ -196,11 +196,17 @@ public class Spider extends com.github.catvod.crawler.Spider {
         String spider = "__JS_SPIDER__";
         String global = "globalThis." + spider;
         String content = Module.get().fetch(api);
+        if (content == null || content.isEmpty()) {
+            throw new RuntimeException("JS spider file is empty or failed to load: " + api);
+        }
         cat = content.contains("__jsEvalReturn");
         if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
         ctx.evaluateModule(content.replace(spider, global), api);
         ctx.evaluateModule(String.format(Asset.read("js/lib/spider.js"), api));
         jsObject = (JSObject) ctx.getProperty(ctx.getGlobalObject(), spider);
+        if (jsObject == null) {
+            throw new RuntimeException("Failed to create JS spider object from: " + api);
+        }
     }
 
     private boolean isDrpyRule(String content) {

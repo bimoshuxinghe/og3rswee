@@ -54,6 +54,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     private String[] size;
     private String[] search;
     private String[] transition;
+    private String[] searchFilter;
+    private String[] searchThread;
 
     public static void start(Activity activity) {
         activity.startActivity(new Intent(activity, SettingActivity.class));
@@ -96,6 +98,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.searchText.setText((search = ResUtil.getStringArray(R.array.select_search))[Setting.getSearchMode()]);
         mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
+        mBinding.searchFilterText.setText((searchFilter = ResUtil.getStringArray(R.array.select_search_filter))[Setting.getSearchFilter()]);
+        mBinding.searchThreadText.setText((searchThread = ResUtil.getStringArray(R.array.select_search_thread))[getSearchThreadIndex()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
     }
 
@@ -132,6 +136,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.liveBoot.setOnClickListener(this::setLiveBoot);
         mBinding.search.setOnClickListener(this::setSearch);
         mBinding.transition.setOnClickListener(this::setTransition);
+        mBinding.searchFilter.setOnClickListener(this::setSearchFilter);
+        mBinding.searchThread.setOnClickListener(this::setSearchThread);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.liveHistory.setOnClickListener(this::onLiveHistory);
         mBinding.wallDefault.setOnClickListener(this::setWallDefault);
@@ -292,6 +298,33 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         int index = (Setting.getTransition() + 1) % transition.length;
         mBinding.transitionText.setText(transition[index]);
         Setting.putTransition(index);
+    }
+
+    private void setSearchFilter(View view) {
+        int index = (Setting.getSearchFilter() + 1) % searchFilter.length;
+        mBinding.searchFilterText.setText(searchFilter[index]);
+        Setting.putSearchFilter(index);
+    }
+
+    private void setSearchThread(View view) {
+        int index = (getSearchThreadIndex() + 1) % searchThread.length;
+        int threads = getSearchThreadValue(index);
+        mBinding.searchThreadText.setText(searchThread[index]);
+        Setting.putSearchThread(threads);
+    }
+
+    private int getSearchThreadIndex() {
+        int current = Setting.getSearchThread();
+        int[] values = {5, 8, 10, 12, 15};
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) return i;
+        }
+        return 2;
+    }
+
+    private int getSearchThreadValue(int index) {
+        int[] values = {5, 8, 10, 12, 15};
+        return values[Math.min(Math.max(index, 0), values.length - 1)];
     }
 
     private void setDoh(View view) {

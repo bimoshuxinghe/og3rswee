@@ -23,6 +23,7 @@ import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentCollectBinding;
 import com.fongmi.android.tv.model.SiteViewModel;
+import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.activity.FolderActivity;
 import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.adapter.CollectAdapter;
@@ -152,8 +153,10 @@ public class CollectFragment extends BaseFragment implements MenuProvider, Colle
     }
 
     private List<Vod> filterExact(List<Vod> items) {
-        String keyword = getKeyword();
-        items.removeIf(item -> !item.getName().equals(keyword));
+        if (Setting.isSearchExact()) {
+            String keyword = getKeyword();
+            items.removeIf(item -> !item.getName().equals(keyword));
+        }
         return items;
     }
 

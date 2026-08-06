@@ -359,14 +359,16 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         }
         mResult = result;
         mAdapter.setItems(result);
-        if (mBinding.pager.getAdapter() != null) {
-            mBinding.pager.getAdapter().notifyDataSetChanged();
+        // Always create a new PageAdapter instead of notifyDataSetChanged().
+        // FragmentStatePagerAdapter does not reliably create new fragments
+        // when item count changes (especially 0 → N), causing blank screens
+        // after config refresh.
+        mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
+        if (mAdapter.getItemCount() > 0) {
             Fragment fragment = (Fragment) mBinding.pager.getAdapter().instantiateItem(mBinding.pager, 0);
             if (fragment instanceof FolderFragment) {
                 ((FolderFragment) fragment).setResult(result);
             }
-        } else {
-            mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
         }
         setFabVisible(0);
         hideProgress();
@@ -423,10 +425,9 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             @Override
             public void success() {
                 if (!isViewReady()) return;
-                setTitle();
-                setLogo();
-                homeContent();
-                loadHistory();
+                // Don't call homeContent() here — ConfigEvent.VOD will trigger
+                // RefreshEvent.home() → homeContent() automatically.
+                // Calling it twice causes ViewPager/FragmentManager corruption.
                 loadHomeRecommends();
             }
 
@@ -487,6 +488,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
                     tempResult.setList(cachedResult.getList());
                     mAdapter.addAll(mResult = tempResult);
                     // 有缓存时先显示内容，但保持进度条直到网络请求完成
+                    mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
                     showContent();
                 }
             } catch (Exception e) {
@@ -494,7 +496,10 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             }
         }
         mViewModel.homeContent();
-        mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
+        // Don't create an empty PageAdapter here — setAdapter() will create
+        // one when the network result arrives. Creating an adapter with 0
+        // items confuses FragmentStatePagerAdapter when setAdapter() later
+        // tries to replace it with actual content.
     }
 
     public Result getResult() {

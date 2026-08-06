@@ -17,6 +17,7 @@ import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.bean.Doh;
 import com.github.catvod.bean.Header;
 import com.github.catvod.bean.Proxy;
+import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Json;
 import com.google.gson.JsonObject;
 
@@ -88,6 +89,13 @@ public class VodConfig extends BaseConfig {
         flags = null;
         rules = null;
         parses = null;
+        // Clear OkHttp interceptors to prevent duplicate header accumulation
+        // across multiple config refreshes. setHeaders()/setProxy()/setDoh()
+        // in initList() will re-populate them with fresh values.
+        OkHttp.responseInterceptor().clear();
+        OkHttp.requestInterceptor().clear();
+        OkHttp.dns().clear();
+        OkHttp.selector().clear();
         // BaseLoader.get().clear() is now called synchronously in load(Config)
         // to prevent race condition with spider creation during config reload
         RuleConfig.get().invalidate();

@@ -22,9 +22,16 @@ public class JsLoader {
 
     public void clear() {
         spiders.values().forEach(Spider::destroy);
-        Module.get().clear();
         spiders.clear();
         recent = null;
+        // Do NOT call Module.get().clear() here.
+        // Clearing the JS module cache forces every JS file to be re-fetched
+        // from the network on the next spider creation. If the re-fetch fails
+        // (network issue, server down, etc.), the spider cannot initialize,
+        // resulting in a blank screen after config refresh.
+        // The module cache uses URL as key, so different config URLs will
+        // naturally miss the cache. Same URLs pointing to updated content
+        // will be refreshed on app restart.
     }
 
     public void setRecent(String recent) {
@@ -32,17 +39,22 @@ public class JsLoader {
     }
 
     public Spider getSpider(String key, String api, String ext, String jar) {
-        return spiders.computeIfAbsent(key, k -> {
-            try {
-                Spider spider = loader.spider(api, BaseLoader.get().dex(jar));
-                spider.siteKey = key;
-                spider.init(App.get(), ext);
-                return spider;
-            } catch (Throwable e) {
-                e.printStackTrace();
-                return new SpiderNull();
-            }
-        });
+        Spider existing = spiders.get(key);
+        if (existing != null) return existing;
+        try {
+            Spider spider = loader.spider(api, BaseLoader.get().dex(jar));
+            spider.siteKey = key;
+            spider.init(App.get(), ext);
+            spiders.put(key, spider);
+            return spider;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            // Do NOT cache SpiderNull — if spider creation fails (e.g. JS file
+            // fetch fails, QuickJS context error), returning a cached SpiderNull
+            // means all subsequent calls permanently return empty results.
+            // By not caching, the next call will retry creation.
+            return new SpiderNull();
+        }
     }
 
     public Object[] proxy(Map<String, String> params) throws Exception {

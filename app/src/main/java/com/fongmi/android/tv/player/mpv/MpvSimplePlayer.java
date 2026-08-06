@@ -481,8 +481,31 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             applyHdrOptions();
             setMpvOption("tls-verify", "no");
             setMpvOption("ytdl", "no");
-            setMpvOption("demuxer-max-bytes", "67108864");
+            // Increased demuxer buffer from 64MB to 128MB for better buffering
+            // of high-bitrate streams and reduced buffering pauses
+            setMpvOption("demuxer-max-bytes", "134217728");
             setMpvOption("demuxer-max-back-bytes", "67108864");
+            // Enable cache for better seek performance and network resilience
+            setMpvOption("cache", "yes");
+            setMpvOption("cache-secs", "15");
+            setMpvOption("cache-on-disk", "no");
+            // Wait 2s when cache is low before pausing, prevents stutter on
+            // brief network hiccups
+            setMpvOption("cache-pause-wait", "2.0");
+            // Demuxer readahead: read 20s ahead for smoother long streaming
+            setMpvOption("demuxer-readahead-secs", "20");
+            // Frame dropping: drop VO frames when behind to maintain sync
+            setMpvOption("framedrop", "vo");
+            // Correct audio pitch at non-1x playback speeds
+            setMpvOption("audio-pitch-correction", "yes");
+            // Correct PTS for better A/V sync on problematic streams
+            setMpvOption("correct-pts", "yes");
+            // Allow seeking on streams that don't explicitly declare seekable
+            setMpvOption("force-seekable", "yes");
+            // Network stream buffer size (256KB) for smoother I/O
+            setMpvOption("stream-buffer-size", "262144");
+            // Network timeout: 30s before giving up on stalled connections
+            setMpvOption("network-timeout", "30");
             setMpvOption("idle", "yes");
             setMpvOption("force-window", "no");
             MPVLib.init();
@@ -642,7 +665,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             options.add("demuxer-lavf-probesize=32");
             options.add("demuxer-lavf-analyzeduration=0");
             options.add("cache=yes");
-            options.add("cache-secs=1");
+            options.add("cache-secs=10");
             options.add("keep-open=yes");
             options.add("keep-open-pause=no");
         } else if (MpvMedia.isAudioFile(url) || MpvMedia.isRadioAudio(url)) {
