@@ -118,6 +118,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean isoResolving;
     private String isoOriginalUrl;
     private String isoProxyUrl;
+    private int endFileReason;
+    private int endFileError;
+    private String endFileErrorString;
+    private static boolean hasReplaceSurface = true;
 
     public MpvSimplePlayer(Context context, int decode) {
         super(Looper.getMainLooper());
@@ -448,14 +452,32 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 } else if (loading) {
                     // 正在加载新流时收到的 END_FILE 是旧流被中断产生的，忽略不报错
                     playbackState = Player.STATE_BUFFERING;
+                } else if (endFileReason == MPVLib.MpvEndFileReason.MPV_END_FILE_REASON_REDIRECT) {
+                    // 重定向：MPV 会自动加载新地址，保持 buffering 状态
+                    playbackState = Player.STATE_BUFFERING;
+                    loading = true;
                 } else if (!manualStop && !renderedFirstFrame && !audioOnlyFallback && mediaItem != null) {
                     if (retryHlsAbortError()) return;
-                    setError(lastErrorMessage == null ? "MPV 播放失败" : lastErrorMessage);
+                    String errorMsg = !TextUtils.isEmpty(endFileErrorString) ? "MPV: " + endFileErrorString : lastErrorMessage;
+                    setError(errorMsg == null ? "MPV 播放失败" : errorMsg);
                 }
                 else playbackState = Player.STATE_ENDED;
                 loadedFileActive = false;
             }
             invalidateState();
+        });
+    }
+
+    @Override
+    public void eventEndFile(int reason, int error, String errorString) {
+        handler.post(() -> {
+            if (released) return;
+            endFileReason = reason;
+            endFileError = error;
+            endFileErrorString = errorString;
+            if (reason == MPVLib.MpvEndFileReason.MPV_END_FILE_REASON_ERROR && !TextUtils.isEmpty(errorString)) {
+                lastErrorMessage = "MPV: " + errorString;
+            }
         });
     }
 
@@ -577,6 +599,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         // 始终忽略下一个 END_FILE 事件：切换频道时旧流被 replace 中断不应视为错误
         ignoreNextEndFile = true;
         loadedFileActive = false;
+        endFileReason = 0;
+        endFileError = 0;
+        endFileErrorString = null;
         playbackState = Player.STATE_BUFFERING;
         loading = true;
         videoSize = VideoSize.UNKNOWN;
@@ -1092,10 +1117,20 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             setSurfaceSize(width, height);
             return;
         }
+        boolean hadSurface = currentSurface != null;
         currentSurface = surface;
         currentSurfaceWidth = width;
         currentSurfaceHeight = height;
-        MPVLib.attachSurface(surface);
+        if (hadSurface && hasReplaceSurface) {
+            try {
+                MPVLib.replaceSurface(surface);
+            } catch (Throwable e) {
+                hasReplaceSurface = false;
+                MPVLib.attachSurface(surface);
+            }
+        } else {
+            MPVLib.attachSurface(surface);
+        }
         setSurfaceSize(width, height);
         setMpvProperty("vo", getMpvVo());
         setMpvOption("force-window", "yes");
@@ -1114,7 +1149,16 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void restoreVideoOutput() {
         if (currentSurface == null || !currentSurface.isValid()) return;
-        MPVLib.attachSurface(currentSurface);
+        if (hasReplaceSurface) {
+            try {
+                MPVLib.replaceSurface(currentSurface);
+            } catch (Throwable e) {
+                hasReplaceSurface = false;
+                MPVLib.attachSurface(currentSurface);
+            }
+        } else {
+            MPVLib.attachSurface(currentSurface);
+        }
         setSurfaceSize(currentSurfaceWidth, currentSurfaceHeight);
         setMpvProperty("vo", getMpvVo());
         setMpvOption("force-window", "yes");
@@ -1166,6 +1210,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         isoResolving = false;
         isoOriginalUrl = null;
         isoProxyUrl = null;
+        endFileReason = 0;
+        endFileError = 0;
+        endFileErrorString = null;
         playbackState = mediaItem == null ? Player.STATE_IDLE : Player.STATE_BUFFERING;
     }
 
@@ -1220,6 +1267,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         isoResolving = false;
         isoOriginalUrl = null;
         isoProxyUrl = null;
+        endFileReason = 0;
+        endFileError = 0;
+        endFileErrorString = null;
         if (initialized) {
             setMpvProperty("pause", true);
             command("stop");

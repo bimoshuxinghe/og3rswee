@@ -4,8 +4,8 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.Surface;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class MPVLib {
 
@@ -14,8 +14,8 @@ public final class MPVLib {
         System.loadLibrary("player");
     }
 
-    private static final List<EventObserver> OBSERVERS = new ArrayList<>();
-    private static final List<LogObserver> LOG_OBSERVERS = new ArrayList<>();
+    private static final List<EventObserver> OBSERVERS = new CopyOnWriteArrayList<>();
+    private static final List<LogObserver> LOG_OBSERVERS = new CopyOnWriteArrayList<>();
 
     private MPVLib() {
     }
@@ -24,13 +24,23 @@ public final class MPVLib {
 
     public static native void init();
 
-    public static native void destroy();
+    public static native int destroy();
 
     public static native void attachSurface(Surface surface);
 
     public static native void detachSurface();
 
+    public static native void attachOsdSurface(Surface surface);
+
+    public static native void detachOsdSurface();
+
+    public static native void replaceSurface(Surface surface);
+
+    public static native void replaceOsdSurface(Surface surface);
+
     public static native void command(String[] cmd);
+
+    public static native int enqueueCommand(long userData, String[] cmd);
 
     public static native int setOptionString(String name, String value);
 
@@ -52,72 +62,60 @@ public final class MPVLib {
 
     public static native void setPropertyString(String property, String value);
 
-    public static native void observeProperty(String property, int format);
+    public static native byte[] getPropertyByteArray(String property);
+
+    public static native int observeProperty(String property, int format);
 
     public static void addObserver(EventObserver observer) {
-        synchronized (OBSERVERS) {
-            OBSERVERS.add(observer);
-        }
+        OBSERVERS.add(observer);
     }
 
     public static void removeObserver(EventObserver observer) {
-        synchronized (OBSERVERS) {
-            OBSERVERS.remove(observer);
-        }
+        OBSERVERS.remove(observer);
     }
 
     public static void addLogObserver(LogObserver observer) {
-        synchronized (LOG_OBSERVERS) {
-            LOG_OBSERVERS.add(observer);
-        }
+        LOG_OBSERVERS.add(observer);
     }
 
     public static void removeLogObserver(LogObserver observer) {
-        synchronized (LOG_OBSERVERS) {
-            LOG_OBSERVERS.remove(observer);
-        }
+        LOG_OBSERVERS.remove(observer);
     }
 
     public static void eventProperty(String property) {
-        synchronized (OBSERVERS) {
-            for (EventObserver observer : new ArrayList<>(OBSERVERS)) observer.eventProperty(property);
-        }
+        for (EventObserver observer : OBSERVERS) observer.eventProperty(property);
     }
 
     public static void eventProperty(String property, long value) {
-        synchronized (OBSERVERS) {
-            for (EventObserver observer : new ArrayList<>(OBSERVERS)) observer.eventProperty(property, value);
-        }
+        for (EventObserver observer : OBSERVERS) observer.eventProperty(property, value);
     }
 
     public static void eventProperty(String property, boolean value) {
-        synchronized (OBSERVERS) {
-            for (EventObserver observer : new ArrayList<>(OBSERVERS)) observer.eventProperty(property, value);
-        }
+        for (EventObserver observer : OBSERVERS) observer.eventProperty(property, value);
     }
 
     public static void eventProperty(String property, String value) {
-        synchronized (OBSERVERS) {
-            for (EventObserver observer : new ArrayList<>(OBSERVERS)) observer.eventProperty(property, value);
-        }
+        for (EventObserver observer : OBSERVERS) observer.eventProperty(property, value);
     }
 
     public static void eventProperty(String property, double value) {
-        synchronized (OBSERVERS) {
-            for (EventObserver observer : new ArrayList<>(OBSERVERS)) observer.eventProperty(property, value);
-        }
+        for (EventObserver observer : OBSERVERS) observer.eventProperty(property, value);
     }
 
     public static void event(int eventId) {
-        synchronized (OBSERVERS) {
-            for (EventObserver observer : new ArrayList<>(OBSERVERS)) observer.event(eventId);
-        }
+        for (EventObserver observer : OBSERVERS) observer.event(eventId);
+    }
+
+    public static void eventEndFile(int reason, int error, String errorString) {
+        for (EventObserver observer : OBSERVERS) observer.eventEndFile(reason, error, errorString);
+    }
+
+    public static void eventCommandReply(long userData, int error) {
+        for (EventObserver observer : OBSERVERS) observer.eventCommandReply(userData, error);
     }
 
     public static void logMessage(String prefix, int level, String text) {
-        synchronized (LOG_OBSERVERS) {
-            for (LogObserver observer : new ArrayList<>(LOG_OBSERVERS)) observer.logMessage(prefix, level, text);
-        }
+        for (LogObserver observer : LOG_OBSERVERS) observer.logMessage(prefix, level, text);
     }
 
     public interface EventObserver {
@@ -133,6 +131,12 @@ public final class MPVLib {
         void eventProperty(String property, double value);
 
         void event(int eventId);
+
+        default void eventEndFile(int reason, int error, String errorString) {
+        }
+
+        default void eventCommandReply(long userData, int error) {
+        }
     }
 
     public interface LogObserver {
@@ -180,6 +184,18 @@ public final class MPVLib {
         public static final int MPV_EVENT_HOOK = 25;
 
         private MpvEvent() {
+        }
+    }
+
+    public static final class MpvEndFileReason {
+
+        public static final int MPV_END_FILE_REASON_EOF = 0;
+        public static final int MPV_END_FILE_REASON_STOP = 2;
+        public static final int MPV_END_FILE_REASON_QUIT = 3;
+        public static final int MPV_END_FILE_REASON_ERROR = 4;
+        public static final int MPV_END_FILE_REASON_REDIRECT = 5;
+
+        private MpvEndFileReason() {
         }
     }
 }
