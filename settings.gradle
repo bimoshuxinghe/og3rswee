@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
         google()
+        mavenCentral()
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
@@ -17,6 +18,7 @@ dependencyResolutionManagement {
     repositories {
         maven { url = uri("$rootDir/third_party/maven") }
         google()
+        mavenCentral()
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
         flatDir { dirs "$rootDir/app/libs" }
