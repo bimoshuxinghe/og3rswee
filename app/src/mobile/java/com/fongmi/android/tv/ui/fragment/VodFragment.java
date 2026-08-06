@@ -478,6 +478,13 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     private void homeContent() {
         showProgress();
         setFabVisible(0);
+        // Detach old PageAdapter BEFORE clearing mAdapter data.
+        // PageAdapter.getCount() reads from mAdapter.getItemCount().
+        // If we clear mAdapter while the old adapter is still attached,
+        // ViewPager.onMeasure() sees expected N items but adapter returns 0,
+        // causing "IllegalStateException: PagerAdapter changed contents
+        // without calling notifyDataSetChanged".
+        mBinding.pager.setAdapter(null);
         mAdapter.clear();
         String cache = com.fongmi.android.tv.setting.Setting.getHomeRecommend(getHome().getKey());
         if (!cache.isEmpty()) {
@@ -496,10 +503,6 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
             }
         }
         mViewModel.homeContent();
-        // Don't create an empty PageAdapter here — setAdapter() will create
-        // one when the network result arrives. Creating an adapter with 0
-        // items confuses FragmentStatePagerAdapter when setAdapter() later
-        // tries to replace it with actual content.
     }
 
     public Result getResult() {
