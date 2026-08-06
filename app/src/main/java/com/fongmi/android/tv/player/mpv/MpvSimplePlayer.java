@@ -342,7 +342,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     @Override
     public void eventProperty(String property) {
         if (isVideoSizeProperty(property)) updateVideoSize();
-        if ("track-list".equals(property)) {
+        if ("track-list".equals(property) || "chapter-list".equals(property) || "edition-list".equals(property)) {
             handler.post(() -> {
                 if (released) return;
                 buildTracks();
@@ -497,45 +497,26 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (initialized) return;
         try {
             MPVLib.create(context);
+            // === Pre-init options matching APK exactly ===
             applyConfigOptions();
-            setMpvOption("profile", "fast");
             applyRenderOptions();
-            applyProbeOptions();
-            applyDecodeOption();
-            setMpvOption("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1");
-            applyAudioOptions();
-            applyHdrOptions();
-            setMpvOption("tls-verify", "no");
-            setMpvOption("ytdl", "no");
-            // Increased demuxer buffer from 64MB to 128MB for better buffering
-            // of high-bitrate streams and reduced buffering pauses
-            setMpvOption("demuxer-max-bytes", "134217728");
-            setMpvOption("demuxer-max-back-bytes", "67108864");
-            // Enable cache for better seek performance and network resilience
-            setMpvOption("cache", "yes");
-            setMpvOption("cache-secs", "15");
-            setMpvOption("cache-on-disk", "no");
-            // Wait 2s when cache is low before pausing, prevents stutter on
-            // brief network hiccups
-            setMpvOption("cache-pause-wait", "2.0");
-            // Demuxer readahead: read 20s ahead for smoother long streaming
-            setMpvOption("demuxer-readahead-secs", "20");
-            // Frame dropping: drop VO frames when behind to maintain sync
-            setMpvOption("framedrop", "vo");
-            // Correct audio pitch at non-1x playback speeds
-            setMpvOption("audio-pitch-correction", "yes");
-            // Correct PTS for better A/V sync on problematic streams
-            setMpvOption("correct-pts", "yes");
-            // Allow seeking on streams that don't explicitly declare seekable
-            setMpvOption("force-seekable", "yes");
-            // Network stream buffer size (256KB) for smoother I/O
-            setMpvOption("stream-buffer-size", "262144");
-            // Network timeout: 30s before giving up on stalled connections
-            setMpvOption("network-timeout", "30");
-            setMpvOption("idle", "yes");
             setMpvOption("force-window", "no");
+            setMpvOption("keepaspect", "no");
+            applyShaderCacheDir();
+            setMpvOption("ao", "audiotrack,opensles");
+            setMpvOption("hwdec", "mediacodec,mediacodec-copy");
+            setMpvOption("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1,vc1");
+            setMpvOption("ytdl", "no");
+            applyProxyUrl();
+            setMpvOption("profile", "fast");
+            applyTlsCaFile();
+            applyCacheOptions();
+            applySubtitleConfig();
+            // === Init MPV ===
             MPVLib.init();
-            applySubtitleStyle();
+            // === Post-init options matching APK ===
+            applyDecodeOption();
+            applyAudioOptions();
             observeProperties();
             MPVLib.addObserver(this);
             MPVLib.addLogObserver(this);
@@ -546,26 +527,110 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         }
     }
 
-    private void applyConfigOptions() {
-        if (PlayerSetting.hasMpvConfig()) {
-            setMpvOption("config", "yes");
-            setMpvOption("config-dir", PlayerSetting.getMpvConfigDir().getAbsolutePath());
-        } else {
-            setMpvOption("config", "no");
+    private void applyShaderCacheDir() {
+        try {
+            java.io.File cacheDir = new java.io.File(context.getCacheDir(), "mpv");
+            if (!cacheDir.exists()) cacheDir.mkdirs();
+            setMpvOption("gpu-shader-cache-dir", cacheDir.getAbsolutePath());
+        } catch (Exception ignored) {
         }
+    }
+
+    private void applyProxyUrl() {
+        try {
+            int port = com.github.catvod.Proxy.getPort();
+            if (port > 0) {
+                setMpvOption("proxy-url", "http://127.0.0.1:" + port + "/proxy?");
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void applyTlsCaFile() {
+        try {
+            java.io.File cacert = new java.io.File(context.getFilesDir(), "cacert.pem");
+            if (!cacert.isFile() || cacert.length() <= 0) {
+                cacert.getParentFile().mkdirs();
+                java.io.InputStream is = context.getAssets().open("cacert.pem");
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(cacert, false);
+                byte[] buf = new byte[8192];
+                int len;
+                while ((len = is.read(buf)) != -1) fos.write(buf, 0, len);
+                fos.close();
+                is.close();
+            }
+            if (cacert.isFile() && cacert.length() > 0) {
+                setMpvOption("tls-ca-file", cacert.getAbsolutePath());
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void applyCacheOptions() {
+        int cacheSecs = PlayerSetting.getBuffer() * 10;
+        setMpvOption("cache", "yes");
+        setMpvOption("cache-secs", String.valueOf(cacheSecs));
+        setMpvOption("cache-on-disk", "no");
+        try {
+            java.io.File cacheDir = new java.io.File(context.getCacheDir(), "mpv");
+            if (!cacheDir.exists()) cacheDir.mkdirs();
+            setMpvOption("demuxer-cache-dir", cacheDir.getAbsolutePath());
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void applySubtitleConfig() {
+        setMpvOption("embeddedfonts", "no");
+        setMpvOption("sub-ass-override", "force");
+        setSubtitleScale(subtitleScale);
+        setSubtitlePosition(subtitlePosition);
+    }
+
+    private void applyConfigOptions() {
+        java.io.File configDir = new java.io.File(context.getFilesDir(), "mpv");
+        if (!configDir.exists()) configDir.mkdirs();
+        java.io.File cacheDir = new java.io.File(context.getCacheDir(), "mpv");
+        if (!cacheDir.exists()) cacheDir.mkdirs();
+        // Create fonts.conf if not exists (matching APK behavior)
+        java.io.File fontsConf = new java.io.File(configDir, "fonts.conf");
+        if (!fontsConf.isFile() || fontsConf.length() <= 0) {
+            try {
+                fontsConf.getParentFile().mkdirs();
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(fontsConf, false);
+                fos.write("<?xml version=\"1.0\"?>\n<!DOCTYPE fontconfig SYSTEM \"fonts.dtd\">\n<fontconfig>\n<dir>".getBytes());
+                fos.write(cacheDir.getAbsolutePath().getBytes());
+                fos.write("</dir>\n<cachedir>".getBytes());
+                fos.write(cacheDir.getAbsolutePath().getBytes());
+                fos.write("</cachedir>\n</fontconfig>\n".getBytes());
+                fos.close();
+            } catch (java.io.IOException ignored) {
+            }
+        }
+        setMpvOption("config", "yes");
+        setMpvOption("config-dir", configDir.getAbsolutePath());
     }
 
     private void observeProperties() {
         MPVLib.observeProperty("time-pos", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("duration/full", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("demuxer-cache-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
+        MPVLib.observeProperty("demuxer-cache-duration", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("pause", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         MPVLib.observeProperty("eof-reached", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         MPVLib.observeProperty("paused-for-cache", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
+        MPVLib.observeProperty("media-live", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
+        MPVLib.observeProperty("seekable", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         MPVLib.observeProperty("width", MPVLib.MpvFormat.MPV_FORMAT_INT64);
         MPVLib.observeProperty("height", MPVLib.MpvFormat.MPV_FORMAT_INT64);
+        MPVLib.observeProperty("video-params/aspect", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
+        MPVLib.observeProperty("video-params/rotate", MPVLib.MpvFormat.MPV_FORMAT_INT64);
         MPVLib.observeProperty("video-params", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("video-out-params", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        MPVLib.observeProperty("current-tracks/video/albumart", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
+        MPVLib.observeProperty("chapter", MPVLib.MpvFormat.MPV_FORMAT_INT64);
+        MPVLib.observeProperty("current-edition", MPVLib.MpvFormat.MPV_FORMAT_INT64);
+        MPVLib.observeProperty("chapter-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        MPVLib.observeProperty("edition-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("track-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
     }
 
@@ -690,7 +755,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyDecodeOption() {
-        String value = decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD ? "mediacodec-copy" : "no";
+        String value = decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD ? "mediacodec,mediacodec-copy" : "no";
         setMpvOption("hwdec", value);
         if (initialized) setMpvProperty("hwdec", value);
     }
@@ -704,7 +769,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         } else {
             setMpvOption("gpu-api", "opengl");
             setMpvOption("gpu-context", "android");
-            setMpvOption("opengl-es", "yes");
         }
     }
 
@@ -862,6 +926,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             }
             else if ("duration/full".equals(property) || "duration".equals(property)) durationMs = secondsToMs(value);
             else if ("demuxer-cache-time".equals(property)) bufferedPositionMs = Math.max(positionMs, positionMs + secondsToMs(value));
+            else if ("demuxer-cache-duration".equals(property)) {
+                if (value > 0) bufferedPositionMs = Math.max(positionMs, positionMs + secondsToMs(value));
+            }
             else if (isVideoSizeProperty(property)) updateVideoSize();
             invalidateState();
         });
@@ -888,7 +955,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private boolean isVideoSizeProperty(String property) {
-        return "video-params".equals(property) || "video-out-params".equals(property);
+        return "video-params".equals(property) || "video-out-params".equals(property)
+                || "video-params/aspect".equals(property) || "video-params/rotate".equals(property)
+                || "width".equals(property) || "height".equals(property);
     }
 
     @Nullable
