@@ -1,7 +1,5 @@
 package com.fongmi.android.tv.ui.fragment;
 
-import static androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN;
-
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -151,7 +149,9 @@ public class SearchFragment extends BaseFragment implements MenuProvider, WordAd
         String collectTag = CollectFragment.class.getSimpleName();
         if (fm.findFragmentByTag(collectTag) != null) return;
         String searchTag = SearchFragment.class.getSimpleName();
-        FragmentTransaction ft = fm.beginTransaction().setTransition(TRANSIT_FRAGMENT_OPEN);
+        FragmentTransaction ft = fm.beginTransaction();
+        int[] anims = com.fongmi.android.tv.utils.TransitionUtil.getFragmentAnims(true);
+        if (anims != null) ft.setCustomAnimations(anims[0], anims[1], anims[2], anims[3]);
         ft.add(R.id.container, CollectFragment.newInstance(keyword), collectTag);
         Optional.ofNullable(fm.findFragmentByTag(searchTag)).ifPresent(ft::hide);
         ft.setReorderingAllowed(true).addToBackStack(null).commit();
