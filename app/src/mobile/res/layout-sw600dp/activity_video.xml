@@ -305,6 +305,15 @@
                             android:visibility="gone"
                             tools:visibility="visible" />
 
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:id="@+id/musicBtn"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="12dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_music_note"
+                            app:tint="@color/white" />
+
                     </androidx.appcompat.widget.LinearLayoutCompat>
 
                     <androidx.recyclerview.widget.RecyclerView
@@ -372,4 +381,14 @@
             </androidx.core.widget.NestedScrollView>
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
     </com.fongmi.android.tv.ui.custom.ProgressLayout>
+
+    <!-- Music disc overlay: placed at root level so it covers entire screen
+         without affecting the video frame's SurfaceView layout -->
+    <include
+        android:id="@+id/musicDiscView"
+        layout="@layout/view_music_disc"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
 </FrameLayout>

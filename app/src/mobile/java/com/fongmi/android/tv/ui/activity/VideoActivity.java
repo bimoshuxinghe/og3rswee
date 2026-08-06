@@ -348,25 +348,27 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void initEvent() {
         mBinding.name.setOnClickListener(view -> onName());
         mBinding.more.setOnClickListener(view -> onMore());
-        mBinding.musicBtn.setOnClickListener(view -> toggleMusicDisc());
-        mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
-        mBinding.musicDiscView.musicNext.setOnClickListener(view -> checkNext());
-        mBinding.musicDiscView.musicPlay.setOnClickListener(view -> checkPlay());
-        mBinding.musicDiscView.musicListBtn.setOnClickListener(view -> onEpisodes());
-        mBinding.musicDiscView.musicBackBtn.setOnClickListener(view -> hideMusicDisc());
-        mBinding.musicDiscView.musicTimerBtn2.setOnClickListener(view -> showMusicTimerDialog());
-        mBinding.musicDiscView.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
-                if (!fromUser) return;
-                long dur = player().getDuration();
-                if (dur > 0) player().seekTo(dur * prog / 100);
-            }
-            @Override
-            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
-            @Override
-            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
-        });
+        if (mBinding.musicBtn != null) mBinding.musicBtn.setOnClickListener(view -> toggleMusicDisc());
+        if (mBinding.musicDiscView != null) {
+            mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
+            mBinding.musicDiscView.musicNext.setOnClickListener(view -> checkNext());
+            mBinding.musicDiscView.musicPlay.setOnClickListener(view -> checkPlay());
+            mBinding.musicDiscView.musicListBtn.setOnClickListener(view -> onEpisodes());
+            mBinding.musicDiscView.musicBackBtn.setOnClickListener(view -> hideMusicDisc());
+            mBinding.musicDiscView.musicTimerBtn2.setOnClickListener(view -> showMusicTimerDialog());
+            mBinding.musicDiscView.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                    if (!fromUser) return;
+                    long dur = player().getDuration();
+                    if (dur > 0) player().seekTo(dur * prog / 100);
+                }
+                @Override
+                public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+                @Override
+                public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+            });
+        }
         mBinding.actor.setOnClickListener(view -> onActor());
         mBinding.content.setOnClickListener(view -> onContent());
         mBinding.reverse.setOnClickListener(view -> onReverse());
@@ -410,18 +412,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         // Forward touch events from music disc view to mKeyDown for long press lyrics adjustment
-        mBinding.musicDiscView.getRoot().setOnTouchListener((view, event) -> {
-            mKeyDown.onTouchEvent(event);
-            return false;
-        });
-        mBinding.musicDiscView.musicLrcView.setOnTouchListener((view, event) -> {
-            mKeyDown.onTouchEvent(event);
-            return false;
-        });
-        mBinding.musicDiscView.musicDisc.setOnTouchListener((view, event) -> {
-            mKeyDown.onTouchEvent(event);
-            return false;
-        });
+        if (mBinding.musicDiscView != null) {
+            mBinding.musicDiscView.getRoot().setOnTouchListener((view, event) -> {
+                mKeyDown.onTouchEvent(event);
+                return false;
+            });
+            mBinding.musicDiscView.musicLrcView.setOnTouchListener((view, event) -> {
+                mKeyDown.onTouchEvent(event);
+                return false;
+            });
+            mBinding.musicDiscView.musicDisc.setOnTouchListener((view, event) -> {
+                mKeyDown.onTouchEvent(event);
+                return false;
+            });
+        }
         mBinding.control.action.getRoot().setOnTouchListener(this::onActionTouch);
         mBinding.swipeLayout.setOnRefreshListener(this::onSwipeRefresh);
     }
@@ -1483,6 +1487,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void showMusicDisc() {
+        if (mBinding.musicDiscView == null) return;
         isMusicDiscVisible = true;
         // Enable lrc mode so long press triggers lyrics adjustment instead of speed
         mKeyDown.setLrcMode(true);
@@ -1602,6 +1607,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void hideMusicDisc() {
+        if (mBinding.musicDiscView == null) { isMusicDiscVisible = false; return; }
         isMusicDiscVisible = false;
         mBinding.musicDiscView.getRoot().setVisibility(View.GONE);
         mBinding.musicDiscView.musicDisc.pause();
