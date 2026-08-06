@@ -376,6 +376,10 @@
         <item>淡入淡出</item>
         <item>滑動</item>
         <item>縮放</item>
+        <item>翻轉</item>
+        <item>上推</item>
+        <item>彈性</item>
+        <item>展開</item>
     </string-array>
 
     <string name="setting_search_filter">搜尋匹配</string>

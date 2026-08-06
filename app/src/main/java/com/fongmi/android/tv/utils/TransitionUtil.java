@@ -15,6 +15,10 @@ import com.fongmi.android.tv.setting.Setting;
  * 1 = Fade
  * 2 = Slide
  * 3 = Zoom
+ * 4 = Flip (horizontal squeeze + fade)
+ * 5 = Push (vertical slide)
+ * 6 = Bounce (overshoot scale)
+ * 7 = Expand (scale from zero)
  */
 public class TransitionUtil {
 
@@ -46,7 +50,7 @@ public class TransitionUtil {
                 popEnter = R.anim.transition_slide_enter;
                 popExit = R.anim.transition_slide_exit;
             }
-        } else { // Zoom (mode == 3)
+        } else if (mode == 3) { // Zoom
             if (forward) {
                 enter = R.anim.transition_zoom_enter;
                 exit = R.anim.transition_zoom_exit;
@@ -57,6 +61,54 @@ public class TransitionUtil {
                 exit = R.anim.transition_zoom_pop_exit;
                 popEnter = R.anim.transition_zoom_enter;
                 popExit = R.anim.transition_zoom_exit;
+            }
+        } else if (mode == 4) { // Flip
+            if (forward) {
+                enter = R.anim.transition_flip_enter;
+                exit = R.anim.transition_flip_exit;
+                popEnter = R.anim.transition_flip_pop_enter;
+                popExit = R.anim.transition_flip_pop_exit;
+            } else {
+                enter = R.anim.transition_flip_pop_enter;
+                exit = R.anim.transition_flip_pop_exit;
+                popEnter = R.anim.transition_flip_enter;
+                popExit = R.anim.transition_flip_exit;
+            }
+        } else if (mode == 5) { // Push
+            if (forward) {
+                enter = R.anim.transition_push_enter;
+                exit = R.anim.transition_push_exit;
+                popEnter = R.anim.transition_push_pop_enter;
+                popExit = R.anim.transition_push_pop_exit;
+            } else {
+                enter = R.anim.transition_push_pop_enter;
+                exit = R.anim.transition_push_pop_exit;
+                popEnter = R.anim.transition_push_enter;
+                popExit = R.anim.transition_push_exit;
+            }
+        } else if (mode == 6) { // Bounce
+            if (forward) {
+                enter = R.anim.transition_bounce_enter;
+                exit = R.anim.transition_bounce_exit;
+                popEnter = R.anim.transition_bounce_pop_enter;
+                popExit = R.anim.transition_bounce_pop_exit;
+            } else {
+                enter = R.anim.transition_bounce_pop_enter;
+                exit = R.anim.transition_bounce_pop_exit;
+                popEnter = R.anim.transition_bounce_enter;
+                popExit = R.anim.transition_bounce_exit;
+            }
+        } else { // Expand (mode == 7)
+            if (forward) {
+                enter = R.anim.transition_expand_enter;
+                exit = R.anim.transition_expand_exit;
+                popEnter = R.anim.transition_expand_pop_enter;
+                popExit = R.anim.transition_expand_pop_exit;
+            } else {
+                enter = R.anim.transition_expand_pop_enter;
+                exit = R.anim.transition_expand_pop_exit;
+                popEnter = R.anim.transition_expand_enter;
+                popExit = R.anim.transition_expand_exit;
             }
         }
         return new int[]{enter, exit, popEnter, popExit};
@@ -84,13 +136,45 @@ public class TransitionUtil {
                 enterAnim = R.anim.transition_slide_pop_enter;
                 exitAnim = R.anim.transition_slide_pop_exit;
             }
-        } else { // Zoom (mode == 3)
+        } else if (mode == 3) { // Zoom
             if (enter) {
                 enterAnim = R.anim.transition_zoom_enter;
                 exitAnim = R.anim.transition_zoom_exit;
             } else {
                 enterAnim = R.anim.transition_zoom_pop_enter;
                 exitAnim = R.anim.transition_zoom_pop_exit;
+            }
+        } else if (mode == 4) { // Flip
+            if (enter) {
+                enterAnim = R.anim.transition_flip_enter;
+                exitAnim = R.anim.transition_flip_exit;
+            } else {
+                enterAnim = R.anim.transition_flip_pop_enter;
+                exitAnim = R.anim.transition_flip_pop_exit;
+            }
+        } else if (mode == 5) { // Push
+            if (enter) {
+                enterAnim = R.anim.transition_push_enter;
+                exitAnim = R.anim.transition_push_exit;
+            } else {
+                enterAnim = R.anim.transition_push_pop_enter;
+                exitAnim = R.anim.transition_push_pop_exit;
+            }
+        } else if (mode == 6) { // Bounce
+            if (enter) {
+                enterAnim = R.anim.transition_bounce_enter;
+                exitAnim = R.anim.transition_bounce_exit;
+            } else {
+                enterAnim = R.anim.transition_bounce_pop_enter;
+                exitAnim = R.anim.transition_bounce_pop_exit;
+            }
+        } else { // Expand (mode == 7)
+            if (enter) {
+                enterAnim = R.anim.transition_expand_enter;
+                exitAnim = R.anim.transition_expand_exit;
+            } else {
+                enterAnim = R.anim.transition_expand_pop_enter;
+                exitAnim = R.anim.transition_expand_pop_exit;
             }
         }
         return new int[]{enterAnim, exitAnim};

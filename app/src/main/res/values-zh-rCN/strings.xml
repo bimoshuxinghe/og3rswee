@@ -380,6 +380,10 @@
         <item>淡入淡出</item>
         <item>滑动</item>
         <item>缩放</item>
+        <item>翻转</item>
+        <item>上推</item>
+        <item>弹性</item>
+        <item>展开</item>
     </string-array>
 
     <string name="setting_search_filter">搜索匹配</string>

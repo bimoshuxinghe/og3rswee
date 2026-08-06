@@ -25,6 +25,7 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.custom.CustomWallView;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.TransitionUtil;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.DynamicColorsOptions;
 
@@ -180,30 +181,7 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     @Nullable
     private int[] getTransitionAnims(boolean enter) {
-        int mode = Setting.getTransition();
-        if (mode == 0) return null;
-        int enterAnim, exitAnim;
-        if (mode == 1) {
-            enterAnim = R.anim.transition_fade_enter;
-            exitAnim = R.anim.transition_fade_exit;
-        } else if (mode == 2) {
-            if (enter) {
-                enterAnim = R.anim.transition_slide_enter;
-                exitAnim = R.anim.transition_slide_exit;
-            } else {
-                enterAnim = R.anim.transition_slide_pop_enter;
-                exitAnim = R.anim.transition_slide_pop_exit;
-            }
-        } else {
-            if (enter) {
-                enterAnim = R.anim.transition_zoom_enter;
-                exitAnim = R.anim.transition_zoom_exit;
-            } else {
-                enterAnim = R.anim.transition_zoom_pop_enter;
-                exitAnim = R.anim.transition_zoom_pop_exit;
-            }
-        }
-        return new int[]{enterAnim, exitAnim};
+        return TransitionUtil.getActivityAnims(enter);
     }
 
     private void applyPendingTransition(boolean enter) {

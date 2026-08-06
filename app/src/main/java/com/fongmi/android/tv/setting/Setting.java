@@ -354,11 +354,11 @@ public class Setting {
     }
 
     public static int getTransition() {
-        return Math.min(Math.max(Prefers.getInt("transition_anim", 0), 0), 3);
+        return Math.min(Math.max(Prefers.getInt("transition_anim", 0), 0), 7);
     }
 
     public static void putTransition(int value) {
-        Prefers.put("transition_anim", Math.min(Math.max(value, 0), 3));
+        Prefers.put("transition_anim", Math.min(Math.max(value, 0), 7));
     }
 
     public static int getSearchFilter() {

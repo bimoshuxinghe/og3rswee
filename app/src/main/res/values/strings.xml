@@ -385,6 +385,10 @@
         <item>Fade</item>
         <item>Slide</item>
         <item>Zoom</item>
+        <item>Flip</item>
+        <item>Push</item>
+        <item>Bounce</item>
+        <item>Expand</item>
     </string-array>
 
     <string name="setting_search_filter">Search Filter</string>
