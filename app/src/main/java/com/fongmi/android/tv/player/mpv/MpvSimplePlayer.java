@@ -31,12 +31,15 @@ import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.server.process.IsoStream;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.Notify;
+import com.github.catvod.net.OkHttp;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.net.HttpHeaders;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -792,7 +795,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             activeLoadUrl = url;
             hlsAbortRetryAttempted = false;
         }
-        applyHeaders(mediaItem);
         applyDecodeOption(isHls(mediaItem, url));
         positionMs = startPositionMs == C.TIME_UNSET ? 0 : Math.max(0, startPositionMs);
         pendingInitialSeekMs = positionMs > 0 && !useStartOption ? positionMs : C.TIME_UNSET;
@@ -871,12 +873,27 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyHeaders(MediaItem item) {
-        Map<String, String> headers = ExoUtil.extractHeaders(item);
+        // 1. 从 MediaItem 提取 Channel 级别的 headers（来自 Live/Channel 的 ua/header/origin/referer）
+        Map<String, String> headers = new HashMap<>(ExoUtil.extractHeaders(item));
+
+        // 2. 从配置文件的 headers 数组中，按 host 匹配获取额外的 headers
+        //    ExoPlayer 通过 OkHttp 的 ResponseInterceptor 自动应用这些 headers，
+        //    但 MPV 使用自己的 HTTP 栈（FFmpeg），不经过 OkHttp，所以需要手动合并
+        String url = item.requestMetadata.mediaUri != null ? item.requestMetadata.mediaUri.toString() : "";
+        Map<String, String> configHeaders = OkHttp.responseInterceptor().getMatchedHeaders(url);
+        // config headers 覆盖 channel headers（与 ExoPlayer + OkHttp 的行为一致）
+        headers.putAll(configHeaders);
+
+        Log.d(TAG, "applyHeaders url=" + url + " channelHeaders=" + ExoUtil.extractHeaders(item) + " configHeaders=" + configHeaders + " merged=" + headers);
+
         String userAgent = null;
         StringBuilder fields = new StringBuilder();
         for (Map.Entry<String, String> entry : headers.entrySet()) {
             if (TextUtils.isEmpty(entry.getKey()) || TextUtils.isEmpty(entry.getValue())) continue;
-            if (HttpHeaders.USER_AGENT.equalsIgnoreCase(entry.getKey())) userAgent = entry.getValue();
+            if (HttpHeaders.USER_AGENT.equalsIgnoreCase(entry.getKey())) {
+                userAgent = entry.getValue();
+                continue; // UA 通过 user-agent 属性单独设置，避免在 http-header-fields 中重复
+            }
             if (fields.length() > 0) fields.append(',');
             fields.append(entry.getKey()).append(": ").append(entry.getValue().replace(",", "\\,"));
         }
@@ -894,6 +911,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         }
         if (fields.length() > 0) {
             String headerFields = fields.toString();
+            Log.d(TAG, "applyHeaders setting user-agent=" + userAgent + " http-header-fields=" + headerFields);
             if (initialized) setMpvProperty("http-header-fields", headerFields);
             else setMpvOption("http-header-fields", headerFields);
         }
@@ -964,35 +982,81 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private String getLoadOptions(long positionMs, boolean useStartOption, MediaItem item, String url) {
-        List<String> options = new ArrayList<>();
-        if (positionMs > 0 && useStartOption) options.add("start=" + formatSeconds(positionMs));
+        // 使用 LinkedHashMap 保持插入顺序（与反编译 APK 一致）
+        LinkedHashMap<String, String> opts = new LinkedHashMap<>();
+
+        if (positionMs > 0 && useStartOption) opts.put("start", formatSeconds(positionMs));
         if (isHls(item, url)) {
             // HLS 直播流：强制 lavf demuxer + HLS 格式，快速起播
-            options.add("demuxer=lavf");
-            options.add("demuxer-lavf-format=hls");
-            options.add("demuxer-lavf-probesize=32");
-            options.add("demuxer-lavf-analyzeduration=0");
-            options.add("cache=yes");
-            options.add("cache-secs=10");
-            options.add("keep-open=yes");
-            options.add("keep-open-pause=no");
+            opts.put("demuxer", "lavf");
+            opts.put("demuxer-lavf-format", "hls");
+            opts.put("demuxer-lavf-probesize", "32");
+            opts.put("demuxer-lavf-analyzeduration", "0");
+            opts.put("cache", "yes");
+            opts.put("cache-secs", "10");
+            opts.put("keep-open", "yes");
+            opts.put("keep-open-pause", "no");
         } else if (MpvMedia.isAudioFile(url) || MpvMedia.isRadioAudio(url)) {
             // 音频文件：关闭视频轨，只保留音频
-            options.add("demuxer=lavf");
-            options.add("vid=no");
-            options.add("aid=auto");
-            options.add("keep-open=yes");
-            options.add("keep-open-pause=no");
+            opts.put("demuxer", "lavf");
+            opts.put("vid", "no");
+            opts.put("aid", "auto");
+            opts.put("keep-open", "yes");
+            opts.put("keep-open-pause", "no");
         } else {
             // 未知格式或视频文件：用 lavf demuxer 自动探测，同时允许纯音频播放
-            options.add("demuxer=lavf");
-            options.add("keep-open=yes");
-            options.add("keep-open-pause=no");
-            // 如果没有视频轨，自动切换为纯音频模式
-            options.add("vid=auto");
-            options.add("aid=auto");
+            opts.put("demuxer", "lavf");
+            opts.put("keep-open", "yes");
+            opts.put("keep-open-pause", "no");
+            opts.put("vid", "auto");
+            opts.put("aid", "auto");
         }
-        return TextUtils.join(",", options);
+
+        // === 将 headers 作为 per-file options 传入 loadfile（与反编译 APK 一致）===
+        // 1. 从 MediaItem 提取 Channel 级别的 headers
+        Map<String, String> headers = new HashMap<>(ExoUtil.extractHeaders(item));
+        // 2. 从配置文件的 headers 数组中按 host 匹配获取额外的 headers
+        Map<String, String> configHeaders = OkHttp.responseInterceptor().getMatchedHeaders(url);
+        headers.putAll(configHeaders);
+
+        String userAgent = null;
+        String referer = null;
+        StringBuilder fields = new StringBuilder();
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (TextUtils.isEmpty(entry.getKey()) || TextUtils.isEmpty(entry.getValue())) continue;
+            if (HttpHeaders.USER_AGENT.equalsIgnoreCase(entry.getKey())) {
+                userAgent = entry.getValue();
+            } else if (HttpHeaders.REFERER.equalsIgnoreCase(entry.getKey())) {
+                referer = entry.getValue();
+            } else {
+                if (fields.length() > 0) fields.append(',');
+                fields.append(entry.getKey()).append(": ").append(entry.getValue().replace(",", "\\,"));
+            }
+        }
+        // 确保 UA 始终设置
+        if (TextUtils.isEmpty(userAgent)) {
+            String defaultUa = com.fongmi.android.tv.setting.Setting.getUa();
+            if (TextUtils.isEmpty(defaultUa)) defaultUa = com.fongmi.android.tv.player.PlayerHelper.getDefaultUa();
+            userAgent = defaultUa;
+        }
+
+        if (!TextUtils.isEmpty(userAgent)) opts.put("user-agent", userAgent);
+        if (!TextUtils.isEmpty(referer)) opts.put("referrer", referer);
+        if (fields.length() > 0) opts.put("http-header-fields", fields.toString());
+
+        Log.d(TAG, "getLoadOptions url=" + url + " headers=" + headers + " userAgent=" + userAgent + " headerFields=" + fields + " opts=" + opts);
+
+        // 使用 MPV 的 per-file option 编码格式：%keyLen%key=%valLen%value
+        // 这种格式能正确处理值中包含逗号和等号的情况
+        List<String> encoded = new ArrayList<>();
+        for (Map.Entry<String, String> entry : opts.entrySet()) {
+            String key = entry.getKey();
+            String val = entry.getValue();
+            byte[] keyBytes = key.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] valBytes = val.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            encoded.add("%" + keyBytes.length + "%" + key + "=%" + valBytes.length + "%" + val);
+        }
+        return TextUtils.join(",", encoded);
     }
 
     private boolean isHls(MediaItem item, String url) {
@@ -1596,7 +1660,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private void setMpvProperty(String name, String value) {
         try {
             MPVLib.setPropertyString(name, value);
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
+            Log.w(TAG, "setMpvProperty failed: " + name + "=" + value + ", error=" + e.getMessage());
         }
     }
 

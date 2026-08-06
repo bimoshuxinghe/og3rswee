@@ -10,12 +10,15 @@ import com.google.common.net.HttpHeaders;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
+import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.Request;
@@ -41,6 +44,21 @@ public class ResponseInterceptor implements Interceptor {
     public void clear() {
         headers.clear();
         redirectMap.clear();
+    }
+
+    public Map<String, String> getMatchedHeaders(String url) {
+        Map<String, String> result = new HashMap<>();
+        if (url == null || url.isEmpty()) return result;
+        HttpUrl httpUrl = HttpUrl.parse(url);
+        if (httpUrl == null) return result;
+        String host = httpUrl.host();
+        if (host == null || host.isEmpty()) return result;
+        for (Header item : headers) {
+            if (Util.containOrMatch(host, item.getHost())) {
+                Json.toMap(item.getHeader()).forEach(result::put);
+            }
+        }
+        return result;
     }
 
     @NonNull
