@@ -1,9 +1,10 @@
-name: Build TV V7A APK
+name: Build Mobile Arm64 APK
 
 on:
   push:
     branches:
       - main
+      - mobile-v8a
   workflow_dispatch:
 
 permissions:
@@ -11,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
@@ -47,9 +48,9 @@ jobs:
       - name: Use installed JDK for Gradle daemon
         run: rm -f gradle/gradle-daemon-jvm.properties
 
-      - name: Build leanback armeabi-v7a release APK
+      - name: Build mobile arm64 release APK
         run: |
-          ./gradlew :app:assembleLeanbackArmeabi_v7aRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build.log
+          ./gradlew :app:assembleMobileArm64_v8aRelease --no-daemon --no-build-cache --stacktrace 2>&1 | tee build.log
           exit ${PIPESTATUS[0]}
 
       - name: Collect APK
@@ -63,7 +64,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: leanback-armeabi-v7a-release-apk
+          name: mobile-arm64-v8a-release-apk
           path: |
             app/build/outputs/apk/*/release/*.apk
             Release/apk/*.apk
@@ -73,7 +74,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-tv-v7a
+          name: build-log
           path: build.log
           if-no-files-found: warn
 
@@ -82,13 +83,13 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p .github/build-logs
-          if [ -f build.log ]; then cp build.log .github/build-logs/latest-tv-v7a-build.log; fi
+          if [ -f build.log ]; then cp build.log .github/build-logs/latest-mobile-arm64-build.log; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f .github/build-logs/latest-tv-v7a-build.log 2>/dev/null || true
+          git add -f .github/build-logs/latest-mobile-arm64-build.log 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No build result files to commit"
           else
-            git commit -m "Update TV v7a build result [skip ci]"
+            git commit -m "Update mobile arm64 build result [skip ci]"
             git push || echo "::warning::Build log push failed."
           fi
