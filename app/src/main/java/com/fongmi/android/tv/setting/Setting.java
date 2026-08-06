@@ -374,10 +374,10 @@ public class Setting {
     }
 
     public static int getSearchThread() {
-        return Math.min(Math.max(Prefers.getInt("search_thread", 10), 3), 15);
+        return Math.min(Math.max(Prefers.getInt("search_thread", 10), 3), 20);
     }
 
     public static void putSearchThread(int value) {
-        Prefers.put("search_thread", Math.min(Math.max(value, 3), 15));
+        Prefers.put("search_thread", Math.min(Math.max(value, 3), 20));
     }
 }

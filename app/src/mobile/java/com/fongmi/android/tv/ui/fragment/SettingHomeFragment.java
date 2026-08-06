@@ -188,7 +188,7 @@ public class SettingHomeFragment extends BaseFragment {
 
     private int getSearchThreadIndex() {
         int current = Setting.getSearchThread();
-        int[] values = {5, 8, 10, 12, 15};
+        int[] values = {5, 8, 10, 12, 15, 20};
         for (int i = 0; i < values.length; i++) {
             if (values[i] == current) return i;
         }
@@ -196,7 +196,7 @@ public class SettingHomeFragment extends BaseFragment {
     }
 
     private int getSearchThreadValue(int index) {
-        int[] values = {5, 8, 10, 12, 15};
+        int[] values = {5, 8, 10, 12, 15, 20};
         return values[Math.min(Math.max(index, 0), values.length - 1)];
     }
 
