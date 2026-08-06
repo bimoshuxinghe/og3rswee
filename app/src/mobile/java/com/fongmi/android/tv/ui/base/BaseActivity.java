@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.base;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
+import android.app.ActivityOptions;
 import android.graphics.Color;
 import android.content.Intent;
 import android.os.Build;
@@ -15,6 +16,7 @@ import android.view.WindowManager;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.SystemBarStyle;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
@@ -152,19 +154,34 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     @Override
     public void startActivity(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            int[] anims = getTransitionAnims(true);
+            if (anims != null) {
+                super.startActivity(intent, ActivityOptions.makeCustomAnimation(this, anims[0], anims[1]).toBundle());
+                return;
+            }
+        }
         super.startActivity(intent);
-        applyTransition(true);
+        applyPendingTransition(true);
     }
 
     @Override
     public void finish() {
         super.finish();
-        applyTransition(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            int[] anims = getTransitionAnims(false);
+            if (anims != null) {
+                overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, anims[0], anims[1]);
+                return;
+            }
+        }
+        applyPendingTransition(false);
     }
 
-    private void applyTransition(boolean enter) {
+    @Nullable
+    private int[] getTransitionAnims(boolean enter) {
         int mode = Setting.getTransition();
-        if (mode == 0) return;
+        if (mode == 0) return null;
         int enterAnim, exitAnim;
         if (mode == 1) {
             enterAnim = R.anim.transition_fade_enter;
@@ -186,6 +203,12 @@ public abstract class BaseActivity extends AppCompatActivity {
                 exitAnim = R.anim.transition_zoom_pop_exit;
             }
         }
-        overridePendingTransition(enterAnim, exitAnim);
+        return new int[]{enterAnim, exitAnim};
+    }
+
+    private void applyPendingTransition(boolean enter) {
+        int[] anims = getTransitionAnims(enter);
+        if (anims == null) return;
+        overridePendingTransition(anims[0], anims[1]);
     }
 }

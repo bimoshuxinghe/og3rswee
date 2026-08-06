@@ -2,15 +2,18 @@ package com.fongmi.android.tv.ui.base;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
+import android.app.ActivityOptions;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
@@ -144,24 +147,39 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     @Override
     public void startActivity(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            int[] anims = getTransitionAnims(true);
+            if (anims != null) {
+                super.startActivity(intent, ActivityOptions.makeCustomAnimation(this, anims[0], anims[1]).toBundle());
+                return;
+            }
+        }
         super.startActivity(intent);
-        applyTransition(true);
+        applyPendingTransition(true);
     }
 
     @Override
     public void finish() {
         super.finish();
-        applyTransition(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            int[] anims = getTransitionAnims(false);
+            if (anims != null) {
+                overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, anims[0], anims[1]);
+                return;
+            }
+        }
+        applyPendingTransition(false);
     }
 
-    private void applyTransition(boolean enter) {
+    @Nullable
+    private int[] getTransitionAnims(boolean enter) {
         int mode = Setting.getTransition();
-        if (mode == 0) return; // None
+        if (mode == 0) return null;
         int enterAnim, exitAnim;
-        if (mode == 1) { // Fade
+        if (mode == 1) {
             enterAnim = R.anim.transition_fade_enter;
             exitAnim = R.anim.transition_fade_exit;
-        } else if (mode == 2) { // Slide
+        } else if (mode == 2) {
             if (enter) {
                 enterAnim = R.anim.transition_slide_enter;
                 exitAnim = R.anim.transition_slide_exit;
@@ -169,7 +187,7 @@ public abstract class BaseActivity extends AppCompatActivity {
                 enterAnim = R.anim.transition_slide_pop_enter;
                 exitAnim = R.anim.transition_slide_pop_exit;
             }
-        } else { // Zoom
+        } else {
             if (enter) {
                 enterAnim = R.anim.transition_zoom_enter;
                 exitAnim = R.anim.transition_zoom_exit;
@@ -178,6 +196,12 @@ public abstract class BaseActivity extends AppCompatActivity {
                 exitAnim = R.anim.transition_zoom_pop_exit;
             }
         }
-        overridePendingTransition(enterAnim, exitAnim);
+        return new int[]{enterAnim, exitAnim};
+    }
+
+    private void applyPendingTransition(boolean enter) {
+        int[] anims = getTransitionAnims(enter);
+        if (anims == null) return;
+        overridePendingTransition(anims[0], anims[1]);
     }
 }

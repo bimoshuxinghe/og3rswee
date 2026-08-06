@@ -582,6 +582,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void showEmpty() {
+        if (isFinishing() || isDestroyed()) return;
         showError(getString(R.string.error_detail));
         mBinding.swipeLayout.setEnabled(true);
         mBinding.progressLayout.showEmpty();
@@ -1773,6 +1774,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void showControl() {
+        if (isFinishing() || isDestroyed()) return;
         if (service() == null || isInPictureInPictureMode()) return;
         mBinding.control.danmaku.setVisibility(isLock() || !player().haveDanmaku() ? View.GONE : View.VISIBLE);
         mBinding.control.setting.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
@@ -1796,12 +1798,16 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void hideControl() {
-        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> mBinding.control.getRoot().setVisibility(View.GONE)).start();
+        if (isFinishing() || isDestroyed()) return;
+        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> {
+            if (!isFinishing() && !isDestroyed()) mBinding.control.getRoot().setVisibility(View.GONE);
+        }).start();
         App.removeCallbacks(mR1);
         updateAlwaysProgress();
     }
 
     private void updateAlwaysProgress() {
+        if (isFinishing() || isDestroyed()) return;
         if (mBinding.alwaysProgressText == null) return;
         boolean show = com.fongmi.android.tv.setting.Setting.isAlwaysProgress()
                 && isFullscreen()
@@ -1831,6 +1837,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setTraffic() {
+        if (isFinishing() || isDestroyed()) return;
         Traffic.setSpeed(mBinding.progress.traffic);
         if (isMusicDiscVisible) updateMusicDiscProgress();
         App.post(mR2, 1000);

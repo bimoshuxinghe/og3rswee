@@ -690,6 +690,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void showControl() {
+        if (isFinishing() || isDestroyed()) return;
         if (service() == null || isInPictureInPictureMode()) return;
         mBinding.control.info.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.cast.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
@@ -706,11 +707,15 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void hideControl() {
-        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> mBinding.control.getRoot().setVisibility(View.GONE)).start();
+        if (isFinishing() || isDestroyed()) return;
+        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> {
+            if (!isFinishing() && !isDestroyed()) mBinding.control.getRoot().setVisibility(View.GONE);
+        }).start();
         App.removeCallbacks(mR1);
     }
 
     private void showInfo() {
+        if (isFinishing() || isDestroyed()) return;
         mBinding.widget.infoPip.setVisibility(isInPictureInPictureMode() ? View.VISIBLE : View.GONE);
         mBinding.widget.info.setVisibility(isInPictureInPictureMode() ? View.GONE : View.VISIBLE);
         setR3Callback();
@@ -719,12 +724,14 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void hideInfo() {
+        if (isFinishing() || isDestroyed()) return;
         mBinding.widget.infoPip.setVisibility(View.GONE);
         mBinding.widget.info.setVisibility(View.GONE);
         App.removeCallbacks(mR3);
     }
 
     private void setTraffic() {
+        if (isFinishing() || isDestroyed()) return;
         Traffic.setSpeed(mBinding.progress.traffic);
         App.post(mR2, 1000);
     }
