@@ -133,8 +133,22 @@ public final class MpvMedia {
         return getPath(url).endsWith(".iso");
     }
 
+    /**
+     * 判断 URL 是否为远程（HTTP/HTTPS）ISO 镜像链接。
+     * 网盘返回的 ISO 下载链接属于此类。
+     */
+    public static boolean isRemoteIso(@Nullable String url) {
+        if (!isBluRayIso(url)) return false;
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme();
+        return scheme != null && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
+    }
+
     public static String getPlayableUrl(String url) {
         if (!isBluRayIso(url)) return stripFragment(url);
+        // 远程 ISO 不能直接使用 bd:// 协议（libbluray 不支持 HTTP 读取），
+        // 由 MpvSimplePlayer 在播放前通过 IsoStream 代理转换为可播放的 URL。
+        if (isRemoteIso(url)) return stripFragment(url);
         String title = getFragmentValue(url, "title");
         return TextUtils.isEmpty(title) ? "bd://" : "bd://" + title;
     }
@@ -142,6 +156,8 @@ public final class MpvMedia {
     @Nullable
     public static String getBluRayDevice(String url) {
         if (!isBluRayIso(url)) return null;
+        // 远程 ISO 不设置 bluray-device，避免 libbluray 尝试用文件方式打开 HTTP URL。
+        if (isRemoteIso(url)) return null;
         Uri uri = Uri.parse(url);
         String scheme = uri.getScheme();
         if (scheme == null || "file".equalsIgnoreCase(scheme)) return decode(uri.getPath());

@@ -28,6 +28,7 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
 
 import com.fongmi.android.tv.player.exo.ExoUtil;
+import com.fongmi.android.tv.server.process.IsoStream;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.Notify;
 import com.google.common.collect.ImmutableList;
@@ -114,6 +115,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private String activeLoadUrl;
     private String lastErrorMessage;
     private String lastErrorUrl;
+    private boolean isoResolving;
+    private String isoOriginalUrl;
+    private String isoProxyUrl;
 
     public MpvSimplePlayer(Context context, int decode) {
         super(Looper.getMainLooper());
@@ -550,6 +554,17 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private void loadMediaItem(long startPositionMs, boolean useStartOption) {
         if (mediaItem == null || mediaItem.localConfiguration == null) return;
         String url = mediaItem.localConfiguration.uri.toString();
+        // 远程 ISO 链接需要先解析文件系统，找到内部视频文件并注册代理，
+        // 然后用代理 URL 替换原始 URL 进行播放。
+        if (MpvMedia.isRemoteIso(url)) {
+            if (isoResolving) return;
+            if (TextUtils.equals(url, isoOriginalUrl) && !TextUtils.isEmpty(isoProxyUrl)) {
+                url = isoProxyUrl;
+            } else if (!TextUtils.equals(url, isoOriginalUrl)) {
+                resolveRemoteIso(url, startPositionMs, useStartOption);
+                return;
+            }
+        }
         if (!TextUtils.equals(activeLoadUrl, url)) {
             activeLoadUrl = url;
             hlsAbortRetryAttempted = false;
@@ -577,6 +592,37 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         if (TextUtils.isEmpty(options)) command("loadfile", playableUrl, "replace");
         else command("loadfile", playableUrl, "replace", "-1", options);
         setMpvProperty("pause", !playWhenReady);
+    }
+
+    private void resolveRemoteIso(String url, long startPositionMs, boolean useStartOption) {
+        isoResolving = true;
+        isoOriginalUrl = null;
+        isoProxyUrl = null;
+        playbackState = Player.STATE_BUFFERING;
+        loading = true;
+        videoSize = VideoSize.UNKNOWN;
+        playerError = null;
+        invalidateState();
+        new Thread(() -> {
+            try {
+                Map<String, String> hdrs = ExoUtil.extractHeaders(mediaItem);
+                String proxyUrl = IsoStream.register(url, hdrs);
+                if (!TextUtils.isEmpty(proxyUrl)) {
+                    isoOriginalUrl = url;
+                    isoProxyUrl = proxyUrl;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "ISO resolution failed: " + e.getMessage(), e);
+            } finally {
+                isoResolving = false;
+                handler.post(() -> {
+                    if (released || mediaItem == null || mediaItem.localConfiguration == null) return;
+                    String currentUrl = mediaItem.localConfiguration.uri.toString();
+                    if (!TextUtils.equals(currentUrl, url)) return;
+                    loadMediaItem(startPositionMs, useStartOption);
+                });
+            }
+        }, "iso-resolver").start();
     }
 
     private boolean seekPendingInitialPosition() {
@@ -651,6 +697,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void applyMediaOptions(String url) {
         if (MpvMedia.isSpoofedSegment(url) || MpvMedia.isRadioAudio(url)) applyProbeOptions();
+        // ISO 代理流需要增强探测以确保 FFmpeg 正确识别 M2TS/VOB 格式
+        if (url.contains("/iso_stream")) {
+            applyProbeOptions();
+            setMpvOption("demuxer-lavf-analyzeduration", "5");
+        }
         String device = MpvMedia.getBluRayDevice(url);
         if (!TextUtils.isEmpty(device)) setMpvOption("bluray-device", device);
     }
@@ -1112,6 +1163,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         reportRenderedFirstFrame = false;
         ignoreNextEndFile = false;
         loadedFileActive = false;
+        isoResolving = false;
+        isoOriginalUrl = null;
+        isoProxyUrl = null;
         playbackState = mediaItem == null ? Player.STATE_IDLE : Player.STATE_BUFFERING;
     }
 
@@ -1163,6 +1217,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         lastErrorUrl = null;
         hlsAbortRetryAttempted = false;
         audioOnlyFallback = false;
+        isoResolving = false;
+        isoOriginalUrl = null;
+        isoProxyUrl = null;
         if (initialized) {
             setMpvProperty("pause", true);
             command("stop");
