@@ -886,8 +886,17 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             if (TextUtils.isEmpty(defaultUa)) defaultUa = com.fongmi.android.tv.player.PlayerHelper.getDefaultUa();
             userAgent = defaultUa;
         }
-        if (!TextUtils.isEmpty(userAgent)) setMpvOption("user-agent", userAgent);
-        if (fields.length() > 0) setMpvOption("http-header-fields", fields.toString());
+        // 关键修复：MPV 初始化后 setOptionString 不生效，必须用 setPropertyString
+        // user-agent 和 http-header-fields 既是 option 也是 property，运行时用 property 设置
+        if (!TextUtils.isEmpty(userAgent)) {
+            if (initialized) setMpvProperty("user-agent", userAgent);
+            else setMpvOption("user-agent", userAgent);
+        }
+        if (fields.length() > 0) {
+            String headerFields = fields.toString();
+            if (initialized) setMpvProperty("http-header-fields", headerFields);
+            else setMpvOption("http-header-fields", headerFields);
+        }
     }
 
     private void applyDecodeOption() {
