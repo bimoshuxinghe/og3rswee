@@ -627,6 +627,10 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         super.onResume();
         applyHomeCarousel();
         startAutoScroll();
+        // 返回桌面后再进入时，如果数据为空（如Activity被系统回收重建），重新加载首页内容
+        if (isViewReady() && (mResult == null || mAdapter == null || mAdapter.getItemCount() == 0)) {
+            homeContent();
+        }
     }
 
     @Override

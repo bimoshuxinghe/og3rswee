@@ -195,7 +195,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             case 7 -> HotFragment.newInstance();
             default -> null;
         });
-        if (savedInstanceState == null) change(0);
+        change(0);
     }
 
     private void initConfig() {
@@ -435,12 +435,16 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     protected void onDestroy() {
-        LiveConfig.get().clear();
-        VodConfig.get().clear();
+        // 仅在用户真正退出App时才清空单例配置与数据源
+        // 否则系统回收Activity后返回首页，VodConfig/LiveConfig为空会导致内容空白
+        if (isFinishing() || isChangingConfigurations()) {
+            LiveConfig.get().clear();
+            VodConfig.get().clear();
+            OkHttp.get().clear();
+            Source.get().exit();
+            Server.get().stop();
+        }
         AppDatabase.backup();
-        OkHttp.get().clear();
-        Source.get().exit();
-        Server.get().stop();
         super.onDestroy();
     }
 
