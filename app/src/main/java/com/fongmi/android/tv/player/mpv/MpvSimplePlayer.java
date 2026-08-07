@@ -123,6 +123,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private String isoProxyUrl;
     private boolean doviFallbackApplied;
     private boolean doviReloadPending;
+    private String originalVo;
     private int endFileReason;
     private int endFileError;
     private String endFileErrorString;
@@ -169,6 +170,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     public void setDecode(int decode) {
         this.decode = decode;
+        // 恢复原始渲染器
+        if (doviFallbackApplied && originalVo != null && initialized) {
+            setMpvProperty("vo", originalVo);
+        }
         doviFallbackApplied = false;
         doviReloadPending = false;
         applyDecodeOption();
@@ -817,7 +822,13 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         // 始终忽略下一个 END_FILE 事件：切换频道时旧流被 replace 中断不应视为错误
         ignoreNextEndFile = true;
         loadedFileActive = false;
-        if (!doviReloadPending) doviFallbackApplied = false;
+        // 非 DoVi 重载时清除 DoVi 状态并恢复原始渲染器
+        if (!doviReloadPending) {
+            if (doviFallbackApplied && originalVo != null) {
+                setMpvProperty("vo", originalVo);
+            }
+            doviFallbackApplied = false;
+        }
         endFileReason = 0;
         endFileError = 0;
         endFileErrorString = null;
@@ -943,6 +954,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             if (initialized) {
                 setMpvProperty("hwdec", "no");
                 setMpvProperty("vf", "");
+                // DoVi 回退时强制使用 gpu-next 渲染器
+                if (doviFallbackApplied) {
+                    setMpvProperty("vo", "gpu-next");
+                }
             }
             return;
         }
@@ -1266,23 +1281,28 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void applyDoviFallback(boolean hasDovi) {
         if (!hasDovi || doviFallbackApplied || doviReloadPending) return;
-        if (decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
-            doviFallbackApplied = true;
-            doviReloadPending = true;
-            Log.w(TAG, "Dolby Vision detected, switching to software decode to avoid green screen");
-            setMpvProperty("hwdec", "no");
-            // 重新加载视频以使软件解码生效（仅设置 hwdec 属性不会重新初始化解码器）
-            if (mediaItem != null && playbackState != Player.STATE_IDLE) {
-                handler.post(() -> {
-                    if (released) return;
-                    // 先执行 loadMediaItem（此时 doviReloadPending=true 防止 doviFallbackApplied 被重置）
-                    loadMediaItem(positionMs, true);
-                    // 加载完成后再清除标志，允许后续新视频重新检测 DoVi
-                    doviReloadPending = false;
-                });
-            } else {
+        doviFallbackApplied = true;
+        doviReloadPending = true;
+        Log.w(TAG, "Dolby Vision detected, switching to gpu-next + software decode to fix green screen");
+        // 保存原始渲染器，以便非 DoVi 视频恢复
+        if (originalVo == null) {
+            originalVo = PlayerSetting.isMpvGpuNext() ? "gpu-next" : "gpu";
+        }
+        // 切换到 gpu-next 渲染器：libplacebo 内置 IPTPQc2 色彩空间转换，是修复 DV Profile 5 绿屏的关键
+        setMpvProperty("vo", "gpu-next");
+        // 软件解码：硬件解码器无法传递 DV 元数据给 gpu-next
+        setMpvProperty("hwdec", "no");
+        // 清除视频滤镜，避免干扰色彩转换
+        setMpvProperty("vf", "");
+        // 重新加载视频以使 gpu-next + 软解生效
+        if (mediaItem != null && playbackState != Player.STATE_IDLE) {
+            handler.post(() -> {
+                if (released) return;
+                loadMediaItem(positionMs, true);
                 doviReloadPending = false;
-            }
+            });
+        } else {
+            doviReloadPending = false;
         }
     }
 
@@ -1582,6 +1602,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         reportRenderedFirstFrame = false;
         ignoreNextEndFile = false;
         loadedFileActive = false;
+        // DoVi 回退结束，恢复原始渲染器
+        if (doviFallbackApplied && originalVo != null && initialized) {
+            setMpvProperty("vo", originalVo);
+        }
         doviFallbackApplied = false;
         doviReloadPending = false;
         isoResolving = false;
