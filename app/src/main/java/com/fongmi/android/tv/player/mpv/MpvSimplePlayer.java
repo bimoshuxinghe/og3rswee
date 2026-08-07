@@ -121,6 +121,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean isoResolving;
     private String isoOriginalUrl;
     private String isoProxyUrl;
+    private boolean doviFallbackApplied;
+    private boolean doviReloadPending;
     private int endFileReason;
     private int endFileError;
     private String endFileErrorString;
@@ -167,6 +169,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     public void setDecode(int decode) {
         this.decode = decode;
+        doviFallbackApplied = false;
+        doviReloadPending = false;
         applyDecodeOption();
         if (initialized && mediaItem != null && playbackState != Player.STATE_IDLE) loadMediaItem(positionMs, true);
     }
@@ -345,6 +349,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     @Override
     public void eventProperty(String property) {
         if (isVideoSizeProperty(property)) updateVideoSize();
+        if (isDoviProperty(property)) checkDoviPrimaries();
         if ("track-list".equals(property) || "chapter-list".equals(property) || "edition-list".equals(property)) {
             handler.post(() -> {
                 if (released) return;
@@ -391,6 +396,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 if (released) return;
                 updateVideoSize();
                 invalidateState();
+            });
+        }
+        if (isDoviProperty(property)) {
+            handler.post(() -> {
+                if (released) return;
+                checkDoviPrimaries();
             });
         }
     }
@@ -515,6 +526,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             applyTlsCaFile();
             applyCacheOptions();
             applySubtitleConfig();
+            applyHdrOptions();
             // === Init MPV ===
             MPVLib.init();
             // === Post-init options matching APK ===
@@ -765,6 +777,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         MPVLib.observeProperty("video-params/rotate", MPVLib.MpvFormat.MPV_FORMAT_INT64);
         MPVLib.observeProperty("video-params", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("video-out-params", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        MPVLib.observeProperty("video-params/primaries", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        MPVLib.observeProperty("video-params/colormatrix", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        MPVLib.observeProperty("video-params/transfer", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("current-tracks/video/albumart", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         MPVLib.observeProperty("chapter", MPVLib.MpvFormat.MPV_FORMAT_INT64);
         MPVLib.observeProperty("current-edition", MPVLib.MpvFormat.MPV_FORMAT_INT64);
@@ -802,6 +817,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         // 始终忽略下一个 END_FILE 事件：切换频道时旧流被 replace 中断不应视为错误
         ignoreNextEndFile = true;
         loadedFileActive = false;
+        if (!doviReloadPending) doviFallbackApplied = false;
         endFileReason = 0;
         endFileError = 0;
         endFileErrorString = null;
@@ -922,7 +938,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyDecodeOption(boolean isHlsStream) {
-        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
+        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD || doviFallbackApplied) {
             setMpvOption("hwdec", "no");
             if (initialized) {
                 setMpvProperty("hwdec", "no");
@@ -1214,19 +1230,81 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         List<Tracks.Group> groups = new ArrayList<>();
         boolean hasAudio = false;
         boolean hasVideo = false;
+        boolean hasDovi = false;
         for (int index = 0; index < count; index++) {
             Integer mpvId = safeGetInt("track-list/" + index + "/id");
             String type = safeGetString("track-list/" + index + "/type");
             int trackType = getTrackType(type);
             if (mpvId == null || mpvId <= 0 || trackType == C.TRACK_TYPE_UNKNOWN) continue;
             if (trackType == C.TRACK_TYPE_AUDIO) hasAudio = true;
-            if (trackType == C.TRACK_TYPE_VIDEO) hasVideo = true;
+            if (trackType == C.TRACK_TYPE_VIDEO) {
+                hasVideo = true;
+                String codec = safeGetString("track-list/" + index + "/codec");
+                if (isDolbyVisionCodec(codec)) hasDovi = true;
+            }
             Format format = buildFormat(index, mpvId, trackType);
             boolean selected = Boolean.TRUE.equals(safeGetBoolean("track-list/" + index + "/selected"));
             groups.add(new Tracks.Group(new TrackGroup("mpv-" + type + "-" + mpvId, format), false, new int[]{C.FORMAT_HANDLED}, new boolean[]{selected}));
         }
         currentTracks = groups.isEmpty() ? Tracks.EMPTY : new Tracks(groups);
+        applyDoviFallback(hasDovi);
         applyAudioOnlyFallback(hasAudio, hasVideo);
+    }
+
+    private static boolean isDolbyVisionCodec(String codec) {
+        if (TextUtils.isEmpty(codec)) return false;
+        String lower = codec.toLowerCase(Locale.ROOT);
+        return lower.startsWith("dovi") || lower.startsWith("dvhe") || lower.startsWith("dvh1")
+                || lower.startsWith("dvav") || lower.startsWith("dav1") || lower.contains("dolby-vision");
+    }
+
+    private static boolean isDoviProperty(String property) {
+        return "video-params/primaries".equals(property)
+                || "video-params/colormatrix".equals(property)
+                || "video-params/transfer".equals(property);
+    }
+
+    private void applyDoviFallback(boolean hasDovi) {
+        if (!hasDovi || doviFallbackApplied || doviReloadPending) return;
+        if (decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
+            doviFallbackApplied = true;
+            doviReloadPending = true;
+            Log.w(TAG, "Dolby Vision detected, switching to software decode to avoid green screen");
+            setMpvProperty("hwdec", "no");
+            // 重新加载视频以使软件解码生效（仅设置 hwdec 属性不会重新初始化解码器）
+            if (mediaItem != null && playbackState != Player.STATE_IDLE) {
+                handler.post(() -> {
+                    if (released) return;
+                    // 先执行 loadMediaItem（此时 doviReloadPending=true 防止 doviFallbackApplied 被重置）
+                    loadMediaItem(positionMs, true);
+                    // 加载完成后再清除标志，允许后续新视频重新检测 DoVi
+                    doviReloadPending = false;
+                });
+            } else {
+                doviReloadPending = false;
+            }
+        }
+    }
+
+    private void checkDoviPrimaries() {
+        if (doviFallbackApplied) return;
+        // 检查色彩原色（primaries）：DoVi Profile 5 使用 IPT 色彩空间
+        String primaries = safeGetString("video-params/primaries");
+        if (primaries != null && (primaries.contains("ipt") || primaries.contains("dovi"))) {
+            applyDoviFallback(true);
+            return;
+        }
+        // 检查色彩矩阵（colormatrix）：DoVi 内容可能报告 "dovi" 或 "ipt"
+        String colormatrix = safeGetString("video-params/colormatrix");
+        if (colormatrix != null && (colormatrix.contains("ipt") || colormatrix.contains("dovi"))) {
+            applyDoviFallback(true);
+            return;
+        }
+        // 检查传输特性（transfer）：DoVi 内容可能报告 "dovi"
+        String transfer = safeGetString("video-params/transfer");
+        if (transfer != null && transfer.contains("dovi")) {
+            applyDoviFallback(true);
+        }
     }
 
     private void applyAudioOnlyFallback(boolean hasAudio, boolean hasVideo) {
@@ -1504,6 +1582,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         reportRenderedFirstFrame = false;
         ignoreNextEndFile = false;
         loadedFileActive = false;
+        doviFallbackApplied = false;
+        doviReloadPending = false;
         isoResolving = false;
         isoOriginalUrl = null;
         isoProxyUrl = null;
