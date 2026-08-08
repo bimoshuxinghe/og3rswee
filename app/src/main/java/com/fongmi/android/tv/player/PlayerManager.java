@@ -65,6 +65,7 @@ public class PlayerManager implements ParseCallback {
     private boolean danmakuLoadInProgress;
     private static final long DANMAKU_FORCE_RELOAD_DEBOUNCE_MS = 10000;
 
+    private WsDanmakuClient wsDanmakuClient;
     private boolean initTrack;
     private int retry;
 
@@ -561,6 +562,7 @@ public class PlayerManager implements ParseCallback {
         if (item.isEmpty()) {
             if (spec != null) spec.setDanmaku(item);
             SpiderDebug.log("danmaku", "clear current=%s", summarizeUrl(currentDanmakuUrl));
+            stopWsDanmaku();
             if (currentDanmakuUrl != null) danmakuController.clearItems();
             clearDanmakuState();
             return;
@@ -576,6 +578,8 @@ public class PlayerManager implements ParseCallback {
             return;
         }
         if (spec != null) spec.setDanmaku(item);
+        // 切换弹幕源前先停止旧的 WS 连接
+        stopWsDanmaku();
         if (force && currentDanmakuUrl != null) danmakuController.clearItems();
         currentDanmakuUrl = url;
         currentDanmakuKey = key;
@@ -583,7 +587,33 @@ public class PlayerManager implements ParseCallback {
         danmakuLoadStartedAtMs = SystemClock.elapsedRealtime();
         danmakuLoadInProgress = true;
         SpiderDebug.log("danmaku", "%s name=%s url=%s key=%s", force ? "reload" : "load", item.getName(), summarizeUrl(url), summarizeUrl(key));
-        danmakuController.setDataSource(Uri.parse(url));
+
+        // 检测 ws:// 开头的弹幕地址，建立 WebSocket 实时弹幕连接
+        if (url.startsWith("ws://") || url.startsWith("wss://")) {
+            startWsDanmaku(url);
+        } else {
+            danmakuController.setDataSource(Uri.parse(url));
+        }
+    }
+
+    private void startWsDanmaku(String url) {
+        if (wsDanmakuClient == null) wsDanmakuClient = new WsDanmakuClient();
+        wsDanmakuClient.connect(url, (text, color) -> {
+            if (danmakuController == null) return;
+            androidx.media3.ui.danmaku.Danmaku dm = new androidx.media3.ui.danmaku.Danmaku(
+                text, 0, androidx.media3.ui.danmaku.Danmaku.TYPE_SCROLL, color);
+            danmakuController.sendNow(dm);
+        });
+        // WS 弹幕是实时的，不需要等待加载完成
+        danmakuLoadInProgress = false;
+        loadingDanmakuKey = null;
+    }
+
+    private void stopWsDanmaku() {
+        if (wsDanmakuClient != null) {
+            wsDanmakuClient.disconnect();
+            wsDanmakuClient = null;
+        }
     }
 
     private boolean shouldSkipForcedDanmakuReload(String key) {
@@ -652,6 +682,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void releaseDanmakuController() {
+        stopWsDanmaku();
         if (danmakuController == null) return;
         danmakuController.release();
         danmakuController = null;
