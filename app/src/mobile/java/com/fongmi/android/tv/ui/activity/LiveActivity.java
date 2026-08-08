@@ -51,6 +51,7 @@ import com.fongmi.android.tv.player.PlayerHelper;
 import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.player.Source;
 import com.fongmi.android.tv.service.PlaybackService;
+import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.ui.adapter.ChannelAdapter;
@@ -174,6 +175,8 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @Override
     protected void onServiceConnected() {
         player().setDanmakuController(mBinding.exo.getDanmakuController());
+        player().setDanmakuEnabled(DanmakuSetting.isShow());
+        checkDanmakuImg();
         mBinding.control.action.decode.setText(player().getDecodeText());
         mBinding.control.action.speed.setText(player().getSpeedText());
         checkLive();
@@ -201,6 +204,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mR3 = this::hideInfo;
         mOrientRunnable = this::setOrient;
         mPiP = new PiP();
+        checkDanmakuImg();
         setRecyclerView();
         setVideoView();
         setViewModel();
@@ -220,6 +224,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mBinding.control.back.setOnClickListener(view -> onBack());
         mBinding.control.cast.setOnClickListener(view -> onCast());
         mBinding.control.info.setOnClickListener(view -> onInfo());
+        mBinding.control.danmaku.setOnClickListener(view -> onDanmakuShow());
         mBinding.control.play.setOnClickListener(view -> checkPlay());
         mBinding.control.next.setOnClickListener(view -> nextChannel());
         mBinding.control.prev.setOnClickListener(view -> prevChannel());
@@ -692,6 +697,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private void showControl() {
         if (isFinishing() || isDestroyed()) return;
         if (service() == null || isInPictureInPictureMode()) return;
+        mBinding.control.danmaku.setVisibility(isLock() || !player().haveDanmaku() ? View.GONE : View.VISIBLE);
         mBinding.control.info.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.cast.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.right.rotate.setVisibility(isLock() ? View.GONE : View.VISIBLE);
@@ -960,6 +966,24 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
 
     private void checkLockImg() {
         mBinding.control.right.lock.setImageResource(isLock() ? R.drawable.ic_control_lock_on : R.drawable.ic_control_lock_off);
+    }
+
+    private void checkDanmakuImg() {
+        mBinding.control.danmaku.setImageResource(DanmakuSetting.isShow() ? R.drawable.ic_control_danmaku_on : R.drawable.ic_control_danmaku_off);
+    }
+
+    private void onDanmakuShow() {
+        DanmakuSetting.putShow(!DanmakuSetting.isShow());
+        checkDanmakuImg();
+        showDanmaku();
+    }
+
+    private void showDanmaku() {
+        player().setDanmakuEnabled(DanmakuSetting.isShow());
+    }
+
+    private void hideDanmaku() {
+        player().setDanmakuEnabled(false);
     }
 
     private void resetAdapter() {
@@ -1372,9 +1396,11 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         if (isInPictureInPictureMode) {
             hideControl();
+            hideDanmaku();
             hideInfo();
             hideUI();
         } else {
+            showDanmaku();
             hideInfo();
             if (isStop()) finish();
         }
