@@ -561,7 +561,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             setMpvOption("keepaspect", "no");
             applyShaderCacheDir();
             setMpvOption("ao", "audiotrack,opensles");
-            setMpvOption("hwdec", "mediacodec,mediacodec-copy");
+            setMpvOption("hwdec", "mediacodec");
             setMpvOption("hwdec-codecs", "h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1,vc1");
             setMpvOption("ytdl", "no");
             applyProxyUrl();
@@ -1017,33 +1017,44 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             }
             return;
         }
-        // 硬件解码策略：
-        // - 优先 mediacodec（HW+ 非拷贝模式）：帧直接在 GPU 内存中，避免拷贝导致的格式降级
-        // - 回退 mediacodec-copy（HW 拷贝模式）：帧经过 MPV 渲染管线，可正确裁剪
+        // 硬件解码策略（GPU转码方案）：
         //
-        // GitHub issue #1088/#540/#853 确认：mediacodec-copy 在部分设备上会强制
-        // 10-bit → 8-bit NV12 转换，导致 stride mismatch → 绿屏。
-        // 优先使用 mediacodec（非拷贝）可避免此问题。
+        // 核心问题：mediacodec-copy 模式将帧拷贝到CPU内存后，MPV渲染器做 YUV→RGB 转换时
+        // 使用了错误的色彩参数（色彩范围/色彩矩阵/传输函数），导致画面发绿发白。
+        // GitHub #1088 测试确认：mediacodec-copy + vo=gpu → 绿屏
+        //                        mediacodec(非copy) + vo=gpu → 正常
         //
-        // HLS 直播流使用 mediacodec-copy 避免底部绿线：
-        // mediacodec 直连 Surface 模式下，视频高度非 16 整数倍时解码器会在底部填充
-        // 未初始化数据（绿线）。mediacodec-copy 模式将帧拷贝经过 MPV 渲染管线，正确裁剪。
+        // 解决方案：
+        // 1. 非HLS内容：仅使用 mediacodec（非copy模式），帧直接在GPU内存中渲染
+        //    硬件解码器内置的色彩转换始终正确，避免MPV渲染器的色彩参数错误
+        //    如果 mediacodec 不可用，MPV自动回退到软件解码（色彩也正确）
         //
-        // 当 Stage 1 降级已触发（hwdecMediacodecTried），强制使用 mediacodec 非copy模式，
-        // 避免 applyDecodeOption 在 loadMediaItem 重载时覆盖降级设置。
+        // 2. HLS直播流：使用 mediacodec-copy + GPU色彩转换滤镜(vf=format)
+        //    mediacodec 非copy模式在HLS下会导致底部绿线（高度非16倍数时填充未初始化数据）
+        //    mediacodec-copy 模式通过 vf=format 滤镜强制正确的色彩参数
+        //
+        // 3. GPU色彩转换滤镜：vf=format=colorlevels=limited:colormatrix=bt.709
+        //    这就是"GPU转码"——在GPU上强制使用正确的色彩矩阵和范围进行 YUV→RGB 转换
         String value;
         if (hwdecMediacodecTried) {
-            // Stage 1 降级：仅使用 mediacodec 非copy模式，不回退到 mediacodec-copy
+            // Stage 1 降级：仅使用 mediacodec 非copy模式
             value = "mediacodec";
+        } else if (isHlsStream) {
+            // HLS直播流：使用 mediacodec-copy + GPU色彩转换滤镜
+            value = "mediacodec-copy";
         } else {
-            value = isHlsStream ? "mediacodec-copy" : "mediacodec,mediacodec-copy";
+            // 非HLS：仅使用 mediacodec 非copy模式，从根源避免绿屏
+            value = "mediacodec";
         }
         setMpvOption("hwdec", value);
         if (initialized) {
             setMpvProperty("hwdec", value);
-            // 对直播流添加裁剪滤镜，去除底部 1-2 像素的绿线
+            // GPU色彩转换滤镜：
+            // - HLS: 裁剪底部绿线 + 强制正确色彩参数
+            // - 非HLS: 清空滤镜（mediacodec非copy模式不需要，硬件解码器内置正确转换）
             if (isHlsStream) {
-                setMpvProperty("vf", "lavfi=[crop=iw:ih-ih%2:0:0]");
+                // GPU转码：crop去除底部绿线 + format强制正确YUV→RGB转换参数
+                setMpvProperty("vf", "lavfi=[crop=iw:ih-ih%2:0:0],format=colorlevels=limited:colormatrix=bt.709:primaries=bt.709:transfer=bt.1886");
             } else {
                 setMpvProperty("vf", "");
             }
@@ -1075,9 +1086,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         setMpvOption("correct-downscaling", "yes");
         // 信号混叠：改善交织内容的渲染
         setMpvOption("sigmoid-upscaling", "yes");
-        // 使用显示设备的 ICC 配置文件进行色彩管理（如果可用）
-        // 确保色彩在不同设备上的一致性，避免发白发绿
-        setMpvOption("icc-profile-auto", "yes");
         // FBO 格式：使用 16-bit 浮点格式，提升 HDR 和 10-bit 内容的渲染精度
         // 避免中间渲染步骤的精度丢失导致色彩偏差
         if (gpuNext) {
@@ -1086,13 +1094,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         // 字幕混合：在视频帧之后混合字幕，确保字幕色彩不受 HDR tone mapping 影响
         // GitHub mpv#18286: gpu-next 下字幕继承 HDR 色彩空间导致色偏
         setMpvOption("blend-subtitles", "video");
-        // 去色带滤镜：减少 8-bit 编码视频的色带，对渐变场景效果显著
-        // 注意：mpv#10323 的 deband 绿屏问题已在 gpu-next 中修复
-        setMpvOption("deband", "yes");
-        setMpvOption("deband-iterations", "1");
-        setMpvOption("deband-threshold", "35");
-        setMpvOption("deband-range", "16");
-        setMpvOption("deband-grain", "5");
+        // 注意：不启用 deband 滤镜
+        // GitHub mpv#10323 确认 deband 在 gpu-next 上会导致绿色色偏
+        // GitHub mpv#9285 确认 deband 可能加剧绿色色偏问题
     }
 
     private String getMpvVo() {
@@ -1242,24 +1246,30 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         setMpvOption("tone-mapping", "auto");
         // 色调映射模式：自动选择最佳算法
         setMpvOption("tone-mapping-mode", "auto");
-        // 色调映射参数：控制色调映射的强度（0.0-1.0，默认 auto）
-        // 较高的值保留更多高光细节，避免 HDR→SDR 转换时高光发白
+        // 色调映射参数：控制色调映射的强度
         setMpvOption("tone-mapping-param", "default");
-        // HDR 峰值衰减率：控制峰值检测的平滑度（0-1000，默认 100）
-        // 较低的值使峰值检测更平滑，避免画面忽明忽暗
+        // HDR 峰值衰减率：控制峰值检测的平滑度
         setMpvOption("hdr-peak-decay-rate", "100");
-        // HDR 峰值参考值：用于场景切换时的峰值重置（0-1，默认 0.0 = 禁用）
+        // HDR 峰值参考值：用于场景切换时的峰值重置
         setMpvOption("hdr-scene-threshold", "0");
         // 色域映射模式：自动处理 BT.2020 → BT.709 等色域转换
         setMpvOption("gamut-mapping-mode", "auto");
         // 目标对比度：inf 适用于有全局色彩管理的显示器，避免发白
         setMpvOption("target-contrast", "inf");
-        // 自动检测目标色彩原色和传输特性，避免错误的 gamma 转换导致发白
-        setMpvOption("target-prim", "auto");
-        setMpvOption("target-trc", "auto");
-        // 色彩范围自动处理：正确处理 full/limited range 转换
-        setMpvOption("video-colorspace-range", "auto");
-        setMpvOption("target-range", "auto");
+        // === 色彩空间强制设置（修复绿屏的核心参数）===
+        // GitHub #9285 确认：target-trc=auto 在部分设备上选择错误的 gamma 曲线导致绿色色偏
+        // GitHub #1088 确认：mediacodec-copy 的色彩范围检测错误导致绿屏
+        //
+        // 强制 BT.709 色彩原色：HD/4K 内容标准色域，覆盖 99% 的现代视频内容
+        setMpvOption("target-prim", "bt.709");
+        // 强制 sRGB 传输函数：GitHub #9285 推荐的修复方案
+        // sRGB 是显示器标准传输函数，确保正确的 gamma 转换，避免发白
+        // HDR 内容通过 tone-mapping 自动转换到 sRGB 输出
+        setMpvOption("target-trc", "srgb");
+        // 强制 limited（TV）色彩范围：视频内容标准范围 16-235
+        // auto 检测在 mediacodec-copy 模式下可能错误识别为 full range，导致暗部发绿
+        setMpvOption("video-colorspace-range", "limited");
+        setMpvOption("target-range", "limited");
     }
 
     private void applyOffsets() {
