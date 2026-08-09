@@ -101,6 +101,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean manualStop;
     private boolean ignoreNextEndFile;
     private boolean loadedFileActive;
+    private boolean isSeeking;
+    private boolean videoAutoSelected;
     private float volume;
     private int playbackState;
     private int decode;
@@ -369,12 +371,19 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 playbackState = Player.STATE_ENDED;
                 loading = false;
             }
+            if ("vo-configured".equals(property) && value) {
+                if (!isSeeking && playbackState == Player.STATE_BUFFERING) markRenderedFirstFrame();
+            }
             if ("paused-for-cache".equals(property)) {
                 if (value) {
-                    playbackState = Player.STATE_BUFFERING;
-                    loading = true;
+                    if (!isSeeking) {
+                        playbackState = Player.STATE_BUFFERING;
+                        loading = true;
+                    }
                 } else {
-                    if (playbackState == Player.STATE_BUFFERING) {
+                    // 缓存恢复时无论当前处于何种状态，只要非 seek 中都应结束 loading，
+                    // 避免某些直播流 paused-for-cache=false 时 state 已非 BUFFERING 导致转圈残留
+                    if (!isSeeking) {
                         playbackState = Player.STATE_READY;
                         loading = false;
                     }
@@ -414,6 +423,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 audioOnlyFallback = false;
                 renderedFirstFrame = false;
                 reportRenderedFirstFrame = false;
+                isSeeking = false;
+                videoAutoSelected = false;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED) {
                 updateVideoSize();
                 buildTracks();
@@ -429,6 +440,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 loadedFileActive = true;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART) {
                 playerError = null;
+                isSeeking = false;
                 playbackState = Player.STATE_READY;
                 loading = false;
                 ignoreNextEndFile = false;
@@ -438,11 +450,17 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 markRenderedFirstFrame();
                 hlsAbortRetryAttempted = false;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_SEEK) {
+                isSeeking = true;
                 playbackState = Player.STATE_BUFFERING;
                 loading = true;
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_VIDEO_RECONFIG) {
                 updateVideoSize();
                 buildTracks();
+                // 视频参数重新配置说明已有画面输出，用来兜底清除 loading
+                if (!isSeeking && playbackState == Player.STATE_BUFFERING) {
+                    Integer width = firstPositiveInt("video-out-params/w", "video-params/w");
+                    if (width != null && width > 0) markRenderedFirstFrame();
+                }
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_AUDIO_RECONFIG) {
                 buildTracks();
             } else if (eventId == MPVLib.MpvEvent.MPV_EVENT_END_FILE) {
@@ -761,6 +779,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void observeProperties() {
         MPVLib.observeProperty("time-pos", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
+        MPVLib.observeProperty("playback-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("duration/full", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("demuxer-cache-time", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
         MPVLib.observeProperty("demuxer-cache-duration", MPVLib.MpvFormat.MPV_FORMAT_DOUBLE);
@@ -784,6 +803,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         MPVLib.observeProperty("chapter-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("edition-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("track-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        // 当 VO 完成初始化或画面真正开始输出时，用来强制结束 loading 状态
+        MPVLib.observeProperty("vo-configured", MPVLib.MpvFormat.MPV_FORMAT_FLAG);
         // 监听硬件解码状态：hwdec-current 显示当前实际使用的硬件解码器
         // 当值为 "no" 时表示硬件解码失败，需要自动降级到软件解码
         MPVLib.observeProperty("hwdec-current", MPVLib.MpvFormat.MPV_FORMAT_NONE);
@@ -1009,7 +1030,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         setMpvOption("demuxer-lavf-probe-info", "yes");
         setMpvOption("demuxer-lavf-probesize", "10485760");
         setMpvOption("demuxer-lavf-analyzeduration", "10");
-        setMpvOption("demuxer-lavf-allow-mimetype", "no");
+        // 对无扩展名的代理/裸流允许用 HTTP Content-Type 辅助识别格式
+        setMpvOption("demuxer-lavf-allow-mimetype", "yes");
     }
 
     private void applyMediaOptions(String url) {
@@ -1038,16 +1060,24 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             opts.put("cache-secs", "10");
             opts.put("keep-open", "yes");
             opts.put("keep-open-pause", "no");
+            opts.put("vid", "auto");
+            opts.put("aid", "auto");
         } else if (MpvMedia.isAudioFile(url) || MpvMedia.isRadioAudio(url)) {
             // 音频文件：关闭视频轨，只保留音频
             opts.put("demuxer", "lavf");
+            opts.put("demuxer-lavf-allow-mimetype", "yes");
             opts.put("vid", "no");
             opts.put("aid", "auto");
             opts.put("keep-open", "yes");
             opts.put("keep-open-pause", "no");
         } else {
-            // 未知格式或视频文件：用 lavf demuxer 自动探测，同时允许纯音频播放
+            // 未知格式或视频文件（Docker/PHP 代理等无扩展名裸流）：
+            // 用 lavf demuxer 自动探测，允许 HTTP Content-Type 辅助识别，放大探测窗口
             opts.put("demuxer", "lavf");
+            opts.put("demuxer-lavf-probe-info", "yes");
+            opts.put("demuxer-lavf-probesize", "10485760");
+            opts.put("demuxer-lavf-analyzeduration", "10");
+            opts.put("demuxer-lavf-allow-mimetype", "yes");
             opts.put("keep-open", "yes");
             opts.put("keep-open-pause", "no");
             opts.put("vid", "auto");
@@ -1207,7 +1237,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private void postProperty(String property, double value) {
         handler.post(() -> {
             if (released) return;
-            if ("time-pos".equals(property)) {
+            if ("time-pos".equals(property) || "playback-time".equals(property)) {
                 long position = secondsToMs(value);
                 if (pendingInitialSeekMs != C.TIME_UNSET && position + 2000 < pendingInitialSeekMs) {
                     playbackState = Player.STATE_BUFFERING;
@@ -1219,8 +1249,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 positionMs = position;
                 if (mediaItem != null && playerError == null && playbackState == Player.STATE_BUFFERING && value >= 0) {
                     markRenderedFirstFrame();
-                    playbackState = Player.STATE_READY;
-                    loading = false;
                 }
             }
             else if ("duration/full".equals(property) || "duration".equals(property)) durationMs = secondsToMs(value);
@@ -1285,18 +1313,29 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         List<Tracks.Group> groups = new ArrayList<>();
         boolean hasAudio = false;
         boolean hasVideo = false;
+        boolean videoSelected = false;
+        Integer firstVideoId = null;
         for (int index = 0; index < count; index++) {
             Integer mpvId = safeGetInt("track-list/" + index + "/id");
             String type = safeGetString("track-list/" + index + "/type");
             int trackType = getTrackType(type);
             if (mpvId == null || mpvId <= 0 || trackType == C.TRACK_TYPE_UNKNOWN) continue;
-            if (trackType == C.TRACK_TYPE_AUDIO) hasAudio = true;
-            if (trackType == C.TRACK_TYPE_VIDEO) hasVideo = true;
-            Format format = buildFormat(index, mpvId, trackType);
             boolean selected = Boolean.TRUE.equals(safeGetBoolean("track-list/" + index + "/selected"));
+            if (trackType == C.TRACK_TYPE_AUDIO) hasAudio = true;
+            if (trackType == C.TRACK_TYPE_VIDEO) {
+                hasVideo = true;
+                if (firstVideoId == null) firstVideoId = mpvId;
+                if (selected) videoSelected = true;
+            }
+            Format format = buildFormat(index, mpvId, trackType);
             groups.add(new Tracks.Group(new TrackGroup("mpv-" + type + "-" + mpvId, format), false, new int[]{C.FORMAT_HANDLED}, new boolean[]{selected}));
         }
         currentTracks = groups.isEmpty() ? Tracks.EMPTY : new Tracks(groups);
+        // 部分源首条 track-list 到达时 mpv 尚未自动选视频轨，手动兜底选中第一个
+        if (hasVideo && !videoSelected && firstVideoId != null && !videoAutoSelected) {
+            videoAutoSelected = true;
+            setMpvProperty("vid", String.valueOf(firstVideoId));
+        }
         applyAudioOnlyFallback(hasAudio, hasVideo);
     }
 
@@ -1576,6 +1615,8 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         reportRenderedFirstFrame = false;
         ignoreNextEndFile = false;
         loadedFileActive = false;
+        isSeeking = false;
+        videoAutoSelected = false;
         isoResolving = false;
         isoOriginalUrl = null;
         isoProxyUrl = null;
@@ -1790,10 +1831,13 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void markRenderedFirstFrame() {
-        if (renderedFirstFrame) return;
-        renderedFirstFrame = true;
-        reportRenderedFirstFrame = true;
-        if (playerError == null && playbackState == Player.STATE_BUFFERING) {
+        if (!renderedFirstFrame) {
+            renderedFirstFrame = true;
+            reportRenderedFirstFrame = true;
+        }
+        // 直播/ HLS 在 segment 切换或缓存波动后可能重新进入 BUFFERING，
+        // 此时 renderedFirstFrame 已为 true，但仍需再次清 loading 让转圈消失（seek 中除外）。
+        if (!isSeeking && playerError == null && playbackState == Player.STATE_BUFFERING) {
             playbackState = Player.STATE_READY;
             loading = false;
         }
