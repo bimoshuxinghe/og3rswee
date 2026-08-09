@@ -5,7 +5,10 @@
     native <methods>;
 }
 
-# This method is called from native code
+# These methods are called from native code. Two overloads are kept because some prebuilt
+# libffmpegJNI.so binaries (e.g. arm64-v8a) use a 3-arg JNI signature while the current source
+# and other binaries (e.g. armeabi-v7a) use a 2-arg signature.
 -keep, includedescriptorclasses class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
   private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int);
+  private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int, int);
 }

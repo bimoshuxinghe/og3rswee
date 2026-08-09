@@ -59,8 +59,11 @@
 # 这是 FfmpegAudioDecoder 中的 private 方法，被 native 代码通过 JNI GetMethodID 调用
 # 使用 -keep,includedescriptorclasses（与 Media3 官方 proguard-rules.txt 一致）
 # -keep 防止混淆+移除，includedescriptorclasses 同时保护参数类型类不被移除
+# 保留两个重载：2 参数版本匹配当前 ffmpeg_jni.cc 与 armeabi-v7a so；
+# 3 参数版本匹配旧版 arm64-v8a 预编译 so，避免 NoSuchMethodError 崩溃。
 -keep, includedescriptorclasses class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
     private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int);
+    private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int, int);
     native long ffmpegInitialize(java.lang.String, byte[], boolean, int, int);
     native int ffmpegDecode(long, java.nio.ByteBuffer, int, androidx.media3.decoder.SimpleDecoderOutputBuffer, java.nio.ByteBuffer, int);
     native int ffmpegGetChannelCount(long);

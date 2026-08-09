@@ -152,9 +152,22 @@ import java.util.List;
     return null;
   }
 
-  // Called from native code
+  // Called from native code (matches the 2-arg JNI signature used by current ffmpeg_jni.cc and
+  // the armeabi-v7a prebuilt libffmpegJNI.so).
   @SuppressWarnings("unused")
   private ByteBuffer growOutputBuffer(SimpleDecoderOutputBuffer outputBuffer, int requiredSize) {
+    // Use it for new buffer so that hopefully we won't need to reallocate again
+    outputBufferSize = requiredSize;
+    return outputBuffer.grow(requiredSize);
+  }
+
+  // Called from native code (matches the legacy 3-arg JNI signature still present in the
+  // arm64-v8a prebuilt libffmpegJNI.so). Some prebuilt binaries were compiled with an older
+  // variant of ffmpeg_jni.cc that passes two size values; use the larger one to be safe.
+  @SuppressWarnings("unused")
+  private ByteBuffer growOutputBuffer(
+      SimpleDecoderOutputBuffer outputBuffer, int size1, int size2) {
+    int requiredSize = Math.max(size1, size2);
     // Use it for new buffer so that hopefully we won't need to reallocate again
     outputBufferSize = requiredSize;
     return outputBuffer.grow(requiredSize);

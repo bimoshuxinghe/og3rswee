@@ -131,6 +131,10 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     LOGE("JNI_OnLoad: FindClass failed");
     return -1;
   }
+  // The Java side keeps two overloads of growOutputBuffer:
+  // - (SimpleDecoderOutputBuffer, int) used by this source.
+  // - (SimpleDecoderOutputBuffer, int, int) retained for compatibility with older arm64-v8a
+  //   prebuilt libffmpegJNI.so binaries that lookup the 3-arg signature.
   growOutputBufferMethod =
       env->GetMethodID(clazz, "growOutputBuffer",
                        "(Landroidx/media3/decoder/"
