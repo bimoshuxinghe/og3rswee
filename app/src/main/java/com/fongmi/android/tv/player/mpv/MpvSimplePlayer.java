@@ -124,6 +124,18 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean doviFallbackApplied;
     private boolean doviReloadPending;
     private String originalVo;
+    // 硬件解码降级：当检测到 10-bit 内容使用 mediacodec-copy 时，自动切换避免绿屏
+    // 多级降级策略：
+    //   Stage 1: 尝试 mediacodec 非copy模式（帧直接在GPU内存，避免拷贝导致的格式降级）
+    //   Stage 2: 降级到软件解码（正确处理10-bit色彩，但CPU负载较高）
+    // GitHub issue mpv-android#1088 测试确认：
+    //   hwdec=mediacodec-copy + vo=gpu → 绿屏（FFmpeg mediacodec-copy 10→8bit NV12 转换bug）
+    //   hwdec=mediacodec + vo=gpu → 正常（部分设备为HW非copy，部分设备静默回退到SW）
+    //   hwdec=no → 正常（软件解码，色彩正确但CPU高）
+    private boolean hwdecFallbackApplied;
+    private boolean hwdecMediacodecTried;
+    private String currentHwdec;
+    private String currentPixelformat;
     private int endFileReason;
     private int endFileError;
     private String endFileErrorString;
@@ -176,6 +188,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         }
         doviFallbackApplied = false;
         doviReloadPending = false;
+        // 重置硬件解码降级标志：切换解码模式时清除之前的降级状态
+        hwdecFallbackApplied = false;
+        hwdecMediacodecTried = false;
+        currentHwdec = null;
+        currentPixelformat = null;
         applyDecodeOption();
         if (initialized && mediaItem != null && playbackState != Player.STATE_IDLE) loadMediaItem(positionMs, true);
     }
@@ -355,6 +372,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     public void eventProperty(String property) {
         if (isVideoSizeProperty(property)) updateVideoSize();
         if (isDoviProperty(property)) checkDoviPrimaries();
+        if ("hwdec-current".equals(property) || "video-params/pixelformat".equals(property)) {
+            handler.post(() -> {
+                if (released) return;
+                checkHwdecFallback();
+            });
+        }
         if ("track-list".equals(property) || "chapter-list".equals(property) || "edition-list".equals(property)) {
             handler.post(() -> {
                 if (released) return;
@@ -407,6 +430,21 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             handler.post(() -> {
                 if (released) return;
                 checkDoviPrimaries();
+            });
+        }
+        // 记录当前硬件解码器和像素格式，用于检测 10-bit + mediacodec-copy 绿屏风险
+        if ("hwdec-current".equals(property)) {
+            handler.post(() -> {
+                if (released) return;
+                currentHwdec = value;
+                checkHwdecFallback();
+            });
+        }
+        if ("video-params/pixelformat".equals(property)) {
+            handler.post(() -> {
+                if (released) return;
+                currentPixelformat = value;
+                checkHwdecFallback();
             });
         }
     }
@@ -528,6 +566,15 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             setMpvOption("ytdl", "no");
             applyProxyUrl();
             setMpvOption("profile", "fast");
+            // 帧丢弃策略：当解码器输出帧速度 > 显示器刷新率时，在 VO 层丢弃帧
+            // 避免 A/V 不同步和画面卡顿，尤其在软解高分辨率内容时
+            setMpvOption("framedrop", "vo");
+            // 视频同步模式：以音频时钟为基准同步视频
+            // display-resample 模式需要 vsync 支持，移动设备使用 audio 更稳定
+            setMpvOption("video-sync", "audio");
+            // 插值：在帧之间进行插值以平滑运动
+            // 仅在 video-sync=display-resample 时生效，此处设为 no 避免不必要开销
+            setMpvOption("interpolation", "no");
             applyTlsCaFile();
             applyCacheOptions();
             applySubtitleConfig();
@@ -791,6 +838,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         MPVLib.observeProperty("chapter-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("edition-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
         MPVLib.observeProperty("track-list", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        // 监听硬件解码状态：hwdec-current 显示当前实际使用的硬件解码器
+        // 当值为 "no" 时表示硬件解码失败，需要自动降级到软件解码
+        MPVLib.observeProperty("hwdec-current", MPVLib.MpvFormat.MPV_FORMAT_NONE);
+        // 监听像素格式：检测 10-bit 内容，用于判断是否需要特殊处理
+        MPVLib.observeProperty("video-params/pixelformat", MPVLib.MpvFormat.MPV_FORMAT_NONE);
     }
 
     private void loadMediaItem(long startPositionMs) {
@@ -949,8 +1001,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyDecodeOption(boolean isHlsStream) {
-        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD || doviFallbackApplied) {
+        // 当硬件解码降级已生效（10-bit 绿屏降级或 DoVi 降级），保持软件解码
+        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD || doviFallbackApplied || hwdecFallbackApplied) {
             setMpvOption("hwdec", "no");
+            // 软件解码多线程：0 = 自动检测 CPU 核心数
+            // GitHub #1088 报告 SW 解码 4K HEVC CPU 负载 200-350%，多线程可显著缓解
+            setMpvOption("vd-lavc-threads", "0");
             if (initialized) {
                 setMpvProperty("hwdec", "no");
                 setMpvProperty("vf", "");
@@ -961,10 +1017,27 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             }
             return;
         }
+        // 硬件解码策略：
+        // - 优先 mediacodec（HW+ 非拷贝模式）：帧直接在 GPU 内存中，避免拷贝导致的格式降级
+        // - 回退 mediacodec-copy（HW 拷贝模式）：帧经过 MPV 渲染管线，可正确裁剪
+        //
+        // GitHub issue #1088/#540/#853 确认：mediacodec-copy 在部分设备上会强制
+        // 10-bit → 8-bit NV12 转换，导致 stride mismatch → 绿屏。
+        // 优先使用 mediacodec（非拷贝）可避免此问题。
+        //
         // HLS 直播流使用 mediacodec-copy 避免底部绿线：
-        // mediacodec 直连 Surface 模式下，视频高度非 16 整数倍时解码器会在底部填充未初始化数据（绿线）。
-        // mediacodec-copy 模式将帧拷贝经过 MPV 渲染管线，正确裁剪到实际视频尺寸。
-        String value = isHlsStream ? "mediacodec-copy" : "mediacodec,mediacodec-copy";
+        // mediacodec 直连 Surface 模式下，视频高度非 16 整数倍时解码器会在底部填充
+        // 未初始化数据（绿线）。mediacodec-copy 模式将帧拷贝经过 MPV 渲染管线，正确裁剪。
+        //
+        // 当 Stage 1 降级已触发（hwdecMediacodecTried），强制使用 mediacodec 非copy模式，
+        // 避免 applyDecodeOption 在 loadMediaItem 重载时覆盖降级设置。
+        String value;
+        if (hwdecMediacodecTried) {
+            // Stage 1 降级：仅使用 mediacodec 非copy模式，不回退到 mediacodec-copy
+            value = "mediacodec";
+        } else {
+            value = isHlsStream ? "mediacodec-copy" : "mediacodec,mediacodec-copy";
+        }
         setMpvOption("hwdec", value);
         if (initialized) {
             setMpvProperty("hwdec", value);
@@ -988,6 +1061,38 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
             setMpvOption("gpu-api", "opengl");
             setMpvOption("gpu-context", "android");
         }
+        // 色彩抖动：减少色带（color banding），在 8-bit 显示器上改善 10-bit 内容的渐变
+        setMpvOption("dither-depth", "auto");
+        // 时间抖动：在帧之间快速切换抖动模式，人眼感知更高色深
+        // 对动态画面效果显著，可有效减少 10-bit → 8-bit 降级时的色带
+        setMpvOption("temporal-dither", "yes");
+        setMpvOption("temporal-dither-period", "2");
+        // 高质量缩放算法：改善低分辨率视频的放大质量
+        setMpvOption("scale", "lanczos");
+        setMpvOption("dscale", "mitchell");
+        setMpvOption("cscale", "lanczos");
+        // 正确下采样：避免缩小时的高频细节丢失
+        setMpvOption("correct-downscaling", "yes");
+        // 信号混叠：改善交织内容的渲染
+        setMpvOption("sigmoid-upscaling", "yes");
+        // 使用显示设备的 ICC 配置文件进行色彩管理（如果可用）
+        // 确保色彩在不同设备上的一致性，避免发白发绿
+        setMpvOption("icc-profile-auto", "yes");
+        // FBO 格式：使用 16-bit 浮点格式，提升 HDR 和 10-bit 内容的渲染精度
+        // 避免中间渲染步骤的精度丢失导致色彩偏差
+        if (gpuNext) {
+            setMpvOption("opengl-fbo-format", "auto16f");
+        }
+        // 字幕混合：在视频帧之后混合字幕，确保字幕色彩不受 HDR tone mapping 影响
+        // GitHub mpv#18286: gpu-next 下字幕继承 HDR 色彩空间导致色偏
+        setMpvOption("blend-subtitles", "video");
+        // 去色带滤镜：减少 8-bit 编码视频的色带，对渐变场景效果显著
+        // 注意：mpv#10323 的 deband 绿屏问题已在 gpu-next 中修复
+        setMpvOption("deband", "yes");
+        setMpvOption("deband-iterations", "1");
+        setMpvOption("deband-threshold", "35");
+        setMpvOption("deband-range", "16");
+        setMpvOption("deband-grain", "5");
     }
 
     private String getMpvVo() {
@@ -1129,9 +1234,32 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyHdrOptions() {
+        // 色彩空间提示：通知显示设备切换到视频的色彩空间
         setMpvOption("target-colorspace-hint", "yes");
+        // HDR 峰值计算：用于 HDR 色调映射
         setMpvOption("hdr-compute-peak", "yes");
+        // 自动色调映射
         setMpvOption("tone-mapping", "auto");
+        // 色调映射模式：自动选择最佳算法
+        setMpvOption("tone-mapping-mode", "auto");
+        // 色调映射参数：控制色调映射的强度（0.0-1.0，默认 auto）
+        // 较高的值保留更多高光细节，避免 HDR→SDR 转换时高光发白
+        setMpvOption("tone-mapping-param", "default");
+        // HDR 峰值衰减率：控制峰值检测的平滑度（0-1000，默认 100）
+        // 较低的值使峰值检测更平滑，避免画面忽明忽暗
+        setMpvOption("hdr-peak-decay-rate", "100");
+        // HDR 峰值参考值：用于场景切换时的峰值重置（0-1，默认 0.0 = 禁用）
+        setMpvOption("hdr-scene-threshold", "0");
+        // 色域映射模式：自动处理 BT.2020 → BT.709 等色域转换
+        setMpvOption("gamut-mapping-mode", "auto");
+        // 目标对比度：inf 适用于有全局色彩管理的显示器，避免发白
+        setMpvOption("target-contrast", "inf");
+        // 自动检测目标色彩原色和传输特性，避免错误的 gamma 转换导致发白
+        setMpvOption("target-prim", "auto");
+        setMpvOption("target-trc", "auto");
+        // 色彩范围自动处理：正确处理 full/limited range 转换
+        setMpvOption("video-colorspace-range", "auto");
+        setMpvOption("target-range", "auto");
     }
 
     private void applyOffsets() {
@@ -1324,6 +1452,71 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         String transfer = safeGetString("video-params/transfer");
         if (transfer != null && transfer.contains("dovi")) {
             applyDoviFallback(true);
+        }
+    }
+
+    /**
+     * 检测 10-bit 内容使用 mediacodec-copy 时的绿屏风险，执行多级降级策略。
+     * <p>
+     * GitHub issue mpv-android#540/#853/#1088/#1206 确认：
+     * mediacodec-copy 模式在部分设备上会强制 10-bit → 8-bit NV12 转换，
+     * 导致 stride mismatch 产生绿色伪影。此问题源于 FFmpeg 层面，mpv 维护者标记为
+     * "can't fix"（#1088）。
+     * <p>
+     * 多级降级策略：
+     * Stage 1: 尝试 mediacodec 非copy模式 — 帧直接在 GPU 内存中传输，避免拷贝导致的
+     *          格式降级。部分设备上此模式可作为真正 HW 解码工作（#1088 测试确认）；
+     *          另一些设备上会静默回退到 SW 解码，但色彩仍然正确。
+     * Stage 2: 降级到软件解码 — 完全正确处理 10-bit 色彩，支持 tone mapping，
+     *          但 CPU 负载较高。启用多线程软解以缓解性能问题。
+     * <p>
+     * 检测条件：硬件解码模式 + mediacodec-copy + 10-bit 像素格式
+     */
+    private void checkHwdecFallback() {
+        if (hwdecFallbackApplied || doviFallbackApplied) return;
+        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD) return;
+        if (TextUtils.isEmpty(currentHwdec) || "no".equals(currentHwdec)) return;
+        // 仅当实际使用 mediacodec-copy 时才检测（mediacodec 非拷贝模式不会有此问题）
+        if (!currentHwdec.contains("copy")) return;
+        // 检测 10-bit 像素格式：yuv420p10/yuv422p10/yuv444p10 等
+        if (TextUtils.isEmpty(currentPixelformat)) return;
+        boolean is10bit = currentPixelformat.contains("10") || currentPixelformat.contains("p10");
+        if (!is10bit) return;
+
+        if (!hwdecMediacodecTried) {
+            // Stage 1: 尝试 mediacodec 非copy模式
+            // GitHub #1088 测试: hwdec=mediacodec + vo=gpu 在部分设备上可作为HW非copy工作，
+            // 在其他设备上静默回退到SW解码 — 两种情况都能避免绿屏
+            hwdecMediacodecTried = true;
+            Log.w(TAG, "10-bit + mediacodec-copy detected (Stage 1): trying mediacodec non-copy mode. hwdec=" + currentHwdec + " pixelformat=" + currentPixelformat);
+            setMpvProperty("hwdec", "mediacodec");
+            setMpvProperty("vf", "");
+            // 重新加载以使新的 hwdec 模式生效
+            if (mediaItem != null && playbackState != Player.STATE_IDLE) {
+                handler.post(() -> {
+                    if (released) return;
+                    loadMediaItem(positionMs, true);
+                });
+            }
+            return;
+        }
+
+        // Stage 2: mediacodec 非copy模式仍然回退到了 mediacodec-copy，降级到软件解码
+        // 启用多线程软解以缓解 CPU 负载（#1088 报告 SW 解码 CPU 200-350%）
+        hwdecFallbackApplied = true;
+        Log.w(TAG, "10-bit content fallback (Stage 2): switching to multi-threaded software decode. hwdec=" + currentHwdec + " pixelformat=" + currentPixelformat);
+        setMpvProperty("hwdec", "no");
+        setMpvProperty("vf", "");
+        // 多线程软解：0 = 自动检测 CPU 核心数
+        setMpvOption("vd-lavc-threads", "0");
+        // 软解时增大缓存以平滑播放
+        setMpvOption("cache-secs", "20");
+        // 重新加载以使软解生效
+        if (mediaItem != null && playbackState != Player.STATE_IDLE) {
+            handler.post(() -> {
+                if (released) return;
+                loadMediaItem(positionMs, true);
+            });
         }
     }
 
@@ -1608,6 +1801,11 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         }
         doviFallbackApplied = false;
         doviReloadPending = false;
+        // 重置硬件解码降级标志：新视频加载时清除之前的降级状态
+        hwdecFallbackApplied = false;
+        hwdecMediacodecTried = false;
+        currentHwdec = null;
+        currentPixelformat = null;
         isoResolving = false;
         isoOriginalUrl = null;
         isoProxyUrl = null;
