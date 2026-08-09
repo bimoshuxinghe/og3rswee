@@ -121,21 +121,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     private boolean isoResolving;
     private String isoOriginalUrl;
     private String isoProxyUrl;
-    private boolean doviFallbackApplied;
-    private boolean doviReloadPending;
-    private String originalVo;
-    // 硬件解码降级：当检测到 10-bit 内容使用 mediacodec-copy 时，自动切换避免绿屏
-    // 多级降级策略：
-    //   Stage 1: 尝试 mediacodec 非copy模式（帧直接在GPU内存，避免拷贝导致的格式降级）
-    //   Stage 2: 降级到软件解码（正确处理10-bit色彩，但CPU负载较高）
-    // GitHub issue mpv-android#1088 测试确认：
-    //   hwdec=mediacodec-copy + vo=gpu → 绿屏（FFmpeg mediacodec-copy 10→8bit NV12 转换bug）
-    //   hwdec=mediacodec + vo=gpu → 正常（部分设备为HW非copy，部分设备静默回退到SW）
-    //   hwdec=no → 正常（软件解码，色彩正确但CPU高）
-    private boolean hwdecFallbackApplied;
-    private boolean hwdecMediacodecTried;
-    private String currentHwdec;
-    private String currentPixelformat;
     private int endFileReason;
     private int endFileError;
     private String endFileErrorString;
@@ -182,17 +167,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     public void setDecode(int decode) {
         this.decode = decode;
-        // 恢复原始渲染器
-        if (doviFallbackApplied && originalVo != null && initialized) {
-            setMpvProperty("vo", originalVo);
-        }
-        doviFallbackApplied = false;
-        doviReloadPending = false;
-        // 重置硬件解码降级标志：切换解码模式时清除之前的降级状态
-        hwdecFallbackApplied = false;
-        hwdecMediacodecTried = false;
-        currentHwdec = null;
-        currentPixelformat = null;
         applyDecodeOption();
         if (initialized && mediaItem != null && playbackState != Player.STATE_IDLE) loadMediaItem(positionMs, true);
     }
@@ -371,13 +345,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     @Override
     public void eventProperty(String property) {
         if (isVideoSizeProperty(property)) updateVideoSize();
-        if (isDoviProperty(property)) checkDoviPrimaries();
-        if ("hwdec-current".equals(property) || "video-params/pixelformat".equals(property)) {
-            handler.post(() -> {
-                if (released) return;
-                checkHwdecFallback();
-            });
-        }
         if ("track-list".equals(property) || "chapter-list".equals(property) || "edition-list".equals(property)) {
             handler.post(() -> {
                 if (released) return;
@@ -424,27 +391,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
                 if (released) return;
                 updateVideoSize();
                 invalidateState();
-            });
-        }
-        if (isDoviProperty(property)) {
-            handler.post(() -> {
-                if (released) return;
-                checkDoviPrimaries();
-            });
-        }
-        // 记录当前硬件解码器和像素格式，用于检测 10-bit + mediacodec-copy 绿屏风险
-        if ("hwdec-current".equals(property)) {
-            handler.post(() -> {
-                if (released) return;
-                currentHwdec = value;
-                checkHwdecFallback();
-            });
-        }
-        if ("video-params/pixelformat".equals(property)) {
-            handler.post(() -> {
-                if (released) return;
-                currentPixelformat = value;
-                checkHwdecFallback();
             });
         }
     }
@@ -874,13 +820,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         // 始终忽略下一个 END_FILE 事件：切换频道时旧流被 replace 中断不应视为错误
         ignoreNextEndFile = true;
         loadedFileActive = false;
-        // 非 DoVi 重载时清除 DoVi 状态并恢复原始渲染器
-        if (!doviReloadPending) {
-            if (doviFallbackApplied && originalVo != null) {
-                setMpvProperty("vo", originalVo);
-            }
-            doviFallbackApplied = false;
-        }
         endFileReason = 0;
         endFileError = 0;
         endFileErrorString = null;
@@ -1001,59 +940,22 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void applyDecodeOption(boolean isHlsStream) {
-        // 当硬件解码降级已生效（10-bit 绿屏降级或 DoVi 降级），保持软件解码
-        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD || doviFallbackApplied || hwdecFallbackApplied) {
+        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
             setMpvOption("hwdec", "no");
-            // 软件解码多线程：0 = 自动检测 CPU 核心数
-            // GitHub #1088 报告 SW 解码 4K HEVC CPU 负载 200-350%，多线程可显著缓解
             setMpvOption("vd-lavc-threads", "0");
             if (initialized) {
                 setMpvProperty("hwdec", "no");
                 setMpvProperty("vf", "");
-                // DoVi 回退时强制使用 gpu-next 渲染器
-                if (doviFallbackApplied) {
-                    setMpvProperty("vo", "gpu-next");
-                }
             }
             return;
         }
-        // 硬件解码策略（GPU转码方案）：
-        //
-        // 核心问题：mediacodec-copy 模式将帧拷贝到CPU内存后，MPV渲染器做 YUV→RGB 转换时
-        // 使用了错误的色彩参数（色彩范围/色彩矩阵/传输函数），导致画面发绿发白。
-        // GitHub #1088 测试确认：mediacodec-copy + vo=gpu → 绿屏
-        //                        mediacodec(非copy) + vo=gpu → 正常
-        //
-        // 解决方案：
-        // 1. 非HLS内容：仅使用 mediacodec（非copy模式），帧直接在GPU内存中渲染
-        //    硬件解码器内置的色彩转换始终正确，避免MPV渲染器的色彩参数错误
-        //    如果 mediacodec 不可用，MPV自动回退到软件解码（色彩也正确）
-        //
-        // 2. HLS直播流：使用 mediacodec-copy + GPU色彩转换滤镜(vf=format)
-        //    mediacodec 非copy模式在HLS下会导致底部绿线（高度非16倍数时填充未初始化数据）
-        //    mediacodec-copy 模式通过 vf=format 滤镜强制正确的色彩参数
-        //
-        // 3. GPU色彩转换滤镜：vf=format=colorlevels=limited:colormatrix=bt.709
-        //    这就是"GPU转码"——在GPU上强制使用正确的色彩矩阵和范围进行 YUV→RGB 转换
-        String value;
-        if (hwdecMediacodecTried) {
-            // Stage 1 降级：仅使用 mediacodec 非copy模式
-            value = "mediacodec";
-        } else if (isHlsStream) {
-            // HLS直播流：使用 mediacodec-copy + GPU色彩转换滤镜
-            value = "mediacodec-copy";
-        } else {
-            // 非HLS：仅使用 mediacodec 非copy模式，从根源避免绿屏
-            value = "mediacodec";
-        }
+        // 硬件解码：非HLS 用 mediacodec（帧在GPU内存，色彩正确）；
+        // HLS 直播用 mediacodec-copy + GPU 色彩转换滤镜避免底部绿线
+        String value = isHlsStream ? "mediacodec-copy" : "mediacodec";
         setMpvOption("hwdec", value);
         if (initialized) {
             setMpvProperty("hwdec", value);
-            // GPU色彩转换滤镜：
-            // - HLS: 裁剪底部绿线 + 强制正确色彩参数
-            // - 非HLS: 清空滤镜（mediacodec非copy模式不需要，硬件解码器内置正确转换）
             if (isHlsStream) {
-                // GPU转码：crop去除底部绿线 + format强制正确YUV→RGB转换参数
                 setMpvProperty("vf", "lavfi=[crop=iw:ih-ih%2:0:0],format=colorlevels=limited:colormatrix=bt.709:primaries=bt.709:transfer=bt.1886");
             } else {
                 setMpvProperty("vf", "");
@@ -1383,152 +1285,21 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         List<Tracks.Group> groups = new ArrayList<>();
         boolean hasAudio = false;
         boolean hasVideo = false;
-        boolean hasDovi = false;
         for (int index = 0; index < count; index++) {
             Integer mpvId = safeGetInt("track-list/" + index + "/id");
             String type = safeGetString("track-list/" + index + "/type");
             int trackType = getTrackType(type);
             if (mpvId == null || mpvId <= 0 || trackType == C.TRACK_TYPE_UNKNOWN) continue;
             if (trackType == C.TRACK_TYPE_AUDIO) hasAudio = true;
-            if (trackType == C.TRACK_TYPE_VIDEO) {
-                hasVideo = true;
-                String codec = safeGetString("track-list/" + index + "/codec");
-                if (isDolbyVisionCodec(codec)) hasDovi = true;
-            }
+            if (trackType == C.TRACK_TYPE_VIDEO) hasVideo = true;
             Format format = buildFormat(index, mpvId, trackType);
             boolean selected = Boolean.TRUE.equals(safeGetBoolean("track-list/" + index + "/selected"));
             groups.add(new Tracks.Group(new TrackGroup("mpv-" + type + "-" + mpvId, format), false, new int[]{C.FORMAT_HANDLED}, new boolean[]{selected}));
         }
         currentTracks = groups.isEmpty() ? Tracks.EMPTY : new Tracks(groups);
-        applyDoviFallback(hasDovi);
         applyAudioOnlyFallback(hasAudio, hasVideo);
     }
 
-    private static boolean isDolbyVisionCodec(String codec) {
-        if (TextUtils.isEmpty(codec)) return false;
-        String lower = codec.toLowerCase(Locale.ROOT);
-        return lower.startsWith("dovi") || lower.startsWith("dvhe") || lower.startsWith("dvh1")
-                || lower.startsWith("dvav") || lower.startsWith("dav1") || lower.contains("dolby-vision");
-    }
-
-    private static boolean isDoviProperty(String property) {
-        return "video-params/primaries".equals(property)
-                || "video-params/colormatrix".equals(property)
-                || "video-params/transfer".equals(property);
-    }
-
-    private void applyDoviFallback(boolean hasDovi) {
-        if (!hasDovi || doviFallbackApplied || doviReloadPending) return;
-        doviFallbackApplied = true;
-        doviReloadPending = true;
-        Log.w(TAG, "Dolby Vision detected, switching to gpu-next + software decode to fix green screen");
-        // 保存原始渲染器，以便非 DoVi 视频恢复
-        if (originalVo == null) {
-            originalVo = PlayerSetting.isMpvGpuNext() ? "gpu-next" : "gpu";
-        }
-        // 切换到 gpu-next 渲染器：libplacebo 内置 IPTPQc2 色彩空间转换，是修复 DV Profile 5 绿屏的关键
-        setMpvProperty("vo", "gpu-next");
-        // 软件解码：硬件解码器无法传递 DV 元数据给 gpu-next
-        setMpvProperty("hwdec", "no");
-        // 清除视频滤镜，避免干扰色彩转换
-        setMpvProperty("vf", "");
-        // 重新加载视频以使 gpu-next + 软解生效
-        if (mediaItem != null && playbackState != Player.STATE_IDLE) {
-            handler.post(() -> {
-                if (released) return;
-                loadMediaItem(positionMs, true);
-                doviReloadPending = false;
-            });
-        } else {
-            doviReloadPending = false;
-        }
-    }
-
-    private void checkDoviPrimaries() {
-        if (doviFallbackApplied) return;
-        // 检查色彩原色（primaries）：DoVi Profile 5 使用 IPT 色彩空间
-        String primaries = safeGetString("video-params/primaries");
-        if (primaries != null && (primaries.contains("ipt") || primaries.contains("dovi"))) {
-            applyDoviFallback(true);
-            return;
-        }
-        // 检查色彩矩阵（colormatrix）：DoVi 内容可能报告 "dovi" 或 "ipt"
-        String colormatrix = safeGetString("video-params/colormatrix");
-        if (colormatrix != null && (colormatrix.contains("ipt") || colormatrix.contains("dovi"))) {
-            applyDoviFallback(true);
-            return;
-        }
-        // 检查传输特性（transfer）：DoVi 内容可能报告 "dovi"
-        String transfer = safeGetString("video-params/transfer");
-        if (transfer != null && transfer.contains("dovi")) {
-            applyDoviFallback(true);
-        }
-    }
-
-    /**
-     * 检测 10-bit 内容使用 mediacodec-copy 时的绿屏风险，执行多级降级策略。
-     * <p>
-     * GitHub issue mpv-android#540/#853/#1088/#1206 确认：
-     * mediacodec-copy 模式在部分设备上会强制 10-bit → 8-bit NV12 转换，
-     * 导致 stride mismatch 产生绿色伪影。此问题源于 FFmpeg 层面，mpv 维护者标记为
-     * "can't fix"（#1088）。
-     * <p>
-     * 多级降级策略：
-     * Stage 1: 尝试 mediacodec 非copy模式 — 帧直接在 GPU 内存中传输，避免拷贝导致的
-     *          格式降级。部分设备上此模式可作为真正 HW 解码工作（#1088 测试确认）；
-     *          另一些设备上会静默回退到 SW 解码，但色彩仍然正确。
-     * Stage 2: 降级到软件解码 — 完全正确处理 10-bit 色彩，支持 tone mapping，
-     *          但 CPU 负载较高。启用多线程软解以缓解性能问题。
-     * <p>
-     * 检测条件：硬件解码模式 + mediacodec-copy + 10-bit 像素格式
-     */
-    private void checkHwdecFallback() {
-        if (hwdecFallbackApplied || doviFallbackApplied) return;
-        if (decode != com.fongmi.android.tv.player.engine.PlayerEngine.HARD) return;
-        if (TextUtils.isEmpty(currentHwdec) || "no".equals(currentHwdec)) return;
-        // 仅当实际使用 mediacodec-copy 时才检测（mediacodec 非拷贝模式不会有此问题）
-        if (!currentHwdec.contains("copy")) return;
-        // 检测 10-bit 像素格式：yuv420p10/yuv422p10/yuv444p10 等
-        if (TextUtils.isEmpty(currentPixelformat)) return;
-        boolean is10bit = currentPixelformat.contains("10") || currentPixelformat.contains("p10");
-        if (!is10bit) return;
-
-        if (!hwdecMediacodecTried) {
-            // Stage 1: 尝试 mediacodec 非copy模式
-            // GitHub #1088 测试: hwdec=mediacodec + vo=gpu 在部分设备上可作为HW非copy工作，
-            // 在其他设备上静默回退到SW解码 — 两种情况都能避免绿屏
-            hwdecMediacodecTried = true;
-            Log.w(TAG, "10-bit + mediacodec-copy detected (Stage 1): trying mediacodec non-copy mode. hwdec=" + currentHwdec + " pixelformat=" + currentPixelformat);
-            setMpvProperty("hwdec", "mediacodec");
-            setMpvProperty("vf", "");
-            // 重新加载以使新的 hwdec 模式生效
-            if (mediaItem != null && playbackState != Player.STATE_IDLE) {
-                handler.post(() -> {
-                    if (released) return;
-                    loadMediaItem(positionMs, true);
-                });
-            }
-            return;
-        }
-
-        // Stage 2: mediacodec 非copy模式仍然回退到了 mediacodec-copy，降级到软件解码
-        // 启用多线程软解以缓解 CPU 负载（#1088 报告 SW 解码 CPU 200-350%）
-        hwdecFallbackApplied = true;
-        Log.w(TAG, "10-bit content fallback (Stage 2): switching to multi-threaded software decode. hwdec=" + currentHwdec + " pixelformat=" + currentPixelformat);
-        setMpvProperty("hwdec", "no");
-        setMpvProperty("vf", "");
-        // 多线程软解：0 = 自动检测 CPU 核心数
-        setMpvOption("vd-lavc-threads", "0");
-        // 软解时增大缓存以平滑播放
-        setMpvOption("cache-secs", "20");
-        // 重新加载以使软解生效
-        if (mediaItem != null && playbackState != Player.STATE_IDLE) {
-            handler.post(() -> {
-                if (released) return;
-                loadMediaItem(positionMs, true);
-            });
-        }
-    }
 
     private void applyAudioOnlyFallback(boolean hasAudio, boolean hasVideo) {
         audioOnlyFallback = hasAudio && !hasVideo;
@@ -1805,17 +1576,6 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         reportRenderedFirstFrame = false;
         ignoreNextEndFile = false;
         loadedFileActive = false;
-        // DoVi 回退结束，恢复原始渲染器
-        if (doviFallbackApplied && originalVo != null && initialized) {
-            setMpvProperty("vo", originalVo);
-        }
-        doviFallbackApplied = false;
-        doviReloadPending = false;
-        // 重置硬件解码降级标志：新视频加载时清除之前的降级状态
-        hwdecFallbackApplied = false;
-        hwdecMediacodecTried = false;
-        currentHwdec = null;
-        currentPixelformat = null;
         isoResolving = false;
         isoOriginalUrl = null;
         isoProxyUrl = null;
