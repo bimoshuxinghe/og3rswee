@@ -35,6 +35,9 @@
 -keep class androidx.media3.decoder.av1.Dav1dDecoder { *; }
 -keep class androidx.media3.decoder.SimpleDecoderOutputBuffer { *; }
 -keep class androidx.media3.decoder.mpegh** { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegVideoDecoder { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegDecoder { *; }
 
 -keepclassmembers class androidx.media3.datasource.RawResourceDataSource {
   public static android.net.Uri buildRawResourceUri(int);

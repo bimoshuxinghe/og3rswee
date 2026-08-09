@@ -1799,7 +1799,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.getRoot().setAlpha(0f);
         mBinding.control.getRoot().setVisibility(View.VISIBLE);
         mBinding.control.getRoot().animate().alpha(1f).setDuration(200).start();
-        setR1Callback();
+        if (!isLock()) setR1Callback();
         updateAlwaysProgress();
     }
 

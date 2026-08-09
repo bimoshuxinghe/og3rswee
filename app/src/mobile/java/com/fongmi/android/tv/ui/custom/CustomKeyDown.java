@@ -62,11 +62,19 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
         if (action == MotionEvent.ACTION_UP) listener.onTouchEnd();
         if (changeSpeed && action == MotionEvent.ACTION_UP) listener.onSpeedEnd();
         if (changeTime && action == MotionEvent.ACTION_UP) listener.onSeekEnd(time);
-        // When locked, suppress all gesture processing entirely.
-        // onScroll/onLongPress already check lock, but ACTION_UP callbacks
-        // (onSeekEnd/onSpeedEnd) fire unconditionally if changeTime/changeSpeed
-        // were set before lock was engaged. Reset flags to prevent that.
-        if (lock) { changeTime = false; changeSpeed = false; return true; }
+        // When locked, suppress all gesture processing except single tap
+        // so the user can tap to show the lock button and unlock.
+        // onScroll/onLongPress/onDoubleTap/onFling already check lock,
+        // but ACTION_UP callbacks (onSeekEnd/onSpeedEnd) fire unconditionally
+        // if changeTime/changeSpeed were set before lock was engaged.
+        // Reset flags to prevent that.
+        if (lock) {
+            changeTime = false;
+            changeSpeed = false;
+            // Still pass single-pointer events to detector so onSingleTapConfirmed fires
+            if (e.getPointerCount() == 1) detector.onTouchEvent(e);
+            return true;
+        }
         return e.getPointerCount() == 2 ? scaleDetector.onTouchEvent(e) : detector.onTouchEvent(e);
     }
 

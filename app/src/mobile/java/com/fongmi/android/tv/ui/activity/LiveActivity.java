@@ -701,6 +701,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mBinding.control.info.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.cast.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.control.right.rotate.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.right.lock.setVisibility(View.VISIBLE);
         mBinding.control.center.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.bottom.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.back.setVisibility(isLock() ? View.GONE : View.VISIBLE);
@@ -708,7 +709,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         mBinding.control.getRoot().setAlpha(0f);
         mBinding.control.getRoot().setVisibility(View.VISIBLE);
         mBinding.control.getRoot().animate().alpha(1f).setDuration(200).start();
-        setR1Callback();
+        if (!isLock()) setR1Callback();
         hideInfo();
     }
 
@@ -1343,11 +1344,21 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
 
     @Override
     public void onSingleTap() {
+        if (isLock()) {
+            if (isVisible(mBinding.control.getRoot())) hideControl();
+            else showControl();
+            return;
+        }
         onToggle();
     }
 
     @Override
     public void onSingleTap(float x) {
+        if (isLock()) {
+            if (isVisible(mBinding.control.getRoot())) hideControl();
+            else showControl();
+            return;
+        }
         if (!isFullscreen()) {
             onToggle();
         } else if (isVisible(mBinding.control.getRoot())) {
