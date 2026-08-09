@@ -8,6 +8,14 @@
 -dontwarn com.google.j2objc.annotations.**
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 -dontwarn org.ietf.jgss.**
+
+# 禁用 Media3 FFmpeg 解码器相关类的优化
+# R8 优化阶段会内联/移除"未使用"的 private 方法（如 growOutputBuffer）
+# 即使有 -keep 规则，优化仍可能改变方法签名或移除方法
+# -keep 防止混淆(重命名)，-dontoptimize 防止优化(内联/移除)
+-dontoptimize androidx.media3.decoder.ffmpeg.**
+-dontoptimize androidx.media3.decoder.SimpleDecoder
+-dontoptimize androidx.media3.decoder.SimpleDecoderOutputBuffer
 -dontwarn org.kxml2.io.**
 -dontwarn org.xmlpull.v1.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
@@ -30,14 +38,51 @@
 -keep class is.xyz.mpv.MPVLib { *; }
 -keep class is.xyz.mpv.MPVLib$* { *; }
 
--keep class androidx.media3.decoder.VideoDecoderOutputBuffer { *; }
--keep class androidx.media3.decoder.DecoderInputBuffer { *; }
--keep class androidx.media3.decoder.av1.Dav1dDecoder { *; }
+# === Media3 Decoder 全包保护 ===
+# R8 无法看到 JNI native 代码中的方法引用，会误删/重命名"未使用"的方法
+# FfmpegAudioDecoder.growOutputBuffer 是 private 方法，仅被 native 代码调用
+# R8 认为"未使用"就移除它，导致 NoSuchMethodError 崩溃
+# 必须保护整个 decoder 包的所有类和方法
+
+# 保留整个 decoder 包（含 SimpleDecoder 父类、SimpleDecoderOutputBuffer 等）
+-keep class androidx.media3.decoder.** { *; }
+-keepclassmembers class androidx.media3.decoder.** { *; }
+
+# 保留整个 ffmpeg 子包（含 FfmpegAudioDecoder, FfmpegLibrary, FfmpegAudioRenderer 等）
+# 崩溃日志显示 androidx.media3.decoder.ffmpeg.c 仍被混淆，说明之前的规则不够全面
+-keep class androidx.media3.decoder.ffmpeg.** { *; }
+-keepclassmembers class androidx.media3.decoder.ffmpeg.** { *; }
+
+# 特别保护 JNI 回调方法 growOutputBuffer
+# 这是 FfmpegAudioDecoder 中的 private 方法，被 native 代码通过 JNI GetMethodID 调用
+# -keep 会防止混淆，但 R8 的优化阶段仍可能内联/移除"未使用"的 private 方法
+# 使用 -keepclassmembers 明确保留方法签名，防止 R8 优化移除
+-keepclassmembers class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
+    private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int);
+    native long ffmpegInitialize(java.lang.String, byte[], boolean, int, int);
+    native int ffmpegDecode(long, java.nio.ByteBuffer, int, androidx.media3.decoder.SimpleDecoderOutputBuffer, java.nio.ByteBuffer, int);
+    native int ffmpegGetChannelCount(long);
+    native int ffmpegGetSampleRate(long);
+    native long ffmpegReset(long, byte[]);
+    native void ffmpegRelease(long);
+}
+
+# 保留 SimpleDecoder 父类及其泛型签名
+# FfmpegAudioDecoder extends SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>
+# R8 改变泛型签名会导致 JNI 方法查找失败
+-keep class androidx.media3.decoder.SimpleDecoder { *; }
 -keep class androidx.media3.decoder.SimpleDecoderOutputBuffer { *; }
--keep class androidx.media3.decoder.mpegh** { *; }
--keep class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder { *; }
--keep class androidx.media3.decoder.ffmpeg.FfmpegVideoDecoder { *; }
+-keep class androidx.media3.decoder.DecoderInputBuffer { *; }
+-keep class androidx.media3.decoder.VideoDecoderOutputBuffer { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegDecoderException { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegLibrary { *; }
 -keep class androidx.media3.decoder.ffmpeg.FfmpegDecoder { *; }
+
+# 保留泛型签名和注解，确保 JNI 方法签名匹配正确
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
 
 -keepclassmembers class androidx.media3.datasource.RawResourceDataSource {
   public static android.net.Uri buildRawResourceUri(int);
