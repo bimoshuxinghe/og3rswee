@@ -12,7 +12,12 @@
 # Media3 FFmpeg 解码器保护说明：
 # growOutputBuffer 是 FfmpegAudioDecoder 中的 private 方法，仅被 native 代码通过 JNI 调用
 # R8 优化会内联/移除"未使用"的 private 方法，导致 NoSuchMethodError 崩溃
-# 使用 -keep 和 -keepclassmembers 规则保护（下方），不需要 -dontoptimize
+# -keepclassmembers 只能防止混淆(重命名)，不能防止 R8 优化阶段移除方法
+# 必须用 -dontoptimize(无参数) 禁用 R8 优化，并用 -keep,includedescriptorclasses 保护方法
+
+# 禁用 R8 优化阶段（合法语法：-dontoptimize 不带参数 = 禁用全部优化）
+# R8 优化会移除/内联"未使用"的 private 方法，但 JNI 调用对 R8 不可见
+-dontoptimize
 -dontwarn org.kxml2.io.**
 -dontwarn org.xmlpull.v1.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
@@ -52,9 +57,9 @@
 
 # 特别保护 JNI 回调方法 growOutputBuffer
 # 这是 FfmpegAudioDecoder 中的 private 方法，被 native 代码通过 JNI GetMethodID 调用
-# -keep 会防止混淆，但 R8 的优化阶段仍可能内联/移除"未使用"的 private 方法
-# 使用 -keepclassmembers 明确保留方法签名，防止 R8 优化移除
--keepclassmembers class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
+# 使用 -keep,includedescriptorclasses（与 Media3 官方 proguard-rules.txt 一致）
+# -keep 防止混淆+移除，includedescriptorclasses 同时保护参数类型类不被移除
+-keep, includedescriptorclasses class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
     private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int);
     native long ffmpegInitialize(java.lang.String, byte[], boolean, int, int);
     native int ffmpegDecode(long, java.nio.ByteBuffer, int, androidx.media3.decoder.SimpleDecoderOutputBuffer, java.nio.ByteBuffer, int);
