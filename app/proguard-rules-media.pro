@@ -9,13 +9,10 @@
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 -dontwarn org.ietf.jgss.**
 
-# 禁用 Media3 FFmpeg 解码器相关类的优化
-# R8 优化阶段会内联/移除"未使用"的 private 方法（如 growOutputBuffer）
-# 即使有 -keep 规则，优化仍可能改变方法签名或移除方法
-# -keep 防止混淆(重命名)，-dontoptimize 防止优化(内联/移除)
--dontoptimize androidx.media3.decoder.ffmpeg.**
--dontoptimize androidx.media3.decoder.SimpleDecoder
--dontoptimize androidx.media3.decoder.SimpleDecoderOutputBuffer
+# Media3 FFmpeg 解码器保护说明：
+# growOutputBuffer 是 FfmpegAudioDecoder 中的 private 方法，仅被 native 代码通过 JNI 调用
+# R8 优化会内联/移除"未使用"的 private 方法，导致 NoSuchMethodError 崩溃
+# 使用 -keep 和 -keepclassmembers 规则保护（下方），不需要 -dontoptimize
 -dontwarn org.kxml2.io.**
 -dontwarn org.xmlpull.v1.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
