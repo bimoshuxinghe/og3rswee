@@ -138,7 +138,7 @@ public class ExoUtil {
     }
 
     private static int getRenderMode(int decode) {
-        return decode == PlayerEngine.HARD ? DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON : DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER;
+        return decode == PlayerEngine.HARD ? DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF : DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER;
     }
 
     private static CaptionStyleCompat getCaptionStyle() {
