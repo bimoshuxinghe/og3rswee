@@ -162,12 +162,13 @@ import java.util.List;
   }
 
   // Called from native code (matches the legacy 3-arg JNI signature still present in the
-  // arm64-v8a prebuilt libffmpegJNI.so). Some prebuilt binaries were compiled with an older
-  // variant of ffmpeg_jni.cc that passes two size values; use the larger one to be safe.
+  // arm64-v8a prebuilt libffmpegJNI.so). That binary passes (currentPosition, requiredTotalSize)
+  // to this callback, so requiredTotalSize is the second argument and must be used for growth.
   @SuppressWarnings("unused")
   private ByteBuffer growOutputBuffer(
-      SimpleDecoderOutputBuffer outputBuffer, int size1, int size2) {
-    int requiredSize = Math.max(size1, size2);
+      SimpleDecoderOutputBuffer outputBuffer, int currentPosition, int requiredTotalSize) {
+    // Defensive: never shrink or pass an invalid size to grow().
+    int requiredSize = Math.max(requiredTotalSize, currentPosition);
     // Use it for new buffer so that hopefully we won't need to reallocate again
     outputBufferSize = requiredSize;
     return outputBuffer.grow(requiredSize);
