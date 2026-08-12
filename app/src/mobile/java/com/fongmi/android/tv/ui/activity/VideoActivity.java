@@ -37,6 +37,7 @@ import androidx.media3.common.Player;
 import androidx.media3.common.VideoSize;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.core.widget.NestedScrollView;
 import androidx.transition.ChangeBounds;
 import androidx.transition.TransitionManager;
 import androidx.viewbinding.ViewBinding;
@@ -473,7 +474,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 updateGroupFromScroll();
             }
         });
-        mBinding.scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldX, oldY) -> updateGroupFromScroll());
+        mBinding.scroll.setOnScrollChangeListener(new NestedScrollView.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(NestedScrollView v, int scrollX, int scrollY, int oldX, int oldY) {
+                updateGroupFromScroll();
+            }
+        });
         mBinding.quality.setHasFixedSize(true);
         mBinding.quality.setItemAnimator(null);
         mBinding.quality.addItemDecoration(new SpaceItemDecoration(8));
