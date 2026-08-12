@@ -130,6 +130,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private Observer<Result> mObserveSearch;
     private EpisodeAdapter mEpisodeAdapter;
     private EpisodeGroupAdapter mGroupAdapter;
+    /** 全量剧集列表（分页模式下内联面板只显示当前组切片，但下一集/预加载/选集弹窗需基于全量） */
+    private List<Episode> mAllEpisodes = new ArrayList<>();
+    /** 当前在内联面板显示的分组索引（分页） */
+    private int mActiveGroup = 0;
     private QualityAdapter mQualityAdapter;
     private QuickAdapter mQuickAdapter;
     private ParseAdapter mParseAdapter;
@@ -458,6 +462,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
+        } else if (layoutMode == 3) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(4, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
@@ -467,19 +475,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.group.setItemAnimator(null);
         mBinding.group.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
         mBinding.group.addItemDecoration(new SpaceItemDecoration(8));
-        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> scrollEpisodeToPosition(start)));
-        mBinding.episode.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-                updateGroupFromScroll();
-            }
-        });
-        mBinding.scroll.setOnScrollChangeListener(new NestedScrollView.OnScrollChangeListener() {
-            @Override
-            public void onScrollChange(NestedScrollView v, int scrollX, int scrollY, int oldX, int oldY) {
-                updateGroupFromScroll();
-            }
-        });
+        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> setActiveGroup(mGroupAdapter.getGroupIndexForEpisode(start))));
         mBinding.quality.setHasFixedSize(true);
         mBinding.quality.setItemAnimator(null);
         mBinding.quality.addItemDecoration(new SpaceItemDecoration(8));
@@ -950,66 +946,65 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (mBinding.download != null) mBinding.download.setVisibility(items.isEmpty() || !Setting.isHomeDownload() ? View.GONE : View.VISIBLE);
         mBinding.episode.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.more.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
-        mEpisodeAdapter.addAll(items);
-        setEpisodeGroup(items);
-    }
-
-    /** 根据剧集数量构建「选集」下方的数字分组跳转条；集数较少时隐藏。 */
-    private void setEpisodeGroup(List<Episode> items) {
+        mAllEpisodes = new ArrayList<>(items);
         List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(items.size());
         if (groups.size() <= 1) {
+            // 集数少：直接全部显示，隐藏分页条
             mBinding.group.setVisibility(View.GONE);
+            mActiveGroup = 0;
+            mEpisodeAdapter.addAll(items);
             return;
         }
         mGroupAdapter.setGroups(groups);
-        int selected = mGroupAdapter.getGroupIndexForEpisode(mEpisodeAdapter.getPosition());
-        mGroupAdapter.setSelected(selected);
-        mBinding.group.scrollToPosition(selected);
+        mActiveGroup = mGroupAdapter.getGroupIndexForEpisode(indexOfSelected());
+        mGroupAdapter.setSelected(mActiveGroup);
+        mBinding.group.scrollToPosition(mActiveGroup);
         mBinding.group.setVisibility(View.VISIBLE);
+        showActiveGroup();
     }
 
-    /** 点击分组后平滑滚动到该段：横向模式滚内层面板，竖向模式(网格/竖列)滚外层 NestedScrollView。 */
-    private void scrollEpisodeToPosition(int position) {
-        androidx.recyclerview.widget.RecyclerView.LayoutManager lm = mBinding.episode.getLayoutManager();
-        if (layoutMode == 1 && lm instanceof androidx.recyclerview.widget.LinearLayoutManager) {
-            mBinding.episode.smoothScrollToPosition(position);
-            return;
+    /** 分页：把当前激活分组对应的剧集切片送入内联面板；集数少时显示全部。 */
+    private void showActiveGroup() {
+        if (mAllEpisodes.isEmpty()) return;
+        if (mGroupAdapter == null || mGroupAdapter.getItemCount() <= 1) {
+            mEpisodeAdapter.addAll(new ArrayList<>(mAllEpisodes));
+        } else {
+            EpisodeGroupAdapter.Group g = mGroupAdapter.getGroup(mActiveGroup);
+            int end = Math.min(g.end + 1, mAllEpisodes.size());
+            mEpisodeAdapter.addAll(new ArrayList<>(mAllEpisodes.subList(g.start, end)));
         }
-        int y = mBinding.episode.getTop();
-        if (lm != null) {
-            View target = lm.findViewByPosition(position);
-            if (target != null) y += target.getTop();
-        }
-        mBinding.scroll.smoothScrollTo(0, y);
+        int sel = mEpisodeAdapter.getPosition();
+        mBinding.episode.scrollToPosition(sel > 0 ? sel : 0);
     }
 
-    /** 根据当前滚动位置高亮选集分组条中对应的分组。 */
-    private void updateGroupFromScroll() {
-        if (mBinding.group.getVisibility() != View.VISIBLE || mGroupAdapter == null) return;
-        int pos = getFirstVisibleEpisode();
-        if (pos < 0) return;
-        int gi = mGroupAdapter.getGroupIndexForEpisode(pos);
-        if (gi != mGroupAdapter.getSelected()) {
-            mGroupAdapter.setSelected(gi);
-            mBinding.group.scrollToPosition(gi);
-        }
+    /** 点击分组条：切换到该分组（仅显示该组剧集，其余折叠）。 */
+    private void setActiveGroup(int g) {
+        if (mGroupAdapter == null || g < 0 || g >= mGroupAdapter.getItemCount()) return;
+        mActiveGroup = g;
+        mGroupAdapter.setSelected(g);
+        mBinding.group.scrollToPosition(g);
+        showActiveGroup();
     }
 
-    /** 取剧集面板中当前可见的第一集位置；竖向模式从外层 NestedScrollView 的滚动量推算。 */
-    private int getFirstVisibleEpisode() {
-        androidx.recyclerview.widget.RecyclerView.LayoutManager lm = mBinding.episode.getLayoutManager();
-        if (layoutMode == 1 && lm instanceof androidx.recyclerview.widget.LinearLayoutManager) {
-            return ((androidx.recyclerview.widget.LinearLayoutManager) lm).findFirstVisibleItemPosition();
-        }
-        int rel = mBinding.scroll.getScrollY() - mBinding.episode.getTop();
-        if (rel < 0) rel = 0;
-        for (int i = 0; i < mBinding.episode.getChildCount(); i++) {
-            View v = mBinding.episode.getChildAt(i);
-            if (v.getTop() <= rel && rel < v.getBottom()) {
-                return mBinding.episode.getChildAdapterPosition(v);
-            }
-        }
-        return -1;
+    /** 全量列表中当前选中(正在播放)剧集的索引。 */
+    private int indexOfSelected() {
+        for (int i = 0; i < mAllEpisodes.size(); i++) if (mAllEpisodes.get(i).isSelected()) return i;
+        return 0;
+    }
+
+    /** 基于全量列表取下一集（分页下跨组连播不截断）。 */
+    private Episode getNextEpisode() {
+        if (mAllEpisodes.isEmpty()) return null;
+        int idx = indexOfSelected();
+        int max = mAllEpisodes.size() - 1;
+        return mAllEpisodes.get(Math.min(idx + 1, max));
+    }
+
+    /** 基于全量列表取上一集。 */
+    private Episode getPrevEpisode() {
+        if (mAllEpisodes.isEmpty()) return null;
+        int idx = indexOfSelected();
+        return mAllEpisodes.get(idx <= 0 ? 0 : idx - 1);
     }
 
     private void seamless(Flag flag) {
@@ -1038,9 +1033,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onMore() {
-        layoutMode = (layoutMode + 1) % 3;
+        layoutMode = (layoutMode + 1) % 4;
         Setting.putLayoutMode(layoutMode);
-        List<Episode> items = new ArrayList<>(mEpisodeAdapter.getItems());
         while (mBinding.episode.getItemDecorationCount() > 0) mBinding.episode.removeItemDecorationAt(0);
         if (layoutMode == 0) {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
@@ -1050,14 +1044,16 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
+        } else if (layoutMode == 3) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(4, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.LIST));
         }
-        mEpisodeAdapter.addAll(items);
-        mBinding.episode.scrollToPosition(mEpisodeAdapter.getPosition());
-        setEpisodeGroup(items);
+        showActiveGroup();
     }
 
     private void onActor() {
@@ -1315,14 +1311,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void checkNext(boolean notify) {
         setR1Callback();
-        Episode item = mEpisodeAdapter.getNext();
+        Episode item = getNextEpisode();
         if (!item.isSelected()) onItemClick(item);
         else if (notify) Notify.show(R.string.error_play_next);
     }
 
     private void checkPrev() {
         setR1Callback();
-        Episode item = mEpisodeAdapter.getPrev();
+        Episode item = getPrevEpisode();
         if (!item.isSelected()) onItemClick(item);
         else Notify.show(R.string.error_play_prev);
     }
@@ -1531,7 +1527,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onEpisodes() {
-        EpisodeListDialog.create().episodes(mEpisodeAdapter.getItems()).show(this);
+        EpisodeListDialog.create().episodes(mAllEpisodes).show(this);
     }
 
     private boolean onTextLong() {
@@ -2277,7 +2273,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void preloadNext() {
         Flag flag = getFlag();
-        Episode episode = mEpisodeAdapter.getNext();
+        Episode episode = getNextEpisode();
         if (flag == null || episode == null || episode.isSelected()) return;
         PreloadManager.get().preload(getKey(), flag.getFlag(), episode, isUseParse());
     }
