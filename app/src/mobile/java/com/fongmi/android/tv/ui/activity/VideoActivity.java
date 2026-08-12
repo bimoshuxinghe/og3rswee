@@ -77,6 +77,7 @@ import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.adapter.EpisodeAdapter;
+import com.fongmi.android.tv.ui.adapter.EpisodeGroupAdapter;
 import com.fongmi.android.tv.ui.adapter.FlagAdapter;
 import com.fongmi.android.tv.ui.adapter.ParseAdapter;
 import com.fongmi.android.tv.ui.adapter.QualityAdapter;
@@ -127,6 +128,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private Observer<Result> mObservePlayer;
     private Observer<Result> mObserveSearch;
     private EpisodeAdapter mEpisodeAdapter;
+    private EpisodeGroupAdapter mGroupAdapter;
     private QualityAdapter mQualityAdapter;
     private QuickAdapter mQuickAdapter;
     private ParseAdapter mParseAdapter;
@@ -460,6 +462,26 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.LIST));
         }
+        mBinding.group.setHasFixedSize(true);
+        mBinding.group.setItemAnimator(null);
+        mBinding.group.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+        mBinding.group.addItemDecoration(new SpaceItemDecoration(8));
+        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> scrollToPosition(mBinding.episode, start)));
+        mBinding.episode.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                if (mBinding.group.getVisibility() != View.VISIBLE || mGroupAdapter == null) return;
+                androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) rv.getLayoutManager();
+                if (lm == null) return;
+                int first = lm.findFirstVisibleItemPosition();
+                if (first < 0) return;
+                int gi = mGroupAdapter.getGroupIndexForEpisode(first);
+                if (gi != mGroupAdapter.getSelected()) {
+                    mGroupAdapter.setSelected(gi);
+                    mBinding.group.scrollToPosition(gi);
+                }
+            }
+        });
         mBinding.quality.setHasFixedSize(true);
         mBinding.quality.setItemAnimator(null);
         mBinding.quality.addItemDecoration(new SpaceItemDecoration(8));
@@ -931,6 +953,21 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.episode.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.more.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mEpisodeAdapter.addAll(items);
+        setEpisodeGroup(items);
+    }
+
+    /** 根据剧集数量构建「选集」下方的数字分组跳转条；集数较少时隐藏。 */
+    private void setEpisodeGroup(List<Episode> items) {
+        List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(items.size());
+        if (groups.size() <= 1) {
+            mBinding.group.setVisibility(View.GONE);
+            return;
+        }
+        mGroupAdapter.setGroups(groups);
+        int selected = mGroupAdapter.getGroupIndexForEpisode(mEpisodeAdapter.getPosition());
+        mGroupAdapter.setSelected(selected);
+        mBinding.group.scrollToPosition(selected);
+        mBinding.group.setVisibility(View.VISIBLE);
     }
 
     private void seamless(Flag flag) {
@@ -978,6 +1015,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         }
         mEpisodeAdapter.addAll(items);
         mBinding.episode.scrollToPosition(mEpisodeAdapter.getPosition());
+        setEpisodeGroup(items);
     }
 
     private void onActor() {

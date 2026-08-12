@@ -71,6 +71,24 @@ public class EpisodeGroupAdapter extends RecyclerView.Adapter<EpisodeGroupAdapte
         return mGroups.isEmpty() ? 0 : mGroups.size() - 1;
     }
 
+    /**
+     * 根据总集数生成数字分组（如 1-50 / 51-100 / …）。
+     * 分组粒度自适应：<=1000 集按 50 一组，>1000 按 100，>2000 按 200。
+     */
+    public static List<Group> buildGroups(int total) {
+        List<Group> groups = new ArrayList<>();
+        if (total <= 0) return groups;
+        int size = total > 2000 ? 200 : (total > 1000 ? 100 : 50);
+        int idx = 0;
+        while (idx < total) {
+            int start = idx;
+            int end = Math.min(idx + size, total) - 1;
+            groups.add(new Group(start, end, (start + 1) + "-" + (end + 1)));
+            idx = end + 1;
+        }
+        return groups;
+    }
+
     @Override
     public int getItemCount() {
         return mGroups.size();

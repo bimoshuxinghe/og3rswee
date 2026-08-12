@@ -26,7 +26,6 @@ import com.fongmi.android.tv.ui.base.ViewType;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.ResUtil;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class EpisodeListDialog extends BaseSideSheetDialog implements EpisodeAdapter.OnClickListener {
@@ -89,17 +88,10 @@ public class EpisodeListDialog extends BaseSideSheetDialog implements EpisodeAda
      */
     private void setGroupBar() {
         int total = episodes.size();
-        int size = getGroupSize(total);
-        int count = (total + size - 1) / size;
-        if (count <= 1) {
+        List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(total);
+        if (groups.size() <= 1) {
             binding.groups.setVisibility(View.GONE);
             return;
-        }
-        List<EpisodeGroupAdapter.Group> groups = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            int start = i * size;
-            int end = Math.min(start + size, total) - 1;
-            groups.add(new EpisodeGroupAdapter.Group(start, end, (start + 1) + "-" + (end + 1)));
         }
         binding.groups.setLayoutManager(new LinearLayoutManager(requireActivity(), LinearLayoutManager.HORIZONTAL, false));
         mGroupAdapter = new EpisodeGroupAdapter(start -> binding.recycler.scrollToPosition(start));
@@ -121,13 +113,6 @@ public class EpisodeListDialog extends BaseSideSheetDialog implements EpisodeAda
                 }
             }
         });
-    }
-
-    /** 根据总集数自适应分组粒度：少量剧集按 50 一组，上千集自动加大到 100/200。 */
-    private int getGroupSize(int total) {
-        if (total > 2000) return 200;
-        if (total > 1000) return 100;
-        return 50;
     }
 
     @Override
