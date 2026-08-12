@@ -2015,9 +2015,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         }
     }
 
+    /** TMDB 海报缓存：片名→海报URL，避免重复请求消耗 token */
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> sTmdbCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     /** 若已配置 TMDB API Key，则按片名搜索并拉取更清晰的竖屏海报覆盖到背景。 */
     private void loadTmdbPoster(String query) {
         if (mBinding.bgPoster == null || TextUtils.isEmpty(query) || !Setting.hasTmdbApiKey()) return;
+        // 命中缓存直接使用，不再请求 API
+        String cached = sTmdbCache.get(query);
+        if (cached != null) {
+            applyTmdbImage(cached);
+            return;
+        }
         Map<String, String> headers = new HashMap<>();
         String url = "https://api.themoviedb.org/3/search/multi?api_key=" + Setting.getTmdbApiKey() + "&language=zh-CN&query=" + Uri.encode(query);
         OkHttp.newCall(url, headers).enqueue(new Callback() {
@@ -2032,15 +2041,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     if (!response.isSuccessful() || response.body() == null) return;
                     String poster = parseTmdbPoster(response.body().string());
                     if (poster == null) return;
+                    sTmdbCache.put(query, poster); // 缓存结果
                     String image = "https://image.tmdb.org/t/p/w780" + poster;
-                    runOnUiThread(() -> {
-                        if (isFinishing() || isDestroyed() || mBinding.bgPoster == null) return;
-                        Glide.with(VideoActivity.this)
-                                .load(image)
-                                .centerCrop()
-                                .error(R.drawable.artwork)
-                                .into(mBinding.bgPoster);
-                    });
+                    runOnUiThread(() -> applyTmdbImage(image));
                 } catch (Exception ignored) {
                 } finally {
                     response.close();
@@ -2049,6 +2052,19 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         });
     }
 
+    private void applyTmdbImage(String image) {
+        if (isFinishing() || isDestroyed() || mBinding.bgPoster == null) return;
+        Glide.with(VideoActivity.this)
+                .load(image)
+                .centerCrop()
+                .error(R.drawable.artwork)
+                .into(mBinding.bgPoster);
+    }
+
+    /**
+     * 从 TMDB search/multi 响应中提取影片竖屏海报路径。
+     * <br>关键：过滤掉 media_type=person 的结果，只接受 movie / tv，避免把演员头像当海报。
+     */
     private String parseTmdbPoster(String body) {
         try {
             JSONObject root = new JSONObject(body);
@@ -2057,6 +2073,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             for (int i = 0; i < results.length(); i++) {
                 JSONObject item = results.optJSONObject(i);
                 if (item == null) continue;
+                // 只取电影/电视剧，跳过人物(person)和其他类型
+                String mediaType = item.optString("media_type", "");
+                if (!"movie".equals(mediaType) && !"tv".equals(mediaType)) continue;
                 String path = item.optString("poster_path", null);
                 if (path != null && !path.isEmpty()) return path;
             }
