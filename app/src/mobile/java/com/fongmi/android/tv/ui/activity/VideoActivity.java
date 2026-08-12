@@ -466,22 +466,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.group.setItemAnimator(null);
         mBinding.group.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
         mBinding.group.addItemDecoration(new SpaceItemDecoration(8));
-        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> scrollToPosition(mBinding.episode, start)));
+        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> scrollEpisodeToPosition(start)));
         mBinding.episode.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-                if (mBinding.group.getVisibility() != View.VISIBLE || mGroupAdapter == null) return;
-                androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) rv.getLayoutManager();
-                if (lm == null) return;
-                int first = lm.findFirstVisibleItemPosition();
-                if (first < 0) return;
-                int gi = mGroupAdapter.getGroupIndexForEpisode(first);
-                if (gi != mGroupAdapter.getSelected()) {
-                    mGroupAdapter.setSelected(gi);
-                    mBinding.group.scrollToPosition(gi);
-                }
+                updateGroupFromScroll();
             }
         });
+        mBinding.scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldX, oldY) -> updateGroupFromScroll());
         mBinding.quality.setHasFixedSize(true);
         mBinding.quality.setItemAnimator(null);
         mBinding.quality.addItemDecoration(new SpaceItemDecoration(8));
@@ -968,6 +960,50 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mGroupAdapter.setSelected(selected);
         mBinding.group.scrollToPosition(selected);
         mBinding.group.setVisibility(View.VISIBLE);
+    }
+
+    /** 点击分组后平滑滚动到该段：横向模式滚内层面板，竖向模式(网格/竖列)滚外层 NestedScrollView。 */
+    private void scrollEpisodeToPosition(int position) {
+        androidx.recyclerview.widget.RecyclerView.LayoutManager lm = mBinding.episode.getLayoutManager();
+        if (layoutMode == 1 && lm instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+            mBinding.episode.smoothScrollToPosition(position);
+            return;
+        }
+        int y = mBinding.episode.getTop();
+        if (lm != null) {
+            View target = lm.findViewByPosition(position);
+            if (target != null) y += target.getTop();
+        }
+        mBinding.scroll.smoothScrollTo(0, y);
+    }
+
+    /** 根据当前滚动位置高亮选集分组条中对应的分组。 */
+    private void updateGroupFromScroll() {
+        if (mBinding.group.getVisibility() != View.VISIBLE || mGroupAdapter == null) return;
+        int pos = getFirstVisibleEpisode();
+        if (pos < 0) return;
+        int gi = mGroupAdapter.getGroupIndexForEpisode(pos);
+        if (gi != mGroupAdapter.getSelected()) {
+            mGroupAdapter.setSelected(gi);
+            mBinding.group.scrollToPosition(gi);
+        }
+    }
+
+    /** 取剧集面板中当前可见的第一集位置；竖向模式从外层 NestedScrollView 的滚动量推算。 */
+    private int getFirstVisibleEpisode() {
+        androidx.recyclerview.widget.RecyclerView.LayoutManager lm = mBinding.episode.getLayoutManager();
+        if (layoutMode == 1 && lm instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+            return ((androidx.recyclerview.widget.LinearLayoutManager) lm).findFirstVisibleItemPosition();
+        }
+        int rel = mBinding.scroll.getScrollY() - mBinding.episode.getTop();
+        if (rel < 0) rel = 0;
+        for (int i = 0; i < mBinding.episode.getChildCount(); i++) {
+            View v = mBinding.episode.getChildAt(i);
+            if (v.getTop() <= rel && rel < v.getBottom()) {
+                return mBinding.episode.getChildAdapterPosition(v);
+            }
+        }
+        return -1;
     }
 
     private void seamless(Flag flag) {
