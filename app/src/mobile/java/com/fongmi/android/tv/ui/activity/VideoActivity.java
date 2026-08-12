@@ -2028,7 +2028,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             return;
         }
         Map<String, String> headers = new HashMap<>();
-        String url = "https://api.themoviedb.org/3/search/multi?api_key=" + Setting.getTmdbApiKey() + "&language=zh-CN&query=" + Uri.encode(query);
+        String baseUrl = Setting.getTmdbApiUrl();
+        String url = baseUrl + "/search/multi?api_key=" + Setting.getTmdbApiKey() + "&language=zh-CN&query=" + Uri.encode(query);
         OkHttp.newCall(url, headers).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
@@ -2042,7 +2043,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     String poster = parseTmdbPoster(response.body().string());
                     if (poster == null) return;
                     sTmdbCache.put(query, poster); // 缓存结果
-                    String image = "https://image.tmdb.org/t/p/w780" + poster;
+                    String imageBase = Setting.getTmdbImageUrl();
+                    String image = imageBase + "/w780" + poster;
                     runOnUiThread(() -> applyTmdbImage(image));
                 } catch (Exception ignored) {
                 } finally {

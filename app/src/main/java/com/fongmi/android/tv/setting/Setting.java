@@ -392,4 +392,22 @@ public class Setting {
     public static boolean hasTmdbApiKey() {
         return !getTmdbApiKey().isEmpty();
     }
+
+    /** TMDB API 基地址（含版本路径），默认官方地址 */
+    public static String getTmdbApiUrl() {
+        return Prefers.getString("tmdb_api_url", "https://api.themoviedb.org/3");
+    }
+
+    public static void putTmdbApiUrl(String value) {
+        Prefers.put("tmdb_api_url", value == null ? "" : value.trim());
+    }
+
+    /** TMDB 图片基地址（不含尺寸路径），默认官方地址 */
+    public static String getTmdbImageUrl() {
+        return Prefers.getString("tmdb_image_url", "https://image.tmdb.org/t/p");
+    }
+
+    public static void putTmdbImageUrl(String value) {
+        Prefers.put("tmdb_image_url", value == null ? "" : value.trim());
+    }
 }

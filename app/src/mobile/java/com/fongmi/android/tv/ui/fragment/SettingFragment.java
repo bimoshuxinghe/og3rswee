@@ -3,7 +3,6 @@ package com.fongmi.android.tv.ui.fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -115,7 +114,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
-        mBinding.tmdbText.setText(Setting.hasTmdbApiKey() ? getString(R.string.setting_tmdb_logged_in) : getString(R.string.setting_tmdb_not_set));
+        mBinding.tmdbText.setText(maskTmdbKey());
     }
 
     private void setCacheText() {
@@ -291,25 +290,40 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     }
 
     private void onTmdb(View view) {
-        EditText input = new EditText(requireActivity());
-        input.setSingleLine(true);
-        input.setText(Setting.getTmdbApiKey());
-        input.setSelection(input.getText().length());
+        android.view.View dialogView = LayoutInflater.from(requireActivity()).inflate(R.layout.dialog_tmdb, null);
+        androidx.appcompat.widget.AppCompatEditText apiUrlEdit = dialogView.findViewById(R.id.tmdbApiUrl);
+        androidx.appcompat.widget.AppCompatEditText imageUrlEdit = dialogView.findViewById(R.id.tmdbImageUrl);
+        androidx.appcompat.widget.AppCompatEditText apiKeyEdit = dialogView.findViewById(R.id.tmdbApiKey);
+
+        // 填入已保存的值
+        apiUrlEdit.setText(Setting.getTmdbApiUrl());
+        imageUrlEdit.setText(Setting.getTmdbImageUrl());
+        apiKeyEdit.setText(Setting.getTmdbApiKey());
+
         new MaterialAlertDialogBuilder(requireActivity())
-                .setTitle(R.string.setting_tmdb_input_title)
-                .setMessage(R.string.setting_tmdb_input_hint)
-                .setView(input)
+                .setTitle(R.string.setting_tmdb)
+                .setView(dialogView)
                 .setNegativeButton(R.string.dialog_negative, null)
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    Setting.putTmdbApiKey(input.getText().toString());
-                    boolean ok = Setting.hasTmdbApiKey();
-                    mBinding.tmdbText.setText(ok ? getString(R.string.setting_tmdb_logged_in) : getString(R.string.setting_tmdb_not_set));
-                    Notify.show(ok ? R.string.setting_tmdb_logged_in : R.string.setting_tmdb_not_set);
+                    Setting.putTmdbApiUrl(apiUrlEdit.getText().toString());
+                    Setting.putTmdbImageUrl(imageUrlEdit.getText().toString());
+                    Setting.putTmdbApiKey(apiKeyEdit.getText().toString());
+                    mBinding.tmdbText.setText(maskTmdbKey());
+                    Notify.show(Setting.hasTmdbApiKey() ? R.string.setting_tmdb_logged_in : R.string.setting_tmdb_not_set);
                 })
                 .show();
     }
 
+    /** 脱敏显示 TMDB Key：有值时只显示前8位+...，未配置显示"未配置" */
+    private String maskTmdbKey() {
+        String key = Setting.getTmdbApiKey();
+        if (key.isEmpty()) return getString(R.string.setting_tmdb_not_set);
+        return key.length() > 8 ? key.substring(0, 8) + "..." : key;
+    }
+
     private boolean onTmdbClear(View view) {
+        Setting.putTmdbApiUrl("");
+        Setting.putTmdbImageUrl("");
         Setting.putTmdbApiKey("");
         mBinding.tmdbText.setText(getString(R.string.setting_tmdb_not_set));
         Notify.show(R.string.setting_tmdb_cleared);
