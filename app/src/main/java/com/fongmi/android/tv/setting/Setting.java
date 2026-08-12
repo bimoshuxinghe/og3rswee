@@ -380,4 +380,16 @@ public class Setting {
     public static void putSearchThread(int value) {
         Prefers.put("search_thread", Math.min(Math.max(value, 3), 20));
     }
+
+    public static String getTmdbApiKey() {
+        return Prefers.getString("tmdb_api_key", "");
+    }
+
+    public static void putTmdbApiKey(String value) {
+        Prefers.put("tmdb_api_key", value == null ? "" : value.trim());
+    }
+
+    public static boolean hasTmdbApiKey() {
+        return !getTmdbApiKey().isEmpty();
+    }
 }

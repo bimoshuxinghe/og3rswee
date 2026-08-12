@@ -157,6 +157,12 @@
     <string name="setting_backup">备份</string>
     <string name="setting_restore">恢复</string>
     <string name="setting_version">版本</string>
+    <string name="setting_tmdb">TMDB 登录</string>
+    <string name="setting_tmdb_input_title">TMDB API Key</string>
+    <string name="setting_tmdb_input_hint">粘贴你的 TMDB v3 API Key</string>
+    <string name="setting_tmdb_logged_in">已配置</string>
+    <string name="setting_tmdb_not_set">未配置</string>
+    <string name="setting_tmdb_cleared">已清除 TMDB Key</string>
     <string name="setting_choose">选择</string>
     <string name="setting_off">关</string>
     <string name="setting_on">开</string>

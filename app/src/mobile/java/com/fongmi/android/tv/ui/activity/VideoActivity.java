@@ -113,6 +113,20 @@ import com.fongmi.android.tv.utils.Traffic;
 import com.fongmi.android.tv.utils.Util;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
+
+import com.github.catvod.net.OkHttp;
+
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
@@ -1995,9 +2009,60 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     .centerCrop()
                     .error(R.drawable.artwork)
                     .into(mBinding.bgPoster);
+            loadTmdbPoster(mHistory.getVodName());
         } catch (Throwable e) {
             e.printStackTrace();
         }
+    }
+
+    /** 若已配置 TMDB API Key，则按片名搜索并拉取更清晰的竖屏海报覆盖到背景。 */
+    private void loadTmdbPoster(String query) {
+        if (mBinding.bgPoster == null || TextUtils.isEmpty(query) || !Setting.hasTmdbApiKey()) return;
+        Map<String, String> headers = new HashMap<>();
+        String url = "https://api.themoviedb.org/3/search/multi?api_key=" + Setting.getTmdbApiKey() + "&language=zh-CN&query=" + Uri.encode(query);
+        OkHttp.newCall(url, headers).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 拉取失败：保留原有 vodPic 背景
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    String poster = parseTmdbPoster(response.body().string());
+                    if (poster == null) return;
+                    String image = "https://image.tmdb.org/t/p/w780" + poster;
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed() || mBinding.bgPoster == null) return;
+                        Glide.with(VideoActivity.this)
+                                .load(image)
+                                .centerCrop()
+                                .error(R.drawable.artwork)
+                                .into(mBinding.bgPoster);
+                    });
+                } catch (Exception ignored) {
+                } finally {
+                    response.close();
+                }
+            }
+        });
+    }
+
+    private String parseTmdbPoster(String body) {
+        try {
+            JSONObject root = new JSONObject(body);
+            JSONArray results = root.optJSONArray("results");
+            if (results == null) return null;
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject item = results.optJSONObject(i);
+                if (item == null) continue;
+                String path = item.optString("poster_path", null);
+                if (path != null && !path.isEmpty()) return path;
+            }
+        } catch (JSONException ignored) {
+        }
+        return null;
     }
 
     private void checkFlag(Vod item) {

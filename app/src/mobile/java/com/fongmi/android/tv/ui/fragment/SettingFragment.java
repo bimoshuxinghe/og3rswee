@@ -3,6 +3,7 @@ package com.fongmi.android.tv.ui.fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -114,6 +115,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
+        mBinding.tmdbText.setText(Setting.hasTmdbApiKey() ? getString(R.string.setting_tmdb_logged_in) : getString(R.string.setting_tmdb_not_set));
     }
 
     private void setCacheText() {
@@ -130,6 +132,8 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.vod.setOnClickListener(this::onVod);
         mBinding.doh.setOnClickListener(this::setDoh);
         mBinding.proxySub.setOnClickListener(view -> ProxySubscriptionDialog.show(this, () -> mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary())));
+        mBinding.tmdb.setOnClickListener(this::onTmdb);
+        mBinding.tmdb.setOnLongClickListener(this::onTmdbClear);
         mBinding.live.setOnClickListener(this::onLive);
         mBinding.wall.setOnClickListener(this::onWall);
         mBinding.size.setOnClickListener(this::setSize);
@@ -284,6 +288,32 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     private void onVersion(View view) {
         showAuthor = !showAuthor;
         setVersionText();
+    }
+
+    private void onTmdb(View view) {
+        EditText input = new EditText(requireActivity());
+        input.setSingleLine(true);
+        input.setText(Setting.getTmdbApiKey());
+        input.setSelection(input.getText().length());
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.setting_tmdb_input_title)
+                .setMessage(R.string.setting_tmdb_input_hint)
+                .setView(input)
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    Setting.putTmdbApiKey(input.getText().toString());
+                    boolean ok = Setting.hasTmdbApiKey();
+                    mBinding.tmdbText.setText(ok ? getString(R.string.setting_tmdb_logged_in) : getString(R.string.setting_tmdb_not_set));
+                    Notify.show(ok ? R.string.setting_tmdb_logged_in : R.string.setting_tmdb_not_set);
+                })
+                .show();
+    }
+
+    private boolean onTmdbClear(View view) {
+        Setting.putTmdbApiKey("");
+        mBinding.tmdbText.setText(getString(R.string.setting_tmdb_not_set));
+        Notify.show(R.string.setting_tmdb_cleared);
+        return true;
     }
 
     private void setWallDefault(View view) {
