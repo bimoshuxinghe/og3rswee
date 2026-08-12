@@ -26,15 +26,19 @@ public class FragmentStateManager {
 
     public boolean change(int position) {
         String tag = getTag(position);
-        Fragment fragment = fm.findFragmentByTag(tag);
-        fragment = (fragment == null) ? factory.apply(position) : fragment;
+        Fragment existing = fm.findFragmentByTag(tag);
+        boolean adding = existing == null;
+        Fragment fragment = adding ? factory.apply(position) : existing;
         FragmentTransaction ft = fm.beginTransaction();
         boolean forward = currentPosition < 0 || position >= currentPosition;
         int[] anims = TransitionUtil.getFragmentAnims(forward);
-        if (anims != null) {
+        // 仅对首次 add 的 Fragment 使用转场动画。已存在的 Fragment 之间用 show/hide
+        // 切换时若套用自定义动画，开启系统/过渡动画后视图会停在动画初始的不可见态
+        // （alpha=0 / scale=0）导致返回时出现空白界面。因此 show/hide 切换不再设动画。
+        if (anims != null && adding) {
             ft.setCustomAnimations(anims[0], anims[1], anims[2], anims[3]);
         }
-        if (fm.findFragmentByTag(tag) == null) ft.add(container.getId(), fragment, tag);
+        if (adding) ft.add(container.getId(), fragment, tag);
         Fragment current = fm.getPrimaryNavigationFragment();
         if (current != null && current != fragment) ft.hide(current);
         ft.show(fragment).setPrimaryNavigationFragment(fragment).setReorderingAllowed(true).commitNowAllowingStateLoss();

@@ -174,33 +174,25 @@
             android:textStyle="bold"
             tools:text="豆瓣推荐" />
 
-        <!-- Middle: Search Box style layout -->
-        <LinearLayout
-            android:id="@+id/searchBar"
+        <!-- Spacer: push the right-side action buttons to the end -->
+        <View
             android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Search: only a magnifier icon button that opens SearchActivity -->
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/searchBar"
+            android:layout_width="30dp"
             android:layout_height="30dp"
-            android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="6dp"
-            android:background="@drawable/shape_search_bar_bg"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:padding="7dp"
+            android:src="@drawable/ic_action_search"
+            app:tint="@color/white"
+            android:background="@drawable/shape_action_btn_bg"
             android:clickable="true"
-            android:focusable="true">
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_action_search"
-                app:tint="@color/white" />
-        </LinearLayout>
+            android:focusable="true" />
 
         <!-- Right: Star (keep) & Clock (history) buttons -->
         <androidx.appcompat.widget.AppCompatImageView
