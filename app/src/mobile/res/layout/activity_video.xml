@@ -10,6 +10,7 @@
         android:id="@+id/bgPoster"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/video"
         android:scaleType="centerCrop"
         android:visibility="gone" />
 
@@ -17,6 +18,7 @@
         android:id="@+id/bgOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/video"
         android:background="#60000000"
         android:visibility="gone" />
 
