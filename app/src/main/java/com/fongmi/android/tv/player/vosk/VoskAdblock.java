@@ -19,8 +19,10 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class VoskAdblock {
 
@@ -38,7 +40,10 @@ public class VoskAdblock {
     private static volatile VoskAdblock instance;
 
     private final List<Listener> listeners = new ArrayList<>();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(128),
+            new ThreadPoolExecutor.DiscardPolicy());
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object lock = new Object();
 
@@ -156,8 +161,12 @@ public class VoskAdblock {
         });
     }
 
-    public void acceptPcm16(byte[] pcm16, int sampleRate, int channels) {
+    public void offerPcm16(byte[] pcm16, int sampleRate, int channels) {
         if (!isActive()) return;
+        executor.execute(() -> acceptPcm16(pcm16, sampleRate, channels));
+    }
+
+    private void acceptPcm16(byte[] pcm16, int sampleRate, int channels) {
         short[] samples = bytesToShorts(pcm16);
         short[] mono = channels == 1 ? samples : toMono(samples, channels);
         short[] resampled = sampleRate == 16000 ? mono : resample(mono, sampleRate, 16000);

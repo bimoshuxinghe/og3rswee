@@ -33,7 +33,7 @@ public class VoskAudioProcessor extends BaseAudioProcessor {
         ByteBuffer output = replaceOutputBuffer(size);
         output.put(inputBuffer);
         output.flip();
-        vosk.acceptPcm16(copy, inputSampleRate, inputChannels);
+        vosk.offerPcm16(copy, inputSampleRate, inputChannels);
     }
 
     @Override
