@@ -13,6 +13,7 @@ import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Tracks;
+import androidx.media3.common.VideoSize;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Track;
@@ -39,6 +40,7 @@ public class ExoPlayerEngine implements PlayerEngine {
     private volatile boolean isoResolving;
     private volatile String isoOriginalUrl;
     private volatile String isoProxyUrl;
+    private final java.util.List<AdListener> adListeners = new java.util.ArrayList<>();
 
     public ExoPlayerEngine(int decode, Player.Listener listener) {
         this.player = ExoUtil.buildPlayer(decode, listener);
@@ -49,6 +51,28 @@ public class ExoPlayerEngine implements PlayerEngine {
             @Override
             public void onTracksChanged(Tracks tracks) {
                 ExoUtil.applyDolbyVisionPolicy(player);
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                boolean playing = state == Player.STATE_READY && player.isPlaying();
+                for (AdListener adListener : adListeners) {
+                    adListener.onPlayStateChanged(playing);
+                }
+            }
+
+            @Override
+            public void onVideoSizeChanged(VideoSize size) {
+                for (AdListener adListener : adListeners) {
+                    adListener.onVideoSizeChanged(size.width, size.height);
+                }
+            }
+
+            @Override
+            public void onIsPlayingChanged() {
+                for (AdListener adListener : adListeners) {
+                    adListener.onIsPlayingChanged(player.isPlaying());
+                }
             }
         });
     }
@@ -71,6 +95,28 @@ public class ExoPlayerEngine implements PlayerEngine {
             @Override
             public void onTracksChanged(Tracks tracks) {
                 ExoUtil.applyDolbyVisionPolicy(player);
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                boolean playing = state == Player.STATE_READY && player.isPlaying();
+                for (AdListener adListener : adListeners) {
+                    adListener.onPlayStateChanged(playing);
+                }
+            }
+
+            @Override
+            public void onVideoSizeChanged(VideoSize size) {
+                for (AdListener adListener : adListeners) {
+                    adListener.onVideoSizeChanged(size.width, size.height);
+                }
+            }
+
+            @Override
+            public void onIsPlayingChanged() {
+                for (AdListener adListener : adListeners) {
+                    adListener.onIsPlayingChanged(player.isPlaying());
+                }
             }
         });
         return player;
@@ -323,5 +369,15 @@ public class ExoPlayerEngine implements PlayerEngine {
         spec.setFormat(ExoUtil.getMimeType(errorCode));
         startInternal(player.getCurrentPosition());
         return ErrorAction.RECOVERED;
+    }
+
+    @Override
+    public void addAdListener(AdListener listener) {
+        adListeners.add(listener);
+    }
+
+    @Override
+    public void removeAdListener(AdListener listener) {
+        adListeners.remove(listener);
     }
 }

@@ -27,6 +27,7 @@ import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.impl.ParseCallback;
+import com.fongmi.android.tv.ads.AdInterceptor;
 import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
 import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
@@ -68,6 +69,7 @@ public class PlayerManager implements ParseCallback {
     private WsDanmakuClient wsDanmakuClient;
     private boolean initTrack;
     private int retry;
+    private AdInterceptor adInterceptor;
 
     public PlayerManager(Callback callback) {
         this.runnable = () -> callback.onError(ResUtil.getString(R.string.error_play_timeout));
@@ -75,6 +77,12 @@ public class PlayerManager implements ParseCallback {
         this.player = engine.getPlayer();
         this.callback = callback;
         this.pendingStartPositionMs = C.TIME_UNSET;
+
+        // 初始化智能广告拦截器
+        if (com.fongmi.android.tv.setting.Setting.isAdblock()) {
+            this.adInterceptor = new AdInterceptor(App.get(), this);
+            this.engine.addAdListener(adInterceptor);
+        }
     }
 
     public void release() {

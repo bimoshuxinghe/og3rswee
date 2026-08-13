@@ -414,4 +414,7 @@
         <item>15</item>
         <item>20</item>
     </string-array>
+    <string name="accessibility_service_description">智能广告检测服务，自动跳过视频中的广告</string>
+    <string name="accessibility_service_bound">广告检测服务已连接</string>
+    <string name="accessibility_service_disabled">请启用广告检测服务</string>
 </resources>

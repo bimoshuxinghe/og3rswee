@@ -107,9 +107,20 @@ public interface PlayerEngine {
 
     ErrorAction handleError(PlaybackException e);
 
+    void addAdListener(AdListener listener);
+
+    void removeAdListener(AdListener listener);
+
     enum ErrorAction {
         RECOVERED,
         DECODE,
         FATAL
+    }
+
+    interface AdListener {
+        void onPlayStateChanged(boolean playing);
+        void onVideoSizeChanged(int width, int height);
+        void onIsPlayingChanged(boolean isPlaying);
+        void onTimelineChanged();
     }
 }
