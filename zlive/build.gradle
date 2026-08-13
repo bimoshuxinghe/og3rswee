@@ -15,5 +15,5 @@ android {
 }
 
 dependencies {
-    api libs.jna
+    api "net.java.dev.jna:jna:5.18.1@aar"
 }
