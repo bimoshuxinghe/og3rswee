@@ -122,8 +122,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
 
         mBinding.exoDolbyVisionPassthroughText.setText(getSwitch(PlayerSetting.isExoDolbyVisionPassthrough()));
 
-        mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
-
         mBinding.alwaysProgressText.setText(getSwitch(Setting.isAlwaysProgress()));
 
         mBinding.liveBootText.setText(getSwitch(LiveSetting.isBootGlobal()));
@@ -187,8 +185,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         mBinding.exoDolbyVisionPassthrough.setOnClickListener(this::setExoDolbyVisionPassthrough);
 
         mBinding.caption.setOnClickListener(this::setCaption);
-
-        mBinding.adblock.setOnClickListener(this::setAdblock);
 
         mBinding.alwaysProgress.setOnClickListener(this::setAlwaysProgress);
 
@@ -527,14 +523,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         if (PlayerSetting.isCaption()) startActivity(new Intent(Settings.ACTION_CAPTIONING_SETTINGS));
 
         return PlayerSetting.isCaption();
-
-    }
-
-    private void setAdblock(View view) {
-
-        Setting.putAdblock(!Setting.isAdblock());
-
-        mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
 
     }
 

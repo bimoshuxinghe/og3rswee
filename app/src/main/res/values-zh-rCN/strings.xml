@@ -212,6 +212,12 @@
     <string name="player_video_decode">视频软解</string>
     <string name="player_aac_track">AAC优先</string>
     <string name="player_adblock">智能去广</string>
+    <string name="ai_adblock">AI语音去广</string>
+    <string name="ai_adblock_downloaded">语音模型下载完成</string>
+    <string name="ai_adblock_download_failed">语音模型下载失败</string>
+    <string name="ai_adblock_keywords_title">编辑广告关键词</string>
+    <string name="ai_adblock_keywords_hint">多个关键词用逗号分隔</string>
+    <string name="ai_adblock_keywords_saved">关键词已保存</string>
     <string name="player_always_time">时钟常显</string>
     <string name="player_always_progress">播放时长常显</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>

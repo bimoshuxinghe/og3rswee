@@ -114,6 +114,30 @@ public class Setting {
         Prefers.put("adblock", adblock);
     }
 
+    public static boolean isAiAdblock() {
+        return Prefers.getBoolean("ai_adblock");
+    }
+
+    public static void putAiAdblock(boolean aiAdblock) {
+        Prefers.put("ai_adblock", aiAdblock);
+    }
+
+    public static String getAiAdblockKeywords() {
+        return Prefers.getString("ai_adblock_keywords", "麻将来了,澳门,赌场,娱乐城,荷官,百家乐,老虎机,时时彩,六合彩,彩票,下注,投注,首充,提现,棋牌,捕鱼,斗地主");
+    }
+
+    public static void putAiAdblockKeywords(String keywords) {
+        Prefers.put("ai_adblock_keywords", keywords);
+    }
+
+    public static int getAiAdblockSkipSeconds() {
+        return Prefers.getInt("ai_adblock_skip_seconds", 15);
+    }
+
+    public static void putAiAdblockSkipSeconds(int seconds) {
+        Prefers.put("ai_adblock_skip_seconds", seconds);
+    }
+
     public static boolean isZhuyin() {
         return Prefers.getBoolean("zhuyin");
     }

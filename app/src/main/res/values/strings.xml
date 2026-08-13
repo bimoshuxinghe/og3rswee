@@ -212,6 +212,12 @@
     <string name="player_video_decode">Video software decode</string>
     <string name="player_aac_track">Prefer aac track</string>
     <string name="player_adblock">Remove ads</string>
+    <string name="ai_adblock">AI voice adblock</string>
+    <string name="ai_adblock_downloaded">Voice model downloaded</string>
+    <string name="ai_adblock_download_failed">Voice model download failed</string>
+    <string name="ai_adblock_keywords_title">Edit ad keywords</string>
+    <string name="ai_adblock_keywords_hint">Separate keywords with commas</string>
+    <string name="ai_adblock_keywords_saved">Keywords saved</string>
     <string name="player_always_time">Always display clock</string>
     <string name="player_always_progress">Always display progress</string>
     <string name="always_progress_format">%1$s/%2$s · ETA %3$s</string>

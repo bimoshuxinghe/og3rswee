@@ -25,6 +25,7 @@ import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.ConfigListener;
 import com.fongmi.android.tv.impl.LiveListener;
 import com.fongmi.android.tv.impl.SiteListener;
+import com.fongmi.android.tv.player.vosk.VoskAdblock;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.activity.HomeActivity;
@@ -111,6 +112,8 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.themeColorText.setText(getThemeText());
         mBinding.dohText.setText(getDohList()[getDohIndex()]);
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
+        mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
+        mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
@@ -151,6 +154,8 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.liveHome.setOnClickListener(this::onLiveHome);
         mBinding.wall.setOnLongClickListener(this::onWallEdit);
         mBinding.incognito.setOnClickListener(this::setIncognito);
+        mBinding.adblock.setOnClickListener(this::setAdblock);
+        mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
         mBinding.transition.setOnClickListener(this::setTransition);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.themeColor.setOnClickListener(this::onThemeColor);
@@ -349,6 +354,43 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     private void setIncognito(View view) {
         Setting.putIncognito(!Setting.isIncognito());
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
+    }
+
+    private void setAdblock(View view) {
+        Setting.putAdblock(!Setting.isAdblock());
+        mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
+    }
+
+    private void setAiAdblock(View view) {
+        boolean enabled = !Setting.isAiAdblock();
+        Setting.putAiAdblock(enabled);
+        mBinding.aiAdblockText.setText(getSwitch(enabled));
+        VoskAdblock vosk = VoskAdblock.get();
+        vosk.setEnabled(enabled);
+        if (enabled && !vosk.isModelDownloaded()) {
+            vosk.downloadModel((success, error) -> {
+                Notify.dismiss();
+                Notify.show(success ? R.string.ai_adblock_downloaded : R.string.ai_adblock_download_failed);
+            });
+        }
+    }
+
+    private boolean editAiAdblockKeywords(View view) {
+        android.widget.EditText editText = new android.widget.EditText(requireContext());
+        editText.setText(Setting.getAiAdblockKeywords());
+        editText.setHint(R.string.ai_adblock_keywords_hint);
+        editText.setSingleLine(false);
+        editText.setMinLines(3);
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.ai_adblock_keywords_title)
+                .setView(editText)
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    Setting.putAiAdblockKeywords(editText.getText().toString().trim());
+                    Notify.show(R.string.ai_adblock_keywords_saved);
+                })
+                .show();
+        return true;
     }
 
     private void setSize(View view) {
