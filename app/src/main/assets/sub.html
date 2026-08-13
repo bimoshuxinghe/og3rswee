@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <title>代理地址推送</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=0,viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" href="css/ui.css">
+    <script src="js/jquery.min.js" defer></script>
+    <script src="js/script.js" defer></script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="app-body">
+            <div class="tab-panel active">
+                <div class="panel-content">
+                    <h2 style="text-align:center;margin-bottom:4px;">代理地址推送</h2>
+                    <p style="text-align:center;color:var(--md-on-surface-variant);line-height:1.6;">
+                        粘贴 Clash / 代理订阅地址，推送成功后电视端会自动刷新并选择可用节点。
+                    </p>
+                    <div class="md-field">
+                        <input id="proxy_sub_url" class="md-input" type="text" placeholder="请输入代理订阅 URL" />
+                    </div>
+                    <button onclick="proxySubscription()" class="md-btn md-btn-filled md-btn-full">推送代理订阅</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

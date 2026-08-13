@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingTop="5dp"
+    android:paddingBottom="5dp">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/text"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="192dp"
+        android:layout_height="38dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:singleLine="true"
+        android:textColor="@color/selector_site_text"
+        android:textSize="14sp"
+        app:backgroundTint="@color/selector_site_button_bg"
+        app:cornerRadius="19dp"
+        app:rippleColor="#335EF2C2"
+        app:strokeColor="@color/selector_site_stroke"
+        app:strokeWidth="1dp"
+        tools:text="泥巴" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/search"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/shape_site_icon"
+        android:padding="8dp"
+        android:src="@drawable/ic_site_search"
+        android:tint="#5C626B" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/change"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/shape_site_icon"
+        android:padding="8dp"
+        android:src="@drawable/ic_site_change"
+        android:tint="#5C626B" />
+
+</androidx.appcompat.widget.LinearLayoutCompat>

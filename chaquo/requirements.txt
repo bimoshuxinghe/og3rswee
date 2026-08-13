@@ -1,0 +1,8 @@
+lxml
+ujson
+pyquery
+requests
+PySocks
+cachetools
+pycryptodome
+beautifulsoup4

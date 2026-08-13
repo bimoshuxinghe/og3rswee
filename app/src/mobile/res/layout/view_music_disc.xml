@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Background album art (blurred) -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/musicBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <!-- Dynamic gradient overlay (set programmatically) -->
+    <View
+        android:id="@+id/musicBgOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#D9000000" />
+
+    <!-- Top gradient for status bar -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_alignParentTop="true"
+        android:background="@drawable/music_gradient_top" />
+
+    <!-- Top left: back button -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/musicBackBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_control_back" />
+
+    <!-- Rotating album art (circular) -->
+    <com.fongmi.android.tv.ui.custom.MusicDiscView
+        android:id="@+id/musicDisc"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="40dp" />
+
+    <!-- Song name -->
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/musicSongName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/musicDisc"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginTop="20dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:shadowColor="#80000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3"
+        tools:text="歌曲名称" />
+
+    <!-- Artist name -->
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/musicArtistName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/musicSongName"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="#B0FFFFFF"
+        android:textSize="14sp"
+        tools:text="歌手名" />
+
+    <!-- Lyrics view -->
+    <com.fongmi.android.tv.ui.custom.LrcView
+        android:id="@+id/musicLrcView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/musicArtistName"
+        android:layout_above="@id/musicSeekBar"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <!-- Seek bar -->
+    <LinearLayout
+        android:id="@+id/musicSeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/musicControlBar"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="8dp">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/musicCurrentTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp"
+            tools:text="00:00" />
+
+        <androidx.appcompat.widget.AppCompatSeekBar
+            android:id="@+id/musicProgress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#FF5722"
+            android:thumbTint="#FF5722" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/musicTotalTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp"
+            tools:text="00:00" />
+
+    </LinearLayout>
+
+    <!-- Control bar -->
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/musicControlBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicListBtn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_music_list" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicPrev"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/exo_icon_previous" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicPlay"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/exo_icon_play" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicNext"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/exo_icon_next" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/musicTimerBtn2"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_music_timer" />
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+</RelativeLayout>

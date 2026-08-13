@@ -1,0 +1,2842 @@
+package com.fongmi.android.tv.ui.activity;
+
+import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.text.TextUtils;
+import android.text.style.ClickableSpan;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.palette.graphics.Palette;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaMetadata;
+import androidx.media3.common.Player;
+import androidx.media3.common.VideoSize;
+import androidx.media3.ui.PlayerView;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.core.widget.NestedScrollView;
+import androidx.transition.ChangeBounds;
+import androidx.transition.TransitionManager;
+import androidx.viewbinding.ViewBinding;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.request.transition.Transition;
+import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.Constant;
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.api.DanmakuApi;
+import com.fongmi.android.tv.api.SiteApi;
+import com.fongmi.android.tv.api.config.VodConfig;
+import com.fongmi.android.tv.bean.CastVideo;
+import com.fongmi.android.tv.bean.Danmaku;
+import com.fongmi.android.tv.bean.Episode;
+import com.fongmi.android.tv.bean.Flag;
+import com.fongmi.android.tv.bean.History;
+import com.fongmi.android.tv.bean.Keep;
+import com.fongmi.android.tv.bean.Parse;
+import com.fongmi.android.tv.bean.Result;
+import com.fongmi.android.tv.bean.Site;
+import com.fongmi.android.tv.bean.Sub;
+import com.fongmi.android.tv.bean.Track;
+import com.fongmi.android.tv.bean.Vod;
+import com.fongmi.android.tv.databinding.ActivityVideoBinding;
+import com.fongmi.android.tv.db.AppDatabase;
+import com.fongmi.android.tv.event.CastEvent;
+import com.fongmi.android.tv.event.RefreshEvent;
+import com.fongmi.android.tv.impl.CustomTarget;
+import com.fongmi.android.tv.model.SiteViewModel;
+import com.fongmi.android.tv.player.PlayerHelper;
+import com.fongmi.android.tv.player.PlayerManager;
+import com.fongmi.android.tv.player.PreloadManager;
+import com.fongmi.android.tv.service.PlaybackService;
+import com.fongmi.android.tv.ui.custom.LrcView;
+import com.fongmi.android.tv.setting.DanmakuSetting;
+import com.fongmi.android.tv.setting.PlayerSetting;
+import com.fongmi.android.tv.setting.Setting;
+import com.fongmi.android.tv.ui.adapter.EpisodeAdapter;
+import com.fongmi.android.tv.ui.adapter.EpisodeGroupAdapter;
+import com.fongmi.android.tv.ui.adapter.FlagAdapter;
+import com.fongmi.android.tv.ui.adapter.ParseAdapter;
+import com.fongmi.android.tv.ui.adapter.QualityAdapter;
+import com.fongmi.android.tv.ui.adapter.QuickAdapter;
+import com.fongmi.android.tv.ui.base.ViewType;
+import com.fongmi.android.tv.ui.custom.CustomKeyDown;
+import com.fongmi.android.tv.ui.custom.CustomMovement;
+import com.fongmi.android.tv.ui.custom.CustomSeekView;
+import com.fongmi.android.tv.ui.custom.VodReader;
+import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
+import com.fongmi.android.tv.ui.dialog.CastDialog;
+import com.fongmi.android.tv.ui.dialog.ControlDialog;
+import com.fongmi.android.tv.ui.dialog.DanmakuDialog;
+import com.fongmi.android.tv.ui.dialog.EpisodeGridDialog;
+import com.fongmi.android.tv.ui.dialog.EpisodeListDialog;
+import com.fongmi.android.tv.ui.dialog.InfoDialog;
+import com.fongmi.android.tv.ui.dialog.ReceiveDialog;
+import com.fongmi.android.tv.ui.dialog.SkipDialog;
+import com.fongmi.android.tv.ui.dialog.SubtitleDialog;
+import com.fongmi.android.tv.ui.dialog.TitleDialog;
+import com.fongmi.android.tv.ui.dialog.TrackDialog;
+import com.fongmi.android.tv.utils.Clock;
+import com.fongmi.android.tv.utils.FileChooser;
+import com.fongmi.android.tv.utils.ImgUtil;
+import com.fongmi.android.tv.utils.Notify;
+import com.fongmi.android.tv.utils.PiP;
+import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.Sniffer;
+import com.fongmi.android.tv.utils.Task;
+import com.fongmi.android.tv.utils.Timer;
+import com.fongmi.android.tv.utils.Traffic;
+import com.fongmi.android.tv.utils.Util;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
+
+import com.github.catvod.net.OkHttp;
+
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+public class VideoActivity extends PlaybackActivity implements Clock.Callback, CustomKeyDown.Listener, TrackDialog.Listener, ControlDialog.Listener, SkipDialog.Listener, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, QualityAdapter.OnClickListener, QuickAdapter.OnClickListener, ParseAdapter.OnClickListener, CastDialog.Listener, InfoDialog.Listener {
+
+    private ActivityVideoBinding mBinding;
+    private ViewGroup.LayoutParams mFrameParams;
+    private Observer<Result> mObserveDetail;
+    private Observer<Result> mObservePlayer;
+    private Observer<Result> mObserveSearch;
+    private EpisodeAdapter mEpisodeAdapter;
+    private EpisodeGroupAdapter mGroupAdapter;
+    /** 全量剧集列表（分页模式下内联面板只显示当前组切片，但下一集/预加载/选集弹窗需基于全量） */
+    private List<Episode> mAllEpisodes = new ArrayList<>();
+    /** 当前在内联面板显示的分组索引（分页） */
+    private int mActiveGroup = 0;
+    private QualityAdapter mQualityAdapter;
+    private QuickAdapter mQuickAdapter;
+    private ParseAdapter mParseAdapter;
+    private SiteViewModel mViewModel;
+    private FlagAdapter mFlagAdapter;
+    private ValueAnimator mAnimator;
+    private CustomKeyDown mKeyDown;
+    private List<String> mBroken;
+    private History mHistory;
+    private boolean fullscreen;
+    private boolean initAuto;
+    private boolean autoMode;
+    private boolean useParse;
+    private boolean leavingPlayback;
+    private boolean rotate;
+    private Runnable mR1;
+    private Runnable mR2;
+    private Runnable mR3;
+    private Runnable mR4;
+    private Clock mClock;
+    private PiP mPiP;
+    private int layoutMode = 0;
+    private VodReader mReader;
+    private boolean isReaderContent;
+    private boolean isMusicDiscVisible;
+    private android.os.CountDownTimer musicExitTimer;
+    private long musicExitRemaining;
+
+    public static void push(FragmentActivity activity, String text) {
+        if (FileChooser.isValid(activity, Uri.parse(text))) file(activity, FileChooser.getPathFromUri(Uri.parse(text)));
+        else start(activity, Sniffer.getUrl(text));
+    }
+
+    public static void file(FragmentActivity activity, String path) {
+        if (TextUtils.isEmpty(path)) return;
+        String name = new File(path).getName();
+        start(activity, SiteApi.PUSH, "file://" + path, name);
+    }
+
+    public static void cast(Activity activity, History history) {
+        start(activity, history.getSiteKey(), history.getVodId(), history.getVodName(), history.getVodPic());
+    }
+
+    public static void collect(Activity activity, String key, String id, String name, String pic) {
+        start(activity, key, id, name, pic, null, true);
+    }
+
+    public static void start(Activity activity, String url) {
+        start(activity, SiteApi.PUSH, url, url);
+    }
+
+    public static void start(Activity activity, String key, String id, String name) {
+        start(activity, key, id, name, null);
+    }
+
+    public static void start(Activity activity, String key, String id, String name, String pic) {
+        start(activity, key, id, name, pic, null);
+    }
+
+    public static void start(Activity activity, String key, String id, String name, String pic, String mark) {
+        start(activity, key, id, name, pic, mark, false);
+    }
+
+    public static void start(Activity activity, String key, String id, String name, String pic, String mark, boolean collect) {
+        Intent intent = new Intent(activity, VideoActivity.class);
+        intent.putExtra("collect", collect);
+        intent.putExtra("mark", mark);
+        intent.putExtra("name", name);
+        intent.putExtra("pic", pic);
+        intent.putExtra("key", key);
+        intent.putExtra("id", id);
+        activity.startActivity(intent);
+    }
+
+    private String getName() {
+        return Objects.toString(getIntent().getStringExtra("name"), "");
+    }
+
+    private String getPic() {
+        return Objects.toString(getIntent().getStringExtra("pic"), "");
+    }
+
+    private String getMark() {
+        return Objects.toString(getIntent().getStringExtra("mark"), "");
+    }
+
+    private String getKey() {
+        return Objects.toString(getIntent().getStringExtra("key"), "");
+    }
+
+    private String getId() {
+        return Objects.toString(getIntent().getStringExtra("id"), "");
+    }
+
+    private String getHistoryKey() {
+        return getKey().concat(AppDatabase.SYMBOL).concat(getId()).concat(AppDatabase.SYMBOL) + VodConfig.getCid();
+    }
+
+    private Site getSite() {
+        return VodConfig.get().getSite(getKey());
+    }
+
+    private Flag getFlag() {
+        return mFlagAdapter.getActivated();
+    }
+
+    private Episode getEpisode() {
+        return mEpisodeAdapter.isEmpty() ? new Episode() : mEpisodeAdapter.getActivated();
+    }
+
+    private int getScale() {
+        return mHistory != null && mHistory.getScale() != -1 ? mHistory.getScale() : PlayerSetting.getScale();
+    }
+
+    private boolean isReplay() {
+        return Setting.getReset() == 1;
+    }
+
+    private boolean isFromCollect() {
+        return getIntent().getBooleanExtra("collect", false);
+    }
+
+    private boolean isAutoRotate() {
+        return Settings.System.getInt(getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 0) == 1;
+    }
+
+    private boolean isLand() {
+        return mBinding.getRoot().getTag().equals("land");
+    }
+
+    private boolean isPort() {
+        return mBinding.getRoot().getTag().equals("port");
+    }
+
+    @Override
+    protected ViewBinding getBinding() {
+        return mBinding = ActivityVideoBinding.inflate(getLayoutInflater());
+    }
+
+    @Override
+    protected PlaybackService.NavigationCallback getNavigationCallback() {
+        return mNavigationCallback;
+    }
+
+    @Override
+    protected PlayerView getExoView() {
+        return mBinding.exo;
+    }
+
+    @Override
+    protected CustomSeekView getSeekView() {
+        return mBinding.control.seek;
+    }
+
+    @Override
+    protected void onServiceConnected() {
+        player().setDanmakuController(mBinding.exo.getDanmakuController());
+        player().setDanmakuEnabled(DanmakuSetting.isShow());
+        checkLand();
+        checkId();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        String oldId = getId();
+        super.onNewIntent(intent);
+        String id = Objects.toString(intent.getStringExtra("id"), "");
+        if (TextUtils.isEmpty(id) || id.equals(oldId)) return;
+        mBinding.swipeLayout.setRefreshing(true);
+        getIntent().putExtras(intent);
+        saveHistory();
+        setOrient();
+        checkId();
+    }
+
+    @Override
+    protected void initView(Bundle savedInstanceState) {
+        super.initView(savedInstanceState);
+        ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (v, insets) -> setStatusBar(insets));
+        mKeyDown = CustomKeyDown.create(this, mBinding.exo);
+        mFrameParams = mBinding.video.getLayoutParams();
+        mBinding.progressLayout.showProgress();
+        mBinding.swipeLayout.setEnabled(false);
+        mObserveDetail = this::setDetail;
+        mObservePlayer = this::setPlayer;
+        mObserveSearch = this::setSearch;
+        mBroken = new ArrayList<>();
+        mClock = Clock.create();
+        mR1 = this::hideControl;
+        mR2 = this::setTraffic;
+        mR3 = this::setOrient;
+        mR4 = this::showEmpty;
+        mPiP = new PiP();
+        checkDanmakuImg();
+        setRecyclerView();
+        setVideoView();
+        if (mBinding.reader != null) {
+            mReader = new VodReader(this, mBinding.reader, new VodReader.Listener() {
+                @Override public void onSingleTap() {
+                    if (isFullscreen()) {
+                        if (isVisible(mBinding.control.getRoot())) hideControl();
+                        else showControl();
+                    }
+                }
+                @Override public void onDoubleTap() { toggleFullscreen(); }
+                @Override public void onPrevious() { checkPrev(); }
+                @Override public void onNext() { checkNext(); }
+                @Override public void onDirectory() { onEpisodes(); }
+                @Override public void onPageChanged(int current, int total) {}
+            });
+        }
+        setViewModel();
+        showProgress();
+        setAnimator();
+    }
+
+    @Override
+    @SuppressLint("ClickableViewAccessibility")
+    protected void initEvent() {
+        mBinding.name.setOnClickListener(view -> onName());
+        mBinding.more.setOnClickListener(view -> onMore());
+        if (mBinding.musicBtn != null) mBinding.musicBtn.setOnClickListener(view -> toggleMusicDisc());
+        if (mBinding.musicDiscView != null) {
+            mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
+            mBinding.musicDiscView.musicNext.setOnClickListener(view -> checkNext());
+            mBinding.musicDiscView.musicPlay.setOnClickListener(view -> checkPlay());
+            mBinding.musicDiscView.musicListBtn.setOnClickListener(view -> onEpisodes());
+            mBinding.musicDiscView.musicBackBtn.setOnClickListener(view -> hideMusicDisc());
+            mBinding.musicDiscView.musicTimerBtn2.setOnClickListener(view -> showMusicTimerDialog());
+            mBinding.musicDiscView.musicProgress.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                    if (!fromUser) return;
+                    long dur = player().getDuration();
+                    if (dur > 0) player().seekTo(dur * prog / 100);
+                }
+                @Override
+                public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+                @Override
+                public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+            });
+        }
+        mBinding.actor.setOnClickListener(view -> onActor());
+        mBinding.content.setOnClickListener(view -> onContent());
+        mBinding.reverse.setOnClickListener(view -> onReverse());
+        if (mBinding.download != null) mBinding.download.setOnClickListener(view -> onDownload());
+        mBinding.director.setOnClickListener(view -> onDirector());
+        mBinding.name.setOnLongClickListener(view -> onChange());
+        mBinding.content.setOnLongClickListener(view -> onCopy());
+        mBinding.control.back.setOnClickListener(view -> onBack());
+        mBinding.control.keep.setOnClickListener(view -> onKeep());
+        mBinding.control.cast.setOnClickListener(view -> onCast());
+        mBinding.control.info.setOnClickListener(view -> onInfo());
+        mBinding.control.play.setOnClickListener(view -> checkPlay());
+        mBinding.control.next.setOnClickListener(view -> checkNext());
+        mBinding.control.prev.setOnClickListener(view -> checkPrev());
+        mBinding.control.setting.setOnClickListener(view -> onSetting());
+        mBinding.control.title.setOnLongClickListener(view -> onChange());
+        mBinding.control.right.lock.setOnClickListener(view -> onLock());
+        mBinding.control.right.rotate.setOnClickListener(view -> onRotate());
+        mBinding.control.right.pip.setOnClickListener(view -> enterPiP());
+        mBinding.control.fullscreen.setOnClickListener(view -> toggleFullscreen());
+        mBinding.control.danmaku.setOnClickListener(view -> onDanmakuShow());
+        mBinding.control.action.text.setOnClickListener(this::onTrack);
+        mBinding.control.action.audio.setOnClickListener(this::onTrack);
+        mBinding.control.action.video.setOnClickListener(this::onTrack);
+        mBinding.control.action.scale.setOnClickListener(view -> onScale());
+        mBinding.control.action.speed.setOnClickListener(view -> onSpeed());
+        mBinding.control.action.reset.setOnClickListener(view -> onReset());
+        mBinding.control.action.title.setOnClickListener(view -> onTitle());
+        mBinding.control.action.player.setOnClickListener(view -> onChoose());
+        mBinding.control.action.player.setOnLongClickListener(view -> onChooseExternal());
+        mBinding.control.action.decode.setOnClickListener(view -> onDecode());
+        mBinding.control.action.ending.setOnClickListener(view -> onEnding());
+        mBinding.control.action.repeat.setOnClickListener(view -> onRepeat());
+        mBinding.control.action.opening.setOnClickListener(view -> onOpening());
+        mBinding.control.action.danmaku.setOnClickListener(view -> onDanmaku());
+        mBinding.control.action.episodes.setOnClickListener(view -> onEpisodes());
+        mBinding.control.action.text.setOnLongClickListener(view -> onTextLong());
+        mBinding.control.action.speed.setOnLongClickListener(view -> onSpeedLong());
+        mBinding.control.action.reset.setOnLongClickListener(view -> onResetToggle());
+        mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
+        mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
+        mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
+        // Forward touch events from music disc view to mKeyDown for long press lyrics adjustment
+        if (mBinding.musicDiscView != null) {
+            mBinding.musicDiscView.getRoot().setOnTouchListener((view, event) -> {
+                mKeyDown.onTouchEvent(event);
+                return false;
+            });
+            mBinding.musicDiscView.musicLrcView.setOnTouchListener((view, event) -> {
+                mKeyDown.onTouchEvent(event);
+                return false;
+            });
+            mBinding.musicDiscView.musicDisc.setOnTouchListener((view, event) -> {
+                mKeyDown.onTouchEvent(event);
+                return false;
+            });
+        }
+        mBinding.control.action.getRoot().setOnTouchListener(this::onActionTouch);
+        mBinding.swipeLayout.setOnRefreshListener(this::onSwipeRefresh);
+    }
+
+    private WindowInsetsCompat setStatusBar(WindowInsetsCompat insets) {
+        int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+        ViewGroup.LayoutParams lp = mBinding.statusBar.getLayoutParams();
+        lp.height = top;
+        mBinding.statusBar.setLayoutParams(lp);
+        return insets;
+    }
+
+    private void setRecyclerView() {
+        mBinding.flag.setHasFixedSize(true);
+        mBinding.flag.setItemAnimator(null);
+        mBinding.flag.addItemDecoration(new SpaceItemDecoration(8));
+        mBinding.flag.setAdapter(mFlagAdapter = new FlagAdapter(this));
+        mBinding.quick.setAdapter(mQuickAdapter = new QuickAdapter(this));
+        layoutMode = Setting.getLayoutMode();
+        mBinding.episode.setHasFixedSize(true);
+        mBinding.episode.setItemAnimator(null);
+        if (layoutMode == 0) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(2, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        } else if (layoutMode == 1) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
+        } else if (layoutMode == 3) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(4, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        } else {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.LIST));
+        }
+        mBinding.group.setHasFixedSize(true);
+        mBinding.group.setItemAnimator(null);
+        mBinding.group.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+        mBinding.group.addItemDecoration(new SpaceItemDecoration(8));
+        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> setActiveGroup(mGroupAdapter.getGroupIndexForEpisode(start))));
+        mBinding.quality.setHasFixedSize(true);
+        mBinding.quality.setItemAnimator(null);
+        mBinding.quality.addItemDecoration(new SpaceItemDecoration(8));
+        mBinding.quality.setAdapter(mQualityAdapter = new QualityAdapter(this));
+        mBinding.control.parse.setHasFixedSize(true);
+        mBinding.control.parse.setItemAnimator(null);
+        mBinding.control.parse.addItemDecoration(new SpaceItemDecoration(8));
+        mBinding.control.parse.setAdapter(mParseAdapter = new ParseAdapter(this, ViewType.DARK));
+    }
+
+    private void setVideoView() {
+        mBinding.control.action.danmaku.setVisibility(DanmakuSetting.isLoad() ? View.VISIBLE : View.GONE);
+        mBinding.control.action.reset.setText(ResUtil.getStringArray(R.array.select_reset)[Setting.getReset()]);
+        mBinding.video.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> mPiP.update(this, view));
+    }
+
+    private void setVideoView(boolean isInPictureInPictureMode) {
+        if (isInPictureInPictureMode) {
+            mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        } else {
+            mBinding.video.setLayoutParams(mFrameParams);
+        }
+    }
+
+    private void setReaderVisible(boolean visible) {
+        if (visible) {
+            hideControl();
+            hideProgress();
+            mBinding.exo.setVisibility(View.GONE);
+            mBinding.widget.getRoot().setVisibility(View.GONE);
+            mBinding.lrcView.setVisibility(View.GONE);
+            mKeyDown.setLrcMode(false);
+            if (!isFullscreen()) enterFullscreen();
+        } else {
+            if (mReader != null) mReader.clear();
+            mBinding.exo.setVisibility(View.VISIBLE);
+            mBinding.widget.getRoot().setVisibility(View.VISIBLE);
+            if (mBinding.lrcView.hasLrc()) {
+                mBinding.lrcView.setVisibility(View.VISIBLE);
+                mKeyDown.setLrcMode(true);
+            }
+        }
+    }
+
+    private void setAnimator() {
+        mAnimator = new ValueAnimator();
+        mAnimator.setInterpolator(new DecelerateInterpolator());
+        mAnimator.addUpdateListener(animation -> {
+            if (isLand() || isFullscreen() || isInPictureInPictureMode()) return;
+            mFrameParams.height = (int) animation.getAnimatedValue();
+            mBinding.video.setLayoutParams(mFrameParams);
+        });
+    }
+
+    private void setDecode() {
+        mBinding.control.action.decode.setText(player().getDecodeText());
+    }
+
+    private void setEngine() {
+        mBinding.control.action.player.setText(player().getEngineText());
+    }
+
+    private void setScale(int scale) {
+        mHistory.setScale(scale);
+        mBinding.exo.setResizeMode(scale);
+        mBinding.control.action.scale.setText(ResUtil.getStringArray(R.array.select_scale)[scale]);
+    }
+
+    private void setViewModel() {
+        mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
+        mViewModel.getResult().observeForever(mObserveDetail);
+        mViewModel.getPlayer().observeForever(mObservePlayer);
+        mViewModel.getSearch().observeForever(mObserveSearch);
+    }
+
+    private void checkId() {
+        if (getId().startsWith("push://")) getIntent().putExtra("key", SiteApi.PUSH).putExtra("id", getId().substring(7));
+        if (getId().isEmpty() || getId().startsWith("msearch:")) setEmpty(false);
+        else getDetail();
+    }
+
+    private void checkLand() {
+        if (isPort() && ResUtil.isLand(this)) enterFullscreen();
+    }
+
+    private void getDetail() {
+        mViewModel.detailContent(getKey(), getId());
+    }
+
+    private void getDetail(Vod item) {
+        getIntent().putExtra("key", item.getSiteKey());
+        getIntent().putExtra("pic", item.getPic());
+        getIntent().putExtra("id", item.getId());
+        mBinding.swipeLayout.setRefreshing(true);
+        mBinding.swipeLayout.setEnabled(false);
+        mBinding.scroll.scrollTo(0, 0);
+        mClock.setCallback(null);
+        updateNavigationKey();
+        player().reset();
+        player().stop();
+        if (mReader != null && mReader.isActive()) mReader.clear();
+        isReaderContent = false;
+        saveHistory();
+        getDetail();
+    }
+
+    private void setDetail(Result result) {
+        mBinding.swipeLayout.setRefreshing(false);
+        if (result.getList().isEmpty()) setEmpty(result.hasMsg());
+        else setDetail(result.getVod());
+        Notify.show(result.getMsg());
+    }
+
+    private void setEmpty(boolean finish) {
+        if (isFromCollect() || finish) {
+            finish();
+        } else if (getName().isEmpty()) {
+            showEmpty();
+        } else {
+            mBinding.name.setText(getName());
+            App.post(mR4, 10000);
+            checkSearch(false);
+        }
+    }
+
+    private void showEmpty() {
+        if (isFinishing() || isDestroyed()) return;
+        showError(getString(R.string.error_detail));
+        mBinding.swipeLayout.setEnabled(true);
+        mBinding.progressLayout.showEmpty();
+    }
+
+    private void setDetail(Vod item) {
+        item.checkPic(getPic());
+        item.checkName(getName());
+        mBinding.progressLayout.showContent();
+        mBinding.name.setText(item.getName());
+        mFlagAdapter.addAll(item.getFlags());
+        App.removeCallbacks(mR4);
+        checkHistory(item);
+        checkFlag(item);
+        checkKeepImg();
+        setText(item);
+        updateKeep();
+    }
+
+    private void setText(Vod item) {
+        setText(mBinding.site, R.string.detail_site, getSite().getName());
+        setText(mBinding.director, R.string.detail_director, item.getDirector());
+        setText(mBinding.actor, R.string.detail_actor, item.getActor());
+        setText(mBinding.content, 0, item.getContent());
+        setText(mBinding.remark, 0, item.getRemarks().isEmpty() ? "" : "[" + item.getRemarks() + "]");
+        setOther(mBinding.other, item);
+    }
+
+    private void setText(TextView view, int resId, String text) {
+        if (TextUtils.isEmpty(text) && !TextUtils.isEmpty(view.getText())) return;
+        view.setText(Sniffer.buildClickable(resId > 0 ? getString(resId, text) : text, this::clickableSpan), TextView.BufferType.SPANNABLE);
+        view.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
+        if (view == mBinding.content) setContentVisible();
+        view.setLinkTextColor(Color.WHITE);
+        CustomMovement.bind(view);
+    }
+
+    private void setContentVisible() {
+        mBinding.contentLayout.setVisibility(mBinding.content.getVisibility());
+    }
+
+    private ClickableSpan clickableSpan(Result result) {
+        return new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View view) {
+                FolderActivity.start(getActivity(), getKey(), result);
+                ((TextView) view).setMaxLines(Integer.MAX_VALUE);
+                setRedirect(true);
+            }
+        };
+    }
+
+    private void setOther(TextView view, Vod item) {
+        StringBuilder sb = new StringBuilder();
+        if (!item.getYear().isEmpty()) sb.append(getString(R.string.detail_year, item.getYear())).append("  ");
+        if (!item.getArea().isEmpty()) sb.append(getString(R.string.detail_area, item.getArea())).append("  ");
+        if (!item.getTypeName().isEmpty()) sb.append(getString(R.string.detail_type, item.getTypeName())).append("  ");
+        view.setVisibility(sb.length() == 0 ? View.GONE : View.VISIBLE);
+        view.setText(Util.substring(sb.toString(), 2));
+    }
+
+    private void getPlayer(Flag flag, Episode episode) {
+        mBinding.control.title.setText(getString(R.string.detail_title, mBinding.name.getText(), episode.getName()));
+        Result preload = PreloadManager.get().get(getKey(), flag.getFlag(), episode);
+        if (preload != null) {
+            mBinding.control.title.setSelected(true);
+            updateHistory(episode);
+            hideProgress();
+            setPlayer(preload);
+            return;
+        }
+        mViewModel.playerContent(getKey(), flag.getFlag(), episode.getUrl());
+        mBinding.control.title.setSelected(true);
+        updateHistory(episode);
+        showProgress();
+    }
+
+    private void setPlayer(Result result) {
+        if (isFinishing() || isDestroyed()) return;
+        mQualityAdapter.addAll(result);
+        setUseParse(result.shouldUseParse());
+        mBinding.swipeLayout.setRefreshing(false);
+        setQualityVisible(result.getUrl().isMulti());
+        result.getUrl().set(mQualityAdapter.getPosition());
+        if (result.hasArtwork()) setArtwork(result.getArtwork());
+        if (result.hasPosition()) mHistory.setPosition(result.getPosition());
+        if (result.hasDesc()) setText(mBinding.content, 0, result.getDesc());
+        setLrc(result);
+        mBinding.control.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
+        boolean wasReader = mReader != null && mReader.isActive();
+        String readerTitle = mHistory != null ? mHistory.getVodName() : "";
+        if (mReader != null && mReader.set(result, readerTitle)) {
+            isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mViewModel.stopSearch();
+            mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
+            player().stop();
+            player().clear();
+            setReaderVisible(true);
+            return;
+        }
+        String readerUrl = result.getUrl().v();
+        if (readerUrl.startsWith("pics://") || readerUrl.startsWith("novel://")) {
+            isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mViewModel.stopSearch();
+            mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
+            player().stop();
+            player().clear();
+            mBinding.exo.setVisibility(View.GONE);
+            mBinding.widget.getRoot().setVisibility(View.GONE);
+            showError(getString(R.string.error_play_url));
+            return;
+        }
+        isReaderContent = false;
+        if (wasReader) {
+            setReaderVisible(false);
+        }
+        startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata(), getResumePosition());
+        if (DanmakuApi.canSearch()) DanmakuApi.search(mHistory.getVodName(), getEpisode().getName(), danmaku -> {
+            if (DanmakuSetting.isSpiderFirst() && !result.getDanmaku().isEmpty()) player().addDanmaku(danmaku);
+            else player().setDanmaku(danmaku);
+        });
+    }
+
+    private void setLrc(Result result) {
+        if (result.hasLrc()) {
+            mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+            mBinding.lrcView.setCurrentColor(PlayerSetting.getLrcColor());
+            mBinding.lrcView.setCallback(() -> {
+                try { return player().getPosition(); } catch (Exception e) { return 0L; }
+            });
+            mBinding.lrcView.setData(result.getLrc());
+            mBinding.lrcView.setVisibility(View.VISIBLE);
+            mKeyDown.setLrcMode(true);
+            // Sync to music disc view if visible
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                mBinding.musicDiscView.musicLrcView.setCallback(() -> {
+                    try { return player().getPosition(); } catch (Exception e) { return 0L; }
+                });
+                mBinding.musicDiscView.musicLrcView.setData(result.getLrc());
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
+                if (player().isPlaying()) mBinding.musicDiscView.musicLrcView.start();
+            }
+        } else {
+            mBinding.lrcView.clear();
+            mBinding.lrcView.setVisibility(View.GONE);
+            mKeyDown.setLrcMode(false);
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicLrcView.clear();
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void showLrcSizeDialog() {
+        com.fongmi.android.tv.databinding.DialogLrcSizeBinding binding =
+                com.fongmi.android.tv.databinding.DialogLrcSizeBinding.inflate(getLayoutInflater());
+        float current = PlayerSetting.getLrcTextSize();
+        int progress = (int) (current - 24f);
+        binding.lrcSizeSeek.setMax(56);
+        binding.lrcSizeSeek.setProgress(progress);
+        binding.lrcSizeValue.setText(String.valueOf((int) current));
+        binding.lrcSizeSeek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                float size = 24f + prog;
+                binding.lrcSizeValue.setText(String.valueOf((int) size));
+                mBinding.lrcView.setTextSize(size);
+                if (isMusicDiscVisible) mBinding.musicDiscView.musicLrcView.setTextSize(size);
+            }
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
+        // 歌词颜色选择器
+        int[] lrcColors = {0xFFFFD700, 0xFF4CAF50, 0xFF00BCD4, 0xFF2196F3, 0xFF9C27B0, 0xFFF44336, 0xFFFF9800, 0xFFFFFFFF};
+        int savedColor = PlayerSetting.getLrcColor();
+        final int[] selectedColor = {savedColor};
+        float density = getResources().getDisplayMetrics().density;
+        for (int c : lrcColors) {
+            View circle = new View(this);
+            int size = (int) (32 * density);
+            int margin = (int) (5 * density);
+            android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(size, size);
+            params.setMargins(margin, 0, margin, 0);
+            circle.setLayoutParams(params);
+            circle.setTag(c);
+            applyColorCircle(circle, c, c == selectedColor[0], density);
+            final int color = c;
+            circle.setOnClickListener(v -> {
+                selectedColor[0] = color;
+                for (int j = 0; j < binding.lrcColorContainer.getChildCount(); j++) {
+                    View child = binding.lrcColorContainer.getChildAt(j);
+                    int childColor = (int) child.getTag();
+                    applyColorCircle(child, childColor, childColor == color, density);
+                }
+                mBinding.lrcView.setCurrentColor(color);
+                if (isMusicDiscVisible) mBinding.musicDiscView.musicLrcView.setCurrentColor(color);
+            });
+            binding.lrcColorContainer.addView(circle);
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.player_lrc_size)
+                .setView(binding.getRoot())
+                .setNegativeButton(R.string.dialog_negative, (dialog, which) -> {
+                    mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                    mBinding.lrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    if (isMusicDiscVisible) {
+                        mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                        mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    }
+                })
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    float size = 24f + binding.lrcSizeSeek.getProgress();
+                    PlayerSetting.putLrcTextSize(size);
+                    PlayerSetting.putLrcColor(selectedColor[0]);
+                })
+                .setOnDismissListener(dialog -> {
+                    mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                    mBinding.lrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    if (isMusicDiscVisible) {
+                        mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                        mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                    }
+                })
+                .show();
+    }
+
+    private void applyColorCircle(View circle, int color, boolean selected, float density) {
+        android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+        drawable.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        drawable.setColor(color);
+        if (selected) {
+            drawable.setStroke((int) (3 * density), android.graphics.Color.WHITE);
+        } else {
+            drawable.setStroke((int) (1 * density), 0x33FFFFFF);
+        }
+        circle.setBackground(drawable);
+    }
+
+    @Override
+    public void onItemClick(Flag item) {
+        if (item.isSelected()) return;
+        mFlagAdapter.setSelected(item);
+        scrollToPosition(mBinding.flag, mFlagAdapter.getPosition());
+        setEpisodeAdapter(item.getEpisodes());
+        setQualityVisible(false);
+        seamless(item);
+    }
+
+    @Override
+    public void onItemClick(Episode item) {
+        if (shouldEnterFullscreen(item)) return;
+        mFlagAdapter.toggle(item);
+        notifyItemChanged(mBinding.episode, mEpisodeAdapter);
+        scrollToPosition(mBinding.episode, mEpisodeAdapter.getPosition());
+        if (isFullscreen()) Notify.show(getString(R.string.play_ready, item.getName()));
+        // Reload artwork and lyrics when switching episodes in music mode
+        if (isMusicDiscVisible) {
+            loadMusicDiscArtwork();
+            // Update lyrics for new episode
+            if (mBinding.lrcView.hasLrc()) {
+                mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+                mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+                mBinding.musicDiscView.musicLrcView.setCallback(() -> {
+                    try { return player().getPosition(); } catch (Exception e) { return 0L; }
+                });
+                mBinding.musicDiscView.musicLrcView.setData(mBinding.lrcView.getData());
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
+            } else {
+                mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
+            }
+        }
+        onRefresh();
+    }
+
+    @Override
+    public void onItemClick(Result result) {
+        updateHistoryProgress();
+        String readerTitle = mHistory != null ? mHistory.getVodName() : "";
+        if (mReader != null && mReader.set(result, readerTitle)) {
+            isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mViewModel.stopSearch();
+            mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
+            player().stop();
+            player().clear();
+            setReaderVisible(true);
+            return;
+        }
+        String readerUrl = result.getUrl().v();
+        if (readerUrl.startsWith("pics://") || readerUrl.startsWith("novel://")) {
+            isReaderContent = true;
+            setAutoMode(false);
+            setInitAuto(false);
+            mViewModel.stopSearch();
+            mQuickAdapter.clear();
+            mBinding.quick.setVisibility(View.GONE);
+            player().stop();
+            player().clear();
+            mBinding.exo.setVisibility(View.GONE);
+            mBinding.widget.getRoot().setVisibility(View.GONE);
+            return;
+        }
+        isReaderContent = false;
+        startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata(), getResumePosition());
+    }
+
+    @Override
+    public void onItemClick(Vod item) {
+        setAutoMode(false);
+        getDetail(item);
+    }
+
+    @Override
+    public void onItemClick(Parse item) {
+        setParse(item);
+        onRefresh();
+    }
+
+    private void setParse(Parse item) {
+        VodConfig.get().setParse(item);
+        notifyItemChanged(mBinding.control.parse, mParseAdapter);
+    }
+
+    private void setEpisodeAdapter(List<Episode> items) {
+        mBinding.control.action.episodes.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
+        mBinding.control.next.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
+        mBinding.control.prev.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
+        mBinding.reverse.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
+        if (mBinding.download != null) mBinding.download.setVisibility(items.isEmpty() || !Setting.isHomeDownload() ? View.GONE : View.VISIBLE);
+        mBinding.episode.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
+        mBinding.more.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
+        mAllEpisodes = new ArrayList<>(items);
+        List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(items.size());
+        if (groups.size() <= 1) {
+            // 集数少：直接全部显示，隐藏分页条
+            mBinding.group.setVisibility(View.GONE);
+            mActiveGroup = 0;
+            mEpisodeAdapter.addAll(items);
+            return;
+        }
+        mGroupAdapter.setGroups(groups);
+        mActiveGroup = mGroupAdapter.getGroupIndexForEpisode(indexOfSelected());
+        mGroupAdapter.setSelected(mActiveGroup);
+        mBinding.group.scrollToPosition(mActiveGroup);
+        mBinding.group.setVisibility(View.VISIBLE);
+        showActiveGroup();
+    }
+
+    /** 分页：把当前激活分组对应的剧集切片送入内联面板；集数少时显示全部。 */
+    private void showActiveGroup() {
+        if (mAllEpisodes.isEmpty()) return;
+        if (mGroupAdapter == null || mGroupAdapter.getItemCount() <= 1) {
+            mEpisodeAdapter.addAll(new ArrayList<>(mAllEpisodes));
+        } else {
+            EpisodeGroupAdapter.Group g = mGroupAdapter.getGroup(mActiveGroup);
+            int end = Math.min(g.end + 1, mAllEpisodes.size());
+            mEpisodeAdapter.addAll(new ArrayList<>(mAllEpisodes.subList(g.start, end)));
+        }
+        int sel = mEpisodeAdapter.getPosition();
+        mBinding.episode.scrollToPosition(sel > 0 ? sel : 0);
+    }
+
+    /** 点击分组条：切换到该分组（仅显示该组剧集，其余折叠）。 */
+    private void setActiveGroup(int g) {
+        if (mGroupAdapter == null || g < 0 || g >= mGroupAdapter.getItemCount()) return;
+        mActiveGroup = g;
+        mGroupAdapter.setSelected(g);
+        mBinding.group.scrollToPosition(g);
+        showActiveGroup();
+    }
+
+    /** 全量列表中当前选中(正在播放)剧集的索引。 */
+    private int indexOfSelected() {
+        for (int i = 0; i < mAllEpisodes.size(); i++) if (mAllEpisodes.get(i).isSelected()) return i;
+        return 0;
+    }
+
+    /** 基于全量列表取下一集（分页下跨组连播不截断）。 */
+    private Episode getNextEpisode() {
+        if (mAllEpisodes.isEmpty()) return null;
+        int idx = indexOfSelected();
+        int max = mAllEpisodes.size() - 1;
+        return mAllEpisodes.get(Math.min(idx + 1, max));
+    }
+
+    /** 基于全量列表取上一集。 */
+    private Episode getPrevEpisode() {
+        if (mAllEpisodes.isEmpty()) return null;
+        int idx = indexOfSelected();
+        return mAllEpisodes.get(idx <= 0 ? 0 : idx - 1);
+    }
+
+    private void seamless(Flag flag) {
+        Episode episode = flag.find(mHistory.getVodRemarks(), getMark().isEmpty());
+        setQualityVisible(episode != null && episode.isSelected() && mQualityAdapter.getItemCount() > 1);
+        if (episode == null || episode.isSelected()) return;
+        mHistory.setVodRemarks(episode.getName());
+        onItemClick(episode);
+    }
+
+    private void setQualityVisible(boolean visible) {
+        mBinding.qualityText.setVisibility(visible ? View.VISIBLE : View.GONE);
+        mBinding.quality.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    private void reverseEpisode(boolean scroll) {
+        mFlagAdapter.reverse();
+        setEpisodeAdapter(getFlag().getEpisodes());
+        if (scroll) scrollToPosition(mBinding.episode, mEpisodeAdapter.getPosition());
+    }
+
+    private void onName() {
+        String name = mBinding.name.getText().toString();
+        Notify.show(getString(R.string.detail_search, name));
+        initSearch(name, false);
+    }
+
+    private void onMore() {
+        layoutMode = (layoutMode + 1) % 4;
+        Setting.putLayoutMode(layoutMode);
+        while (mBinding.episode.getItemDecorationCount() > 0) mBinding.episode.removeItemDecorationAt(0);
+        if (layoutMode == 0) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(2, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        } else if (layoutMode == 1) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
+        } else if (layoutMode == 3) {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(4, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        } else {
+            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
+            mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
+            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.LIST));
+        }
+        showActiveGroup();
+    }
+
+    private void onActor() {
+        mBinding.actor.setMaxLines(mBinding.actor.getMaxLines() == 1 ? Integer.MAX_VALUE : 1);
+    }
+
+    private void onDirector() {
+        mBinding.director.setMaxLines(mBinding.director.getMaxLines() == 1 ? Integer.MAX_VALUE : 1);
+    }
+
+    private void onContent() {
+        mBinding.content.setMaxLines(mBinding.content.getMaxLines() == 3 ? Integer.MAX_VALUE : 3);
+    }
+
+    private void onReverse() {
+        mHistory.setRevSort(!mHistory.isRevSort());
+        reverseEpisode(false);
+    }
+
+    private void onDownload() {
+        com.fongmi.android.tv.bean.Flag flag = mFlagAdapter.getActivated();
+        if (flag == null || flag.getEpisodes().isEmpty()) return;
+        List<Episode> episodes = flag.getEpisodes();
+        boolean[] checked = new boolean[episodes.size()];
+
+        List<com.fongmi.android.tv.bean.Download> allDownloads = com.fongmi.android.tv.bean.Download.getAll();
+        java.util.Map<String, com.fongmi.android.tv.bean.Download> downloadMap = new java.util.HashMap<>();
+        for (com.fongmi.android.tv.bean.Download d : allDownloads) {
+            if (getName().equals(d.getVodName()) && getKey().equals(d.getKey())) {
+                downloadMap.put(d.getEpisodeName(), d);
+            }
+        }
+
+        class DownloadSelectAdapter extends android.widget.ArrayAdapter<Episode> {
+            private final java.util.Map<String, com.fongmi.android.tv.bean.Download> dMap;
+            private final boolean[] chk;
+
+            public DownloadSelectAdapter(android.content.Context context, List<Episode> objects, java.util.Map<String, com.fongmi.android.tv.bean.Download> dMap, boolean[] chk) {
+                super(context, 0, objects);
+                this.dMap = dMap;
+                this.chk = chk;
+            }
+
+            @NonNull
+            @Override
+            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                if (convertView == null) {
+                    convertView = android.view.LayoutInflater.from(getContext()).inflate(R.layout.adapter_download_select, parent, false);
+                }
+                Episode episode = getItem(position);
+                androidx.appcompat.widget.AppCompatCheckBox checkbox = convertView.findViewById(R.id.checkbox);
+                com.google.android.material.textview.MaterialTextView nameText = convertView.findViewById(R.id.name);
+                androidx.appcompat.widget.AppCompatImageView checkImg = convertView.findViewById(R.id.check);
+
+                String name = episode.getName();
+                boolean isDownloaded = false;
+                boolean isDownloading = false;
+
+                if (dMap.containsKey(name)) {
+                    com.fongmi.android.tv.bean.Download d = dMap.get(name);
+                    if (d.getStatus() == com.fongmi.android.tv.bean.Download.STATUS_COMPLETED) {
+                        isDownloaded = true;
+                        name += " (已下载)";
+                    } else if (d.getStatus() == com.fongmi.android.tv.bean.Download.STATUS_DOWNLOADING || d.getStatus() == com.fongmi.android.tv.bean.Download.STATUS_WAIT) {
+                        isDownloading = true;
+                        name += " (下载中)";
+                    } else if (d.getStatus() == com.fongmi.android.tv.bean.Download.STATUS_PAUSE) {
+                        name += " (已暂停)";
+                    } else if (d.getStatus() == com.fongmi.android.tv.bean.Download.STATUS_ERROR) {
+                        name += " (下载失败)";
+                    }
+                }
+
+                nameText.setText(name);
+
+                if (isDownloaded) {
+                    checkbox.setVisibility(View.GONE);
+                    checkImg.setVisibility(View.VISIBLE);
+                    convertView.setAlpha(0.6f);
+                } else if (isDownloading) {
+                    checkbox.setVisibility(View.GONE);
+                    checkImg.setVisibility(View.GONE);
+                    convertView.setAlpha(0.6f);
+                } else {
+                    checkbox.setVisibility(View.VISIBLE);
+                    checkImg.setVisibility(View.GONE);
+                    checkbox.setChecked(chk[position]);
+                    convertView.setAlpha(1.0f);
+                }
+
+                final boolean finalIsDownloaded = isDownloaded;
+                final boolean finalIsDownloading = isDownloading;
+                convertView.setOnClickListener(v -> {
+                    if (finalIsDownloaded || finalIsDownloading) {
+                        Notify.show("该剧集已下载或正在下载中");
+                    } else {
+                        chk[position] = !chk[position];
+                        checkbox.setChecked(chk[position]);
+                    }
+                });
+
+                return convertView;
+            }
+        }
+
+        DownloadSelectAdapter adapter = new DownloadSelectAdapter(this, episodes, downloadMap, checked);
+
+        // 创建自定义标题视图，包含"首页显示下载"复选框
+        android.widget.LinearLayout titleView = new android.widget.LinearLayout(this);
+        titleView.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        titleView.setPadding(pad, pad / 2, pad, pad / 4);
+
+        android.widget.TextView titleText = new android.widget.TextView(this);
+        titleText.setText("选择下载剧集");
+        titleText.setTextSize(18);
+        titleView.addView(titleText);
+
+        android.widget.CheckBox homeDownloadCheck = new android.widget.CheckBox(this);
+        homeDownloadCheck.setText("首页显示下载");
+        homeDownloadCheck.setChecked(Setting.isHomeDownload());
+        homeDownloadCheck.setOnCheckedChangeListener((button, isChecked) -> {
+            Setting.putHomeDownload(isChecked);
+            if (mBinding.download != null) {
+                mBinding.download.setVisibility(isChecked && mEpisodeAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);
+            }
+        });
+        titleView.addView(homeDownloadCheck);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setCustomTitle(titleView)
+                .setAdapter(adapter, null)
+                .setPositiveButton("内置下载", (dialog, which) -> {
+                    boolean added = false;
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i]) {
+                            Episode episode = episodes.get(i);
+                            com.fongmi.android.tv.bean.Download d = downloadMap.get(episode.getName());
+                            if (d != null) {
+                                com.fongmi.android.tv.db.AppDatabase.get().getDownloadDao().delete(d.getId());
+                            }
+                            com.fongmi.android.tv.bean.Download download = new com.fongmi.android.tv.bean.Download();
+                            download.setVodName(getName());
+                            download.setVodPic(getPic());
+                            download.setEpisodeName(episode.getName());
+                            download.setKey(getKey());
+                            download.setFlag(flag.getFlag());
+                            download.setEpisodeUrl(episode.getUrl());
+                            download.setDownloadPath(new java.io.File(com.github.catvod.utils.Path.root("download"), getName() + "/" + episode.getName()).getAbsolutePath());
+                            download.setCreateTime(System.currentTimeMillis());
+                            com.fongmi.android.tv.utils.DownloadManager.get().startDownload(download);
+                            added = true;
+                        }
+                    }
+                    if (added) Notify.show("已加入下载队列");
+                })
+                .setNeutralButton("1DM+下载", (dialog, which) -> {
+                    if (!com.fongmi.android.tv.utils.Download1DM.isInstalled()) {
+                        Notify.show("未安装 1DM+ 下载管理器");
+                        return;
+                    }
+                    int selectedCount = 0;
+                    for (boolean b : checked) if (b) selectedCount++;
+                    if (selectedCount == 0) {
+                        Notify.show("请先选择要下载的剧集");
+                        return;
+                    }
+                    final int count = selectedCount;
+                    Notify.show("正在解析 " + count + " 个视频地址...");
+                    com.fongmi.android.tv.utils.Task.execute(() -> {
+                        int success = 0;
+                        for (int i = 0; i < checked.length; i++) {
+                            if (!checked[i]) continue;
+                            Episode episode = episodes.get(i);
+                            try {
+                                com.fongmi.android.tv.bean.Result result = com.fongmi.android.tv.api.SiteApi.playerContent(getKey(), flag.getFlag(), episode.getUrl());
+                                if (result != null && !result.getRealUrl().isEmpty()) {
+                                    String url = result.getRealUrl();
+                                    java.util.Map<String, String> headers = result.getHeader();
+                                    String filename = getName() + " - " + episode.getName();
+                                    // 每次发送间隔1.5秒, 确保1DM+能接收每个Intent
+                                    if (success > 0) { try { Thread.sleep(1500); } catch (InterruptedException ignored) {} }
+                                    boolean sent = com.fongmi.android.tv.utils.Download1DM.sendDownload(url, filename, headers);
+                                    if (sent) success++;
+                                    final int current = success;
+                                    runOnUiThread(() -> Notify.show("已发送 " + current + "/" + count + " 个下载到 1DM+"));
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        final int finalSuccess = success;
+                        runOnUiThread(() -> {
+                            if (finalSuccess > 0) Notify.show("完成: 共发送 " + finalSuccess + " 个下载到 1DM+");
+                            else Notify.show("解析视频地址失败");
+                        });
+                    });
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private boolean onChange() {
+        checkSearch(true);
+        return true;
+    }
+
+    private boolean onCopy() {
+        Util.copy(mBinding.content.getText().toString());
+        return true;
+    }
+
+    private void onBack() {
+        if (isMusicDiscVisible) hideMusicDisc();
+        else if (isFullscreen()) exitFullscreen();
+        else {
+            leavingPlayback = true;
+            stopPlaybackIfLeaving();
+            finish();
+        }
+    }
+
+    private void onCast() {
+        CastDialog.create().history(mHistory).video(new CastVideo(mBinding.name.getText().toString(), player().getUrl(), player().getPosition(), player().getHeaders())).fm(true).show(this);
+    }
+
+    private void onInfo() {
+        InfoDialog.create().title(mBinding.control.title.getText()).headers(player().getHeaders()).url(player().getUrl()).show(this);
+    }
+
+    private void onKeep() {
+        Keep keep = Keep.find(getHistoryKey());
+        Notify.show(keep != null ? R.string.keep_del : R.string.keep_add);
+        if (keep != null) keep.delete();
+        else createKeep();
+        checkKeepImg();
+        com.fongmi.android.tv.utils.WebDavSync.upload(null);
+    }
+
+    private void checkPlay() {
+        setR1Callback();
+        if (mReader != null && mReader.isActive()) {
+            if (isVisible(mBinding.control.getRoot())) hideControl();
+            else showControl();
+            return;
+        }
+        if (player().isPlaying()) onPaused();
+        else if (player().isEmpty()) onRefresh();
+        else onPlay();
+    }
+
+    private void checkNext() {
+        checkNext(true);
+    }
+
+    private void checkNext(boolean notify) {
+        setR1Callback();
+        Episode item = getNextEpisode();
+        if (!item.isSelected()) onItemClick(item);
+        else if (notify) Notify.show(R.string.error_play_next);
+    }
+
+    private void checkPrev() {
+        setR1Callback();
+        Episode item = getPrevEpisode();
+        if (!item.isSelected()) onItemClick(item);
+        else Notify.show(R.string.error_play_prev);
+    }
+
+    private void onSetting() {
+        ControlDialog.create().parent(mBinding).history(mHistory).parse(isUseParse()).player(player()).show(this);
+    }
+
+    private void onLock() {
+        setLock(!isLock());
+        setRequestedOrientation(getLockOrient());
+        mKeyDown.setLock(isLock());
+        checkLockImg();
+        showControl();
+    }
+
+    private void onRotate() {
+        setR1Callback();
+        setRotate(!isRotate());
+        setRequestedOrientation(ResUtil.isLand(this) ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+    }
+
+    private void onTrack(View view) {
+        TrackDialog.create().type(Integer.parseInt(view.getTag().toString())).player(player()).show(this);
+        hideControl();
+    }
+
+    private void onTitle() {
+        TitleDialog.create().player(player()).show(this);
+        hideControl();
+    }
+
+    private void onDanmaku() {
+        DanmakuDialog.create().player(player()).show(this);
+        hideControl();
+    }
+
+    private void onDanmakuShow() {
+        DanmakuSetting.putShow(!DanmakuSetting.isShow());
+        checkDanmakuImg();
+        showDanmaku();
+    }
+
+    private void onRepeat() {
+        player().setRepeatOne(!player().isRepeatOne());
+        mBinding.control.action.repeat.setSelected(player().isRepeatOne());
+    }
+
+    @Override
+    public void onRepeatModeChanged(int repeatMode) {
+        mBinding.control.action.repeat.setSelected(player().isRepeatOne());
+    }
+
+    private void onScale() {
+        int index = getScale();
+        String[] array = ResUtil.getStringArray(R.array.select_scale);
+        if (mKeyDown.getScale() != 1.0f) mKeyDown.resetScale();
+        else setScale(index == array.length - 1 ? 0 : ++index);
+        setR1Callback();
+    }
+
+    private void onSpeed() {
+        mBinding.control.action.speed.setText(player().addSpeed());
+        mHistory.setSpeed(player().getSpeed());
+        setR1Callback();
+    }
+
+    private boolean onSpeedLong() {
+        mBinding.control.action.speed.setText(player().toggleSpeed());
+        mHistory.setSpeed(player().getSpeed());
+        setR1Callback();
+        return true;
+    }
+
+    private void onReset() {
+        if (isReplay()) onReplay();
+        else onRefresh();
+    }
+
+    private void onReplay() {
+        mHistory.setPosition(C.TIME_UNSET);
+        if (player().isEmpty()) onRefresh();
+        else player().setMediaItem();
+    }
+
+    private void onRefresh() {
+        saveHistory();
+        mViewModel.stopSearch();
+        player().stop();
+        player().clear();
+        mClock.setCallback(null);
+        if (mReader != null && mReader.isActive()) mReader.clear();
+        isReaderContent = false;
+        if (mFlagAdapter.isEmpty()) return;
+        if (mEpisodeAdapter.isEmpty()) return;
+        getPlayer(getFlag(), getEpisode());
+    }
+
+    private boolean onResetToggle() {
+        Setting.putReset(Math.abs(Setting.getReset() - 1));
+        mBinding.control.action.reset.setText(ResUtil.getStringArray(R.array.select_reset)[Setting.getReset()]);
+        return true;
+    }
+
+    private void onDecode() {
+        mClock.setCallback(null);
+        player().toggleDecode();
+        setR1Callback();
+        setDecode();
+    }
+
+    private void onChoose() {
+        mClock.setCallback(null);
+        String[] items = {getString(R.string.play_exo), getString(R.string.play_mpv)};
+        int current = player().isMpv() ? 1 : 0;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.player)
+                .setSingleChoiceItems(items, current, (dialog, which) -> {
+                    int target = which == 0 ? PlayerSetting.ENGINE_EXO : PlayerSetting.ENGINE_MPV;
+                    if (which != current) {
+                        player().setEngine(target);
+                        setEngine();
+                        setDecode();
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.dialog_negative, null)
+                .show();
+        setR1Callback();
+    }
+
+    private boolean onChooseExternal() {
+        PlayerHelper.choose(this, player().getUrl(), player().getHeaders(), player().isVod(), player().getPosition(), mBinding.control.title.getText());
+        setRedirect(true);
+        return true;
+    }
+
+    private void onEnding() {
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        if (position > 0 && duration > 0) {
+            long remaining = duration - position;
+            if (remaining > 0) {
+                setEnding(remaining);
+                syncHistory(true);
+            }
+        }
+        setR1Callback();
+    }
+
+    private boolean onEndingReset() {
+        setR1Callback();
+        setEnding(0);
+        syncHistory(true);
+        return true;
+    }
+
+    private void setEnding(long ending) {
+        mHistory.setEnding(ending);
+        mBinding.control.action.ending.setText(ending > 0 ? SkipDialog.format(ending) : getString(R.string.play_ed));
+    }
+
+    private void onOpening() {
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        if (position > 0 && duration > 0 && player().canSetOpening(position, duration)) {
+            setOpening(position);
+            syncHistory(true);
+        }
+        setR1Callback();
+    }
+
+    private boolean onOpeningReset() {
+        setR1Callback();
+        setOpening(0);
+        syncHistory(true);
+        return true;
+    }
+
+    private void setOpening(long opening) {
+        mHistory.setOpening(opening);
+        mBinding.control.action.opening.setText(opening > 0 ? SkipDialog.format(opening) : getString(R.string.play_op));
+    }
+
+    private void showSkipDialog() {
+        SkipDialog.create().skip(mHistory.getOpening(), mHistory.getEnding()).show(this);
+    }
+
+    private String getSkipText(int resId, long timeMs) {
+        return timeMs <= 0 ? getString(resId) : getString(resId) + " " + SkipDialog.format(timeMs);
+    }
+
+    private void setSkipText() {
+        long opening = mHistory.getOpening();
+        long ending = mHistory.getEnding();
+        mBinding.control.action.opening.setText(opening > 0 ? SkipDialog.format(opening) : getString(R.string.play_op));
+        mBinding.control.action.ending.setText(ending > 0 ? SkipDialog.format(ending) : getString(R.string.play_ed));
+    }
+
+    @Override
+    public void onSkipChanged(long opening, long ending) {
+        setOpening(opening);
+        setEnding(ending);
+        if (opening > 0 && player().getPosition() < opening && player().canSetOpening(player().getPosition(), player().getDuration())) player().seekTo(opening);
+        syncHistory(true);
+    }
+
+    private void onEpisodes() {
+        EpisodeListDialog.create().episodes(mAllEpisodes).show(this);
+    }
+
+    private boolean onTextLong() {
+        if (!player().haveTrack(C.TRACK_TYPE_TEXT) && !player().canSetSubtitleStyle()) return false;
+        onSubtitleClick();
+        return true;
+    }
+
+    private boolean onActionTouch(View v, MotionEvent e) {
+        setR1Callback();
+        return false;
+    }
+
+    private void onSwipeRefresh() {
+        if (mBinding.progressLayout.isEmpty()) getDetail();
+        else onRefresh();
+    }
+
+    private boolean shouldEnterFullscreen(Episode item) {
+        boolean enter = !isFullscreen() && item.isSelected();
+        if (enter) enterFullscreen();
+        return enter;
+    }
+
+    private void toggleFullscreen() {
+        if (isFullscreen()) exitFullscreen();
+        else enterFullscreen();
+    }
+
+    private void toggleMusicDisc() {
+        if (isMusicDiscVisible) hideMusicDisc();
+        else showMusicDisc();
+    }
+
+    private void showMusicDisc() {
+        if (mBinding.musicDiscView == null) return;
+        isMusicDiscVisible = true;
+        // Enable lrc mode so long press triggers lyrics adjustment instead of speed
+        mKeyDown.setLrcMode(true);
+        // musicDiscView is a pure overlay at root level — do NOT touch any views
+        // inside the video frame, otherwise SurfaceView gets re-laid-out and goes black.
+        mBinding.musicDiscView.getRoot().setVisibility(View.VISIBLE);
+        mBinding.musicDiscView.getRoot().bringToFront();
+        // Set song name and artist - use episode name (actual song) instead of VodName (category)
+        updateMusicDiscSongInfo();
+        // Load album art and apply dynamic colors
+        loadMusicDiscArtwork();
+        // Sync disc with current play state
+        if (player().isPlaying()) mBinding.musicDiscView.musicDisc.play();
+        else mBinding.musicDiscView.musicDisc.pause();
+        // Sync play button icon
+        mBinding.musicDiscView.musicPlay.setImageResource(player().isPlaying() ? androidx.media3.ui.R.drawable.exo_icon_pause : androidx.media3.ui.R.drawable.exo_icon_play);
+        // Setup lyrics in the disc view's LrcView
+        if (mBinding.lrcView.hasLrc()) {
+            mBinding.musicDiscView.musicLrcView.setTextSize(PlayerSetting.getLrcTextSize());
+            mBinding.musicDiscView.musicLrcView.setCurrentColor(PlayerSetting.getLrcColor());
+            mBinding.musicDiscView.musicLrcView.setCallback(() -> {
+                try { return player().getPosition(); } catch (Exception e) { return 0L; }
+            });
+            mBinding.musicDiscView.musicLrcView.setData(mBinding.lrcView.getData());
+            mBinding.musicDiscView.musicLrcView.setVisibility(View.VISIBLE);
+            if (player().isPlaying()) mBinding.musicDiscView.musicLrcView.start();
+        } else {
+            mBinding.musicDiscView.musicLrcView.setVisibility(View.GONE);
+        }
+        updateMusicDiscProgress();
+        // Ensure progress timer is running (hideProgress won't remove it when music disc is visible)
+        App.post(mR2, 1000);
+    }
+
+    private void loadMusicDiscArtwork() {
+        String picUrl = mHistory != null ? mHistory.getVodPic() : "";
+        if (picUrl.isEmpty() && player().getMetadata() != null && player().getMetadata().artworkUri != null) {
+            picUrl = player().getMetadata().artworkUri.toString();
+        }
+        if (picUrl.isEmpty()) return;
+        // Load album art as bitmap for disc center and background
+        Glide.with(this).asBitmap().load(picUrl).override(512, 512).into(new CustomTarget<Bitmap>() {
+            @Override
+            public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                // Set album art on disc
+                mBinding.musicDiscView.musicDisc.setAlbumBitmap(resource);
+                // Set blurred background
+                mBinding.musicDiscView.musicBg.setImageBitmap(resource);
+                mBinding.musicDiscView.musicBg.setVisibility(View.VISIBLE);
+                // Extract palette colors for dynamic theming
+                applyMusicPalette(resource);
+            }
+            @Override
+            public void onLoadCleared(@Nullable Drawable placeholder) {}
+        });
+    }
+
+    private void applyMusicPalette(Bitmap bitmap) {
+        Palette.from(bitmap).generate(palette -> {
+            if (palette == null) return;
+            int dominant = palette.getDominantColor(0xFF1A1A1A);
+            int vibrant = palette.getVibrantColor(0xFFFF5722);
+            int darkMuted = palette.getDarkMutedColor(0xFF1A1A1A);
+            int lightVibrant = palette.getLightVibrantColor(0xFF444444);
+            // Apply colors to disc view
+            mBinding.musicDiscView.musicDisc.setAccentColor(vibrant);
+            // Apply gradient background overlay
+            int bgColor = darkMuted;
+            int bgColor2 = dominant;
+            android.graphics.drawable.GradientDrawable bgDrawable = new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{lightenColor(bgColor2, 0.2f), bgColor, darkenColor(bgColor, 0.3f)});
+            mBinding.musicDiscView.musicBgOverlay.setBackground(bgDrawable);
+            // Apply accent color to progress bar
+            mBinding.musicDiscView.musicProgress.setProgressTintList(android.content.res.ColorStateList.valueOf(vibrant));
+            mBinding.musicDiscView.musicProgress.setThumbTintList(android.content.res.ColorStateList.valueOf(vibrant));
+        });
+    }
+
+    private int lightenColor(int color, float amount) {
+        int r = (int) (Color.red(color) + (255 - Color.red(color)) * amount);
+        int g = (int) (Color.green(color) + (255 - Color.green(color)) * amount);
+        int b = (int) (Color.blue(color) + (255 - Color.blue(color)) * amount);
+        return Color.rgb(r, g, b);
+    }
+
+    private int darkenColor(int color, float amount) {
+        int r = (int) (Color.red(color) * (1 - amount));
+        int g = (int) (Color.green(color) * (1 - amount));
+        int b = (int) (Color.blue(color) * (1 - amount));
+        return Color.rgb(r, g, b);
+    }
+
+    private void updateMusicDiscSongInfo() {
+        if (!isMusicDiscVisible) return;
+        String episodeName = getEpisode().getName();
+        String vodName = mHistory != null ? mHistory.getVodName() : "";
+        String songTitle;
+        String artistName;
+        if (!episodeName.isEmpty()) {
+            int start = episodeName.indexOf("《");
+            int end = episodeName.indexOf("》");
+            if (start >= 0 && end > start) {
+                songTitle = episodeName.substring(start + 1, end);
+                artistName = episodeName.substring(0, start).trim();
+            } else {
+                songTitle = episodeName;
+                artistName = vodName;
+            }
+        } else {
+            songTitle = vodName;
+            artistName = "";
+        }
+        mBinding.musicDiscView.musicSongName.setText(songTitle);
+        mBinding.musicDiscView.musicArtistName.setText(artistName);
+        mBinding.musicDiscView.musicArtistName.setVisibility(artistName.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private void hideMusicDisc() {
+        if (mBinding.musicDiscView == null) { isMusicDiscVisible = false; return; }
+        isMusicDiscVisible = false;
+        mBinding.musicDiscView.getRoot().setVisibility(View.GONE);
+        mBinding.musicDiscView.musicDisc.pause();
+        mBinding.musicDiscView.musicLrcView.stop();
+        // Restore lrc mode based on actual lrc state
+        mKeyDown.setLrcMode(mBinding.lrcView.hasLrc());
+        // Do NOT restore/touch any views inside the video frame.
+        // They were never hidden, so the SurfaceView and artwork remain intact.
+    }
+
+    private void showMusicTimerDialog() {
+        String[] items = {"15 分钟", "30 分钟", "45 分钟", "60 分钟", "90 分钟", "取消定时"};
+        int checkedItem = -1;
+        if (musicExitTimer != null) checkedItem = 0;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(musicExitTimer != null ? "定时关闭 (剩余 " + formatTime(musicExitRemaining) + ")" : "定时关闭")
+                .setSingleChoiceItems(items, checkedItem, (dialog, which) -> {
+                    switch (which) {
+                        case 0: setMusicExitTimer(15); break;
+                        case 1: setMusicExitTimer(30); break;
+                        case 2: setMusicExitTimer(45); break;
+                        case 3: setMusicExitTimer(60); break;
+                        case 4: setMusicExitTimer(90); break;
+                        case 5: cancelMusicExitTimer(); break;
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    private void setMusicExitTimer(int minutes) {
+        cancelMusicExitTimer();
+        long totalMillis = java.util.concurrent.TimeUnit.MINUTES.toMillis(minutes);
+        musicExitRemaining = totalMillis;
+        musicExitTimer = new android.os.CountDownTimer(totalMillis, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                musicExitRemaining = millisUntilFinished;
+            }
+            @Override
+            public void onFinish() {
+                musicExitRemaining = 0;
+                musicExitTimer = null;
+                onMusicExit();
+            }
+        }.start();
+        com.fongmi.android.tv.utils.Notify.show(minutes + " 分钟后自动退出");
+    }
+
+    private void cancelMusicExitTimer() {
+        if (musicExitTimer != null) {
+            musicExitTimer.cancel();
+            musicExitTimer = null;
+            musicExitRemaining = 0;
+            com.fongmi.android.tv.utils.Notify.show("已取消定时关闭");
+        }
+    }
+
+    private String formatTime(long millis) {
+        long totalSeconds = millis / 1000;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        return String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds);
+    }
+
+    private void onMusicExit() {
+        cancelMusicExitTimer();
+        // Stop playback and exit
+        leavingPlayback = true;
+        stopPlaybackIfLeaving();
+        finishAffinity();
+    }
+
+    private void updateMusicDiscProgress() {
+        if (!isMusicDiscVisible) return;
+        long pos = player().getPosition();
+        long dur = player().getDuration();
+        mBinding.musicDiscView.musicCurrentTime.setText(player().getPositionTime(0));
+        mBinding.musicDiscView.musicTotalTime.setText(player().getDurationTime());
+        if (dur > 0) mBinding.musicDiscView.musicProgress.setProgress((int) (pos * 100 / dur));
+    }
+
+    private void enterPiP() {
+        if (service() == null) return;
+        if (!player().haveTrack(C.TRACK_TYPE_VIDEO)) return;
+        hideControl();
+        mPiP.enter(this, player().getVideoWidth(), player().getVideoHeight(), getScale(), true);
+    }
+
+    private void enterFullscreen() {
+        if (isFullscreen()) return;
+        setFullscreen(true);
+        boolean noVideo = player().getVideoWidth() == 0 && player().getVideoHeight() == 0;
+        boolean portrait = noVideo || player().isPortrait() || (mReader != null && mReader.isActive());
+        setRequestedOrientation(portrait ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        setRotate(portrait);
+        if (isLand() && !portrait) setTransition();
+        mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
+        mBinding.control.title.setVisibility(View.VISIBLE);
+        mKeyDown.resetScale();
+        App.post(mR3, 2000);
+        hideControl();
+    }
+
+    private void exitFullscreen() {
+        if (!isFullscreen()) return;
+        setFullscreen(false);
+        if (isLand() && !player().isPortrait()) setTransition();
+        setRequestedOrientation(isPort() ? ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
+        mBinding.episode.postDelayed(() -> mBinding.episode.scrollToPosition(mEpisodeAdapter.getPosition()), 100);
+        mBinding.control.title.setVisibility(View.VISIBLE);
+        mBinding.video.setLayoutParams(mFrameParams);
+        mKeyDown.resetScale();
+        App.post(mR3, 2000);
+        setRotate(false);
+        hideControl();
+    }
+
+    private void setTransition() {
+        ChangeBounds transition = new ChangeBounds();
+        transition.setDuration(150);
+        ViewGroup parent = (ViewGroup) mBinding.video.getParent();
+        TransitionManager.beginDelayedTransition(parent, transition);
+    }
+
+    private int getLockOrient() {
+        if (isLock()) {
+            return ResUtil.getScreenOrientation(this);
+        } else if (isRotate()) {
+            return ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
+        } else if (isPort() && isAutoRotate()) {
+            return ActivityInfo.SCREEN_ORIENTATION_FULL_USER;
+        } else {
+            return ResUtil.isLand(this) ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
+        }
+    }
+
+    private void showProgress() {
+        mBinding.progress.getRoot().setVisibility(View.VISIBLE);
+        App.post(mR2, 0);
+        hideError();
+    }
+
+    private void hideProgress() {
+        mBinding.progress.getRoot().setVisibility(View.GONE);
+        if (!isMusicDiscVisible) {
+            App.removeCallbacks(mR2);
+        }
+        Traffic.reset();
+    }
+
+    private void showError(String text) {
+        mBinding.widget.error.setVisibility(View.VISIBLE);
+        mBinding.widget.error.setText(text);
+        hideProgress();
+    }
+
+    private void hideError() {
+        mBinding.widget.error.setVisibility(View.GONE);
+        mBinding.widget.error.setText("");
+    }
+
+    private void showDanmaku() {
+        player().setDanmakuEnabled(DanmakuSetting.isShow());
+    }
+
+    private void hideDanmaku() {
+        player().setDanmakuEnabled(false);
+    }
+
+    private void showControl() {
+        if (isFinishing() || isDestroyed()) return;
+        if (service() == null || isInPictureInPictureMode()) return;
+        mBinding.control.danmaku.setVisibility(isLock() || !player().haveDanmaku() ? View.GONE : View.VISIBLE);
+        mBinding.control.setting.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
+        mBinding.control.right.rotate.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
+        mBinding.control.parse.setVisibility(isFullscreen() && isUseParse() ? View.VISIBLE : View.GONE);
+        mBinding.control.action.getRoot().setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
+        mBinding.control.right.lock.setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
+        mBinding.control.fullscreen.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.right.pip.setVisibility(isLock() || PiP.noPiP() ? View.GONE : View.VISIBLE);
+        mBinding.control.info.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
+        mBinding.control.cast.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
+        mBinding.control.center.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.bottom.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.back.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.top.setVisibility(isLock() ? View.GONE : View.VISIBLE);
+        mBinding.control.getRoot().setAlpha(0f);
+        mBinding.control.getRoot().setVisibility(View.VISIBLE);
+        mBinding.control.getRoot().animate().alpha(1f).setDuration(200).start();
+        if (!isLock()) setR1Callback();
+        updateAlwaysProgress();
+    }
+
+    private void hideControl() {
+        if (isFinishing() || isDestroyed()) return;
+        mBinding.control.getRoot().animate().alpha(0f).setDuration(150).withEndAction(() -> {
+            if (!isFinishing() && !isDestroyed()) mBinding.control.getRoot().setVisibility(View.GONE);
+        }).start();
+        App.removeCallbacks(mR1);
+        updateAlwaysProgress();
+    }
+
+    private void updateAlwaysProgress() {
+        if (isFinishing() || isDestroyed()) return;
+        if (mBinding.alwaysProgressText == null) return;
+        boolean show = com.fongmi.android.tv.setting.Setting.isAlwaysProgress()
+                && isFullscreen()
+                && !isVisible(mBinding.control.getRoot());
+        if (show && player().getDuration() > 0) {
+            mBinding.alwaysProgressText.setVisibility(View.VISIBLE);
+            long position = player().getPosition();
+            long duration = player().getDuration();
+            long remaining = duration - position;
+            if (remaining < 0) remaining = 0;
+
+            String progress = player().getPositionTime(0);
+            String total = player().getDurationTime();
+
+            long finishTime = System.currentTimeMillis() + remaining;
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault());
+            String finish = sdf.format(new java.util.Date(finishTime));
+
+            mBinding.alwaysProgressText.setText(getString(R.string.always_progress_format, progress, total, finish));
+        } else {
+            mBinding.alwaysProgressText.setVisibility(View.GONE);
+        }
+    }
+
+    private void hideSheet() {
+        getSupportFragmentManager().getFragments().stream().filter(fragment -> fragment instanceof BottomSheetDialogFragment).map(fragment -> (BottomSheetDialogFragment) fragment).forEach(BottomSheetDialogFragment::dismiss);
+    }
+
+    private void setTraffic() {
+        if (isFinishing() || isDestroyed()) return;
+        Traffic.setSpeed(mBinding.progress.traffic);
+        if (isMusicDiscVisible) updateMusicDiscProgress();
+        App.post(mR2, 1000);
+    }
+
+    private boolean isPlayingNow() {
+        if (service() == null || !isOwner()) return false;
+        return player().isPlaying();
+    }
+
+    private void setOrient() {
+        if (isRotate()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
+            return;
+        }
+        if (isPort() && isAutoRotate()) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
+        if (isLand() && isAutoRotate()) setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE);
+    }
+
+    private void setR1Callback() {
+        App.post(mR1, Constant.INTERVAL_HIDE);
+    }
+
+    private void setArtwork(String url) {
+        mHistory.setVodPic(url);
+        setArtwork();
+    }
+
+    private void setArtwork() {
+        setBackdrop();
+        if (!PlayerSetting.isDetailPoster()) {
+            if (mBinding.bgPoster != null) {
+                mBinding.bgPoster.setVisibility(View.GONE);
+                mBinding.bgOverlay.setVisibility(View.GONE);
+            }
+            mBinding.getRoot().setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            return;
+        }
+        ImgUtil.load(this, mHistory.getVodPic(), new CustomTarget<>() {
+            @Override
+            public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
+                mBinding.exo.setDefaultArtwork(resource);
+                if (mBinding.bgPoster != null) {
+                    mBinding.bgPoster.setVisibility(View.VISIBLE);
+                    mBinding.bgOverlay.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                mBinding.exo.setDefaultArtwork(errorDrawable);
+                if (mBinding.bgPoster != null) {
+                    mBinding.bgPoster.setVisibility(View.GONE);
+                    mBinding.bgOverlay.setVisibility(View.GONE);
+                }
+            }
+        });
+    }
+
+    private void setBackdrop() {
+        if (mBinding.bgPoster == null) return;
+        if (!PlayerSetting.isDetailPoster() || TextUtils.isEmpty(mHistory.getVodPic())) {
+            mBinding.bgPoster.setVisibility(View.GONE);
+            mBinding.bgOverlay.setVisibility(View.GONE);
+            mBinding.bgPoster.setImageDrawable(null);
+            return;
+        }
+        try {
+            mBinding.bgPoster.setVisibility(View.VISIBLE);
+            mBinding.bgOverlay.setVisibility(View.VISIBLE);
+            Glide.with(this)
+                    .load(ImgUtil.getUrl(mHistory.getVodPic()))
+                    .centerCrop()
+                    .error(R.drawable.artwork)
+                    .into(mBinding.bgPoster);
+            loadTmdbPoster(mHistory.getVodName());
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** TMDB 海报缓存：片名→海报URL，避免重复请求消耗 token */
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> sTmdbCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 若已配置 TMDB API Key，则按片名搜索并拉取更清晰的竖屏海报覆盖到背景。 */
+    private void loadTmdbPoster(String query) {
+        if (mBinding.bgPoster == null || TextUtils.isEmpty(query) || !Setting.hasTmdbApiKey()) return;
+        // 命中缓存直接使用，不再请求 API
+        String cached = sTmdbCache.get(query);
+        if (cached != null) {
+            applyTmdbImage(cached);
+            return;
+        }
+        Map<String, String> headers = new HashMap<>();
+        String baseUrl = Setting.getTmdbApiUrl();
+        String url = baseUrl + "/search/multi?api_key=" + Setting.getTmdbApiKey() + "&language=zh-CN&query=" + Uri.encode(query);
+        OkHttp.newCall(url, headers).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 拉取失败：保留原有 vodPic 背景
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    String poster = parseTmdbPoster(response.body().string());
+                    if (poster == null) return;
+                    sTmdbCache.put(query, poster); // 缓存结果
+                    String imageBase = Setting.getTmdbImageUrl();
+                    String image = imageBase + "/w780" + poster;
+                    runOnUiThread(() -> applyTmdbImage(image));
+                } catch (Exception ignored) {
+                } finally {
+                    response.close();
+                }
+            }
+        });
+    }
+
+    private void applyTmdbImage(String image) {
+        if (isFinishing() || isDestroyed() || mBinding.bgPoster == null) return;
+        Glide.with(VideoActivity.this)
+                .load(image)
+                .centerCrop()
+                .error(R.drawable.artwork)
+                .into(mBinding.bgPoster);
+    }
+
+    /**
+     * 从 TMDB search/multi 响应中提取影片竖屏海报路径。
+     * <br>关键：过滤掉 media_type=person 的结果，只接受 movie / tv，避免把演员头像当海报。
+     */
+    private String parseTmdbPoster(String body) {
+        try {
+            JSONObject root = new JSONObject(body);
+            JSONArray results = root.optJSONArray("results");
+            if (results == null) return null;
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject item = results.optJSONObject(i);
+                if (item == null) continue;
+                // 只取电影/电视剧，跳过人物(person)和其他类型
+                String mediaType = item.optString("media_type", "");
+                if (!"movie".equals(mediaType) && !"tv".equals(mediaType)) continue;
+                String path = item.optString("poster_path", null);
+                if (path != null && !path.isEmpty()) return path;
+            }
+        } catch (JSONException ignored) {
+        }
+        return null;
+    }
+
+    private void checkFlag(Vod item) {
+        boolean empty = item.getFlags().isEmpty();
+        mBinding.flag.setVisibility(empty ? View.GONE : View.VISIBLE);
+        if (empty) {
+            startFlow();
+        } else {
+            onItemClick(mHistory.getFlag());
+            if (mHistory.isRevSort()) reverseEpisode(true);
+        }
+    }
+
+    private void checkHistory(Vod item) {
+        mHistory = History.find(getHistoryKey());
+        mHistory = mHistory == null ? createHistory(item) : mHistory;
+        if (!TextUtils.isEmpty(getMark())) mHistory.setVodRemarks(getMark());
+        if (Setting.isIncognito() && mHistory.getKey().equals(getHistoryKey())) mHistory.delete();
+        setSkipText();
+        mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
+        mHistory.setVodName(item.getName());
+        setArtwork(item.getPic());
+        setScale(getScale());
+    }
+
+    private History createHistory(Vod item) {
+        History history = new History();
+        history.setKey(getHistoryKey());
+        history.setCid(VodConfig.getCid());
+        history.setVodName(item.getName());
+        history.findEpisode(item.getFlags());
+        return history;
+    }
+
+    private void saveHistory() {
+        saveHistory(false);
+    }
+
+    private void saveHistory(boolean exit) {
+        updateHistoryProgress();
+        if (mHistory != null && mHistory.canSave() && !Setting.isIncognito()) Task.execute(() -> {
+            mHistory.merge().save();
+            if (exit) {
+                RefreshEvent.history();
+                com.fongmi.android.tv.utils.WebDavSync.upload(null);
+            }
+        });
+    }
+
+    private void syncHistory(boolean force) {
+        if (mHistory != null && !Setting.isIncognito()) Task.execute(() -> {
+            mHistory.save();
+            if (force || Setting.getSyncInterval() > 0) {
+                com.fongmi.android.tv.utils.WebDavSync.upload(null);
+            }
+        });
+    }
+
+    private void updateHistory(Episode item) {
+        mHistory.setPosition(item.matchesName(mHistory.getEpisode()) ? mHistory.getPosition() : C.TIME_UNSET);
+        mHistory.setVodFlag(getFlag().getFlag());
+        mHistory.setVodRemarks(item.getName());
+        mHistory.setEpisodeUrl(item.getUrl());
+    }
+
+    private void checkControl() {
+        if (isVisible(mBinding.control.getRoot())) showControl();
+    }
+
+    private void checkKeepImg() {
+        mBinding.control.keep.setImageResource(Keep.find(getHistoryKey()) == null ? R.drawable.ic_control_keep_off : R.drawable.ic_control_keep_on);
+    }
+
+    private void checkLockImg() {
+        mBinding.control.right.lock.setImageResource(isLock() ? R.drawable.ic_control_lock_on : R.drawable.ic_control_lock_off);
+    }
+
+    private void checkDanmakuImg() {
+        mBinding.control.danmaku.setImageResource(DanmakuSetting.isShow() ? R.drawable.ic_control_danmaku_on : R.drawable.ic_control_danmaku_off);
+    }
+
+    private void createKeep() {
+        Keep keep = new Keep();
+        keep.setKey(getHistoryKey());
+        keep.setCid(VodConfig.getCid());
+        keep.setVodPic(mHistory.getVodPic());
+        keep.setVodName(mHistory.getVodName());
+        keep.setSiteName(getSite().getName());
+        keep.setCreateTime(System.currentTimeMillis());
+        keep.save();
+    }
+
+    private void updateKeep() {
+        Keep keep = Keep.find(getHistoryKey());
+        if (keep != null) {
+            keep.setVodName(mHistory.getVodName());
+            keep.setVodPic(mHistory.getVodPic());
+            keep.save();
+        }
+    }
+
+    private void updateVod(Vod item) {
+        boolean id = !item.getId().isEmpty();
+        boolean pic = !item.getPic().isEmpty();
+        boolean name = !item.getName().isEmpty();
+        if (id) getIntent().putExtra("id", item.getId());
+        if (id) mHistory.replace(getHistoryKey());
+        if (name) mHistory.setVodName(item.getName());
+        if (name) mBinding.name.setText(item.getName());
+        if (name) mBinding.control.title.setText(item.getName());
+        updateFlag(getFlag(), item.getFlags());
+        if (pic) setArtwork(item.getPic());
+        if (pic || name) setMetadata();
+        if (pic || name) syncHistory(true);
+        if (pic || name) updateKeep();
+        if (id) updateNavigationKey();
+        setText(item);
+    }
+
+    private void updateFlag(Flag activated, List<Flag> items) {
+        items.forEach(item -> mFlagAdapter.getItems().stream()
+                .filter(item::equals).findFirst().ifPresentOrElse(target -> {
+                    target.mergeEpisodes(item.getEpisodes(), mHistory.isRevSort());
+                    if (target.equals(activated)) setEpisodeAdapter(target.getEpisodes());
+                }, () -> mFlagAdapter.add(item)));
+    }
+
+    private final PlaybackService.NavigationCallback mNavigationCallback = new PlaybackService.NavigationCallback() {
+        @Override
+        public void onNext() {
+            checkNext();
+        }
+
+        @Override
+        public void onPrev() {
+            checkPrev();
+        }
+
+        @Override
+        public void onStop() {
+            finish();
+        }
+
+        @Override
+        public void onReplay() {
+            VideoActivity.this.onReplay();
+        }
+
+        @Override
+        public void onAudio() {
+            moveTaskToBack(true);
+            setAudioOnly(true);
+        }
+    };
+
+    @Override
+    protected String getPlaybackKey() {
+        return getHistoryKey();
+    }
+
+    @Override
+    protected void onPrepare() {
+        setEngine();
+        setDecode();
+    }
+
+    @Override
+    protected void onTracksChanged() {
+        setTrackVisible();
+        mClock.setCallback(this);
+    }
+
+    @Override
+    protected void onTitlesChanged() {
+        setTitleVisible();
+    }
+
+    @Override
+    protected void onError(String msg) {
+        mBinding.swipeLayout.setEnabled(true);
+        Track.delete(player().getKey());
+        mClock.setCallback(null);
+        player().resetTrack();
+        player().reset();
+        player().stop();
+        showError(msg);
+        if (isReaderContent) return;
+        startFlow();
+    }
+
+    @Override
+    protected void onReclaim() {
+        Result result = mViewModel.getPlayer().getValue();
+        if (result != null) setPlayer(result);
+    }
+
+    @Override
+    protected void onStateChanged(int state) {
+        switch (state) {
+            case Player.STATE_BUFFERING:
+                showProgress();
+                break;
+            case Player.STATE_READY:
+                hideProgress();
+                checkControl();
+                player().reset();
+                mBinding.control.resolution.setText(player().getSizeText());
+                break;
+            case Player.STATE_ENDED:
+                checkEnded(true);
+                break;
+        }
+    }
+
+    @Override
+    protected void onRenderedFirstFrameChanged() {
+    }
+
+    @Override
+    protected void onPlayingChanged(boolean isPlaying) {
+        if (isPlaying) {
+            hideProgress();
+            mPiP.update(this, true);
+            mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
+            mBinding.lrcView.start();
+            if (isMusicDiscVisible) {
+                updateMusicDiscSongInfo();
+                mBinding.musicDiscView.musicDisc.play();
+                mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_pause);
+                mBinding.musicDiscView.musicLrcView.start();
+            }
+        } else if (isPaused()) {
+            mPiP.update(this, false);
+            mBinding.control.play.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
+            mBinding.lrcView.stop();
+            if (isMusicDiscVisible) {
+                mBinding.musicDiscView.musicDisc.pause();
+                mBinding.musicDiscView.musicPlay.setImageResource(androidx.media3.ui.R.drawable.exo_icon_play);
+                mBinding.musicDiscView.musicLrcView.stop();
+            }
+        }
+    }
+
+    @Override
+    protected void onSizeChanged(VideoSize size) {
+        changeHeight();
+        checkOrientation();
+        mBinding.control.resolution.setText(player().getSizeText());
+    }
+
+    @Override
+    public void onSubtitleClick() {
+        SubtitleDialog.create().player(player()).view(mBinding.exo.getSubtitleView()).show(this);
+        hideControl();
+    }
+
+    @Override
+    public void onTimeChanged(long time) {
+        if (!isOwner()) return;
+        if (!player().isPlaying()) return;
+        if (!isBuffering()) hideProgress();
+        long position, duration;
+        mHistory.setCreateTime(time);
+        mHistory.setPosition(position = player().getPosition());
+        mHistory.setDuration(duration = player().getDuration());
+        if (mHistory.canSave() && mHistory.canSync()) syncHistory(false);
+        if (mHistory.getEnding() > 0 && duration > 0 && mHistory.getEnding() + position >= duration) {
+            checkEnded(false);
+        }
+        if (duration > 0 && duration - position <= PlayerSetting.getPreloadSeconds() * 1000L) preloadNext();
+        updateAlwaysProgress();
+    }
+
+    private void preloadNext() {
+        Flag flag = getFlag();
+        Episode episode = getNextEpisode();
+        if (flag == null || episode == null || episode.isSelected()) return;
+        PreloadManager.get().preload(getKey(), flag.getFlag(), episode, isUseParse());
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onCastEvent(CastEvent event) {
+        if (isRedirect()) return;
+        ReceiveDialog.create().event(event).show(this);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onRefreshEvent(RefreshEvent event) {
+        if (isRedirect()) return;
+        if (event.getType() == RefreshEvent.Type.DETAIL) getDetail();
+        else if (event.getType() == RefreshEvent.Type.PLAYER) onRefresh();
+        else if (event.getType() == RefreshEvent.Type.VOD) updateVod(event.getVod());
+        else if (event.getType() == RefreshEvent.Type.SUBTITLE) {
+            mBinding.lrcView.setTextSize(PlayerSetting.getLrcTextSize());
+            mBinding.lrcView.setCurrentColor(PlayerSetting.getLrcColor());
+            if (!event.getPath().isEmpty()) player().setSub(Sub.from(event.getPath()));
+        }
+        else if (event.getType() == RefreshEvent.Type.DANMAKU) player().setDanmaku(Danmaku.from(event.getPath()));
+    }
+
+    private void setPosition() {
+        if (mHistory != null) player().seekTo(Math.max(mHistory.getOpening(), mHistory.getPosition()));
+    }
+
+    private long getResumePosition() {
+        if (mHistory == null) return C.TIME_UNSET;
+        long position = Math.max(mHistory.getOpening(), mHistory.getPosition());
+        return position > 0 ? position : C.TIME_UNSET;
+    }
+
+    private void updateHistoryProgress() {
+        if (mHistory == null || player().isEmpty()) return;
+        long position = player().getPosition();
+        long duration = player().getDuration();
+        if (position > 0) mHistory.setPosition(position);
+        if (duration > 0) mHistory.setDuration(duration);
+        if (position > 0 || duration > 0) mHistory.setCreateTime(System.currentTimeMillis());
+    }
+
+    private void checkOrientation() {
+        if (player().getVideoWidth() == 0 || player().getVideoHeight() == 0) return;
+        if (isFullscreen() && !isRotate() && player().isPortrait()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
+            setRotate(true);
+        } else if (isFullscreen() && isRotate() && player().isLandscape()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE);
+            setRotate(false);
+        }
+    }
+
+    private void changeHeight() {
+        if (isLand() || isFullscreen() || isInPictureInPictureMode()) return;
+        int videoWidth = player().getVideoWidth();
+        int videoHeight = player().getVideoHeight();
+        if (videoWidth == 0 || videoHeight == 0) return;
+        int viewWidth = ResUtil.getScreenWidth();
+        int minHeight = ResUtil.dp2px(220);
+        int maxHeight = ResUtil.getScreenHeight() / 2;
+        int calculated = (int) (viewWidth * ((float) videoHeight / videoWidth));
+        int finalHeight = Math.max(minHeight, Math.min(maxHeight, calculated));
+        if (finalHeight == mBinding.video.getHeight()) return;
+        if (mAnimator.isRunning()) mAnimator.cancel();
+        mAnimator.setIntValues(mBinding.video.getHeight(), finalHeight);
+        mAnimator.setDuration(300);
+        mAnimator.start();
+    }
+
+    private void checkEnded(boolean notify) {
+        checkNext(notify);
+    }
+
+    private void setTrackVisible() {
+        mBinding.control.action.text.setVisibility(player().haveTrack(C.TRACK_TYPE_TEXT) || player().canSetSubtitleStyle() || player().isVod() ? View.VISIBLE : View.GONE);
+        mBinding.control.action.audio.setVisibility(player().haveTrack(C.TRACK_TYPE_AUDIO) ? View.VISIBLE : View.GONE);
+        mBinding.control.action.video.setVisibility(player().haveTrack(C.TRACK_TYPE_VIDEO) ? View.VISIBLE : View.GONE);
+    }
+
+    private void setTitleVisible() {
+        mBinding.control.action.title.setVisibility(player().haveTitle() ? View.VISIBLE : View.GONE);
+    }
+
+    private MediaMetadata buildMetadata() {
+        String title = mHistory.getVodName();
+        String episode = getEpisode().getName();
+        boolean empty = episode.isEmpty() || title.equals(episode);
+        String artist = empty ? "" : episode;
+        return PlayerManager.buildMetadata(title, artist, mHistory.getVodPic());
+    }
+
+    private void setMetadata() {
+        player().setMetadata(buildMetadata());
+    }
+
+    private void startFlow() {
+        if (!getSite().isChangeable()) return;
+        if (isReaderContent) return;
+        if (isUseParse()) checkParse();
+        else checkFlag();
+    }
+
+    private void checkParse() {
+        int position = mParseAdapter.getPosition();
+        boolean last = position == mParseAdapter.getItemCount() - 1;
+        boolean pass = position == 0 || last;
+        if (last) initParse();
+        if (pass) checkFlag();
+        else nextParse(position);
+    }
+
+    private void initParse() {
+        if (mParseAdapter.isEmpty()) return;
+        setParse(mParseAdapter.first());
+    }
+
+    private void checkFlag() {
+        int position = isGone(mBinding.flag) ? -1 : mFlagAdapter.getPosition();
+        if (position == mFlagAdapter.getItemCount() - 1) checkSearch(false);
+        else nextFlag(position);
+    }
+
+    private void checkSearch(boolean force) {
+        if (isReaderContent) return;
+        if (mQuickAdapter.isEmpty()) initSearch(mBinding.name.getText().toString(), true);
+        else if (isAutoMode() || force) nextSite();
+    }
+
+    private void initSearch(String keyword, boolean auto) {
+        setAutoMode(auto);
+        setInitAuto(auto);
+        startSearch(keyword);
+    }
+
+    private boolean isPass(Site item) {
+        if (isAutoMode() && !item.isChangeable()) return false;
+        return item.isSearchable();
+    }
+
+    private void startSearch(String keyword) {
+        mQuickAdapter.clear();
+        List<Site> sites = new ArrayList<>();
+        for (Site item : VodConfig.get().getSites()) if (isPass(item)) sites.add(item);
+        mViewModel.searchContent(sites, keyword, true);
+    }
+
+    private void setSearch(Result result) {
+        List<Vod> items = result.getList();
+        items.removeIf(this::mismatch);
+        mBinding.quick.setVisibility(View.VISIBLE);
+        mQuickAdapter.addAll(items);
+        if (isInitAuto() && !isReaderContent) nextSite();
+        if (items.isEmpty()) return;
+        App.removeCallbacks(mR4);
+    }
+
+    private boolean mismatch(Vod item) {
+        if (getId().equals(item.getId())) return true;
+        if (mBroken.contains(item.getId())) return true;
+        String keyword = mBinding.name.getText().toString();
+        return !item.getName().equals(keyword);
+    }
+
+    private void nextParse(int position) {
+        Parse parse = mParseAdapter.get(position + 1);
+        Notify.show(getString(R.string.play_switch_parse, parse.getName()));
+        onItemClick(parse);
+    }
+
+    private void nextFlag(int position) {
+        Flag flag = mFlagAdapter.get(position + 1);
+        Notify.show(getString(R.string.play_switch_flag, flag.getFlag()));
+        onItemClick(flag);
+    }
+
+    private void nextSite() {
+        if (isReaderContent) return;
+        if (mQuickAdapter.isEmpty()) return;
+        Vod item = mQuickAdapter.get(0);
+        Notify.show(getString(R.string.play_switch_site, item.getSiteName()));
+        mQuickAdapter.remove(0);
+        mBroken.add(getId());
+        setInitAuto(false);
+        getDetail(item);
+    }
+
+    private void onPaused() {
+        controller().pause();
+        syncHistory(true);
+    }
+
+    private void onPlay() {
+        if (mHistory != null && isEnded()) controller().seekTo(mHistory.getOpening());
+        if (!player().isEmpty() && isIdle()) controller().prepare();
+        controller().play();
+        syncHistory(true);
+    }
+
+    private boolean isFullscreen() {
+        return fullscreen;
+    }
+
+    private void setFullscreen(boolean fullscreen) {
+        Util.toggleFullscreen(this, this.fullscreen = fullscreen);
+    }
+
+    private boolean isInitAuto() {
+        return initAuto;
+    }
+
+    private void setInitAuto(boolean initAuto) {
+        this.initAuto = initAuto;
+    }
+
+    private boolean isAutoMode() {
+        return autoMode;
+    }
+
+    private void setAutoMode(boolean autoMode) {
+        this.autoMode = autoMode;
+    }
+
+    public boolean isUseParse() {
+        return useParse;
+    }
+
+    public void setUseParse(boolean useParse) {
+        this.useParse = useParse;
+    }
+
+    public boolean isRotate() {
+        return rotate;
+    }
+
+    public void setRotate(boolean rotate) {
+        this.rotate = rotate;
+        if (fullscreen && !rotate) setPadding(mBinding.control.getRoot());
+        else noPadding(mBinding.control.getRoot());
+    }
+
+    private void notifyItemChanged(RecyclerView view, RecyclerView.Adapter<?> adapter) {
+        view.post(() -> adapter.notifyItemRangeChanged(0, adapter.getItemCount()));
+    }
+
+    private void scrollToPosition(RecyclerView view, int position) {
+        view.post(() -> view.scrollToPosition(position));
+    }
+
+    @Override
+    public void onCasted() {
+        player().stop();
+    }
+
+    @Override
+    public void onScale(int tag) {
+        mKeyDown.resetScale();
+        setScale(tag);
+    }
+
+    @Override
+    public void onParse(Parse item) {
+        onItemClick(item);
+    }
+
+    @Override
+    public void onSpeedUp() {
+        if (!player().isPlaying()) return;
+        mBinding.widget.speed.setVisibility(View.VISIBLE);
+        mBinding.widget.speed.startAnimation(ResUtil.getAnim(R.anim.forward));
+        mBinding.control.action.speed.setText(player().setSpeed(PlayerSetting.getSpeed()));
+    }
+
+    @Override
+    public void onSpeedEnd() {
+        mBinding.widget.speed.clearAnimation();
+        mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
+    }
+
+    @Override
+    public void onBright(int progress) {
+        mBinding.widget.bright.setVisibility(View.VISIBLE);
+        mBinding.widget.brightProgress.setProgress(progress);
+        if (progress < 35) mBinding.widget.brightIcon.setImageResource(R.drawable.ic_widget_bright_low);
+        else if (progress < 70) mBinding.widget.brightIcon.setImageResource(R.drawable.ic_widget_bright_medium);
+        else mBinding.widget.brightIcon.setImageResource(R.drawable.ic_widget_bright_high);
+    }
+
+    @Override
+    public void onVolume(int progress) {
+        mBinding.widget.volume.setVisibility(View.VISIBLE);
+        mBinding.widget.volumeProgress.setProgress(progress);
+        if (progress < 35) mBinding.widget.volumeIcon.setImageResource(R.drawable.ic_widget_volume_low);
+        else if (progress < 70) mBinding.widget.volumeIcon.setImageResource(R.drawable.ic_widget_volume_medium);
+        else mBinding.widget.volumeIcon.setImageResource(R.drawable.ic_widget_volume_high);
+    }
+
+    @Override
+    public void onFlingUp() {
+        if (mEpisodeAdapter.getItemCount() == 1) onRefresh();
+        else checkNext();
+    }
+
+    @Override
+    public void onFlingDown() {
+        if (mEpisodeAdapter.getItemCount() == 1) onRefresh();
+        else checkPrev();
+    }
+
+    @Override
+    public void onSeeking(long time) {
+        mBinding.widget.action.setImageResource(time > 0 ? R.drawable.ic_widget_forward : R.drawable.ic_widget_rewind);
+        mBinding.widget.time.setText(player().getPositionTime(time));
+        mBinding.widget.seek.setVisibility(View.VISIBLE);
+        hideProgress();
+    }
+
+    @Override
+    public void onSeekEnd(long time) {
+        seekTo(time);
+        showProgress();
+        syncHistory(true);
+    }
+
+    @Override
+    public void onSingleTap() {
+        if (isVisible(mBinding.control.getRoot())) hideControl();
+        else showControl();
+    }
+
+    @Override
+    public void onDoubleTap() {
+        if (isLock()) return;
+        if (!isFullscreen()) {
+            enterFullscreen();
+        } else if (player().isPlaying()) {
+            showControl();
+            onPaused();
+        } else {
+            hideControl();
+            onPlay();
+        }
+    }
+
+    @Override
+    public void onTouchEnd() {
+        mBinding.widget.seek.setVisibility(View.GONE);
+        mBinding.widget.speed.setVisibility(View.GONE);
+        mBinding.widget.bright.setVisibility(View.GONE);
+        mBinding.widget.volume.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void onLrcLongPress() {
+        showLrcSizeDialog();
+    }
+
+    @Override
+    public void onShare(CharSequence title) {
+        PlayerHelper.share(this, player().getUrl(), player().getHeaders(), title);
+        setRedirect(true);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && requestCode == 1001) PlayerHelper.onExternalResult(data, service()::dispatchNext, controller()::seekTo);
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (leavingPlayback) return;
+        if (isRedirect()) return;
+        if (isLock()) App.post(this::onLock, 500);
+        if (service() != null && player().haveTrack(C.TRACK_TYPE_VIDEO)) mPiP.enter(this, player().getVideoWidth(), player().getVideoHeight(), getScale());
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, @NonNull Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        if (!isFullscreen()) setVideoView(isInPictureInPictureMode);
+        if (isInPictureInPictureMode) {
+            hideControl();
+            hideDanmaku();
+            hideSheet();
+            saveHistory(true);
+        } else {
+            showDanmaku();
+            if (isStop()) finish();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (isAutoRotate() && isPort() && newConfig.orientation == Configuration.ORIENTATION_PORTRAIT && !isRotate() && !isLock()) exitFullscreen();
+        if (isAutoRotate() && isPort() && newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) enterFullscreen();
+        if (isFullscreen()) Util.hideSystemUI(this);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (isFullscreen() && hasFocus) Util.hideSystemUI(this);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mClock.stop().start();
+        setAudioOnly(false);
+        setStop(false);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        saveHistory(true);
+        stopPlaybackIfLeaving();
+        if (PlayerSetting.isBackgroundOff()) mClock.stop();
+        if (!isAudioOnly()) setStop(true);
+    }
+
+    private void stopPlaybackIfLeaving() {
+        if (isRedirect() || isInPictureInPictureMode() || isAudioOnly()) return;
+        if (PlayerSetting.isBackgroundOn() && !leavingPlayback && !isFinishing()) return;
+        if (!leavingPlayback && !isFinishing() && hasWindowFocus()) return;
+        if (service() == null || !isOwner()) return;
+        player().stop();
+        player().clear();
+        service().shutdown();
+    }
+
+    @Override
+    protected void onBackInvoked() {
+        if (isMusicDiscVisible) {
+            hideMusicDisc();
+        } else if (isVisible(mBinding.control.getRoot())) {
+            hideControl();
+        } else if (mReader != null && mReader.isActive() && !isLock()) {
+            leavingPlayback = true;
+            stopPlaybackIfLeaving();
+            mViewModel.stopSearch();
+            if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            super.onBackInvoked();
+        } else if (isFullscreen() && !isLock()) {
+            exitFullscreen();
+        } else if (!isLock()) {
+            leavingPlayback = true;
+            stopPlaybackIfLeaving();
+            mViewModel.stopSearch();
+            if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            super.onBackInvoked();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopPlaybackIfLeaving();
+        mClock.release();
+        if (mReader != null) mReader.clear();
+        mBinding.lrcView.clear();
+        if (mBinding.musicDiscView != null) {
+            mBinding.musicDiscView.musicLrcView.clear();
+            mBinding.musicDiscView.musicDisc.pause();
+        }
+        saveHistory(true);
+        cancelMusicExitTimer();
+        Timer.get().reset();
+        DanmakuApi.cancel();
+        RefreshEvent.keep();
+        App.removeCallbacks(mR1, mR2, mR3, mR4);
+        mViewModel.getResult().removeObserver(mObserveDetail);
+        mViewModel.getPlayer().removeObserver(mObservePlayer);
+        mViewModel.getSearch().removeObserver(mObserveSearch);
+        super.onDestroy();
+    }
+}

@@ -1,0 +1,51 @@
+<resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
+
+    <!-- Home -->
+    <string name="home_vod">Vod</string>
+    <string name="home_live">Live</string>
+    <string name="home_search">Search</string>
+    <string name="home_keep">Keep</string>
+    <string name="home_push">Push</string>
+    <string name="home_setting">Setting</string>
+    <string name="home_history">History</string>
+    <string name="toolbar_history">History</string>
+    <string name="home_history_vertical">H\ni\ns\nt\no\nr\ny</string>
+    <string name="home_recommend">Recommend</string>
+    <string name="home_keep_brief">Selected high-quality movies and TV series</string>
+    <string name="home_history_empty">No Watch History</string>
+    <string name="vod_home">Home</string>
+
+    <!-- Collect -->
+    <string name="collect_result">Search results for <xliff:g name="name">%s</xliff:g></string>
+
+    <!-- Push -->
+    <string name="push_clip">Push clipboard content</string>
+    <string name="push_info">Scan QR Code or enter the URL in browser\n<xliff:g name="name">%s</xliff:g></string>
+
+    <!-- Setting -->
+    <string name="player_background">VOD Background Play</string>
+
+    <!-- Local NAS -->
+    <string name="nas_type">Protocol</string>
+    <string name="nas_name">Display Name</string>
+    <string name="nas_host">Host</string>
+    <string name="nas_port">Port</string>
+    <string name="nas_path">Path</string>
+    <string name="nas_user">Username</string>
+    <string name="nas_pass">Password</string>
+    <string name="nas_title_add">Add Local Storage</string>
+    <string name="nas_title_edit">Edit Local Storage</string>
+    <string name="nas_delete_confirm">Are you sure you want to delete this connection?</string>
+    <string name="nas_empty_fields">Name and Host cannot be empty</string>
+    <string name="dialog_delete">Delete</string>
+    <string name="nas_manage">Manage Connections</string>
+    <string name="nas_style">View Style</string>
+    <string name="nas_style_list">List</string>
+    <string name="nas_style_rect">Poster</string>
+    <string name="nas_style_oval">Circle</string>
+    <string name="toolbar_keep">Keep</string>
+    <string name="toolbar_setting">Setting</string>
+    <string name="search_hint">Search movie, actor, director</string>
+    <string name="dialog_site_title">Select Site</string>
+    <string name="dialog_site_desc">Two columns, easier to browse with remote control</string>
+</resources>

@@ -1,0 +1,739 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="320dp"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:clipToPadding="false"
+    android:clipChildren="false">
+
+    <!-- Left Column: stacked buttons -->
+    <LinearLayout
+        android:id="@+id/leftLayout"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginEnd="12dp"
+        android:visibility="gone"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/btnVod"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="8dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:foreground="@drawable/selector_vod"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_home_vod"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/btnVodImg"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_home_vod"
+                    android:tint="@color/white" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/btnVodTxt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_vod"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/btnVodBrief"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/white_70"
+                        android:textSize="10sp"
+                        tools:text="描述" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/btnLive"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="8dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:foreground="@drawable/selector_vod"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_home_live"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/btnLiveImg"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_home_live"
+                    android:tint="@color/white" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/btnLiveTxt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_live"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/btnLiveBrief"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/white_70"
+                        android:textSize="10sp"
+                        tools:text="描述" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/btnKeep"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:foreground="@drawable/selector_vod"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_home_local"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/btnKeepImg"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_home_keep"
+                    android:tint="@color/white" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/btnKeepTxt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_keep"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/btnKeepBrief"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/white_70"
+                        android:textSize="10sp"
+                        tools:text="描述" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+    </LinearLayout>
+
+    <!-- Middle Column: Marquee banner, occupies full remaining width -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/middleCard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:foreground="@drawable/selector_vod"
+        app:cardBackgroundColor="@color/black_50"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="0dp"
+        android:layout_marginEnd="0dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Marquee detail layout -->
+            <FrameLayout
+                android:id="@+id/detailLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <!-- Marquee horizontal container -->
+                <FrameLayout
+                    android:id="@+id/marqueeContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
+
+                    <!-- Slot 0 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot0"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <!-- 图片：match_parent，保持比例裁剪 -->
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot0"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <!-- 全图阴影层（暗角） -->
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <!-- 底部半透明渐变遮罩（名字条背景，防止字和图混在一起看不清） -->
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <!-- 名字 TextView：底部、左右 padding 10dp、高度 36dp、gravity center_vertical|start -->
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot0"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 1 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot1"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 2 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot2"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 3 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot3"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 4 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot4"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 5 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot5"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot5"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot5"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 6 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot6"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot6"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot6"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Slot 7 -->
+                    <FrameLayout
+                        android:id="@+id/cardSlot7"
+                        android:layout_width="185dp"
+                        android:layout_height="match_parent"
+                        android:visibility="invisible">
+                        <androidx.cardview.widget.CardView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="@color/black"
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            android:foreground="@drawable/selector_vod">
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:id="@+id/imgSlot7"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:scaleType="centerCrop" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@drawable/shape_banner_shadow" />
+                                <View
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="#88000000" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/nameSlot7"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="36dp"
+                                    android:layout_gravity="bottom"
+                                    android:gravity="center_vertical|start"
+                                    android:paddingStart="10dp"
+                                    android:paddingEnd="10dp"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:singleLine="true"
+                                    android:ellipsize="end"
+                                    tools:text="剧名" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Center card details overlay (shown only on middle card, width=185dp) -->
+                    <LinearLayout
+                        android:id="@+id/centerDetailsLayout"
+                        android:layout_width="185dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|center_horizontal"
+                        android:layout_marginBottom="46dp"
+                        android:orientation="vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingBottom="10dp"
+                        android:paddingTop="20dp">
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/white"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:singleLine="true"
+                            android:ellipsize="marquee" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleDirector"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/white_70"
+                            android:textSize="10sp"
+                            android:singleLine="true"
+                            android:ellipsize="end" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleActor"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/white_70"
+                            android:textSize="10sp"
+                            android:singleLine="true"
+                            android:ellipsize="end" />
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/middleContent"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:textColor="@color/white_70"
+                            android:textSize="10sp"
+                            android:maxLines="2"
+                            android:ellipsize="end" />
+                        <LinearLayout
+                            android:id="@+id/playButtonLayout"
+                            android:layout_width="wrap_content"
+                            android:layout_height="28dp"
+                            android:layout_marginTop="5dp"
+                            android:background="@drawable/shape_play_button_bg"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="12dp">
+                            <FrameLayout
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:background="@drawable/shape_white_circle">
+                                <androidx.appcompat.widget.AppCompatImageView
+                                    android:layout_width="10dp"
+                                    android:layout_height="10dp"
+                                    android:layout_gravity="center"
+                                    android:src="@drawable/ic_widget_play"
+                                    app:tint="@color/black" />
+                            </FrameLayout>
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="5dp"
+                                android:text="@string/play"
+                                android:textColor="@color/white"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </FrameLayout>
+
+                <!-- Indicator dots, placed at bottom of detailLayout -->
+                <LinearLayout
+                    android:id="@+id/indicatorLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="3dp"
+                    android:orientation="horizontal" />
+            </FrameLayout>
+
+            <!-- Live Preview View -->
+            <FrameLayout
+                android:id="@+id/livePreviewLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/previewCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    app:cardBackgroundColor="@color/black"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="0dp">
+
+                    <androidx.media3.ui.PlayerView
+                        android:id="@+id/previewExo"
+                        style="@style/Player.Live"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        app:resize_mode="zoom"
+                        app:surface_type="texture_view" />
+                </androidx.cardview.widget.CardView>
+            </FrameLayout>
+
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
+</LinearLayout>

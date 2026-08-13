@@ -1,0 +1,105 @@
+<resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
+
+    <!-- App -->
+    <string name="app_keep">我的收藏</string>
+    <string name="app_history">最近观看</string>
+
+    <!-- Nav -->
+    <string name="nav_vod">点播</string>
+    <string name="nav_hot">热播推荐</string>
+    <string name="nav_live">直播</string>
+    <string name="nav_setting">设置</string>
+
+    <!-- Menu -->
+    <string name="menu_sync">同步</string>
+    <string name="menu_delete">删除</string>
+    <string name="menu_search">搜索</string>
+    <string name="menu_site">站点</string>
+    <string name="menu_reset">重置</string>
+
+    <!-- Vod -->
+    <string name="vod_home">推荐</string>
+
+    <!-- Hot -->
+    <string name="hot_all">全部</string>
+    <string name="hot_movie">电影</string>
+    <string name="hot_tv">剧集</string>
+    <string name="hot_show">综艺</string>
+    <string name="hot_anime">动漫</string>
+    <string name="hot_radar">新剧雷达</string>
+    <string name="hot_info">资料</string>
+    <string name="hot_photos">剧照 / 海报</string>
+    <string name="hot_search_watch">搜索观看</string>
+    <string name="hot_load_failed">热播推荐加载失败，点击空白处重试</string>
+    <string name="hot_score">评分: %s</string>
+    <string name="hot_director">导演: %s</string>
+    <string name="hot_writer">编剧: %s</string>
+    <string name="hot_actor">主演: %s</string>
+    <string name="hot_genre">类型: %s</string>
+    <string name="hot_country">制片国家/地区: %s</string>
+    <string name="hot_language">语言: %s</string>
+    <string name="hot_pubdate">首播/上映: %s</string>
+    <string name="hot_episode">集数: %s</string>
+    <string name="hot_episode_count">%d 集</string>
+    <string name="hot_duration">单集片长/片长: %s</string>
+    <string name="hot_aka">又名: %s</string>
+    <string name="hot_imdb">IMDb: %s</string>
+
+    <!-- Detail -->
+    <string name="detail_flag">线路</string>
+    <string name="detail_episode">选集</string>
+    <string name="detail_quality">画质</string>
+    <string name="detail_content">简介</string>
+    <string name="detail_search">快搜“<xliff:g name="name">%s</xliff:g>”</string>
+
+    <!-- Device -->
+    <string name="device_select">选择装置</string>
+    <string name="device_offline">装置已离线</string>
+    <string name="device_scan">请扫描影视 QRCode 进行绑定</string>
+
+    <!-- Control -->
+    <string name="control_speed">倍速</string>
+    <string name="control_scale">缩放</string>
+    <string name="control_track">轨道</string>
+    <string name="control_other">其它</string>
+
+    <!-- Dialog -->
+    <string name="dialog_delete_record">删除全部纪录？</string>
+    <string name="dialog_delete_keep">收藏纪录将会全部删除。</string>
+    <string name="dialog_delete_history">观看纪录将会全部删除。</string>
+
+    <!-- Timer -->
+    <string name="timer_5">5 分钟</string>
+    <string name="timer_15">15 分钟</string>
+    <string name="timer_30">30 分钟</string>
+    <string name="timer_60">1 小时</string>
+    <string name="timer_delay">延长 5 分钟</string>
+    <string name="timer_cancel">取消定时器</string>
+
+    <!-- Hint -->
+    <string name="shortcut"> 已于主萤幕新增捷径。</string>
+
+    <string-array name="select_background">
+        <item>关闭</item>
+        <item>开启</item>
+        <item>画中画</item>
+    </string-array>
+
+    <!-- Reader -->
+    <string name="reader_menu">阅读菜单</string>
+    <string name="reader_horizontal">横向阅读</string>
+    <string name="reader_vertical">纵向阅读</string>
+    <string name="reader_previous">上一章</string>
+    <string name="reader_directory">目录</string>
+    <string name="reader_next">下一章</string>
+    <string name="reader_wallpaper">设为壁纸</string>
+    <string name="reader_wallpaper_loading">正在设置壁纸...</string>
+    <string name="reader_wallpaper_done">壁纸设置成功</string>
+    <string name="reader_wallpaper_failed">壁纸设置失败</string>
+
+    <string-array name="select_picture_reader_mode">
+        <item>普通模式</item>
+        <item>纯背景模式</item>
+    </string-array>
+
+</resources>

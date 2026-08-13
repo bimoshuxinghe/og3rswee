@@ -1,0 +1,412 @@
+<resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
+
+    <!-- App -->
+    <string name="app_name">星落</string>
+
+    <!-- Live -->
+    <string name="live_pass">密码</string>
+    <string name="live_refresh">刷新</string>
+    <string name="live_line">线路 <xliff:g name="name">%s</xliff:g></string>
+    <string name="live_prev_channel">频道-</string>
+    <string name="live_next_channel">频道+</string>
+    <string name="live_prev_source">上一源</string>
+    <string name="live_next_source">下一源</string>
+    <string name="live_epg">节目单</string>
+
+    <!-- Detail -->
+    <string name="detail_title"><xliff:g name="name">%s</xliff:g>：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_site">站源：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_year">年份：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_area">地区：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_type">类型：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_director">导演：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_actor">演员：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_content">简介：<xliff:g name="name">%s</xliff:g></string>
+    <string name="detail_desc">简介</string>
+
+    <!-- Keep -->
+    <string name="keep">收藏</string>
+    <string name="keep_add">已加入收藏</string>
+    <string name="keep_del">已取消收藏</string>
+
+    <!-- Play -->
+    <string name="play">播放</string>
+    <string name="pause">暂停</string>
+    <string name="play_op">片头</string>
+    <string name="play_ed">片尾</string>
+    <string name="skip_setting">&#x7247;&#x5934;&#x002F;&#x7247;&#x5C3E;&#x8BBE;&#x7F6E;</string>
+    <string name="skip_opening">&#x7247;&#x5934;</string>
+    <string name="skip_ending">&#x7247;&#x5C3E;</string>
+    <string name="skip_hint">&#x62D6;&#x52A8;&#x6ED1;&#x5757;&#x8BBE;&#x7F6E;&#x7247;&#x5934;&#x7247;&#x5C3E;&#x8DF3;&#x8FC7;&#x65F6;&#x95F4;&#xFF0C;00&#58;00 &#x8868;&#x793A;&#x5173;&#x95ED;&#x3002;</string>
+    <string name="skip_time_hint">00&#58;00</string>
+    <string name="skip_clear">&#x6E05;&#x7A7A;&#x8DF3;&#x8FC7;&#x8BBE;&#x7F6E;</string>
+    <string name="play_exo">EXO</string>
+    <string name="play_mpv">MPV</string>
+    <string name="play_next">下集</string>
+    <string name="play_prev">上集</string>
+    <string name="play_stop">停止</string>
+    <string name="play_repeat">循环</string>
+    <string name="play_forward">→</string>
+    <string name="play_backward">←</string>
+    <string name="play_speed">1.00</string>
+    <string name="play_reset">刷新</string>
+    <string name="play_decode">硬解</string>
+    <string name="play_timer">定时</string>
+    <string name="play_title">章节</string>
+    <string name="play_scale">原始</string>
+    <string name="play_config">配置</string>
+    <string name="play_change">换源</string>
+    <string name="play_invert">反转</string>
+    <string name="play_across">跨类</string>
+    <string name="play_reverse">倒序</string>
+    <string name="play_track_text">字幕</string>
+    <string name="play_track_audio">音轨</string>
+    <string name="play_track_video">视轨</string>
+    <string name="offset_text">字幕偏移</string>
+    <string name="offset_audio">音轨偏移</string>
+    <string name="offset_setting">偏移设置</string>
+    <string name="play_forward_hint">已切换正序播放</string>
+    <string name="play_backward_hint">已切换倒序播放</string>
+    <string name="play_ready">准备播放：<xliff:g name="name">%s</xliff:g></string>
+    <string name="play_switch_flag">正在切换线路至「<xliff:g name="name">%s</xliff:g>」</string>
+    <string name="play_switch_site">正在切换站源至「<xliff:g name="name">%s</xliff:g>」</string>
+    <string name="play_switch_parse">正在切换解析至「<xliff:g name="name">%s</xliff:g>」</string>
+    <string name="play_exit_hint">再按一次返回搜索结果</string>
+
+    <!-- Danmaku Setting -->
+    <string name="danmaku">弹幕</string>
+    <string name="danmaku_status">弹幕：%1$s</string>
+    <string name="danmaku_select">选择弹幕</string>
+    <string name="danmaku_setting">弹幕设置</string>
+    <string name="danmaku_text_size">字体缩放</string>
+    <string name="danmaku_transparency">透明度</string>
+    <string name="danmaku_text_bold">粗体</string>
+    <string name="danmaku_style_mode">字体效果</string>
+    <string name="danmaku_style_none">无</string>
+    <string name="danmaku_style_shadow">阴影</string>
+    <string name="danmaku_style_stroke">描边</string>
+    <string name="danmaku_style_projection">投影</string>
+    <string name="danmaku_shadow_transparency">阴影透明度</string>
+    <string name="danmaku_stroke_width">描边宽度</string>
+    <string name="danmaku_projection_offset_x">投影水平偏移</string>
+    <string name="danmaku_projection_offset_y">投影垂直偏移</string>
+    <string name="danmaku_projection_transparency">投影透明度</string>
+    <string name="danmaku_color_mode">颜色模式</string>
+    <string name="danmaku_color_default">原色</string>
+    <string name="danmaku_color_colorful">彩色</string>
+    <string name="danmaku_color_gradient">渐变</string>
+    <string name="danmaku_color_override_hint">弹幕原始颜色将被忽略</string>
+    <string name="danmaku_auto">自动</string>
+    <string name="danmaku_duration">滚动时间</string>
+    <string name="danmaku_fixed_duration">固定显示时间</string>
+    <string name="danmaku_time_offset">时间偏移</string>
+    <string name="danmaku_max_on_screen">最多同时显示</string>
+    <string name="danmaku_scroll_area_ratio">滚动区域</string>
+    <string name="danmaku_max_scroll_lines">最大滚动行数</string>
+    <string name="danmaku_max_top_lines">最大顶部行数</string>
+    <string name="danmaku_max_bottom_lines">最大底部行数</string>
+    <string name="danmaku_line_spacing">垂直间距</string>
+    <string name="danmaku_scroll_gap_ratio">水平间距</string>
+    <string name="danmaku_show_scroll">滚动弹幕</string>
+    <string name="danmaku_show_top">顶部固定</string>
+    <string name="danmaku_show_bottom">底部固定</string>
+    <string name="danmaku_show_reverse">反向滚动</string>
+    <string name="danmaku_show_positioned">定位弹幕</string>
+    <string name="danmaku_show_subtitle">字幕型</string>
+    <string name="danmaku_show_special">特效型</string>
+    <string name="danmaku_section_appearance">外观</string>
+    <string name="danmaku_section_display">显示</string>
+    <string name="danmaku_section_timing">时间</string>
+    <string name="danmaku_section_density">密度</string>
+    <string name="danmaku_reset">重置</string>
+
+    <!-- Parse -->
+    <string name="parse">解析</string>
+    <string name="parse_god">超级解析</string>
+    <string name="parse_from">解析来自：<xliff:g name="name">%s</xliff:g></string>
+
+    <!-- Push -->
+    <string name="push">推送</string>
+
+    <!-- Setting -->
+    <string name="setting_vod">点播</string>
+    <string name="setting_live">直播</string>
+    <string name="setting_wall">壁纸</string>
+    <string name="setting_player">播放设置</string>
+    <string name="setting_danmaku">弹幕设置</string>
+    <string name="setting_incognito">无痕模式</string>
+    <string name="setting_live_boot">开机直接进入直播</string>
+    <string name="setting_theme_color">主题色彩</string>
+    <string name="setting_home">首页设置</string>
+    <string name="setting_home_menu">首页功能</string>
+    <string name="home_continue">继续观看</string>
+    <string name="nav_download">下载</string>
+    <string name="setting_home_style">导航栏样式</string>
+    <string-array name="select_home_style">
+        <item>固定型</item>
+        <item>胶囊型</item>
+    </string-array>
+    <string name="setting_auto">自动</string>
+    <string name="setting_custom">自定义</string>
+    <string name="setting_size">图片尺寸</string>
+    <string name="setting_doh">DoH</string>
+    <string name="setting_proxy">Proxy</string>
+    <string name="setting_proxy_subscription">代理订阅</string>
+    <string name="setting_cache">缓存</string>
+    <string name="setting_download_manager">下载管理</string>
+    <string name="setting_backup">备份</string>
+    <string name="setting_restore">恢复</string>
+    <string name="setting_version">版本</string>
+    <string name="setting_tmdb">TMDB API</string>
+    <string name="setting_tmdb_api_url_label">API 地址</string>
+    <string name="setting_tmdb_image_url_label">图片地址</string>
+    <string name="setting_tmdb_key_label">API Key</string>
+    <string name="setting_tmdb_key_hint">输入你的 TMDB v3 API Key</string>
+    <string name="setting_tmdb_logged_in">已配置</string>
+    <string name="setting_tmdb_not_set">未配置</string>
+    <string name="setting_tmdb_cleared">已清除 TMDB 配置</string>
+    <string name="setting_choose">选择</string>
+    <string name="setting_off">关</string>
+    <string name="setting_on">开</string>
+    <string name="proxy_sub_url">订阅地址</string>
+    <string name="proxy_sub_enable">启用代理订阅</string>
+    <string name="proxy_sub_update">更新</string>
+    <string name="proxy_sub_auto">自动</string>
+    <string name="proxy_sub_test">测速</string>
+    <string name="proxy_sub_nodes">节点</string>
+    <string name="proxy_sub_status">共 %1$d 个节点 · 已测 %2$d 个</string>
+    <string name="proxy_sub_hint">HTTP/SOCKS 节点直连使用；Clash 订阅里的 VMess/VLESS/Trojan/SS/Hysteria2/AnyTLS 由内置 mihomo 转成本地代理。</string>
+    <string name="proxy_sub_empty">请先填写订阅地址</string>
+    <string name="proxy_sub_fail">订阅更新失败</string>
+    <string name="proxy_sub_no_node">没有可用节点</string>
+    <string name="proxy_sub_no_supported">解析到 %1$d 个节点。点击测速找最快节点，或从节点列表手动选择</string>
+    <string name="proxy_sub_selected">已选择：%1$s</string>
+    <string name="proxy_sub_test_done">测速完成：最快 %1$s</string>
+    <string name="proxy_sub_need_core">加密节点请点"自动"，由内置 mihomo 选择可用线路</string>
+
+    <string name="proxy_sub_push">扫码推送</string>
+    <string name="proxy_sub_push_title">代理地址推送</string>
+    <string name="proxy_sub_push_hint">用手机打开地址粘贴订阅，推送成功后会自动刷新。</string>
+    <string name="proxy_sub_select">选择</string>
+    <string name="proxy_sub_test_ok">延迟：%1$d ms</string>
+    <string name="proxy_sub_test_fail">测速失败</string>
+    <string name="proxy_sub_parsed">解析到 %1$d 个节点，请选择</string>
+    <string name="proxy_sub_connect_fail">连接失败，请尝试其他节点</string>
+
+    <!-- Backup & Restore -->
+    <string name="restore_select">选择备份</string>
+    <string name="restore_success">恢复成功</string>
+    <string name="restore_fail">恢复失败</string>
+    <string name="backup_success">备份成功</string>
+    <string name="backup_fail">备份失败</string>
+
+    <!-- Player -->
+    <string name="player">播放核心</string>
+    <string name="player_render">渲染方式</string>
+    <string name="player_controller_alpha">播放控制栏透明度</string>
+    <string name="player_scale">缩放比例</string>
+    <string name="player_libass">字幕渲染</string>
+    <string name="player_caption">字幕样式</string>
+    <string name="player_background">后台播放</string>
+    <string name="player_audio_decode">音频软解</string>
+    <string name="player_video_decode">视频软解</string>
+    <string name="player_aac_track">AAC优先</string>
+    <string name="player_adblock">智能去广</string>
+    <string name="player_always_time">时钟常显</string>
+    <string name="player_always_progress">播放时长常显</string>
+    <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>
+    <string name="player_detail_poster">详情页海报背景</string>
+    <string name="player_home_carousel">首页轮播海报</string>
+    <string name="player_lrc_size">歌词字幕大小</string>
+    <string name="player_lrc_color">歌词颜色</string>
+    <string name="player_home_mute">首页静音</string>
+    <string name="player_preload_setting">预载设置</string>
+    <string name="player_preload">预载</string>
+    <string name="player_preload_next">预载下集</string>
+    <string name="player_preload_thread">预载线程</string>
+    <string name="player_preload_capacity">预载容量</string>
+    <string name="player_preload_seconds">预载时间</string>
+    <string name="preload_thread_unit">条</string>
+    <string name="player_tunnel">隧道模式</string>
+    <string name="player_mpv_config">MPV配置</string>
+    <string name="player_mpv_config_default">默认</string>
+    <string name="player_mpv_render">MPV渲染</string>
+    <string name="player_mpv_audio_passthrough">MPV音频直通</string>
+    <string name="player_mpv_dolby_passthrough">MPV杜比直通</string>
+    <string name="player_exo_dolby_vision_passthrough">EXO杜比视界直通</string>
+    <string name="player_buffer">缓冲时间</string>
+    <string name="player_speed">长按倍速</string>
+    <string name="player_ua">User-Agent</string>
+
+    <!-- Danmaku -->
+    <string name="danmaku_load">弹幕加载</string>
+    <string name="danmaku_api">搜索接口</string>
+    <string name="danmaku_auto_load">自动搜索</string>
+    <string name="danmaku_spider_first">爬虫优先</string>
+
+    <!-- Search -->
+    <string name="search_keyword">关键字…</string>
+    <string name="search_record">历史</string>
+    <string name="search_suggest">建议</string>
+    <string name="search_hot">热搜</string>
+
+    <!-- Dialog -->
+    <string name="dialog_edit">修改</string>
+    <string name="dialog_positive">确定</string>
+    <string name="dialog_negative">取消</string>
+    <string name="dialog_select_title">选择章节</string>
+    <string name="dialog_config_hint">请输入配置…</string>
+    <string name="dialog_config_name">请输入名称…</string>
+    <string name="dialog_config_url">请输入地址…</string>
+
+    <!-- Error -->
+    <string name="error_config_get">配置取得失败</string>
+    <string name="error_play_next">已经是最后一集了！</string>
+    <string name="error_play_prev">已经是第一集了！</string>
+    <string name="error_play_parse">播放地址解析失败</string>
+    <string name="error_play_drm">此设备不支持所需的 DRM scheme</string>
+    <string name="error_play_url">播放地址加载失败</string>
+    <string name="error_play_flag">暂无线路数据</string>
+    <string name="error_play_timeout">连接超时</string>
+    <string name="error_play_tvbus">错误代码：<xliff:g name="name">%s</xliff:g></string>
+    <string name="error_detail">暂无播放数据</string>
+    <string name="error_empty">这里什麽都没有 👀</string>
+
+    <!-- Update -->
+    <string name="update_version">发现新版本 <xliff:g name="name">%s</xliff:g></string>
+    <string name="update_check">正在检测更新…</string>
+    <string name="update_confirm">更新</string>
+
+    <!-- Crash -->
+    <string name="crash_info">发生意外错误\n抱歉给您带来不便</string>
+    <string name="crash_restart">重新启动</string>
+    <string name="crash_details">错误信息</string>
+    <string name="crash_details_title">错误信息</string>
+    <string name="crash_details_close">关闭</string>
+
+    <!-- Hint -->
+    <string name="copied">已复制</string>
+
+    <!-- UNIT -->
+    <string name="all">全部</string>
+    <string name="yes">有</string>
+    <string name="none">无</string>
+    <string name="second">秒</string>
+    <string name="times">倍</string>
+    <string name="lines">行</string>
+
+    <string-array name="select_decode">
+        <item>软解</item>
+        <item>硬解</item>
+    </string-array>
+
+    <string-array name="select_size">
+        <item>小</item>
+        <item>中</item>
+        <item>大</item>
+        <item>特大</item>
+    </string-array>
+
+    <string-array name="select_scale">
+        <item>原始</item>
+        <item>16:9</item>
+        <item>4:3</item>
+        <item>填充</item>
+        <item>裁剪</item>
+    </string-array>
+
+    <string-array name="select_reset">
+        <item>刷新</item>
+        <item>重播</item>
+    </string-array>
+
+    <string-array name="select_caption">
+        <item>预设</item>
+        <item>系统</item>
+    </string-array>
+
+    <string-array name="select_mpv_render">
+        <item>OpenGL</item>
+        <item>GPU Next</item>
+        <item>Vulkan</item>
+    </string-array>
+
+    <string-array name="select_track">
+        <item>选择音轨</item>
+        <item>选择视轨</item>
+        <item>选择字幕</item>
+    </string-array>
+
+    <string name="home_local">本地资源</string>
+    <string name="home_vod_brief">海量影音随心看</string>
+    <string name="home_live_brief">央视卫视在线直播</string>
+    <string name="home_local_brief">畅享本地影音</string>
+
+    <string name="nas_type">协议</string>
+    <string name="nas_name">显示名称</string>
+    <string name="nas_host">主机</string>
+    <string name="nas_port">端口</string>
+    <string name="nas_path">路径</string>
+    <string name="nas_user">用户名</string>
+    <string name="nas_pass">密码</string>
+    <string name="nas_title_add">添加本地存储</string>
+    <string name="nas_title_edit">修改本地存储</string>
+    <string name="nas_delete_confirm">确定删除此连接吗？</string>
+    <string name="nas_empty_fields">名称和主机不能为空</string>
+    <string name="dialog_delete">删除</string>
+
+    <!-- WebDAV Sync -->
+    <string name="setting_sync">云端同步</string>
+    <string name="sync_url">WebDAV地址</string>
+    <string name="sync_user">用户名</string>
+    <string name="sync_pass">密码/口令</string>
+    <string name="sync_auto_backup">自动备份到云端</string>
+    <string name="sync_auto_sync">启动时自动同步</string>
+    <string name="sync_test">测试连接</string>
+    <string name="sync_backup">上传备份</string>
+    <string name="sync_restore">下载恢复</string>
+    <string name="sync_success">同步成功</string>
+    <string name="sync_fail">同步失败</string>
+    <string name="sync_connecting">正在测试连接...</string>
+    <string name="sync_syncing">正在同步云端数据...</string>
+    <string name="sync_test_success">连接成功！</string>
+    <string name="sync_test_fail">连接失败，请检查配置！</string>
+    <string name="sync_empty">请输入完整配置！</string>
+
+    <string name="home_no_recommend">暂无推荐</string>
+    <string name="home_no_recommend_desc">首页推荐加载失败，点击右侧卡片可进入搜索页。</string>
+
+    <string name="setting_search">搜索排列</string>
+    <string-array name="select_search">
+        <item>横向</item>
+        <item>竖向</item>
+    </string-array>
+
+    <string name="setting_transition">切换动画</string>
+    <string-array name="select_transition">
+        <item>无</item>
+        <item>淡入淡出</item>
+        <item>滑动</item>
+        <item>缩放</item>
+        <item>翻转</item>
+        <item>上推</item>
+        <item>弹性</item>
+        <item>展开</item>
+    </string-array>
+
+    <string name="setting_search_filter">搜索匹配</string>
+    <string-array name="select_search_filter">
+        <item>精确搜索</item>
+        <item>模糊搜索</item>
+    </string-array>
+
+    <string name="setting_search_thread">搜索线程</string>
+    <string-array name="select_search_thread">
+        <item>5</item>
+        <item>8</item>
+        <item>10</item>
+        <item>12</item>
+        <item>15</item>
+        <item>20</item>
+    </string-array>
+</resources>

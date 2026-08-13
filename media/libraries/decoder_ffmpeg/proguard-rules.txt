@@ -1,0 +1,30 @@
+# Proguard rules specific to the FFmpeg extension.
+
+# This prevents the names of native methods from being obfuscated.
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# These methods are called from native code. Two overloads are kept because some prebuilt
+# libffmpegJNI.so binaries (e.g. arm64-v8a) use a 3-arg JNI signature while the current source
+# and other binaries (e.g. armeabi-v7a) use a 2-arg signature.
+-keep, includedescriptorclasses class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
+  private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int);
+  private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int, int);
+}
+
+# FFmpeg video decoder: native methods and fields accessed from JNI must not be obfuscated or
+# removed. The class is package-private and only used by ExperimentalFfmpegVideoRenderer.
+-keep, includedescriptorclasses class androidx.media3.decoder.ffmpeg.FfmpegVideoDecoder {
+  private native long ffmpegInitialize(java.lang.String, byte[], int, int, int, int);
+  private native long ffmpegReset(long);
+  private native void ffmpegRelease(long);
+  private native int ffmpegRenderFrame(long, android.view.Surface, androidx.media3.decoder.VideoDecoderOutputBuffer, int, int);
+  private native int ffmpegSendPacket(long, java.nio.ByteBuffer, int, long);
+  private native int ffmpegReceiveFrame(long, int, androidx.media3.decoder.VideoDecoderOutputBuffer, boolean);
+}
+
+# ExperimentalFfmpegVideoRenderer is instantiated via reflection by DefaultRenderersFactory.
+-keepclassmembers class androidx.media3.decoder.ffmpeg.ExperimentalFfmpegVideoRenderer {
+  <init>(long, android.os.Handler, androidx.media3.exoplayer.video.VideoRendererEventListener, int);
+}
