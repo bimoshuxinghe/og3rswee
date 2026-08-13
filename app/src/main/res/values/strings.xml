@@ -215,6 +215,7 @@
     <string name="ai_adblock">AI voice adblock</string>
     <string name="ai_adblock_downloaded">Voice model downloaded</string>
     <string name="ai_adblock_download_failed">Voice model download failed</string>
+    <string name="ai_adblock_keywords">Ad keywords</string>
     <string name="ai_adblock_keywords_title">Edit ad keywords</string>
     <string name="ai_adblock_keywords_hint">Separate keywords with commas</string>
     <string name="ai_adblock_keywords_saved">Keywords saved</string>

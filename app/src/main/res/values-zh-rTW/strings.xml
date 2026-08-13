@@ -204,6 +204,7 @@
     <string name="ai_adblock">AI語音去廣</string>
     <string name="ai_adblock_downloaded">語音模型下載完成</string>
     <string name="ai_adblock_download_failed">語音模型下載失敗</string>
+    <string name="ai_adblock_keywords">廣告關鍵詞</string>
     <string name="ai_adblock_keywords_title">編輯廣告關鍵詞</string>
     <string name="ai_adblock_keywords_hint">多個關鍵詞用逗號分隔</string>
     <string name="ai_adblock_keywords_saved">關鍵詞已保存</string>

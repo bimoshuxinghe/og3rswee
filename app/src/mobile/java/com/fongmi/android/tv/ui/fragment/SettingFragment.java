@@ -114,6 +114,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.incognitoText.setText(getSwitch(Setting.isIncognito()));
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
+        mBinding.aiAdblockKeywordsText.setText(Setting.getAiAdblockKeywords());
         mBinding.sizeText.setText((size = ResUtil.getStringArray(R.array.select_size))[PlayerSetting.getSize()]);
         mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
@@ -156,7 +157,8 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.incognito.setOnClickListener(this::setIncognito);
         mBinding.adblock.setOnClickListener(this::setAdblock);
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
-        mBinding.aiAdblock.setOnLongClickListener(this::editAiAdblockKeywords);
+        mBinding.aiAdblock.setOnLongClickListener(view -> { editAiAdblockKeywords(); return true; });
+        mBinding.aiAdblockKeywords.setOnClickListener(view -> editAiAdblockKeywords());
         mBinding.transition.setOnClickListener(this::setTransition);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.themeColor.setOnClickListener(this::onThemeColor);
@@ -376,7 +378,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         }
     }
 
-    private boolean editAiAdblockKeywords(View view) {
+    private void editAiAdblockKeywords() {
         android.widget.EditText editText = new android.widget.EditText(requireContext());
         editText.setText(Setting.getAiAdblockKeywords());
         editText.setHint(R.string.ai_adblock_keywords_hint);
@@ -387,11 +389,12 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
                 .setView(editText)
                 .setNegativeButton(R.string.dialog_negative, null)
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    Setting.putAiAdblockKeywords(editText.getText().toString().trim());
+                    String keywords = editText.getText().toString().trim();
+                    Setting.putAiAdblockKeywords(keywords);
+                    mBinding.aiAdblockKeywordsText.setText(keywords);
                     Notify.show(R.string.ai_adblock_keywords_saved);
                 })
                 .show();
-        return true;
     }
 
     private void setSize(View view) {

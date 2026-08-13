@@ -215,6 +215,7 @@
     <string name="ai_adblock">AI语音去广</string>
     <string name="ai_adblock_downloaded">语音模型下载完成</string>
     <string name="ai_adblock_download_failed">语音模型下载失败</string>
+    <string name="ai_adblock_keywords">广告关键词</string>
     <string name="ai_adblock_keywords_title">编辑广告关键词</string>
     <string name="ai_adblock_keywords_hint">多个关键词用逗号分隔</string>
     <string name="ai_adblock_keywords_saved">关键词已保存</string>
