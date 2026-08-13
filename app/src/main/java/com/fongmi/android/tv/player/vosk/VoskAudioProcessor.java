@@ -1,7 +1,6 @@
 package com.fongmi.android.tv.player.vosk;
 
-import androidx.media3.common.AudioFormat;
-import androidx.media3.common.C;
+import androidx.media3.common.audio.AudioProcessor.AudioFormat;
 import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.common.audio.BaseAudioProcessor;
 
@@ -19,9 +18,6 @@ public class VoskAudioProcessor extends BaseAudioProcessor {
 
     @Override
     public AudioFormat onConfigure(AudioFormat inputAudioFormat) throws AudioProcessor.UnhandledAudioFormatException {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
-            throw new AudioProcessor.UnhandledAudioFormatException(inputAudioFormat);
-        }
         this.inputSampleRate = inputAudioFormat.sampleRate;
         this.inputChannels = inputAudioFormat.channelCount;
         return inputAudioFormat;
