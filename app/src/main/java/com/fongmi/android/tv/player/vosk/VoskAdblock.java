@@ -54,6 +54,7 @@ public class VoskAdblock {
     private volatile boolean probing;
     private long lastDetectAt;
     private long lastResetAt;
+    private int consecutiveHits;
 
     private VoskAdblock() {
     }
@@ -193,7 +194,9 @@ public class VoskAdblock {
             long now = SystemClock.elapsedRealtime();
             if (now - lastResetAt < 800) return;
             if (containsKeyword(text)) {
-                if (!probing && now - lastDetectAt < 5000) return;
+                if (now - lastDetectAt < 5000) return;
+                boolean continuous = now - lastDetectAt < 10000;
+                consecutiveHits = continuous ? consecutiveHits + 1 : 0;
                 lastDetectAt = now;
                 probing = true;
                 notifyAd();
@@ -206,7 +209,8 @@ public class VoskAdblock {
     }
 
     private void notifyAd() {
-        long skipMs = Setting.getAiAdblockSkipSeconds() * 1000L;
+        int base = Setting.getAiAdblockSkipSeconds();
+        long skipMs = base * (1L << Math.min(consecutiveHits, 2)) * 1000L;
         mainHandler.post(() -> {
             for (Listener listener : listeners) listener.onAdDetected(skipMs);
         });

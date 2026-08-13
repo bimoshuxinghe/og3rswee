@@ -151,7 +151,10 @@ public class ExoUtil {
     }
 
     private static LoadControl buildLoadControl() {
-        return new DefaultLoadControl.Builder().setBufferDurationsMs(DefaultLoadControl.DEFAULT_MIN_BUFFER_MS * PlayerSetting.getBuffer(), DefaultLoadControl.DEFAULT_MAX_BUFFER_MS * PlayerSetting.getBuffer(), 500, 1500).build();
+        int factor = Math.max(PlayerSetting.getBuffer(), 2);
+        int minBufferMs = DefaultLoadControl.DEFAULT_MIN_BUFFER_MS * factor;
+        int maxBufferMs = DefaultLoadControl.DEFAULT_MAX_BUFFER_MS * factor;
+        return new DefaultLoadControl.Builder().setBufferDurationsMs(minBufferMs, maxBufferMs, 500, 1500).build();
     }
 
     private static TrackSelector buildTrackSelector() {
