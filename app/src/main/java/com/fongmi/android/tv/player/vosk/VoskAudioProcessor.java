@@ -38,6 +38,9 @@ public class VoskAudioProcessor extends BaseAudioProcessor {
 
     @Override
     public boolean isActive() {
-        return vosk.isActive();
+        // 只要 AI 去广开关开启就保持激活，绝不能依赖模型就绪状态：
+        // media3 在 configure 时一次性评估 isActive()，若模型异步加载未完成时返回 false，
+        // processor 会被永久标记为 inactive，queueInput 再也不会被调用，导致片头广告识别完全失效。
+        return vosk.isEnabled();
     }
 }

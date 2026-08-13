@@ -14,6 +14,13 @@ import org.json.JSONObject;
 import org.vosk.Model;
 import org.vosk.Recognizer;
 
+import net.sourceforge.pinyin4j.PinyinHelper;
+import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType;
+import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -87,6 +94,10 @@ public class VoskAdblock {
 
     public boolean isActive() {
         return enabled && ready && recognizer != null;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 
     public void setEnabled(boolean enabled) {
@@ -240,11 +251,36 @@ public class VoskAdblock {
     private boolean containsKeyword(String text) {
         String keywords = Setting.getAiAdblockKeywords();
         if (TextUtils.isEmpty(keywords)) return false;
+        String pinyinText = toPinyin(text);
         for (String keyword : keywords.split("[,，]")) {
             String k = keyword.trim();
-            if (!k.isEmpty() && text.contains(k)) return true;
+            if (k.isEmpty()) continue;
+            if (text.contains(k)) return true;
+            String pinyinKeyword = toPinyin(k);
+            if (!pinyinKeyword.isEmpty() && pinyinText.contains(pinyinKeyword)) return true;
         }
         return false;
+    }
+
+    private static String toPinyin(String text) {
+        if (TextUtils.isEmpty(text)) return "";
+        HanyuPinyinOutputFormat format = new HanyuPinyinOutputFormat();
+        format.setCaseType(HanyuPinyinCaseType.LOWERCASE);
+        format.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
+        format.setVCharType(HanyuPinyinVCharType.WITH_V);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (Character.isWhitespace(c)) continue;
+            try {
+                String[] pinyin = PinyinHelper.toHanyuPinyinStringArray(c, format);
+                if (pinyin != null && pinyin.length > 0) sb.append(pinyin[0]);
+                else sb.append(Character.toLowerCase(c));
+            } catch (BadHanyuPinyinOutputFormatCombination e) {
+                sb.append(Character.toLowerCase(c));
+            }
+        }
+        return sb.toString();
     }
 
     private void dispatchDownload(DownloadCallback callback, boolean success, String error) {
