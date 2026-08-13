@@ -169,8 +169,8 @@ public class ExoUtil {
     private static RenderersFactory buildRenderersFactory(int renderMode) {
         return new DefaultRenderersFactory(App.get()) {
             @Override
-            protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioTrackPlaybackParams, boolean enableOffload) {
-                return new DefaultAudioSink.Builder(context).setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams).setOffloadMode(enableOffload ? DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED : DefaultAudioSink.OFFLOAD_MODE_DISABLED).setAudioProcessors(new AudioProcessor[]{new VoskAudioProcessor(VoskAdblock.get())}).build();
+            protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams) {
+                return new DefaultAudioSink.Builder(context).setEnableFloatOutput(enableFloatOutput).setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams).setAudioProcessors(new AudioProcessor[]{new VoskAudioProcessor(VoskAdblock.get())}).build();
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);
     }

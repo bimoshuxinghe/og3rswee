@@ -156,6 +156,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.incognito.setOnClickListener(this::setIncognito);
         mBinding.adblock.setOnClickListener(this::setAdblock);
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
+        mBinding.aiAdblock.setOnLongClickListener(this::editAiAdblockKeywords);
         mBinding.transition.setOnClickListener(this::setTransition);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.themeColor.setOnClickListener(this::onThemeColor);
