@@ -1995,10 +1995,23 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void setBackdrop() {
         if (mBinding.bgPoster == null) return;
-        if (!PlayerSetting.isDetailPoster() || TextUtils.isEmpty(mHistory.getVodPic())) {
+        if (!PlayerSetting.isDetailPoster()) {
             mBinding.bgPoster.setVisibility(View.GONE);
             mBinding.bgOverlay.setVisibility(View.GONE);
             mBinding.bgPoster.setImageDrawable(null);
+            return;
+        }
+        if (TextUtils.isEmpty(mHistory.getVodPic())) {
+            // 无站点海报：尝试 TMDB 按片名拉取，未配置则隐藏
+            if (Setting.hasTmdbApiKey()) {
+                mBinding.bgPoster.setVisibility(View.VISIBLE);
+                mBinding.bgOverlay.setVisibility(View.VISIBLE);
+                loadTmdbPoster(mHistory.getVodName());
+            } else {
+                mBinding.bgPoster.setVisibility(View.GONE);
+                mBinding.bgOverlay.setVisibility(View.GONE);
+                mBinding.bgPoster.setImageDrawable(null);
+            }
             return;
         }
         try {
@@ -2195,7 +2208,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (name) mBinding.name.setText(item.getName());
         if (name) mBinding.control.title.setText(item.getName());
         updateFlag(getFlag(), item.getFlags());
-        if (pic) setArtwork(item.getPic());
+        if (pic) {
+            setArtwork(item.getPic());
+        } else if (id) {
+            // 换站点且新站点无海报：清空旧站点海报，走 TMDB 按新片名拉取背景
+            mHistory.setVodPic("");
+            setBackdrop();
+        }
         if (pic || name) setMetadata();
         if (pic || name) syncHistory(true);
         if (pic || name) updateKeep();
