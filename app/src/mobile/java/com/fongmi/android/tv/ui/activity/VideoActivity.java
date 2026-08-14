@@ -154,6 +154,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private QuickAdapter mQuickAdapter;
     private ParseAdapter mParseAdapter;
     private StillAdapter mStillAdapter;
+    private long mTmdbId;
+    private String mTmdbMediaType;
     private SiteViewModel mViewModel;
     private FlagAdapter mFlagAdapter;
     private ValueAnimator mAnimator;
@@ -893,6 +895,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         notifyItemChanged(mBinding.episode, mEpisodeAdapter);
         scrollToPosition(mBinding.episode, mEpisodeAdapter.getPosition());
         if (isFullscreen()) Notify.show(getString(R.string.play_ready, item.getName()));
+        // 切换选集时同步刷新当前集的剧照墙
+        if (mTmdbId > 0 && mHistory != null) loadTmdbStillsForCurrentEpisode(mHistory.getVodName());
         // Reload artwork and lyrics when switching episodes in music mode
         if (isMusicDiscVisible) {
             loadMusicDiscArtwork();
@@ -2078,7 +2082,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                         runOnUiThread(() -> applyTmdbImage(image));
                     }
                     if (info.id > 0 && info.mediaType != null) {
-                        loadTmdbStills(query, info.id, info.mediaType);
+                        mTmdbId = info.id;
+                        mTmdbMediaType = info.mediaType;
+                        loadTmdbStillsForCurrentEpisode(query);
                     }
                 } catch (Exception ignored) {
                 } finally {
@@ -2125,6 +2131,76 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 if (path != null && !path.isEmpty()) info.poster = path;
                 return info;
             }
+        } catch (JSONException ignored) {
+        }
+        return null;
+    }
+
+    /** 按当前选集拉取单集剧照（stills）；电影/无选集/单集无剧照时回退整部剧 backdrops。 */
+    private void loadTmdbStillsForCurrentEpisode(String query) {
+        if (mTmdbId <= 0 || mTmdbMediaType == null) return;
+        if (!"tv".equals(mTmdbMediaType)) {
+            loadTmdbStills(query, mTmdbId, mTmdbMediaType);
+            return;
+        }
+        Episode episode = getEpisode();
+        int number = episode == null ? 0 : episode.getNumber();
+        if (number <= 0) {
+            loadTmdbStills(query, mTmdbId, mTmdbMediaType);
+            return;
+        }
+        String key = query + "#" + number;
+        List<String> cached = sTmdbStillCache.get(key);
+        if (cached != null) {
+            applyTmdbStills(cached);
+            return;
+        }
+        Map<String, String> headers = new HashMap<>();
+        String baseUrl = Setting.getTmdbApiUrl();
+        String url = baseUrl + "/tv/" + mTmdbId + "/season/1/episode/" + number + "/images?api_key=" + Setting.getTmdbApiKey();
+        OkHttp.newCall(url, headers).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 拉取失败：保持剧照区域隐藏
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    List<String> stills = parseTmdbEpisodeStills(response.body().string());
+                    if (stills == null) {
+                        // 单集无剧照：回退整部剧 backdrops
+                        runOnUiThread(() -> loadTmdbStills(query, mTmdbId, mTmdbMediaType));
+                        return;
+                    }
+                    sTmdbStillCache.put(key, stills); // 缓存结果
+                    String imageBase = Setting.getTmdbImageUrl();
+                    List<String> images = new ArrayList<>();
+                    for (String p : stills) images.add(imageBase + "/w780" + p);
+                    runOnUiThread(() -> applyTmdbStills(images));
+                } catch (Exception ignored) {
+                } finally {
+                    response.close();
+                }
+            }
+        });
+    }
+
+    /** 从 TMDB 单集 images 响应中提取剧照（stills）路径列表。 */
+    private List<String> parseTmdbEpisodeStills(String body) {
+        try {
+            JSONObject root = new JSONObject(body);
+            JSONArray stills = root.optJSONArray("stills");
+            if (stills == null) return null;
+            List<String> paths = new ArrayList<>();
+            for (int i = 0; i < stills.length(); i++) {
+                JSONObject item = stills.optJSONObject(i);
+                if (item == null) continue;
+                String path = item.optString("file_path", null);
+                if (path != null && !path.isEmpty()) paths.add(path);
+            }
+            return paths.isEmpty() ? null : paths;
         } catch (JSONException ignored) {
         }
         return null;
