@@ -2136,7 +2136,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         return null;
     }
 
-    /** 按当前选集拉取单集剧照（stills）；电影/无选集/单集无剧照时回退整部剧 backdrops。 */
+    /** 按当前选集拉取单集剧照（stills），并合并整部剧 backdrops 一起显示（单集在前）；电影/无选集时仅显示整部剧剧照。 */
     private void loadTmdbStillsForCurrentEpisode(String query) {
         if (mTmdbId <= 0 || mTmdbMediaType == null) return;
         if (!"tv".equals(mTmdbMediaType)) {
@@ -2149,10 +2149,64 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             loadTmdbStills(query, mTmdbId, mTmdbMediaType);
             return;
         }
+        // 先拉单集剧照，再拉整部剧剧照，合并后一次性显示（单集在前，整部剧补充在后）
+        fetchTmdbEpisodeStills(query, number, episodeStills -> {
+            fetchTmdbBackdrops(query, mTmdbId, mTmdbMediaType, backdrops -> {
+                List<String> merged = new ArrayList<>();
+                if (episodeStills != null) merged.addAll(episodeStills);
+                if (backdrops != null) {
+                    for (String b : backdrops) if (!merged.contains(b)) merged.add(b);
+                }
+                if (merged.isEmpty()) return;
+                String imageBase = Setting.getTmdbImageUrl();
+                List<String> images = new ArrayList<>();
+                for (String p : merged) images.add(imageBase + "/w780" + p);
+                runOnUiThread(() -> applyTmdbStills(images));
+            });
+        });
+    }
+
+    /** 拉取整部剧 backdrops 路径列表（带缓存），回调在 OkHttp 线程执行。 */
+    private void fetchTmdbBackdrops(String query, long id, String mediaType, java.util.function.Consumer<List<String>> cb) {
+        List<String> cached = sTmdbStillCache.get(query);
+        if (cached != null) {
+            cb.accept(cached);
+            return;
+        }
+        Map<String, String> headers = new HashMap<>();
+        String baseUrl = Setting.getTmdbApiUrl();
+        String url = baseUrl + "/" + mediaType + "/" + id + "/images?api_key=" + Setting.getTmdbApiKey();
+        OkHttp.newCall(url, headers).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                cb.accept(null);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful() || response.body() == null) {
+                        cb.accept(null);
+                        return;
+                    }
+                    List<String> paths = parseTmdbStills(response.body().string());
+                    if (paths != null) sTmdbStillCache.put(query, paths); // 缓存结果
+                    cb.accept(paths);
+                } catch (Exception ignored) {
+                    cb.accept(null);
+                } finally {
+                    response.close();
+                }
+            }
+        });
+    }
+
+    /** 拉取单集 stills 路径列表（带缓存），回调在 OkHttp 线程执行。 */
+    private void fetchTmdbEpisodeStills(String query, int number, java.util.function.Consumer<List<String>> cb) {
         String key = query + "#" + number;
         List<String> cached = sTmdbStillCache.get(key);
         if (cached != null) {
-            applyTmdbStills(cached);
+            cb.accept(cached);
             return;
         }
         Map<String, String> headers = new HashMap<>();
@@ -2161,25 +2215,21 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         OkHttp.newCall(url, headers).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                // 拉取失败：保持剧照区域隐藏
+                cb.accept(null);
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 try {
-                    if (!response.isSuccessful() || response.body() == null) return;
-                    List<String> stills = parseTmdbEpisodeStills(response.body().string());
-                    if (stills == null) {
-                        // 单集无剧照：回退整部剧 backdrops
-                        runOnUiThread(() -> loadTmdbStills(query, mTmdbId, mTmdbMediaType));
+                    if (!response.isSuccessful() || response.body() == null) {
+                        cb.accept(null);
                         return;
                     }
-                    sTmdbStillCache.put(key, stills); // 缓存结果
-                    String imageBase = Setting.getTmdbImageUrl();
-                    List<String> images = new ArrayList<>();
-                    for (String p : stills) images.add(imageBase + "/w780" + p);
-                    runOnUiThread(() -> applyTmdbStills(images));
+                    List<String> paths = parseTmdbEpisodeStills(response.body().string());
+                    if (paths != null) sTmdbStillCache.put(key, paths); // 缓存结果
+                    cb.accept(paths);
                 } catch (Exception ignored) {
+                    cb.accept(null);
                 } finally {
                     response.close();
                 }
@@ -2206,40 +2256,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         return null;
     }
 
-    /** 按 TMDB id 拉取剧照（backdrops），未配置 Key 或拉取失败时保持剧照区域隐藏。 */
+    /** 按 TMDB id 拉取整部剧剧照（backdrops），未配置 Key 或拉取失败时保持剧照区域隐藏。 */
     private void loadTmdbStills(String query, long id, String mediaType) {
         if (mBinding.still == null || !Setting.hasTmdbApiKey()) return;
-        // 命中缓存直接使用，不再请求 API
-        List<String> cached = sTmdbStillCache.get(query);
-        if (cached != null) {
-            applyTmdbStills(cached);
-            return;
-        }
-        Map<String, String> headers = new HashMap<>();
-        String baseUrl = Setting.getTmdbApiUrl();
-        String url = baseUrl + "/" + mediaType + "/" + id + "/images?api_key=" + Setting.getTmdbApiKey();
-        OkHttp.newCall(url, headers).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                // 拉取失败：保持剧照区域隐藏
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                try {
-                    if (!response.isSuccessful() || response.body() == null) return;
-                    List<String> stills = parseTmdbStills(response.body().string());
-                    if (stills == null) return;
-                    sTmdbStillCache.put(query, stills); // 缓存结果
-                    String imageBase = Setting.getTmdbImageUrl();
-                    List<String> images = new ArrayList<>();
-                    for (String p : stills) images.add(imageBase + "/w780" + p);
-                    runOnUiThread(() -> applyTmdbStills(images));
-                } catch (Exception ignored) {
-                } finally {
-                    response.close();
-                }
-            }
+        fetchTmdbBackdrops(query, id, mediaType, paths -> {
+            if (paths == null) return;
+            String imageBase = Setting.getTmdbImageUrl();
+            List<String> images = new ArrayList<>();
+            for (String p : paths) images.add(imageBase + "/w780" + p);
+            runOnUiThread(() -> applyTmdbStills(images));
         });
     }
 
