@@ -36,6 +36,7 @@ import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
 import androidx.media3.common.VideoSize;
 import androidx.media3.ui.PlayerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.core.widget.NestedScrollView;
 import androidx.transition.ChangeBounds;
@@ -83,6 +84,7 @@ import com.fongmi.android.tv.ui.adapter.FlagAdapter;
 import com.fongmi.android.tv.ui.adapter.ParseAdapter;
 import com.fongmi.android.tv.ui.adapter.QualityAdapter;
 import com.fongmi.android.tv.ui.adapter.QuickAdapter;
+import com.fongmi.android.tv.ui.adapter.StillAdapter;
 import com.fongmi.android.tv.ui.base.ViewType;
 import com.fongmi.android.tv.ui.custom.CustomKeyDown;
 import com.fongmi.android.tv.ui.custom.CustomMovement;
@@ -151,6 +153,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private QualityAdapter mQualityAdapter;
     private QuickAdapter mQuickAdapter;
     private ParseAdapter mParseAdapter;
+    private StillAdapter mStillAdapter;
     private SiteViewModel mViewModel;
     private FlagAdapter mFlagAdapter;
     private ValueAnimator mAnimator;
@@ -2007,6 +2010,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.bgPoster.setVisibility(View.GONE);
             mBinding.bgOverlay.setVisibility(View.GONE);
             mBinding.bgPoster.setImageDrawable(null);
+            // 剧照墙独立于背景开关：仍尝试加载 TMDb 剧照（未配置 Key 时自动隐藏）
+            loadTmdbPoster(mHistory.getVodName());
             return;
         }
         if (TextUtils.isEmpty(mHistory.getVodPic())) {
@@ -2039,7 +2044,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     /** TMDB 海报缓存：片名→海报URL，避免重复请求消耗 token */
     private static final java.util.concurrent.ConcurrentHashMap<String, String> sTmdbCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** 若已配置 TMDB API Key，则按片名搜索并拉取更清晰的竖屏海报覆盖到背景。 */
+    /** TMDB 剧照缓存：片名→剧照路径列表，避免重复请求消耗 token */
+    private static final java.util.concurrent.ConcurrentHashMap<String, List<String>> sTmdbStillCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 若已配置 TMDB API Key，则按片名搜索并拉取更清晰的竖屏海报覆盖到背景，同时拉取剧照墙。 */
     private void loadTmdbPoster(String query) {
         if (mBinding.bgPoster == null || TextUtils.isEmpty(query) || !Setting.hasTmdbApiKey()) return;
         // 命中缓存直接使用，不再请求 API
@@ -2061,12 +2069,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             public void onResponse(Call call, Response response) throws IOException {
                 try {
                     if (!response.isSuccessful() || response.body() == null) return;
-                    String poster = parseTmdbPoster(response.body().string());
-                    if (poster == null) return;
-                    sTmdbCache.put(query, poster); // 缓存结果
-                    String imageBase = Setting.getTmdbImageUrl();
-                    String image = imageBase + "/w780" + poster;
-                    runOnUiThread(() -> applyTmdbImage(image));
+                    TmdbInfo info = parseTmdbInfo(response.body().string());
+                    if (info == null) return;
+                    if (info.poster != null) {
+                        sTmdbCache.put(query, info.poster); // 缓存结果
+                        String imageBase = Setting.getTmdbImageUrl();
+                        String image = imageBase + "/w780" + info.poster;
+                        runOnUiThread(() -> applyTmdbImage(image));
+                    }
+                    if (info.id > 0 && info.mediaType != null) {
+                        loadTmdbStills(query, info.id, info.mediaType);
+                    }
                 } catch (Exception ignored) {
                 } finally {
                     response.close();
@@ -2084,11 +2097,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 .into(mBinding.bgPoster);
     }
 
+    private static class TmdbInfo {
+        String poster;
+        long id;
+        String mediaType;
+    }
+
     /**
-     * 从 TMDB search/multi 响应中提取影片竖屏海报路径。
+     * 从 TMDB search/multi 响应中提取影片信息（竖屏海报路径 + id + media_type）。
      * <br>关键：过滤掉 media_type=person 的结果，只接受 movie / tv，避免把演员头像当海报。
      */
-    private String parseTmdbPoster(String body) {
+    private TmdbInfo parseTmdbInfo(String body) {
         try {
             JSONObject root = new JSONObject(body);
             JSONArray results = root.optJSONArray("results");
@@ -2099,12 +2118,103 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 // 只取电影/电视剧，跳过人物(person)和其他类型
                 String mediaType = item.optString("media_type", "");
                 if (!"movie".equals(mediaType) && !"tv".equals(mediaType)) continue;
+                TmdbInfo info = new TmdbInfo();
+                info.mediaType = mediaType;
+                info.id = item.optLong("id", 0);
                 String path = item.optString("poster_path", null);
-                if (path != null && !path.isEmpty()) return path;
+                if (path != null && !path.isEmpty()) info.poster = path;
+                return info;
             }
         } catch (JSONException ignored) {
         }
         return null;
+    }
+
+    /** 按 TMDB id 拉取剧照（backdrops），未配置 Key 或拉取失败时保持剧照区域隐藏。 */
+    private void loadTmdbStills(String query, long id, String mediaType) {
+        if (mBinding.still == null || !Setting.hasTmdbApiKey()) return;
+        // 命中缓存直接使用，不再请求 API
+        List<String> cached = sTmdbStillCache.get(query);
+        if (cached != null) {
+            applyTmdbStills(cached);
+            return;
+        }
+        Map<String, String> headers = new HashMap<>();
+        String baseUrl = Setting.getTmdbApiUrl();
+        String url = baseUrl + "/" + mediaType + "/" + id + "/images?api_key=" + Setting.getTmdbApiKey();
+        OkHttp.newCall(url, headers).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 拉取失败：保持剧照区域隐藏
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    List<String> stills = parseTmdbStills(response.body().string());
+                    if (stills == null) return;
+                    sTmdbStillCache.put(query, stills); // 缓存结果
+                    String imageBase = Setting.getTmdbImageUrl();
+                    List<String> images = new ArrayList<>();
+                    for (String p : stills) images.add(imageBase + "/w780" + p);
+                    runOnUiThread(() -> applyTmdbStills(images));
+                } catch (Exception ignored) {
+                } finally {
+                    response.close();
+                }
+            }
+        });
+    }
+
+    /** 从 TMDB images 响应中提取剧照（backdrops）路径列表。 */
+    private List<String> parseTmdbStills(String body) {
+        try {
+            JSONObject root = new JSONObject(body);
+            JSONArray backdrops = root.optJSONArray("backdrops");
+            if (backdrops == null) return null;
+            List<String> paths = new ArrayList<>();
+            for (int i = 0; i < backdrops.length(); i++) {
+                JSONObject item = backdrops.optJSONObject(i);
+                if (item == null) continue;
+                String path = item.optString("file_path", null);
+                if (path != null && !path.isEmpty()) paths.add(path);
+            }
+            return paths.isEmpty() ? null : paths;
+        } catch (JSONException ignored) {
+        }
+        return null;
+    }
+
+    /** 填充剧照墙；无剧照时隐藏整个剧照区域（简介后直接接线路）。 */
+    private void applyTmdbStills(List<String> images) {
+        if (isFinishing() || isDestroyed() || mBinding.still == null) return;
+        if (images == null || images.isEmpty()) {
+            mBinding.stillTitle.setVisibility(View.GONE);
+            mBinding.still.setVisibility(View.GONE);
+            return;
+        }
+        if (mStillAdapter == null) {
+            mStillAdapter = new StillAdapter(this::showStill);
+            mBinding.still.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+            mBinding.still.setAdapter(mStillAdapter);
+        }
+        mStillAdapter.setItems(images);
+        mBinding.stillTitle.setVisibility(View.VISIBLE);
+        mBinding.still.setVisibility(View.VISIBLE);
+    }
+
+    /** 点击剧照查看大图。 */
+    private void showStill(String url) {
+        if (TextUtils.isEmpty(url)) return;
+        android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        com.github.chrisbanes.photoview.PhotoView photo = new com.github.chrisbanes.photoview.PhotoView(this);
+        photo.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        photo.setBackgroundColor(Color.BLACK);
+        Glide.with(this).load(url).error(R.drawable.artwork).into(photo);
+        photo.setOnClickListener(v -> dialog.dismiss());
+        dialog.setContentView(photo);
+        dialog.show();
     }
 
     private void checkFlag(Vod item) {
