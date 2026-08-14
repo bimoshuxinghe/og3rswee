@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.ui.fragment;
 
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -400,15 +401,17 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
 
     private void showAiAdblockModelStatus() {
         VoskAdblock vosk = VoskAdblock.get();
-        int resId;
+        String status;
         if (!vosk.isModelDownloaded()) {
-            resId = R.string.ai_adblock_model_not_downloaded;
+            status = getString(R.string.ai_adblock_model_not_downloaded);
         } else if (vosk.isReady()) {
-            resId = R.string.ai_adblock_model_ready;
+            status = getString(R.string.ai_adblock_model_ready);
         } else {
-            resId = R.string.ai_adblock_model_not_ready;
+            status = getString(R.string.ai_adblock_model_not_ready);
         }
-        Notify.show(resId);
+        String text = vosk.getLastRecognizedText();
+        if (!TextUtils.isEmpty(text)) status += "\n" + getString(R.string.ai_adblock_recognized, text);
+        Notify.show(status);
     }
 
     private void setSize(View view) {

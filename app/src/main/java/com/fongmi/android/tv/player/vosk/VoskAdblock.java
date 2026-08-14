@@ -62,6 +62,7 @@ public class VoskAdblock {
     private long lastDetectAt;
     private long lastResetAt;
     private int consecutiveHits;
+    private volatile String lastRecognizedText = "";
 
     private VoskAdblock() {
     }
@@ -94,6 +95,10 @@ public class VoskAdblock {
 
     public boolean isReady() {
         return ready && model != null;
+    }
+
+    public String getLastRecognizedText() {
+        return lastRecognizedText;
     }
 
     public boolean isActive() {
@@ -202,6 +207,7 @@ public class VoskAdblock {
         try {
             JSONObject obj = new JSONObject(json);
             String text = obj.optString("text", obj.optString("partial", "")).trim();
+            lastRecognizedText = text;
             if (TextUtils.isEmpty(text)) {
                 if (probing && SystemClock.elapsedRealtime() - lastResetAt > 3000) probing = false;
                 return;
@@ -256,7 +262,7 @@ public class VoskAdblock {
         String keywords = Setting.getAiAdblockKeywords();
         if (TextUtils.isEmpty(keywords)) return false;
         String pinyinText = toPinyin(text);
-        for (String keyword : keywords.split("[,，]")) {
+        for (String keyword : keywords.split("[,，\\n]")) {
             String k = keyword.trim();
             if (k.isEmpty()) continue;
             if (text.contains(k)) return true;

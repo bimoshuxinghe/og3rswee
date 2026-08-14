@@ -222,6 +222,7 @@
     <string name="ai_adblock_model_not_downloaded">Model not downloaded</string>
     <string name="ai_adblock_model_not_ready">Model not ready (loading or failed)</string>
     <string name="ai_adblock_model_ready">Model ready</string>
+    <string name="ai_adblock_recognized">Last recognized: %1$s</string>
     <string name="player_always_time">Always display clock</string>
     <string name="player_always_progress">Always display progress</string>
     <string name="always_progress_format">%1$s/%2$s · ETA %3$s</string>
