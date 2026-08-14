@@ -63,6 +63,10 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.aiAdblockSkipSecondsText.setText(String.valueOf(Setting.getAiAdblockSkipSeconds()));
         mBinding.aiAdblockModelStatusText.setText(getModelStatus());
         updateModelDownloadUi();
+        // 兜底：AI 去广已开启且模型已下载但未就绪时，主动触发加载，避免需手动开关才就绪
+        if (Setting.isAiAdblock() && VoskAdblock.get().isModelDownloaded() && !VoskAdblock.get().isReady()) {
+            VoskAdblock.get().setEnabled(true);
+        }
         mHandler.post(mStatusRunnable);
     }
 

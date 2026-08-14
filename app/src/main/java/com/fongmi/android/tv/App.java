@@ -14,6 +14,8 @@ import androidx.core.os.HandlerCompat;
 
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.proxy.ProxySubscriptionManager;
+import com.fongmi.android.tv.player.vosk.VoskAdblock;
+import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.hook.Hook;
 import com.github.catvod.Init;
 import com.google.gson.Gson;
@@ -85,6 +87,12 @@ public class App extends Application implements Application.ActivityLifecycleCal
         Notify.createChannel();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
+        // 启动时预加载 AI 去广语音模型，避免进入设置页时显示未就绪
+        com.fongmi.android.tv.utils.Task.execute(() -> {
+            if (Setting.isAiAdblock()) {
+                VoskAdblock.get().setEnabled(true);
+            }
+        });
         registerActivityLifecycleCallbacks(this);
     }
 
