@@ -485,11 +485,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.LIST));
         }
-        mBinding.group.setHasFixedSize(true);
-        mBinding.group.setItemAnimator(null);
-        mBinding.group.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
-        mBinding.group.addItemDecoration(new SpaceItemDecoration(8));
-        mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> setActiveGroup(mGroupAdapter.getGroupIndexForEpisode(start))));
+        if (mBinding.group != null) {
+            mBinding.group.setHasFixedSize(true);
+            mBinding.group.setItemAnimator(null);
+            mBinding.group.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            mBinding.group.addItemDecoration(new SpaceItemDecoration(8));
+            mBinding.group.setAdapter(mGroupAdapter = new EpisodeGroupAdapter(start -> setActiveGroup(mGroupAdapter.getGroupIndexForEpisode(start))));
+        }
         mBinding.quality.setHasFixedSize(true);
         mBinding.quality.setItemAnimator(null);
         mBinding.quality.addItemDecoration(new SpaceItemDecoration(8));
@@ -879,6 +881,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     public void onItemClick(Episode item) {
         if (shouldEnterFullscreen(item)) return;
         mFlagAdapter.toggle(item);
+        // 跨分区连播/选集：若目标剧集不在当前分组切片中，先切换到其所属分组，避免 getEpisode() 回退到第一集
+        int pos = mAllEpisodes.indexOf(item);
+        if (pos >= 0 && mGroupAdapter != null && mGroupAdapter.getItemCount() > 1) {
+            int g = mGroupAdapter.getGroupIndexForEpisode(pos);
+            if (g != mActiveGroup) setActiveGroup(g);
+        }
         notifyItemChanged(mBinding.episode, mEpisodeAdapter);
         scrollToPosition(mBinding.episode, mEpisodeAdapter.getPosition());
         if (isFullscreen()) Notify.show(getString(R.string.play_ready, item.getName()));
@@ -962,9 +970,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.more.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mAllEpisodes = new ArrayList<>(items);
         List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(items.size());
-        if (groups.size() <= 1) {
-            // 集数少：直接全部显示，隐藏分页条
-            mBinding.group.setVisibility(View.GONE);
+        if (mBinding.group == null || groups.size() <= 1) {
+            // 集数少或无分组条（如平板布局）：直接全部显示，隐藏分页条
+            if (mBinding.group != null) mBinding.group.setVisibility(View.GONE);
             mActiveGroup = 0;
             mEpisodeAdapter.addAll(items);
             return;
@@ -996,7 +1004,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (mGroupAdapter == null || g < 0 || g >= mGroupAdapter.getItemCount()) return;
         mActiveGroup = g;
         mGroupAdapter.setSelected(g);
-        mBinding.group.scrollToPosition(g);
+        if (mBinding.group != null) mBinding.group.scrollToPosition(g);
         showActiveGroup();
     }
 
