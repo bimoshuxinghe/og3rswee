@@ -44,6 +44,10 @@ public class VoskAdblock {
         void onDone(boolean success, String error);
     }
 
+    public interface ProgressCallback {
+        void onProgress(long downloaded, long total);
+    }
+
     private static volatile VoskAdblock instance;
 
     private final List<Listener> listeners = new ArrayList<>();
@@ -134,6 +138,10 @@ public class VoskAdblock {
     }
 
     public void downloadModel(DownloadCallback callback) {
+        downloadModel(callback, null);
+    }
+
+    public void downloadModel(DownloadCallback callback, ProgressCallback progress) {
         executor.execute(() -> {
             File zip = new File(App.get().getFilesDir(), MODEL_FOLDER + ".zip");
             try {
@@ -143,10 +151,20 @@ public class VoskAdblock {
                         dispatchDownload(callback, false, "HTTP " + response.code());
                         return;
                     }
+                    long total = response.body().contentLength();
                     try (InputStream is = response.body().byteStream(); FileOutputStream fos = new FileOutputStream(zip)) {
                         byte[] buf = new byte[8192];
                         int n;
-                        while ((n = is.read(buf)) != -1) fos.write(buf, 0, n);
+                        long downloaded = 0;
+                        while ((n = is.read(buf)) != -1) {
+                            fos.write(buf, 0, n);
+                            downloaded += n;
+                            if (progress != null) {
+                                final long d = downloaded;
+                                final long t = total;
+                                mainHandler.post(() -> progress.onProgress(d, t));
+                            }
+                        }
                     }
                 }
                 FileUtil.zipDecompress(zip, App.get().getFilesDir());

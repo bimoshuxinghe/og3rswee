@@ -218,6 +218,8 @@
     <string name="ai_adblock_skip_seconds_saved">跳過時長已保存</string>
     <string name="ai_adblock_skip_seconds_invalid">請輸入有效數字</string>
     <string name="ai_adblock_model_status">AI模型狀態</string>
+    <string name="ai_adblock_model_download">下載</string>
+    <string name="ai_adblock_model_downloading">下載中</string>
     <string name="player_always_time">時鐘常顯</string>
     <string name="player_always_progress">播放時長常顯</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>
