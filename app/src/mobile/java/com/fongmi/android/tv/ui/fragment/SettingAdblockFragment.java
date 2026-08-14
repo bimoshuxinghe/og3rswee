@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.ui.fragment;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +22,18 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 public class SettingAdblockFragment extends BaseFragment {
 
     private FragmentSettingAdblockBinding mBinding;
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mStatusRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mBinding == null || isDetached() || isRemoving()) return;
+            mBinding.aiAdblockModelStatusText.setText(getModelStatus());
+            // 模型异步加载中，持续刷新直到就绪
+            if (Setting.isAiAdblock() && !VoskAdblock.get().isReady()) {
+                mHandler.postDelayed(this, 1000);
+            }
+        }
+    };
 
     public static SettingAdblockFragment newInstance() {
         return new SettingAdblockFragment();
@@ -41,6 +55,7 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.aiAdblockKeywordsText.setText(Setting.getAiAdblockKeywords());
         mBinding.aiAdblockSkipSecondsText.setText(String.valueOf(Setting.getAiAdblockSkipSeconds()));
         mBinding.aiAdblockModelStatusText.setText(getModelStatus());
+        mHandler.post(mStatusRunnable);
     }
 
     @Override
@@ -57,7 +72,16 @@ public class SettingAdblockFragment extends BaseFragment {
             return true;
         });
         mBinding.aiAdblockSkipSeconds.setOnClickListener(view -> showAiAdblockSkipSecondsDialog());
-        mBinding.aiAdblockModelStatus.setOnClickListener(view -> showAiAdblockModelStatus());
+        mBinding.aiAdblockModelStatus.setOnClickListener(view -> {
+            mBinding.aiAdblockModelStatusText.setText(getModelStatus());
+            showAiAdblockModelStatus();
+        });
+    }
+
+    @Override
+    public void onDestroyView() {
+        mHandler.removeCallbacks(mStatusRunnable);
+        super.onDestroyView();
     }
 
     private void setAdblock(View view) {
@@ -71,11 +95,14 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.aiAdblockText.setText(getSwitch(enabled));
         VoskAdblock vosk = VoskAdblock.get();
         vosk.setEnabled(enabled);
-        if (enabled && !vosk.isModelDownloaded()) {
-            vosk.downloadModel((success, error) -> {
-                Notify.dismiss();
-                Notify.show(success ? R.string.ai_adblock_downloaded : R.string.ai_adblock_download_failed);
-            });
+        if (enabled) {
+            mHandler.post(mStatusRunnable);
+            if (!vosk.isModelDownloaded()) {
+                vosk.downloadModel((success, error) -> {
+                    Notify.dismiss();
+                    Notify.show(success ? R.string.ai_adblock_downloaded : R.string.ai_adblock_download_failed);
+                });
+            }
         }
     }
 
