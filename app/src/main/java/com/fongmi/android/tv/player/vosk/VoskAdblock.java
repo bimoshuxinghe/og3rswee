@@ -92,6 +92,10 @@ public class VoskAdblock {
         return new File(dir, "am").isDirectory() && new File(dir, "conf").isDirectory();
     }
 
+    public boolean isReady() {
+        return ready && model != null;
+    }
+
     public boolean isActive() {
         return enabled && ready && recognizer != null;
     }

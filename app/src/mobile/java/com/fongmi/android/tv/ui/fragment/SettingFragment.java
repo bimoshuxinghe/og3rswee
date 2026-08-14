@@ -159,6 +159,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
         mBinding.aiAdblock.setOnLongClickListener(view -> { editAiAdblockKeywords(); return true; });
         mBinding.aiAdblockKeywords.setOnClickListener(view -> editAiAdblockKeywords());
+        mBinding.aiAdblockKeywords.setOnLongClickListener(view -> { showAiAdblockModelStatus(); return true; });
         mBinding.transition.setOnClickListener(this::setTransition);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
         mBinding.themeColor.setOnClickListener(this::onThemeColor);
@@ -395,6 +396,19 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
                     Notify.show(R.string.ai_adblock_keywords_saved);
                 })
                 .show();
+    }
+
+    private void showAiAdblockModelStatus() {
+        VoskAdblock vosk = VoskAdblock.get();
+        int resId;
+        if (!vosk.isModelDownloaded()) {
+            resId = R.string.ai_adblock_model_not_downloaded;
+        } else if (vosk.isReady()) {
+            resId = R.string.ai_adblock_model_ready;
+        } else {
+            resId = R.string.ai_adblock_model_not_ready;
+        }
+        Notify.show(resId);
     }
 
     private void setSize(View view) {
