@@ -48,6 +48,7 @@ import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.FragmentStateManager;
 import com.fongmi.android.tv.ui.fragment.LocalFragment;
 import com.fongmi.android.tv.ui.fragment.HotFragment;
+import com.fongmi.android.tv.ui.fragment.SettingAdblockFragment;
 import com.fongmi.android.tv.ui.fragment.SettingDanmakuFragment;
 import com.fongmi.android.tv.ui.fragment.SettingFragment;
 import com.fongmi.android.tv.ui.fragment.SettingPreloadFragment;
@@ -193,6 +194,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             case 5 -> SettingHomeFragment.newInstance();
             case 6 -> SettingPreloadFragment.newInstance();
             case 7 -> HotFragment.newInstance();
+            case 8 -> SettingAdblockFragment.newInstance();
             default -> null;
         });
         change(0);
@@ -418,6 +420,8 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             setNavigation();
         } else if (mManager.isVisible(6)) {
             change(2);
+        } else if (mManager.isVisible(8)) {
+            change(1);
         } else if (mManager.isVisible(2) || mManager.isVisible(3) || mManager.isVisible(5)) {
             change(1);
         } else if (mManager.isVisible(1) || mManager.isVisible(4) || mManager.isVisible(7)) {
