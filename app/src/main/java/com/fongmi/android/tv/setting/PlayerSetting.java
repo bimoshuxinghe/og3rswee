@@ -242,6 +242,14 @@ public class PlayerSetting {
         Prefers.put("detail_poster", detailPoster);
     }
 
+    public static int getDetailPosterBlur() {
+        return Math.min(Math.max(Prefers.getInt("detail_poster_blur", 30), 1), 100);
+    }
+
+    public static void putDetailPosterBlur(int blur) {
+        Prefers.put("detail_poster_blur", Math.min(Math.max(blur, 1), 100));
+    }
+
     public static float getLrcTextSize() {
         return Math.min(Math.max(Prefers.getFloat("lrc_text_size", 56f), 24f), 80f);
     }

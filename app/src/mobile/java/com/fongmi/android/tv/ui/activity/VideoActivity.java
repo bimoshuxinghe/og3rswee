@@ -1994,6 +1994,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 if (mBinding.bgPoster != null) {
                     mBinding.bgPoster.setVisibility(View.VISIBLE);
                     mBinding.bgOverlay.setVisibility(View.VISIBLE);
+                    applyPosterOverlay();
                 }
             }
 
@@ -2006,6 +2007,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 }
             }
         });
+    }
+
+    /** 根据"海报背景清晰度"设置（1-100）调整背景蒙版透明度：值越大蒙版越不透明、海报越模糊。 */
+    private void applyPosterOverlay() {
+        if (mBinding.bgOverlay == null) return;
+        int blur = PlayerSetting.getDetailPosterBlur();
+        int alpha = (int) (blur * 0xCC / 100f);
+        mBinding.bgOverlay.setBackgroundColor(android.graphics.Color.argb(alpha, 0, 0, 0));
     }
 
     private void setBackdrop() {
@@ -2023,6 +2032,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             if (Setting.hasTmdbApiKey()) {
                 mBinding.bgPoster.setVisibility(View.VISIBLE);
                 mBinding.bgOverlay.setVisibility(View.VISIBLE);
+                applyPosterOverlay();
                 loadTmdbPoster(mHistory.getVodName());
             } else {
                 mBinding.bgPoster.setVisibility(View.GONE);
@@ -2034,6 +2044,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         try {
             mBinding.bgPoster.setVisibility(View.VISIBLE);
             mBinding.bgOverlay.setVisibility(View.VISIBLE);
+            applyPosterOverlay();
             Glide.with(this)
                     .load(ImgUtil.getUrl(mHistory.getVodPic()))
                     .centerCrop()

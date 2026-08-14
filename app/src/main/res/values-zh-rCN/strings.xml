@@ -235,6 +235,7 @@
     <string name="player_always_progress">播放时长常显</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>
     <string name="player_detail_poster">详情页海报背景</string>
+    <string name="player_detail_poster_blur">海报背景清晰度</string>
     <string name="player_home_carousel">首页轮播海报</string>
     <string name="player_lrc_size">歌词字幕大小</string>
     <string name="player_lrc_color">歌词颜色</string>

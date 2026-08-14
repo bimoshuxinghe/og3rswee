@@ -235,6 +235,7 @@
     <string name="player_always_progress">Always display progress</string>
     <string name="always_progress_format">%1$s/%2$s · ETA %3$s</string>
     <string name="player_detail_poster">Detail page poster background</string>
+    <string name="player_detail_poster_blur">Poster background clarity</string>
     <string name="player_home_carousel">Home carousel poster</string>
     <string name="player_lrc_size">Lyrics font size</string>
     <string name="player_lrc_color">Lyrics color</string>

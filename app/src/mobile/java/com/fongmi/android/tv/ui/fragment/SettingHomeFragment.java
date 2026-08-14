@@ -44,6 +44,7 @@ public class SettingHomeFragment extends BaseFragment {
         setHomeStyleText();
         setHomeCarouselText();
         setDetailPosterText();
+        setDetailPosterBlurText();
         setSearchFilterText();
         setSearchThreadText();
     }
@@ -54,6 +55,7 @@ public class SettingHomeFragment extends BaseFragment {
         mBinding.homeStyle.setOnClickListener(this::onHomeStyle);
         mBinding.homeCarousel.setOnClickListener(this::setHomeCarousel);
         mBinding.detailPoster.setOnClickListener(this::setDetailPoster);
+        mBinding.detailPosterBlur.setOnClickListener(this::onDetailPosterBlur);
         mBinding.searchFilter.setOnClickListener(this::onSearchFilter);
         mBinding.searchThread.setOnClickListener(this::onSearchThread);
 
@@ -149,6 +151,39 @@ public class SettingHomeFragment extends BaseFragment {
         PlayerSetting.putDetailPoster(!PlayerSetting.isDetailPoster());
         setDetailPosterText();
         Notify.show("重启后生效");
+    }
+
+    private void setDetailPosterBlurText() {
+        mBinding.detailPosterBlurText.setText(String.valueOf(PlayerSetting.getDetailPosterBlur()));
+    }
+
+    private void onDetailPosterBlur(View view) {
+        com.fongmi.android.tv.databinding.DialogPosterBlurBinding binding =
+                com.fongmi.android.tv.databinding.DialogPosterBlurBinding.inflate(getLayoutInflater());
+        int current = PlayerSetting.getDetailPosterBlur();
+        binding.posterBlurSeek.setProgress(current - 1);
+        binding.posterBlurValue.setText(String.valueOf(current));
+        binding.posterBlurSeek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int prog, boolean fromUser) {
+                binding.posterBlurValue.setText(String.valueOf(prog + 1));
+            }
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.player_detail_poster_blur)
+                .setView(binding.getRoot())
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    int blur = binding.posterBlurSeek.getProgress() + 1;
+                    PlayerSetting.putDetailPosterBlur(blur);
+                    mBinding.detailPosterBlurText.setText(String.valueOf(blur));
+                    Notify.show("重启后生效");
+                })
+                .show();
     }
 
     private void setSearchFilterText() {
