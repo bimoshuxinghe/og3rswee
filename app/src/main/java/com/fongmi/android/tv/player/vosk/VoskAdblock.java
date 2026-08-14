@@ -267,7 +267,14 @@ public class VoskAdblock {
             if (k.isEmpty()) continue;
             if (text.contains(k)) return true;
             String pinyinKeyword = toPinyin(k);
-            if (!pinyinKeyword.isEmpty() && pinyinText.contains(pinyinKeyword)) return true;
+            if (!pinyinKeyword.isEmpty()) {
+                if (pinyinText.contains(pinyinKeyword)) return true;
+                // 模糊匹配：识别常有同音近音错字（如"飞鹤启萃"被听成"非和起称"），
+                // 精确拼音比对会漏掉，这里取关键词拼音前 70%（至少 4 个字母）做前缀匹配。
+                int prefixLen = Math.max(4, (int) (pinyinKeyword.length() * 0.7));
+                String prefix = pinyinKeyword.substring(0, Math.min(prefixLen, pinyinKeyword.length()));
+                if (prefix.length() >= 4 && pinyinText.contains(prefix)) return true;
+            }
         }
         return false;
     }
