@@ -156,7 +156,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.liveHome.setOnClickListener(this::onLiveHome);
         mBinding.wall.setOnLongClickListener(this::onWallEdit);
         mBinding.incognito.setOnClickListener(this::setIncognito);
-        mBinding.adblock.setOnClickListener(this::setAdblock);
+        mBinding.adblock.setOnClickListener(this::showAdblockMenu);
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
         mBinding.aiAdblock.setOnLongClickListener(view -> { editAiAdblockKeywords(); return true; });
         mBinding.aiAdblockKeywords.setOnClickListener(view -> editAiAdblockKeywords());
@@ -364,6 +364,64 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     private void setAdblock(View view) {
         Setting.putAdblock(!Setting.isAdblock());
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
+    }
+
+    private void showAdblockMenu(View view) {
+        String[] items = {
+                getString(R.string.player_adblock) + "：" + getSwitch(Setting.isAdblock()),
+                getString(R.string.ai_adblock) + "：" + getSwitch(Setting.isAiAdblock()),
+                getString(R.string.ai_adblock_keywords_title),
+                getString(R.string.ai_adblock_skip_seconds),
+                getString(R.string.ai_adblock_model_status)
+        };
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.player_adblock)
+                .setItems(items, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            setAdblock(view);
+                            break;
+                        case 1:
+                            setAiAdblock(view);
+                            break;
+                        case 2:
+                            editAiAdblockKeywords();
+                            break;
+                        case 3:
+                            showAiAdblockSkipSecondsDialog();
+                            break;
+                        case 4:
+                            showAiAdblockModelStatus();
+                            break;
+                    }
+                })
+                .show();
+    }
+
+    private void showAiAdblockSkipSecondsDialog() {
+        android.widget.EditText editText = new android.widget.EditText(requireContext());
+        editText.setText(String.valueOf(Setting.getAiAdblockSkipSeconds()));
+        editText.setHint(R.string.ai_adblock_skip_seconds_hint);
+        editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.ai_adblock_skip_seconds_title)
+                .setView(editText)
+                .setNegativeButton(R.string.dialog_negative, null)
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    String value = editText.getText().toString().trim();
+                    try {
+                        int seconds = Integer.parseInt(value);
+                        if (seconds <= 0) {
+                            Notify.show(R.string.ai_adblock_skip_seconds_invalid);
+                            return;
+                        }
+                        Setting.putAiAdblockSkipSeconds(seconds);
+                        Notify.show(R.string.ai_adblock_skip_seconds_saved);
+                    } catch (NumberFormatException e) {
+                        Notify.show(R.string.ai_adblock_skip_seconds_invalid);
+                    }
+                })
+                .show();
     }
 
     private void setAiAdblock(View view) {

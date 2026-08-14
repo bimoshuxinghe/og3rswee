@@ -223,6 +223,12 @@
     <string name="ai_adblock_model_not_ready">模型未就绪（正在加载或加载失败）</string>
     <string name="ai_adblock_model_ready">模型已就绪</string>
     <string name="ai_adblock_recognized">最近识别：%1$s</string>
+    <string name="ai_adblock_skip_seconds">AI跳过时长</string>
+    <string name="ai_adblock_skip_seconds_title">设置AI跳过时长（秒）</string>
+    <string name="ai_adblock_skip_seconds_hint">请输入跳过秒数</string>
+    <string name="ai_adblock_skip_seconds_saved">跳过时长已保存</string>
+    <string name="ai_adblock_skip_seconds_invalid">请输入有效数字</string>
+    <string name="ai_adblock_model_status">AI模型状态</string>
     <string name="player_always_time">时钟常显</string>
     <string name="player_always_progress">播放时长常显</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>
