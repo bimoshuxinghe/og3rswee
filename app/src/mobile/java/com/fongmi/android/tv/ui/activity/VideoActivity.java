@@ -2056,8 +2056,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         }
     }
 
-    /** TMDB 海报缓存：片名→海报URL，避免重复请求消耗 token */
-    private static final java.util.concurrent.ConcurrentHashMap<String, String> sTmdbCache = new java.util.concurrent.ConcurrentHashMap<>();
+    /** TMDB 信息缓存：片名→TmdbInfo（海报路径 + id + media_type），避免重复请求消耗 token */
+    private static final java.util.concurrent.ConcurrentHashMap<String, TmdbInfo> sTmdbCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** TMDB 剧照缓存：片名→剧照路径列表，避免重复请求消耗 token */
     private static final java.util.concurrent.ConcurrentHashMap<String, List<String>> sTmdbStillCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -2066,9 +2066,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void loadTmdbPoster(String query) {
         if (mBinding.bgPoster == null || TextUtils.isEmpty(query) || !Setting.hasTmdbApiKey()) return;
         // 命中缓存直接使用，不再请求 API
-        String cached = sTmdbCache.get(query);
+        TmdbInfo cached = sTmdbCache.get(query);
         if (cached != null) {
-            applyTmdbImage(cached);
+            applyTmdbInfo(query, cached);
             return;
         }
         Map<String, String> headers = new HashMap<>();
@@ -2086,23 +2086,29 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     if (!response.isSuccessful() || response.body() == null) return;
                     TmdbInfo info = parseTmdbInfo(response.body().string());
                     if (info == null) return;
-                    if (info.poster != null) {
-                        sTmdbCache.put(query, info.poster); // 缓存结果
-                        String imageBase = Setting.getTmdbImageUrl();
-                        String image = imageBase + "/w780" + info.poster;
-                        runOnUiThread(() -> applyTmdbImage(image));
-                    }
-                    if (info.id > 0 && info.mediaType != null) {
-                        mTmdbId = info.id;
-                        mTmdbMediaType = info.mediaType;
-                        loadTmdbStillsForCurrentEpisode(query);
-                    }
+                    sTmdbCache.put(query, info); // 缓存完整信息
+                    applyTmdbInfo(query, info);
                 } catch (Exception ignored) {
                 } finally {
                     response.close();
                 }
             }
         });
+    }
+
+    /** 应用 TMDB 信息：用完整 URL 加载背景海报，并设置 id/media_type 后拉取剧照墙（缓存命中与首次拉取共用）。 */
+    private void applyTmdbInfo(String query, TmdbInfo info) {
+        if (info == null) return;
+        if (info.poster != null) {
+            String imageBase = Setting.getTmdbImageUrl();
+            String image = imageBase + "/w780" + info.poster;
+            runOnUiThread(() -> applyTmdbImage(image));
+        }
+        if (info.id > 0 && info.mediaType != null) {
+            mTmdbId = info.id;
+            mTmdbMediaType = info.mediaType;
+            loadTmdbStillsForCurrentEpisode(query);
+        }
     }
 
     private void applyTmdbImage(String image) {
