@@ -9,6 +9,7 @@
 
     <!-- API 地址 -->
     <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tmdbApiUrlLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/setting_tmdb_api_url_label"
@@ -28,6 +29,7 @@
 
     <!-- 图片地址 -->
     <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tmdbImageUrlLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/setting_tmdb_image_url_label"

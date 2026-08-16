@@ -434,4 +434,16 @@ public class Setting {
     public static void putTmdbImageUrl(String value) {
         Prefers.put("tmdb_image_url", value == null ? "" : value.trim());
     }
+
+    public static String getAiKey() {
+        return Prefers.getString("ai_key", "");
+    }
+
+    public static void putAiKey(String value) {
+        Prefers.put("ai_key", value == null ? "" : value.trim());
+    }
+
+    public static boolean hasAiKey() {
+        return !getAiKey().isEmpty();
+    }
 }
