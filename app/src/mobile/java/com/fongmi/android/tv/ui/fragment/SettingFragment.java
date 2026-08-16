@@ -33,7 +33,6 @@ import com.fongmi.android.tv.ui.dialog.ConfigDialog;
 import com.fongmi.android.tv.ui.dialog.HistoryDialog;
 import com.fongmi.android.tv.ui.dialog.LiveDialog;
 import com.fongmi.android.tv.ui.dialog.ProxySubscriptionDialog;
-import com.fongmi.android.tv.ui.dialog.XbpqDialog;
 import com.fongmi.android.tv.ui.dialog.RestoreDialog;
 import com.fongmi.android.tv.ui.dialog.WebDavDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
@@ -119,7 +118,6 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.transitionText.setText((transition = ResUtil.getStringArray(R.array.select_transition))[Setting.getTransition()]);
         mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary());
         mBinding.tmdbText.setText(maskTmdbKey());
-        mBinding.aiKeyText.setText(maskAiKey());
     }
 
     private void setCacheText() {
@@ -136,9 +134,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.vod.setOnClickListener(this::onVod);
         mBinding.doh.setOnClickListener(this::setDoh);
         mBinding.proxySub.setOnClickListener(view -> ProxySubscriptionDialog.show(this, () -> mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary())));
-        mBinding.autoSite.setOnClickListener(view -> XbpqDialog.show(this));
-        mBinding.aiKey.setOnClickListener(this::onAiKey);
-        mBinding.aiKey.setOnLongClickListener(this::onAiKeyClear);
+        mBinding.autoSite.setOnClickListener(view -> getRoot().change(9));
         mBinding.tmdb.setOnClickListener(this::onTmdb);
         mBinding.tmdb.setOnLongClickListener(this::onTmdbClear);
         mBinding.live.setOnClickListener(this::onLive);
@@ -337,43 +333,6 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.tmdbText.setText(getString(R.string.setting_tmdb_not_set));
         Notify.show(R.string.setting_tmdb_cleared);
         return true;
-    }
-
-    private void onAiKey(View view) {
-        android.view.View dialogView = LayoutInflater.from(requireActivity()).inflate(R.layout.dialog_tmdb, null);
-        androidx.appcompat.widget.AppCompatEditText apiUrlEdit = dialogView.findViewById(R.id.tmdbApiUrl);
-        androidx.appcompat.widget.AppCompatEditText imageUrlEdit = dialogView.findViewById(R.id.tmdbImageUrl);
-        androidx.appcompat.widget.AppCompatEditText apiKeyEdit = dialogView.findViewById(R.id.tmdbApiKey);
-        dialogView.findViewById(R.id.tmdbApiUrlLabel).setVisibility(android.view.View.GONE);
-        dialogView.findViewById(R.id.tmdbImageUrlLabel).setVisibility(android.view.View.GONE);
-        apiUrlEdit.setVisibility(android.view.View.GONE);
-        imageUrlEdit.setVisibility(android.view.View.GONE);
-        apiKeyEdit.setHint(R.string.ai_key_hint);
-        apiKeyEdit.setText(Setting.getAiKey());
-        new MaterialAlertDialogBuilder(requireActivity())
-                .setTitle(R.string.setting_ai_key)
-                .setView(dialogView)
-                .setNegativeButton(R.string.dialog_negative, null)
-                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    Setting.putAiKey(apiKeyEdit.getText().toString());
-                    mBinding.aiKeyText.setText(maskAiKey());
-                    Notify.show(Setting.hasAiKey() ? R.string.setting_tmdb_logged_in : R.string.setting_tmdb_not_set);
-                })
-                .show();
-    }
-
-    private boolean onAiKeyClear(View view) {
-        Setting.putAiKey("");
-        mBinding.aiKeyText.setText(getString(R.string.ai_key_not_set));
-        Notify.show(R.string.ai_key_cleared);
-        return true;
-    }
-
-    /** 脱敏显示 AI Key：有值时只显示前8位+...，未配置显示"未配置" */
-    private String maskAiKey() {
-        String key = Setting.getAiKey();
-        if (key.isEmpty()) return getString(R.string.ai_key_not_set);
-        return key.length() > 8 ? key.substring(0, 8) + "..." : key;
     }
 
     private void setWallDefault(View view) {

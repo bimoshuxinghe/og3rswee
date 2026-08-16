@@ -176,6 +176,8 @@
     <string name="auto_site_ai_loading">AI detecting site structure…</string>
     <string name="auto_site_ai_no_key">Please configure AI Key in settings first</string>
     <string name="auto_site_ai_failed">AI detection failed, try manual JSON</string>
+    <string name="ai_status_title">AI Detecting</string>
+    <string name="ai_status_loading">Preparing…</string>
     <string name="setting_ai_key">AI Key</string>
     <string name="ai_key_hint">SiliconFlow API Key</string>
     <string name="ai_key_not_set">Not configured</string>
