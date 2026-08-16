@@ -196,6 +196,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             case 6 -> SettingPreloadFragment.newInstance();
             case 7 -> HotFragment.newInstance();
             case 8 -> SettingAdblockFragment.newInstance();
+            case 9 -> SettingAutoSiteFragment.newInstance();
             default -> null;
         });
         change(0);
