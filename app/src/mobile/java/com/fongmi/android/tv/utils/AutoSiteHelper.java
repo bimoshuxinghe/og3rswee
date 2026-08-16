@@ -67,15 +67,15 @@ public class AutoSiteHelper {
     public void detect(String url, StatusListener listener, Callback callback) {
         EXECUTOR.execute(() -> {
             try {
-                // Step0: 抓首页
+                // Step0: 抓首页（截断上限提高到150KB：很多CMS站的导航在页面底部，如cd-zj.com导航在第139KB处）
                 postStatus(listener, "正在抓取首页...");
-                String homeHtml = fetchHtml(url, 24000);
+                String homeHtml = fetchHtml(url, 150000);
                 if (TextUtils.isEmpty(homeHtml)) {
                     postError(callback, "首页抓取失败");
                     return;
                 }
-                // Step1: AI 识别框架类型 + 分类(名称$ID) + 一个真实分类页链接。
-                // 注意：分类url 模板【不靠 AI 在首页猜】，改由程序“真的去点一下分类页”实证推导。
+                // Step1: AI 识别框架类型 + 分类(名称$ID) + 分类url模板。
+                // 关键：分类url模板由 AI【直接阅读首页HTML里的真实分类链接】推导，程序不再按框架盲拼。
                 postStatus(listener, "AI 识别网站框架与分类中...");
                 JsonObject step1 = callAi(buildPrompt1(homeHtml, url));
                 String cate = getString(step1, "分类");
@@ -86,29 +86,22 @@ public class AutoSiteHelper {
                     CategoryInfo fw = extractCategories(homeHtml, url);
                     if (fw != null) cate = fw.cate;
                 }
-                // 找一个真实分类页链接（“浏览器里点一下某个分类”）：优先用 AI 给的，否则扫描首页导航
-                String sampleCateUrl = getString(step1, "分类页链接");
-                if (TextUtils.isEmpty(sampleCateUrl)) sampleCateUrl = findCategoryLink(homeHtml, url);
-                // 实证推导分类url模板：真的去抓这个分类页，读它的真实网址 + 翻页链接，绝不靠猜
-                String realCateUrl = "";
-                String cateUrlTpl = "";
-                if (!TextUtils.isEmpty(sampleCateUrl)) {
-                    String[] fetched = fetchWithUrl(sampleCateUrl, url);
-                    realCateUrl = fetched[0];
-                    cateUrlTpl = deriveCateUrl(realCateUrl, fetched[1], framework);
-                }
-                // 兜底1：框架正则若拿到过真实分类链接，就按它推导
-                if (TextUtils.isEmpty(cateUrlTpl)) {
+                // 分类url模板：优先用 AI 从首页真实href推导的模板（不让程序按框架盲拼）
+                String cateUrlTpl = getString(step1, "分类url");
+                if (TextUtils.isEmpty(cateUrlTpl) || !cateUrlTpl.contains("{cateId}")) {
+                    cateUrlTpl = "";
+                    // 兜底：框架正则若拿到过真实分类链接，按其推导模板
                     CategoryInfo fw = extractCategories(homeHtml, url);
                     if (fw != null && fw.sampleUrl != null) {
-                        String[] f = fetchWithUrl(fw.sampleUrl, url);
-                        cateUrlTpl = deriveCateUrl(f[0], f[1], framework);
-                        if (TextUtils.isEmpty(realCateUrl)) realCateUrl = f[0];
+                        cateUrlTpl = deriveCateUrl(fw.sampleUrl, "", framework);
                     }
                 }
-                // 兜底2：按框架已知规律拼（苹果CMS 等标准站，即使首页导航是 JS 渲染也能命中）
-                if (TextUtils.isEmpty(cateUrlTpl)) cateUrlTpl = frameworkCateUrl(framework, cate, url);
-                // 兜底3：若仍无真实分类页可抓，用模板 + 第一个分类ID 拼一个给 Step2 用
+                // 终极兜底：框架规律盲拼（仅当首页/AI 都拿不到真实分类链接时）
+                if (TextUtils.isEmpty(cateUrlTpl) || !cateUrlTpl.contains("{cateId}")) {
+                    cateUrlTpl = frameworkCateUrl(framework, cate, url);
+                }
+                // 用模板 + 第一个分类ID 拼出 Step2 要抓的分类页；分类页可能被风控拦截，抓不到就退回首页分析
+                String realCateUrl = "";
                 if (TextUtils.isEmpty(realCateUrl) && !TextUtils.isEmpty(cateUrlTpl) && !TextUtils.isEmpty(cate)) {
                     String[] parts = cate.split("#")[0].split("\\$");
                     if (parts.length >= 2) {
@@ -118,8 +111,8 @@ public class AutoSiteHelper {
                 if (TextUtils.isEmpty(realCateUrl)) realCateUrl = url;
                 // Step2: 抓分类页，AI 分析影片列表并选一个影片
                 postStatus(listener, "正在抓取分类影片列表...");
-                String cateHtml = TextUtils.isEmpty(realCateUrl) ? "" : fetchHtml(realCateUrl, 24000);
-                // 兜底：若分类页内容为空或过短（分类url可能不对），退回用首页 HTML 给 Step2 分析
+                String cateHtml = realCateUrl.equals(url) ? "" : fetchHtml(realCateUrl, 24000);
+                // 兜底：若分类页内容为空或过短（被风控/分类url可能不对），退回用首页 HTML 给 Step2 分析
                 if (cateHtml.length() < 200) {
                     postStatus(listener, "分类页无数据，使用首页分析...");
                     cateHtml = homeHtml;
@@ -243,46 +236,6 @@ public class AutoSiteHelper {
         return scheme + host + "/" + href;
     }
 
-    /** 从首页 HTML 扫描出一个真实分类链接（含分类关键词 + 数字路径，且不是 推荐/首页 等非内容入口） */
-    private String findCategoryLink(String html, String baseUrl) {
-        if (TextUtils.isEmpty(html)) return "";
-        java.util.regex.Pattern aPat = java.util.regex.Pattern.compile(
-                "<a\\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>([^<]{1,12})</a>",
-                java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Matcher m = aPat.matcher(html);
-        java.util.regex.Pattern kw = java.util.regex.Pattern.compile(
-                "vodshow|vodtype|type|list|show|cate|cat|channel|fenlei|sort|column|class|category",
-                java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Pattern bad = java.util.regex.Pattern.compile(
-                "首页|主页|搜索|排行|热门|最新|推荐|我的|个人|登录|注册|关于|客服|片单|专题|高清|app|下载|网址|微信|留言|友链|公告",
-                java.util.regex.Pattern.CASE_INSENSITIVE);
-        while (m.find()) {
-            String href = m.group(1).trim();
-            String name = m.group(2).trim();
-            if (TextUtils.isEmpty(href) || (!href.startsWith("/") && !href.startsWith("http"))) continue;
-            if (!kw.matcher(href).find()) continue;
-            if (bad.matcher(name).find()) continue;
-            if (!extractId(href).isEmpty()) return href;
-        }
-        return "";
-    }
-
-    /** 抓取页面并返回 [最终URL, HTML]（跟随重定向，拿到浏览器里真正看到的网址） */
-    private String[] fetchWithUrl(String url, String baseUrl) {
-        String abs = toAbsolute(url, baseUrl);
-        String[] r = {abs, ""};
-        if (TextUtils.isEmpty(url)) return r;
-        try {
-            Request req = new Request.Builder().url(abs).build();
-            try (Response res = directClient(30000).newCall(req).execute()) {
-                r[0] = res.request().url().toString();
-                r[1] = res.body() == null ? "" : res.body().string();
-            }
-        } catch (Exception ignored) {
-        }
-        return r;
-    }
-
     /** 实证推导分类url模板：基于真实分类页网址 + 其翻页链接，绝不靠猜 */
     private String deriveCateUrl(String realUrl, String html, String framework) {
         if (TextUtils.isEmpty(realUrl)) return "";
@@ -399,50 +352,43 @@ public class AutoSiteHelper {
         return obj.get(key).getAsString();
     }
 
-    /** Step1: AI 只负责识别【框架类型 + 分类(名称$ID) + 一个真实分类页链接】。
-     *  分类url 模板不在这里生成——改由程序 fetch 真实分类页后实证推导（更准确，见 deriveCateUrl）。
-     *  内嵌 XBPQ(小暴脾气) 完整字段规范，确保 AI 输出严格符合框架要求。 */
+    /** Step1: AI 负责识别【框架类型 + 分类(名称$ID) + 分类url模板】。
+     *  分类url 模板由 AI【直接阅读首页HTML里的真实分类链接】推导（把数字段替换为 {cateId}），
+     *  程序绝不再按框架关键词盲拼。内嵌 XBPQ 格式规范，但只给格式不给关键词、不给示例站点。 */
     private String buildPrompt1(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】的规则输出。\n\n"
-                + "===== XBPQ 框架核心规则 =====\n"
+                + "===== XBPQ 框架核心规则（只给格式，不限定具体站点写法）=====\n"
                 + "【截取方式——只允许以下四种】\n"
-                + "(1) p: (jsoup选择器，最常用)\n"
-                + "   - p:div.classname → 定位容器\n"
-                + "   - p:a->text → 取<a>文字\n"
-                + "   - p:a->href → 取<a>链接\n"
-                + "   - p:img->src / p:img->data-original → 取图片地址\n"
-                + "   - 支持通配符*: p:ul[class*=\"v_list\"] li\n"
-                + "(2) && (正则匹配): 起始文本&&结束文本，截取中间内容\n"
+                + "(1) p: (jsoup选择器，最常用): p:div.classname / p:a->text / p:a->href / p:img->src / p:img->data-original ；支持通配符 p:ul[class*=\"v_list\"] li\n"
+                + "(2) && (正则): 起始文本&&结束文本，截取中间内容\n"
                 + "(3) j: (json路径): j:data.list[1].name\n"
-                + "(4) 分割(分割符): 用split分割成数组，如 &&分割(#)\n\n"
+                + "(4) 分割: 用split分割成数组，如 &&分割(#)\n\n"
                 + "【关键字段格式——必须严格遵守】\n"
-                + "- \"分类\": 格式为 分类名$分类ID#分类名$分类ID，用$分隔名和ID，#分隔不同分类\n"
+                + "- \"分类\": 格式 分类名$分类ID#分类名$分类ID（$分隔名与ID，#分隔不同分类）\n"
                 + "  示例: 电影$1#电视剧$2#动漫$3#综艺$4\n"
-                + "  分类ID = 该分类链接路径中代表分类的那一段数字\n"
-                + "- \"分类url\": 必须包含 {cateId} 和 {catePg} 占位符\n"
-                + "  示例: https://xxx.com/vodshow/{cateId}--------{catePg}---.html\n"
-                + "         https://xxx.com/cat/{cateId}-{catePg}.html\n"
-                + "         https://xxx.com/type/{cateId}/page/{catePg}\n"
-                + "- \"数组\": 包裹每部影片的最小重复单元选择器\n"
-                + "- \"标题\"/\"图片\"/\"链接\": 在数组单元内的选择器\n"
-                + "- \"线路数组\"/\"播放数组\"/\"播放列表\"/\"播放标题\"/\"播放链接\": 详情页播放相关\n"
+                + "  分类ID = 该分类真实链接路径里代表分类的那一段数字\n"
+                + "- \"分类url\": 分类列表页网址模板，【必须】含 {cateId} 占位符(代表分类ID)；若该站分类页有翻页，还要含 {catePg} 占位符(代表页码)\n"
+                + "  必须从下方HTML里【真实的分类链接】推导：把链接中的分类数字替换成 {cateId}；翻页则观察翻页链接把页码替换成 {catePg}；无翻页则只保留 {cateId}\n"
+                + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /type/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /vodshow/{cateId}--------{catePg}---.html\n"
+                + "- \"数组\"/\"标题\"/\"图片\"/\"链接\": 详见后续步骤，本步可不输出\n"
                 + "- \"解析\": 解析接口URL，有则填无则空\n\n"
                 + "【绝对禁止】\n"
-                + "- 编造源码中不存在的class名或标签\n"
+                + "- 编造源码中不存在的class名、标签或链接\n"
                 + "- 使用 p:lip.xxx / p:namea 这类无效格式\n"
-                + "- 把 首页/搜索/登录/推荐/APP下载 当作分类\n\n"
+                + "- 把 首页/搜索/登录/推荐/APP下载 等非内容入口当作分类\n\n"
                 + "===== 任务 =====\n"
-                + "分析下面视频网站首页 HTML，输出 JSON：\n"
+                + "下面是要解析的视频网站首页HTML。请【直接阅读这段HTML】，找到页面导航/菜单区域的 <a> 链接：\n"
                 + "1. \"框架\": 网站程序框架(苹果CMS V10/苹果CMS/海洋CMS/其他PHP影视站/未知)\n"
-                + "2. \"分类\": 全部影视内容分类，格式 分类名$分类ID#分类名$分类ID\n"
-                + "   - 从首页导航<a>链接提取，href含 vodshow/type/list/show/cate/cat/channel/fenlei 等\n"
-                + "   - 若首页导航是JS动态加载，根据框架常见分类给出合理值\n"
-                + "3. \"分类页链接\": 任一真实分类的完整URL(程序会去抓取验证)，找不到则留空\n"
+                + "2. \"分类\": 所有影视内容分类，格式 分类名$分类ID#分类名$分类ID。\n"
+                + "   - 从导航 <a> 的真实链接里提取：链接文字是分类名，链接href里的数字段是ID；\n"
+                + "   - 只取指向真实影视内容列表的链接，忽略 首页/搜索/排行/热门/推荐/登录/注册/APP下载/关于 等；\n"
+                + "   - 若首页导航是JS动态加载、静态源码里看不到分类链接，再根据框架给出常见分类。\n"
+                + "3. \"分类url\": 从上面的真实分类链接推导出的网址模板（含 {cateId}，按需含 {catePg}）。\n"
                 + "4. \"站名\": 网站真实名称(从标题/logo提取，不要用域名)\n\n"
                 + "网站: " + url + "\n\n"
                 + "首页HTML:\n" + html + "\n\n"
                 + "只返回JSON，不要解释不要markdown:\n"
-                + "{\"框架\":\"苹果CMS V10\",\"站名\":\"示例影视\",\"分类\":\"电影$1#电视剧$2#动漫$3\",\"分类页链接\":\"https://...\"}";
+                + "{\"框架\":\"苹果CMS V10\",\"站名\":\"示例影视\",\"分类\":\"电影$1#电视剧$2#动漫$3#综艺$4\",\"分类url\":\"https://站点域名/type/{cateId}.html\"}";
     }
 
     /** Step2: 分析分类页，生成影片列表截取规则并给出详情页链接。
@@ -523,7 +469,7 @@ public class AutoSiteHelper {
                 + "{\"简介\":\"...\",\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
     }
 
-    /** 合并结果生成最终配置。分类/分类url/分类页链接优先来自 AI，框架正则仅兜底；播放链接按文档补解析与域名前缀。 */
+    /** 合并结果生成最终配置。分类与分类url优先来自 AI(直接读首页HTML推导)，框架正则仅兜底；播放链接按文档补解析与域名前缀。 */
     private String mergeConfig(String url, String cate, String cateUrlTpl, String siteName, JsonObject step2, JsonObject step3) {
         JsonObject ext = new JsonObject();
         ext.addProperty("主页url", url);
