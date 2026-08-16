@@ -192,19 +192,28 @@ public class AutoSiteHelper {
     private CategoryInfo extractCategories(String html, String baseUrl) {
         if (TextUtils.isEmpty(html)) return null;
         java.util.regex.Pattern aPat = java.util.regex.Pattern.compile(
-                "<a\\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>([^<]{1,12})</a>",
-                java.util.regex.Pattern.CASE_INSENSITIVE);
+                "<a\\b([^>]*)href=[\"']([^\"']+)[\"']([^>]*)>(.*?)</a>",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher m = aPat.matcher(html);
         java.util.LinkedHashMap<String, String> map = new java.util.LinkedHashMap<>();
         java.util.regex.Pattern cateKw = java.util.regex.Pattern.compile(
                 "vodshow|vodtype|type|list|show|cate|class|category|sort|column|fenlei",
                 java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Pattern ariaPat = java.util.regex.Pattern.compile("aria-label=[\"']([^\"']+)[\"']", java.util.regex.Pattern.CASE_INSENSITIVE);
         while (m.find()) {
-            String href = m.group(1).trim();
-            String name = m.group(2).trim();
-            if (TextUtils.isEmpty(href) || TextUtils.isEmpty(name)) continue;
+            String attrs = m.group(1) + " " + m.group(3);
+            String href = m.group(2).trim();
+            String inner = m.group(4);
+            if (TextUtils.isEmpty(href)) continue;
             if (!href.startsWith("/") && !href.startsWith("http")) continue;
             if (!cateKw.matcher(href).find()) continue;
+            // 优先用 aria-label（feikuai 等站分类名写在 aria-label 里），否则取标签内纯文字（去掉内部<span>等子标签）
+            String name = "";
+            java.util.regex.Matcher am = ariaPat.matcher(attrs);
+            if (am.find()) name = am.group(1).trim();
+            if (TextUtils.isEmpty(name)) name = inner.replaceAll("<[^>]+>", "").trim();
+            if (TextUtils.isEmpty(name)) continue;
+            if (name.length() > 12) name = name.substring(0, 12);
             if (name.matches(".*(首页|主页|搜索|排行|热门|最新|推荐|我的|个人|登录|注册|关于|客服|片单|专题|高清|APP|下载|网址|微信|留言|友链|公告).*")) continue;
             if (!map.containsKey(name)) map.put(name, href);
         }
