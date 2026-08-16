@@ -74,6 +74,11 @@ public class AutoSiteHelper {
                     postError(callback, "首页抓取失败");
                     return;
                 }
+                // JS 渲染站检测：部分站点首页是空壳 + JS 重定向(window.location.href)，静态抓取拿不到内容
+                if (homeHtml.length() < 800 && homeHtml.contains("window.location")) {
+                    postError(callback, "该站点需 JS 渲染（首页为 JS 重定向空壳），当前静态抓取无法识别，请换用支持 JS 渲染的站点");
+                    return;
+                }
                 // Step1: AI 识别框架类型 + 分类(名称$ID) + 分类url模板。
                 // 关键：分类url模板由 AI【直接阅读首页HTML里的真实分类链接】推导，程序不再按框架盲拼。
                 postStatus(listener, "AI 识别网站框架与分类中...");
@@ -343,7 +348,12 @@ public class AutoSiteHelper {
             String content = obj.getAsJsonArray("choices").get(0).getAsJsonObject().getAsJsonObject("message").get("content").getAsString();
             String json = extractJson(content);
             if (TextUtils.isEmpty(json)) return new JsonObject();
-            return JsonParser.parseString(json).getAsJsonObject();
+            try {
+                return JsonParser.parseString(json).getAsJsonObject();
+            } catch (Exception jsonEx) {
+                // AI 返回的不是合法 JSON（可能模型不遵循指令格式），返回空对象而非崩溃
+                return new JsonObject();
+            }
         }
     }
 
@@ -365,10 +375,11 @@ public class AutoSiteHelper {
                 + "(4) 分割: 用split分割成数组，如 &&分割(#)\n\n"
                 + "【关键字段格式——必须严格遵守】\n"
                 + "- \"分类\": 格式 分类名$分类ID#分类名$分类ID（$分隔名与ID，#分隔不同分类）\n"
-                + "  示例: 电影$1#电视剧$2#动漫$3#综艺$4\n"
-                + "  分类ID = 该分类真实链接路径里代表分类的那一段数字\n"
+                + "  示例(仅为格式示意，实际ID必须以真实链接为准): 电影$1#电视剧$2#动漫$3#综艺$4\n"
+                + "  分类ID = 该分类真实链接路径里【代表分类的那一段标识符】，可能是纯数字(如1/20)，也可能是英文单词或拼音(如 dy/dongman/zongyi)。\n"
+                + "  ⚠️ 严禁想当然：电影不一定是1(有的站电影=20)，绝对禁止按\"常见框架规律\"编造ID，必须从下方HTML真实<a href>里提取。\n"
                 + "- \"分类url\": 分类列表页网址模板，【必须】含 {cateId} 占位符(代表分类ID)；若该站分类页有翻页，还要含 {catePg} 占位符(代表页码)\n"
-                + "  必须从下方HTML里【真实的分类链接】推导：把链接中的分类数字替换成 {cateId}；翻页则观察翻页链接把页码替换成 {catePg}；无翻页则只保留 {cateId}\n"
+                + "  必须从下方HTML里【真实的分类链接】推导：把链接中的分类标识符(数字或英文slug)替换成 {cateId}；翻页则观察翻页链接把页码替换成 {catePg}；无翻页则只保留 {cateId}\n"
                 + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /type/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /vodshow/{cateId}--------{catePg}---.html\n"
                 + "- \"数组\"/\"标题\"/\"图片\"/\"链接\": 详见后续步骤，本步可不输出\n"
                 + "- \"解析\": 解析接口URL，有则填无则空\n\n"
@@ -430,6 +441,9 @@ public class AutoSiteHelper {
 
     /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
      *  内嵌 XBPQ 规范，确保播放相关字段严格符合框架要求。 */
+    /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
+     *  关键：详情页上半部分通常有「立即播放/免费观看/点击播放」等大按钮——这是 CTA 入口按钮，
+     *  不是线路也不是选集！AI 必须忽略它，去页面下半部分找真正的「播放列表」区域。 */
     private String buildPrompt3(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
                 + "===== XBPQ 框架核心规则 =====\n"
@@ -438,14 +452,21 @@ public class AutoSiteHelper {
                 + "  ✅ p:span->text / p:a->text / p:a->href → 取文字/链接\n"
                 + "  ✅ 起始文本&&结束文本 → 正则截取\n"
                 + "  ❌ p:lip.xxx / 编造class → 禁止！\n\n"
+                + "【⚠️ 极其重要——区分「播放按钮」和「播放列表」】\n"
+                + "视频网站详情页的结构通常是：\n"
+                + "  【上半部分】影片信息区（海报+标题+简介）+ 一个醒目的「免费观看/立即观看/点击播放/点击下载」大按钮\n"
+                + "    → 这个按钮只是【入口】，不是线路也不是选集！绝对不要把它当成线路数组或播放列表！\n"
+                + "  【下半部分】真正的「播放列表」区域（标题通常是 播放列表/播放地址/选集/剧集/播放源）\n"
+                + "    → 这里才有线路 tab（如 秒播资源/无尽资源/闪电资源）和选集列表（第1集/第2集...）\n"
+                + "你的任务：跳过上半部分的播放按钮，在页面下半部分找到真正的播放列表区域。\n\n"
                 + "【播放相关字段说明】\n"
-                + "- \"线路数组\": 所有播放线路tab的容器选择器\n"
-                + "- \"线路标题\": 从tab取线路名(如 线路1/腾讯/优酷)\n"
-                + "- \"播放数组\": 单线路下剧集列表容器\n"
-                + "- \"播放列表\": 每个剧集节点(通常是<a>标签)\n"
+                + "- \"线路数组\": 所有播放线路tab的容器选择器（在播放列表区域内，不是顶部的播放按钮）\n"
+                + "- \"线路标题\": 从tab取线路名(如 秒播资源/无尽资源/闪电资源/线路1)\n"
+                + "- \"播放数组\": 单线路下剧集列表容器（在播放列表区域内）\n"
+                + "- \"播放列表\": 每个剧集节点(通常是<a>标签，文字是 第1集/APP秒播/番外篇 等)\n"
                 + "- \"播放标题\": 剧集名称(如 第1集/第01集)\n"
                 + "- \"播放链接\": 剧集地址(通常是/play/xxx.html，不是直链)\n"
-                + "- \"简介\": 剧情简介文本\n"
+                + "- \"简介\": 剧情简介文本（从影片信息区提取，不是播放按钮的文字）\n"
                 + "- \"解析\": 解析接口URL(有则填无则空)，用于把播放页转成可嗅探地址\n\n"
                 + "【播放链接处理规则】\n"
                 + "- 选集href通常是播放页(如/play/xxx.html)，不是m3u8/mp4直链\n"
@@ -453,14 +474,18 @@ public class AutoSiteHelper {
                 + "- 若只有播放页href，填该href并在\"解析\"字段给一个解析接口\n"
                 + "- 相对路径会自动补全域名前缀\n\n"
                 + "===== 任务 =====\n"
-                + "分析下面详情页HTML，先找到「线路/播放/选集」区域，观察真实标签和class名:\n"
-                + "1. \"线路数组\": 线路容器选择器\n"
-                + "2. \"线路标题\": 线路名选择器\n"
-                + "3. \"播放数组\": 剧集容器选择器\n"
-                + "4. \"播放列表\": 剧集节点选择器\n"
-                + "5. \"播放标题\": 剧集名选择器\n"
-                + "6. \"播放链接\": 剧集地址选择器\n"
-                + "7. \"简介\": 剧情简介\n"
+                + "分析下面详情页HTML：\n"
+                + "1. 先找到页面下半部分的「播放列表」区域（搜索关键词：播放列表/播放地址/选集/剧集/播放源）\n"
+                + "2. 在该区域内观察线路tab和选集列表的真实标签/class名\n"
+                + "3. 绝对不要用顶部「免费观看/立即播放/点击播放/点击下载」按钮的选择器\n\n"
+                + "输出JSON字段：\n"
+                + "1. \"简介\": 剧情简介\n"
+                + "2. \"线路数组\": 真正的线路容器选择器（在播放列表区内）\n"
+                + "3. \"线路标题\": 线路名选择器\n"
+                + "4. \"播放数组\": 剧集容器选择器（在播放列表区内）\n"
+                + "5. \"播放列表\": 剧集节点选择器\n"
+                + "6. \"播放标题\": 剧集名选择器\n"
+                + "7. \"播放链接\": 剧集地址选择器\n"
                 + "8. \"解析\": 解析接口URL\n\n"
                 + "页面: " + url + "\n\n"
                 + "详情页HTML:\n" + html + "\n\n"
@@ -514,10 +539,25 @@ public class AutoSiteHelper {
 
     private String extractJson(String content) {
         if (content == null) return "";
+        // 去掉思考标签（DeepSeek等推理模型的思考过程）
         content = content.replaceAll("(?s) 思考.*?/思考", "").trim();
+        // 去掉 markdown 代码块标记（AI常返回 ```json ... ``` 或 ``` ... ```）
+        content = content.replaceAll("```json\\s*", "").replaceAll("```\\s*$", "");
+        content = content.replaceAll("^```\\s*", "").replaceAll("\\s*```$", "");
+        content = content.trim();
+        // 找最外层 { }
         int start = content.indexOf('{');
         int end = content.lastIndexOf('}');
-        if (start >= 0 && end > start) return content.substring(start, end + 1);
+        if (start >= 0 && end > start) {
+            String json = content.substring(start, end + 1).trim();
+            // 验证提取到的确实是合法 JSON，不是带前缀文字的残片
+            try {
+                JsonParser.parseString(json);
+                return json;
+            } catch (Exception ignored) {
+                // 不是合法 JSON，返回空让调用方处理
+            }
+        }
         return "";
     }
 }

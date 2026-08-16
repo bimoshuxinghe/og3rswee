@@ -29,8 +29,8 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:singleLine="true"
-            android:textColor="#E613213A"
-            android:textColorHint="#6613213A"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textColorHint="?android:attr/textColorHint"
             android:textSize="14sp" />
 
     </LinearLayout>
