@@ -127,7 +127,7 @@ public class SettingAutoSiteFragment extends BaseFragment {
                     Notify.show(R.string.auto_site_ai_failed);
                     return;
                 }
-                mBinding.url.setText(config);
+                mBinding.url.setText("");
                 addFromJson(config);
             }
 

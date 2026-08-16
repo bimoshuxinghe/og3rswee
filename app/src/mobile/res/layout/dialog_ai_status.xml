@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/ai_status_title"
-        android:textColor="?attr/colorOnSurface"
+        android:textColor="@android:color/white"
         android:textSize="20sp"
         android:textStyle="bold" />
 
@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/ai_status_loading"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textColor="#DDFFFFFF"
         android:textSize="14sp" />
 
     <ProgressBar
