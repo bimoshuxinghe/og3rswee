@@ -166,6 +166,12 @@
     <string name="setting_tmdb_logged_in">Configured</string>
     <string name="setting_tmdb_not_set">Not set</string>
     <string name="setting_tmdb_cleared">TMDB config cleared</string>
+    <string name="setting_auto_site">Auto Site</string>
+    <string name="auto_site_hint">Enter video site URL</string>
+    <string name="auto_site_empty">Please enter video site URL</string>
+    <string name="auto_site_success">Site added successfully</string>
+    <string name="auto_site_failed">Failed to add site</string>
+    <string name="auto_site_exist">Site already exists</string>
     <string name="setting_choose">Choose</string>
     <string name="setting_off">Off</string>
     <string name="setting_on">On</string>

@@ -156,6 +156,12 @@
     <string name="setting_backup">備份</string>
     <string name="setting_restore">還原</string>
     <string name="setting_version">版本</string>
+    <string name="setting_auto_site">自動站點</string>
+    <string name="auto_site_hint">輸入影片網站網址</string>
+    <string name="auto_site_empty">請輸入影片網站網址</string>
+    <string name="auto_site_success">站點新增成功</string>
+    <string name="auto_site_failed">站點新增失敗</string>
+    <string name="auto_site_exist">站點已存在</string>
     <string name="setting_choose">選擇</string>
     <string name="setting_off">關</string>
     <string name="setting_on">開</string>

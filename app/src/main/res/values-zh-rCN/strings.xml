@@ -165,6 +165,12 @@
     <string name="setting_tmdb_logged_in">已配置</string>
     <string name="setting_tmdb_not_set">未配置</string>
     <string name="setting_tmdb_cleared">已清除 TMDB 配置</string>
+    <string name="setting_auto_site">自动站点</string>
+    <string name="auto_site_hint">输入视频网站地址</string>
+    <string name="auto_site_empty">请输入视频网站地址</string>
+    <string name="auto_site_success">站点添加成功</string>
+    <string name="auto_site_failed">站点添加失败</string>
+    <string name="auto_site_exist">站点已存在</string>
     <string name="setting_choose">选择</string>
     <string name="setting_off">关</string>
     <string name="setting_on">开</string>

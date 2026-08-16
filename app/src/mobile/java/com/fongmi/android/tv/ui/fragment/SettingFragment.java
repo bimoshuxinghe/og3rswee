@@ -33,6 +33,7 @@ import com.fongmi.android.tv.ui.dialog.ConfigDialog;
 import com.fongmi.android.tv.ui.dialog.HistoryDialog;
 import com.fongmi.android.tv.ui.dialog.LiveDialog;
 import com.fongmi.android.tv.ui.dialog.ProxySubscriptionDialog;
+import com.fongmi.android.tv.ui.dialog.XbpqDialog;
 import com.fongmi.android.tv.ui.dialog.RestoreDialog;
 import com.fongmi.android.tv.ui.dialog.WebDavDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
@@ -134,6 +135,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.vod.setOnClickListener(this::onVod);
         mBinding.doh.setOnClickListener(this::setDoh);
         mBinding.proxySub.setOnClickListener(view -> ProxySubscriptionDialog.show(this, () -> mBinding.proxySubText.setText(com.fongmi.android.tv.proxy.ProxySubscriptionManager.get().getSummary())));
+        mBinding.autoSite.setOnClickListener(view -> XbpqDialog.show(this));
         mBinding.tmdb.setOnClickListener(this::onTmdb);
         mBinding.tmdb.setOnLongClickListener(this::onTmdbClear);
         mBinding.live.setOnClickListener(this::onLive);
