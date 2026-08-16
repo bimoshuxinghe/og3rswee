@@ -35,7 +35,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/auto_site_hint"
-                android:textColor="@color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -84,7 +84,7 @@
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:text="@string/auto_site_ai"
-                    android:textColor="@color/white" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/confirm"
@@ -94,6 +94,35 @@
                     android:text="@android:string/ok"
                     android:textColor="?attr/colorOnPrimary" />
             </LinearLayout>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/auto_site_list_title"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/siteList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:clipToPadding="false"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/emptyTip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/auto_site_list_empty"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+                android:visibility="gone" />
 
         </androidx.appcompat.widget.LinearLayoutCompat>
     </androidx.core.widget.NestedScrollView>

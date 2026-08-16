@@ -18,6 +18,7 @@ import com.fongmi.android.tv.databinding.FragmentSettingAutoSiteBinding;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.activity.HomeActivity;
+import com.fongmi.android.tv.ui.adapter.AutoSiteListAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.dialog.AiStatusDialog;
 import com.fongmi.android.tv.utils.AutoSiteHelper;
@@ -34,6 +35,7 @@ public class SettingAutoSiteFragment extends BaseFragment {
 
     private FragmentSettingAutoSiteBinding mBinding;
     private AiStatusDialog mStatusDialog;
+    private AutoSiteListAdapter mAdapter;
 
     public static SettingAutoSiteFragment newInstance() {
         return new SettingAutoSiteFragment();
@@ -51,6 +53,23 @@ public class SettingAutoSiteFragment extends BaseFragment {
     @Override
     protected void initView() {
         mBinding.aiKey.setText(Setting.getAiKey());
+        mAdapter = new AutoSiteListAdapter(this::onDeleteSite);
+        mBinding.siteList.setAdapter(mAdapter);
+        updateEmptyTip();
+    }
+
+    private void onDeleteSite(Site item) {
+        item.delete();
+        VodConfig.get().getSites().remove(item);
+        if (mAdapter != null) mAdapter.remove(item);
+        updateEmptyTip();
+        RefreshEvent.home();
+        Notify.show(R.string.auto_site_deleted);
+    }
+
+    private void updateEmptyTip() {
+        if (mAdapter == null) return;
+        mBinding.emptyTip.setVisibility(mAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -198,6 +217,10 @@ public class SettingAutoSiteFragment extends BaseFragment {
     private void save(Site site) {
         site.save();
         VodConfig.get().getSites().add(site);
+        if (mAdapter != null && AutoSiteListAdapter.isAutoSite(site)) {
+            mAdapter.add(site);
+            updateEmptyTip();
+        }
         RefreshEvent.home();
         Notify.show(R.string.auto_site_success);
     }
