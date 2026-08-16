@@ -138,6 +138,35 @@ public class AutoSiteHelper {
                 String detailHtml = TextUtils.isEmpty(detailUrl) ? "" : fetchHtml(detailUrl, 40000);
                 postStatus(listener, "AI 分析播放线路与选集...");
                 JsonObject step3 = callAi(buildPrompt3(detailHtml, detailUrl));
+                // Step4: 【关键修复】若详情页只有"立即播放/直接播放"类CTA按钮（无真正多线路），
+                //  说明真正的线路和集数在播放页里——必须跟进去抓。
+                //  判定条件任一命中即触发：
+                //   a) AI 返回了明确的"播放页URL"字段（AI 在详情页里找到了立即播放按钮的href）
+                //   b) 线路只有1个且名字匹配 CTA 关键词（直接播放/立即播放/免费观看/点击播放）
+                String playPageUrl = getString(step3, "播放页URL");
+                String lineArray = getString(step3, "线路数组");
+                String lineTitle = getString(step3, "线路标题");
+                boolean isCtaOnlyLine = !TextUtils.isEmpty(lineArray) && !TextUtils.isEmpty(lineTitle)
+                        && lineTitle.matches(".*(直接播放|立即播放|免费观看|点击播放|网盘播放).*");
+                boolean needFollowPlayPage = (!TextUtils.isEmpty(playPageUrl)) || isCtaOnlyLine;
+                if (needFollowPlayPage && TextUtils.isEmpty(playPageUrl)) {
+                    // 情况b: AI没给播放页URL但线路明显是CTA → 从详情页HTML正则提取"立即播放"按钮的href
+                    playPageUrl = extractPlayButtonHref(detailHtml);
+                }
+                if (!TextUtils.isEmpty(playPageUrl)) {
+                    postStatus(listener, "正在跟进播放页获取真实线路...");
+                    String playPageHtml = fetchHtml(playPageUrl, 40000);
+                    if (containsVodLink(playPageHtml) || playPageHtml.contains("第") || playPageHtml.contains("episode")) {
+                        postStatus(listener, "AI 分析播放页真实线路与选集...");
+                        JsonObject step4 = callAi(buildPrompt4(playPageHtml, playPageUrl));
+                        // 用播放页的线路/集数覆盖掉详情页的CTA假结果
+                        String[] playKeys = {"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
+                        for (String k : playKeys) {
+                            String v = getString(step4, k);
+                            if (!TextUtils.isEmpty(v)) step3.addProperty(k, v);
+                        }
+                    }
+                }
                 // 合并配置
                 postStatus(listener, "正在生成配置...");
                 String config = mergeConfig(url, siteName, cate, cateUrlTpl, step2, step3);
@@ -181,6 +210,36 @@ public class AutoSiteHelper {
             }
         }
         return first;
+    }
+
+    /** 从详情页 HTML 中提取"立即播放/直接播放"等 CTA 按钮的 href（用于 Step4 跟进抓取播放页）。
+     *  匹配含 CTA 文字的 <a> 标签，优先取 class 含 play/btn 的。 */
+    private String extractPlayButtonHref(String html) {
+        if (TextUtils.isEmpty(html)) return "";
+        java.util.regex.Pattern aPat = java.util.regex.Pattern.compile(
+                "<a\\b([^>]*)href=[\"']([^\"']+)[\"']([^>]*)>(.*?)</a>",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL);
+        java.util.regex.Pattern ctaPat = java.util.regex.Pattern.compile(
+                "直接播放|立即播放|免费观看|点击播放|网盘播放",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Pattern btnClass = java.util.regex.Pattern.compile(
+                "class=[\"'][^\"]*(?:play-btn|btn-play|play-now|cloud-play|video-play|btn-important|btn-large)[^\"]*[\"']",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher m = aPat.matcher(html);
+        String bestHref = "";
+        int bestScore = -1;
+        while (m.find()) {
+            String attrs = m.group(1) + " " + m.group(3);
+            String href = m.group(2).trim();
+            String inner = m.group(4).replaceAll("<[^>]+>", "").trim();
+            if (!ctaPat.matcher(inner).find()) continue;
+            if (href.equals("#") || href.isEmpty()) continue;
+            int score = 0;
+            if (btnClass.matcher(attrs).find()) score += 10;
+            if (inner.contains("立即") || inner.contains("直接")) score += 5;
+            if (score > bestScore) { bestScore = score; bestHref = href; }
+        }
+        return bestHref;
     }
 
     /** 判断 HTML 是否含真实影片详情链接（/detail/ 或 /play/ 或 /vod/）。
@@ -510,7 +569,9 @@ public class AutoSiteHelper {
 
     /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
      *  关键：绝大多数视频站详情页都有「直接播放/立即播放」按钮混在播放区域内，
-     *  AI 必须用【数量+位置+文字特征】三重标准把它和真正的线路/选集区分开。 */
+     *  AI 必须用【数量+位置+文字特征】三重标准把它和真正的线路/选集区分开。
+     *  【重要】若详情页只有CTA按钮而无真正多线路，AI 必须返回该按钮的href作为"播放页URL"，
+     *  程序会自动跟进去抓取播放页获取真实线路/集数。 */
     private String buildPrompt3(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
                 + "===== XBPQ 框架核心规则 =====\n"
@@ -542,14 +603,25 @@ public class AutoSiteHelper {
                 + "  1. 你的「线路数组」选出来的元素，数量是否 ≥ 2？如果只有1个且名字是「直接播放/立即播放」，100%错了，重选！\n"
                 + "  2. 你的「播放列表」选出来的元素，是否包含「第X集」格式的文字？如果选出来的是视频标题名（如「凡人修仙传」），100%错了，重选！\n"
                 + "  3. 如果播放区域里同时存在「直接播放」按钮和「XX线路」tabs，前者是假的，后者才是真的！\n\n"
+                + "【🔑 关键：CTA按钮跟进机制】\n"
+                + "很多站的详情页【没有真正的多线路tabs】，只有一个「立即播放/直接播放」按钮。\n"
+                + "这种情况下，真正的线路和集数在点击该按钮后跳转到的【播放页】里。\n"
+                + "→ 如果你发现页面里：\n"
+                + "   (a) 只有1个线路类元素且名字是「直接播放/立即播放」，或者\n"
+                + "   (b) 找不到任何真正的多线路tabs（≥2个不同名字的tab），\n"
+                + "   那么你必须：\n"
+                + "   ① 在「播放页URL」字段填入那个「立即播放/直接播放」<a>标签的真实href（不是#）\n"
+                + "   ② 「线路数组」「线路标题」「播放数组」「播放列表」「播放标题」「播放链接」全部留空\n"
+                + "   ③ 程序会自动用这个URL去抓取播放页，从播放页获取真实的线路和集数\n\n"
                 + "【播放相关字段说明】\n"
+                + "- \"简介\": 剧情简介文本（从影片信息区提取，不是播放按钮的文字）\n"
+                + "- \"播放页URL\": 【重要新字段】若详情页只有CTA无多线路，填入CTA按钮的href；若有真线路则留空\n"
                 + "- \"线路数组\": 所有播放线路tab的容器选择器（找 class 含 source/tab 的容器，排除 play-now/cloud-play）\n"
                 + "- \"线路标题\": 从tab取线路名(如 BF线路/FF线路/线路1)\n"
                 + "- \"播放数组\": 单线路下剧集列表容器（在线路对应的内容区内）\n"
                 + "- \"播放列表\": 每个剧集节点(通常是<a>标签，文字是 第1集/APP秒播/番外篇 等)\n"
                 + "- \"播放标题\": 剧集名称(如 第1集/第01集)\n"
                 + "- \"播放链接\": 剧集地址(通常是/play/xxx.html，不是直链)\n"
-                + "- \"简介\": 剧情简介文本（从影片信息区提取，不是播放按钮的文字）\n"
                 + "- \"解析\": 解析接口URL(有则填无则空)，用于把播放页转成可嗅探地址\n\n"
                 + "【播放链接处理规则】\n"
                 + "- 选集href通常是播放页(如/play/xxx.html)，不是m3u8/mp4直链\n"
@@ -559,24 +631,70 @@ public class AutoSiteHelper {
                 + "===== 任务 =====\n"
                 + "分析下面详情页HTML：\n"
                 + "1. 先找到「播放列表」区域（搜索 id/class 含 play-list/play/source/tab）\n"
-                + "2. 在该区域内先排除所有「直接播放/立即播放/免费观看」按钮（不管它在哪个位置）\n"
-                + "3. 找到真正的线路 tabs（多个 tab，名字含「线路/资源/源」）\n"
-                + "4. 找到真正的选集列表（多个 <a>，文字含「第X集」）\n"
-                + "5. 用自检规则验证你的选择是否正确\n\n"
+                + "2. 判断页面是否有真正的多线路tabs（≥2个不同名字的tab）\n"
+                + "3. 若有真线路 → 正常输出线路/集数选择器；若无（只有CTA按钮）→ 输出CTA的href到「播放页URL」\n"
+                + "4. 用自检规则验证你的选择是否正确\n\n"
                 + "输出JSON字段：\n"
                 + "1. \"简介\": 剧情简介\n"
-                + "2. \"线路数组\": 真正的线路容器选择器（排除 play-now-btn/cloud-play-btn）\n"
-                + "3. \"线路标题\": 线路名选择器\n"
-                + "4. \"播放数组\": 剧集容器选择器（在 .play-source-content 内）\n"
-                + "5. \"播放列表\": 剧集节点选择器\n"
-                + "6. \"播放标题\": 剧集名选择器\n"
-                + "7. \"播放链接\": 剧集地址选择器\n"
-                + "8. \"解析\": 解析接口URL\n\n"
+                + "2. \"播放页URL\": 若只有CTA无多线路，填CTA按钮href；否则留空\n"
+                + "3. \"线路数组\": 真正的线路容器选择器（排除 play-now-btn/cloud-play-btn）\n"
+                + "4. \"线路标题\": 线路名选择器\n"
+                + "5. \"播放数组\": 剧集容器选择器（在 .play-source-content 内）\n"
+                + "6. \"播放列表\": 剧集节点选择器\n"
+                + "7. \"播放标题\": 剧集名选择器\n"
+                + "8. \"播放链接\": 剧集地址选择器\n"
+                + "9. \"解析\": 解析接口URL\n\n"
                 + "页面: " + url + "\n\n"
                 + "详情页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"简介\":\"...\",\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+                + "{\"简介\":\"...\",\"播放页URL\":\"\",\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+    }
+
+    /** Step4: 分析【播放页】（从详情页"立即播放"按钮跳转过来的页面）。
+     *  播放页和详情页不同——它通常直接包含真正的多线路tabs和剧集列表，
+     *  不再有"立即播放"CTA按钮。这是获取真实线路/集数的最佳来源。
+     *  此 prompt 只输出线路/集数相关字段，不重复输出简介等详情页已有字段。 */
+    private String buildPrompt4(String html, String url) {
+        return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
+                + "===== 背景 =====\n"
+                + "这是一个视频站的【播放页】（用户在详情页点击「立即播放/直接播放」后跳转到的页面）。\n"
+                + "与详情页不同，这个页面通常直接包含：\n"
+                + "  - 真正的播放线路 tabs（如「线路1」「线路2」「极速线」「优速线」等，通常 ≥ 2 个）\n"
+                + "  - 真正的剧集选集列表（如「第1集」「第2集」…或单集电影的片名）\n"
+                + "  - 可能还有 m3u8/mp4 直链\n"
+                + "你的任务：从这个页面提取真实的线路和选集选择器。\n\n"
+                + "===== XBPQ 选择器规则 =====\n"
+                + "【p: jsoup选择器】\n"
+                + "  ✅ p:div.class / p:ul.class / p:li.class / p:a / p:span → 用源码中真实class\n"
+                + "  ✅ p:a->text 取文字 / p:a->href 取链接 / p:img->src 取图片\n"
+                + "  ❌ 编造不存在的class → 绝对禁止！\n"
+                + "  ⚠️ class名必须原样抄写：class=\"title text-overflow\" → 用 title 或 text-overflow 或 title.text-overflow，绝对不能写成 titlea-text\n\n"
+                + "【你要找的内容】\n"
+                + "1. **线路区域**：找包含多个 tab 的容器（横向排列的选项卡），每个 tab 名字不同\n"
+                + "   - 常见位置：页面上半部分，标题/播放器下方\n"
+                + "   - 常见 class 含：source / tab / nav / menu / playlist / play-from\n"
+                + "   - 线路名通常是：「XX线路」「XX资源」「XX源」「线路1/2/3」「极速/优速/闪电」\n"
+                + "   - ⚠️ 如果只有一个叫「直接播放/立即播放」的元素且没有其他tab，说明这不是线路区，继续往下找\n\n"
+                + "2. **选集区域**：在某条线路下方，包含多个剧集链接的区域\n"
+                + "   - 常见位置：线路 tabs 下方的内容区\n"
+                + "   - 常见 class 含：content / list / episode / play-list / source-content\n"
+                + "   - 集名格式：「第1集」「第01集」「EP1」「1」「番外篇」（电影可能只有1个=片名）\n"
+                + "   - 每个 <a> 的 href 是该集的播放地址\n\n"
+                + "3. **解析接口**：如果页面里有 m3u8/mp4 直链可直接用；否则留空\n\n"
+                + "===== 输出JSON字段 =====\n"
+                + "- \"线路数组\": 线路tabs容器选择器（如 p:div.play-source 或 p:ul.source-tabs）\n"
+                + "- \"线路标题\": 从单个tab取线路名的选择器（如 p:a->text）\n"
+                + "- \"播放数组\": 剧集列表容器选择器（在线路内容区内）\n"
+                + "- \"播放列表\": 单个剧集节点选择器（通常是 <a> 标签）\n"
+                + "- \"播放标题\": 剧集名称选择器（如 p:a->text，取出的文字是「第1集」这种）\n"
+                + "- \"播放链接\": 剧集地址选择器（如 p:a->href）\n"
+                + "- \"解析\": 解析接口URL（有m3u8/mp4直链则留空）\n\n"
+                + "页面: " + url + "\n\n"
+                + "播放页HTML:\n" + html + "\n\n"
+                + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
+                + "只返回JSON不要解释不要markdown:\n"
+                + "{\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
     }
 
     /** 合并结果生成最终配置。
