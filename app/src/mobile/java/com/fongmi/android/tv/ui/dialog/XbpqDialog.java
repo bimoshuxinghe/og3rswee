@@ -23,10 +23,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.net.Proxy;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
@@ -45,6 +48,16 @@ public class XbpqDialog extends BaseAlertDialog {
 
     public static void show(Fragment fragment) {
         new XbpqDialog().show(fragment.getChildFragmentManager(), null);
+    }
+
+    /** 直连 client：不走应用内代理，避免代理导致抓取/AI 调用超时 */
+    private static OkHttpClient directClient(long timeout) {
+        return OkHttp.client().newBuilder()
+                .proxy(Proxy.NO_PROXY)
+                .connectTimeout(timeout, TimeUnit.MILLISECONDS)
+                .readTimeout(timeout, TimeUnit.MILLISECONDS)
+                .writeTimeout(timeout, TimeUnit.MILLISECONDS)
+                .build();
     }
 
     @Override
@@ -102,7 +115,10 @@ public class XbpqDialog extends BaseAlertDialog {
         Notify.progress(requireContext());
         EXECUTOR.execute(() -> {
             try {
-                String html = OkHttp.string(url);
+                String html;
+                try (Response res = OkHttp.newCall(directClient(30000), url).execute()) {
+                    html = res.body() == null ? "" : res.body().string();
+                }
                 if (TextUtils.isEmpty(html)) {
                     HANDLER.post(() -> {
                         binding.aiDetect.setEnabled(true);
@@ -111,7 +127,7 @@ public class XbpqDialog extends BaseAlertDialog {
                     });
                     return;
                 }
-                if (html.length() > 12000) html = html.substring(0, 12000);
+                if (html.length() > 8000) html = html.substring(0, 8000);
                 String config = callAi(html, url);
                 HANDLER.post(() -> {
                     binding.aiDetect.setEnabled(true);
@@ -150,7 +166,7 @@ public class XbpqDialog extends BaseAlertDialog {
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build();
-        try (Response response = OkHttp.client(120).newCall(request).execute()) {
+        try (Response response = directClient(180000).newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 String err = response.body() == null ? "" : response.body().string();
                 throw new Exception("HTTP " + response.code() + ": " + err);
@@ -183,7 +199,7 @@ public class XbpqDialog extends BaseAlertDialog {
                 + "- 主页url：网站首页地址\n\n"
                 + "网站地址：" + url + "\n\n"
                 + "网站首页 HTML 源码（截断）：\n" + html + "\n\n"
-                + "请只返回一个 JSON 对象，格式如下：\n"
+                + "请只返回一个 JSON 对象，不要输出任何解释文字、不要用 markdown 代码块包裹，格式如下：\n"
                 + "{\n"
                 + "  \"key\": \"站点key\",\n"
                 + "  \"name\": \"站点名称\",\n"
