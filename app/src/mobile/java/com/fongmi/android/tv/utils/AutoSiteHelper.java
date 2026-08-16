@@ -116,14 +116,21 @@ public class AutoSiteHelper {
                 // Step2: 抓分类页，AI 分析影片列表并选一个影片
                 postStatus(listener, "正在抓取分类影片列表...");
                 String cateHtml = fetchHtml(sampleCateUrl, 24000);
-                // 兜底：若分类页内容为空或过短（被风控/链接不对），退回用首页 HTML 给 Step2 分析
-                if (cateHtml.length() < 200) {
-                    postStatus(listener, "分类页无数据，使用首页分析...");
+                // 兜底：若分类页是验证码/风控页或链接不对（内容里没有真实影片详情链接），
+                // 退回用首页 HTML 给 Step2 分析。枫叶4K(cd-zj.com)等站分类页有验证码，但首页推荐列表正常，必须用首页训练列表规则。
+                if (!containsVodLink(cateHtml)) {
+                    postStatus(listener, "分类页无数据/被风控，使用首页分析...");
                     cateHtml = homeHtml;
                     sampleCateUrl = url;
                 }
                 postStatus(listener, "AI 从列表选影片中...");
                 JsonObject step2 = callAi(buildPrompt2(cateHtml, sampleCateUrl));
+                // 检测 AI 标记的 JS 动态渲染：若数组=JS_DYNAMIC，回退用首页重新分析
+                String arraySel = getString(step2, "数组");
+                if ("JS_DYNAMIC".equals(arraySel)) {
+                    postStatus(listener, "检测到JS动态渲染，使用首页分析...");
+                    step2 = callAi(buildPrompt2(homeHtml, url));
+                }
                 String detailUrl = getString(step2, "详情页链接");
                 if (TextUtils.isEmpty(detailUrl)) detailUrl = extractLink(cateHtml, new String[]{"voddetail", "detail", "play", "vod", "id"});
                 // Step3: 抓详情页，AI 分析播放线路与播放选集
@@ -174,6 +181,13 @@ public class AutoSiteHelper {
             }
         }
         return first;
+    }
+
+    /** 判断 HTML 是否含真实影片详情链接（/detail/ 或 /play/ 或 /vod/）。
+     *  用于区分"有内容的分类页"与"验证码/风控/空壳页"（后者可能很长但没有真实影片链接）。 */
+    private boolean containsVodLink(String html) {
+        if (TextUtils.isEmpty(html)) return false;
+        return html.contains("/detail/") || html.contains("/play/") || html.contains("/vod/") || html.contains("/show/");
     }
 
     /** 框架分类提取结果 */
@@ -244,15 +258,31 @@ public class AutoSiteHelper {
         return new CategoryInfo(sb.toString(), sampleUrl);
     }
 
-    /** 从分类链接中提取分类ID：数字(1/2/随机大数)或拼音/单词slug(纯字母段)，取路径中最后一个有意义段。 */
+    /** 从分类链接中提取分类ID：数字(1/2/随机大数)或拼音/单词slug(纯字母段)。
+     *  优先取路径【最后一个含数字或字母的段】——若最后一段是空白占位符(如 "id/24/.html" 末尾的 "/" 或 ".html")则回退倒数第二段。
+     *  若取到的段内含连续2个以上分隔符(-或_)，只取分隔符之前的数字/字母作为ID（如 "1-----------" → "1"，"dy--------" → "dy"）。
+     *  这类 "ID+固定后缀" 格式常见于某些CMS站：/vshow/{cateId}-----------.html 或 /cupfox-list/{id}-----------.html
+     *  （后面短横线是地区/年份等筛选项的空占位符，属于固定后缀，不是ID的一部分）。 */
     private String extractId(String href) {
         if (TextUtils.isEmpty(href)) return "";
-        // 取路径最后一个段（去掉扩展名与query/fragment），数字或字母slug均可
+        // 收集路径中所有非空段（去掉扩展名与query/fragment），从后往前找第一个含数字/字母的段
         java.util.regex.Pattern p = java.util.regex.Pattern.compile("/([^/?.#]+?)(?:\\.(html?|php|aspx?))?(?:[?#]|$)");
         java.util.regex.Matcher m = p.matcher(href);
+        java.util.ArrayList<String> segs = new java.util.ArrayList<>();
+        while (m.find()) {
+            if (m.group(1) != null && !m.group(1).isEmpty()) segs.add(m.group(1));
+        }
         String last = null;
-        while (m.find()) last = m.group(1);
-        return last == null ? "" : last;
+        for (int i = segs.size() - 1; i >= 0; i--) {
+            if (segs.get(i).matches(".*[a-zA-Z0-9].*")) { last = segs.get(i); break; }
+        }
+        if (last == null || last.isEmpty()) return "";
+        // 如果段内含连续2个以上的分隔符（-或_），只取分隔符之前的数字/字母作为ID
+        java.util.regex.Pattern sepPat = java.util.regex.Pattern.compile("^([a-zA-Z0-9]+)[- _]{2,}");
+        java.util.regex.Matcher sm = sepPat.matcher(last);
+        if (sm.find()) return sm.group(1);   // "1-----------" → "1", "dy--------" → "dy"
+        // 无特殊分隔符，整个段就是ID
+        return last;
     }
 
     /** 相对路径转绝对路径 */
@@ -266,18 +296,39 @@ public class AutoSiteHelper {
 
     /** 兜底：从真实分类页链接推导分类url模板。
      *  不依赖任何框架关键词（/vod /vodshow /list /type /id 等前缀各站不同，必须由 AI 从真实 href 读取），
-     *  仅用通用启发式：把路径中【最后一个有意义段】(代表分类ID，数字或拼音/单词slug均可)替换为 {cateId}，其余照搬真实 href。
+     *  仅用通用启发式：把路径中【最后一个含数字或字母的段】(代表分类ID)替换为 {cateId}，其余照搬真实 href。
+     *  特殊处理：若ID后面跟连续分隔符（如 "1-----------"），这些是固定筛选项占位符，必须保留（→ {cateId}-----------）。
      *  优先使用 AI 推导的模板；此兜底仅在 AI 未给出含 {cateId} 的模板时启用。 */
     private String deriveCateUrlTpl(String realUrl) {
         if (TextUtils.isEmpty(realUrl)) return "";
-        // 找路径最后一个段（去掉扩展名），把分类ID段替换为 {cateId}（数字或字母slug均可）
+        // 收集路径中所有非空段，从后往前找第一个含数字/字母的段作为分类ID所在段
         java.util.regex.Pattern p = java.util.regex.Pattern.compile("(/[^/?.#]+?)(\\.(html?|php|aspx?))?(?:[?#]|$)");
         java.util.regex.Matcher m = p.matcher(realUrl);
-        String seg = null, ext = null; int s = -1, e = -1;
-        while (m.find()) { seg = m.group(1); ext = m.group(2); s = m.start(); e = m.end(); }
-        if (seg == null) return "";
-        String replacement = "/" + "{cateId}" + (ext == null ? "" : ext);  // seg 已含前导/，整体替换为 /{cateId}
-        return realUrl.substring(0, s) + replacement + realUrl.substring(e);
+        java.util.ArrayList<String[]> segs = new java.util.ArrayList<>();
+        while (m.find()) {
+            if (m.group(1) != null && !m.group(1).isEmpty())
+                segs.add(new String[]{m.group(1), m.group(2), String.valueOf(m.start()), String.valueOf(m.end())});
+        }
+        for (int i = segs.size() - 1; i >= 0; i--) {
+            String seg = segs.get(i)[0];
+            if (!seg.matches(".*[a-zA-Z0-9].*")) continue;   // 跳过纯空白占位符段
+            String ext = segs.get(i)[1];
+            int s = Integer.parseInt(segs.get(i)[2]);
+            int e = Integer.parseInt(segs.get(i)[3]);
+            // 检查段内是否有 "ID+固定后缀" 格式（如 "1-----------" 或 "dy--------"）
+            java.util.regex.Pattern sepPat = java.util.regex.Pattern.compile("^([a-zA-Z0-9]+)([- _]{2,}.*)$");
+            java.util.regex.Matcher sm = sepPat.matcher(seg);
+            String replacement;
+            if (sm.find()) {
+                // 有固定后缀：只替换ID部分，保留后缀 → {cateId}-----------
+                replacement = "/" + "{cateId}" + sm.group(2) + (ext == null ? "" : ext);
+            } else {
+                // 无特殊后缀，整段替换
+                replacement = "/" + "{cateId}" + (ext == null ? "" : ext);
+            }
+            return realUrl.substring(0, s) + replacement + realUrl.substring(e);
+        }
+        return "";
     }
 
     /** 用真实分类ID拼出用于【本机抓取分析】的分类页URL：
@@ -350,8 +401,11 @@ public class AutoSiteHelper {
                 + "  ⚠️ 严禁想当然：电影不一定是1(有的站电影=20)，绝对禁止按“常见框架规律”编造ID，必须从下方HTML真实<a href>里提取。\n"
                 + "- \"分类url\": 分类列表页网址【模板】，【必须】含 {cateId} 占位符(代表分类ID，XBPQ运行时会用“分类”字段里的真实ID替换它)；若该站分类页有翻页，还要含 {catePg} 占位符(代表页码)。\n"
                 + "  必须从下方HTML里【真实的分类链接】推导：把链接中的分类标识符(数字或英文slug)替换成 {cateId}；翻页则观察翻页链接把页码替换成 {catePg}；无翻页则只保留 {cateId}；其他筛选维度(地区/类型/年份等)可保留为占位符或留空。\n"
-                + "  注意：每个站的URL前缀(/vod /vodshow /list /type /id 等)和ID所在位置都不一样，【必须】直接读真实href推导，不要套用固定格式去拼！\n"
-                + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /vodshow/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /vodshow/area/{area}/id/{cateId}/page/{catePg}/year/{year}.html\n"
+                + "  注意：每个站的URL前缀(/vod /vodshow /list /type /id /vshow /cupfox-list 等)和ID所在位置都不一样，【必须】直接读真实href推导，不要套用固定格式去拼！\n"
+                + "  ⚠️ 极其重要——【原样复制】真实链接里的【固定后缀】！某些站的链接形如 /vshow/1-----------.html 或 /cupfox-list/13-----------.html，\n"
+                + "     其中数字(1/13)是分类ID，后面一长串短横线(-----------)是地区/年份等筛选项的【空占位符，属于固定后缀不可省略】，\n"
+                + "     正确模板必须写成 /vshow/{cateId}-----------.html（保留 -----------，只把 1 换成 {cateId}），【绝对不能】丢掉短横线写成 /vshow/{cateId}.html！\n"
+                + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /vodshow/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /vshow/{cateId}-----------.html 、 /vodshow/area/{area}/id/{cateId}/page/{catePg}/year/{year}.html\n"
                 + "- \"站名\": 网站真实名称(从<title>/logo提取，不要用域名)\n\n"
                 + "【绝对禁止】\n"
                 + "- 编造源码中不存在的class名、标签或链接\n"
@@ -372,7 +426,8 @@ public class AutoSiteHelper {
     }
 
     /** Step2: 分析分类页，生成影片列表截取规则并给出详情页链接。
-     *  内嵌 XBPQ 规范，确保选择器严格符合框架要求。 */
+     *  关键改进：强制AI原样抄写class名(保留空格/连字符)，给正确示例参考，
+     *  检测JS动态渲染(无列表时回退首页)，禁止编造不存在的选择器。 */
     private String buildPrompt2(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
                 + "===== XBPQ 框架核心规则 =====\n"
@@ -388,15 +443,60 @@ public class AutoSiteHelper {
                 + "  ❌ p:lip.xxx / p:namea     → 无效格式！禁止！\n"
                 + "  ❌ 编造源码中不存在的class → 绝对禁止！\n"
                 + "  支持*: p:ul[class*=\"v_list\"] li (class包含v_list的ul下所有li)\n\n"
+                + "【⚠️ 极其重要——class名必须原样抄写】\n"
+                + "HTML中的class属性可能包含多个值(用空格分隔)，例如:\n"
+                + "  class=\"stui-vodlist__thumb lazyload\"   ← 两个class: stui-vodlist__thumb 和 lazyload\n"
+                + "  class=\"title text-overflow\"            ← 两个class: title 和 text-overflow\n"
+                + "  class=\"col-md-6 col-sm-4 col-xs-3\"     ← 三个class\n"
+                + "规则:\n"
+                + "  1. 选择器里只写【最能唯一标识元素的那个class】，不要把所有class都堆上去\n"
+                + "  2. 如果一个class不够唯一，用两个: p:div.class1.class2 (jsoup支持多class选择器)\n"
+                + "  3. 【绝对禁止】把空格去掉后拼接成新词！比如 class=\"title text-overflow\"\n"
+                + "     ✅ 正确写法: h4.title.text-overflow 或 h4.title (取其中一个即可)\n"
+                + "     ❌ 错误写法: h4.titlea-text (这是不存在的class！)\n"
+                + "  4. 连字符(-)和下划线(_)必须保留: stui-vodlist__thumb 不能写成 stuivodlistthumb\n\n"
+                + "【常见CMS模板的正确选择器参考(仅作格式示意，绝不能直接套用！先看真实class)】\n"
+                + "苹果CMS V10 + stui模板(最常见):\n"
+                + "  数组: p:ul.stui-vodlist li\n"
+                + "  标题: p:a.stui-vodlist__thumb->text  (或 p:h4.title a->text)\n"
+                + "  图片: p:a.stui-vodlist__thumb->data-original  (注意是data-original不是src)\n"
+                + "  链接: p:a.stui-vodlist__thumb->href\n"
+                + "苹果CMS V10 + myui模板:\n"
+                + "  数组: p:ul.myui-vodlist li\n"
+                + "  标题: p:a.myui-vodlist__thumb->text\n"
+                + "  图片: p:a.myui-vodlist__thumb->data-original\n"
+                + "  链接: p:a.myui-vodlist__thumb->href\n"
+                + "苹果CMS V10 + mx/mxp模板(飞快TV等):\n"
+                + "  数组: p:section.mxp-list module-items .module-item\n"
+                + "  标题: p:a.module-poster-item->text\n"
+                + "  图片: p:a.module-poster-item->data-original\n"
+                + "  链接: p:a.module-poster-item->href\n"
+                + "自定义模板(如枫叶4K cd-zj.com 等小众站):\n"
+                + "  数组: p:div.public-list-div  (容器可能是div不是ul！直接用源码里的class)\n"
+                + "  标题: p:a.public-list-exp->title  (标题可能写在<a>的title属性里，不是文字！也可用->text)\n"
+                + "  图片: p:a.public-list-exp img->data-src  (懒加载属性名为data-src，不是data-original！)\n"
+                + "  链接: p:a.public-list-exp->href\n\n"
+                + "【⚠️ 图片属性名——必须看源码实际用哪个】\n"
+                + "  常见懒加载属性: data-original / data-src / data-lazy-src / data-original-src\n"
+                + "  也可能直接用: src\n"
+                + "  ❌ 不要想当然写data-original！必须去<img>标签里看真实属性名(本例枫叶4K用data-src)\n\n"
+                + "【⚠️ 标题位置——可能不在文字里】\n"
+                + "  常见情况: 在<a>的title属性(如 title=\"片名\")、或<img>的alt属性、或在<span>/<p>文字里\n"
+                + "  若卡片内看不到片名文字，优先试 ->title 或 ->alt\n\n"
                 + "【关键字段说明】\n"
-                + "- \"数组\": 包裹每部影片的最小重复单元(如 p:div.xxx 或 p:li.xxx)\n"
-                + "- \"标题\": 数组内取片名的选择器(通常 p:a->text)\n"
-                + "- \"图片\": 数组内取海报图的选择器(注意看img实际用src还是data-original)\n"
-                + "- \"链接\": 数组内取详情页href的选择器(通常 p:a->href)\n"
+                + "- \"数组\": 包裹每部影片的最小重复单元(如 p:ul.xxx li 或 p:div.xxx 或 p:section xxx .item)\n"
+                + "- \"标题\": 数组内取片名的选择器(通常在<a>标签上用 ->text，或 ->title/->alt 当片名写在属性里)\n"
+                + "- \"图片\": 数组内取海报图的选择器+属性名(必须看img/a实际用 src 还是 data-original/data-src 等)\n"
+                + "- \"链接\": 数组内取详情页href的选择器(通常在<a>标签上用 ->href)\n"
                 + "- 相对路径会自动补全域名前缀\n\n"
+                + "【JS动态渲染检测】\n"
+                + "如果分类页HTML中找不到影片列表(没有voddetail/vodplay/video等详情链接，\n"
+                + "只有script标签或骨架屏)，说明该站用JS动态加载影片列表。\n"
+                + "此时返回: {\"数组\":\"JS_DYNAMIC\",\"标题\":\"\",\"图片\":\"\",\"链接\":\"\",\"详情页链接\":\"\"}\n"
+                + "程序会用首页HTML重新分析。\n\n"
                 + "===== 任务 =====\n"
-                + "分析下面分类页HTML，先找到影片列表区域，观察真实标签和class名，再输出JSON:\n"
-                + "1. \"数组\": 影片容器选择器(用源码中真实的class)\n"
+                + "分析下面分类页HTML，先找到影片列表区域，观察真实标签和class名(原样抄写！)，再输出JSON:\n"
+                + "1. \"数组\": 影片容器选择器(用源码中真实的class，原样抄写！)\n"
                 + "2. \"标题\": 片名选择器\n"
                 + "3. \"图片\": 海报图选择器+属性名\n"
                 + "4. \"链接\": 详情页href选择器\n"
@@ -405,7 +505,7 @@ public class AutoSiteHelper {
                 + "分类页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"数组\":\"p:真实class\",\"标题\":\"p:a->text\",\"图片\":\"p:img->src\",\"链接\":\"p:a->href\",\"详情页链接\":\"https://...\"}";
+                + "{\"数组\":\"p:ul.stui-vodlist li\",\"标题\":\"p:a.stui-vodlist__thumb->text\",\"图片\":\"p:a.stui-vodlist__thumb->data-original\",\"链接\":\"p:a.stui-vodlist__thumb->href\",\"详情页链接\":\"https://...\"}";
     }
 
     /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
