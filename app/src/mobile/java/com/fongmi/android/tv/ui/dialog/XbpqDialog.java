@@ -3,6 +3,7 @@ package com.fongmi.android.tv.ui.dialog;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 
 import androidx.fragment.app.Fragment;
@@ -116,23 +117,32 @@ public class XbpqDialog extends BaseAlertDialog {
         EXECUTOR.execute(() -> {
             try {
                 // Step1: 抓首页，AI 分析分类
+                setStatus("正在抓取首页...");
                 String homeHtml = fetchHtml(url);
                 if (TextUtils.isEmpty(homeHtml)) {
                     fail();
                     return;
                 }
+                setStatus("AI 分析分类中...");
                 JsonObject step1 = callAi(buildPrompt1(homeHtml, url));
                 String cateUrl = getString(step1, "分类页链接");
                 if (TextUtils.isEmpty(cateUrl)) cateUrl = extractLink(homeHtml, new String[]{"vodshow", "vodtype", "list", "show", "type", "cateId"});
+                String cate = getString(step1, "分类");
+                if (!TextUtils.isEmpty(cate)) setStatus("识别到分类：" + cate);
                 // Step2: 抓分类页，AI 分析影片列表
+                setStatus("正在抓取分类页...");
                 String cateHtml = TextUtils.isEmpty(cateUrl) ? "" : fetchHtml(cateUrl);
+                setStatus("AI 分析影片列表...");
                 JsonObject step2 = callAi(buildPrompt2(cateHtml, cateUrl));
                 String detailUrl = getString(step2, "详情页链接");
                 if (TextUtils.isEmpty(detailUrl)) detailUrl = extractLink(cateHtml, new String[]{"voddetail", "detail", "play", "vod", "id"});
                 // Step3: 抓详情页，AI 分析播放线路与播放链接
+                setStatus("正在抓取详情页...");
                 String detailHtml = TextUtils.isEmpty(detailUrl) ? "" : fetchHtml(detailUrl);
+                setStatus("AI 分析播放线路与链接...");
                 JsonObject step3 = callAi(buildPrompt3(detailHtml, detailUrl));
                 // 合并配置
+                setStatus("正在生成配置...");
                 String config = mergeConfig(url, step1, step2, step3);
                 HANDLER.post(() -> {
                     binding.aiDetect.setEnabled(true);
@@ -150,6 +160,16 @@ public class XbpqDialog extends BaseAlertDialog {
                     Notify.dismiss();
                     Notify.show("AI识别失败：" + e.getMessage());
                 });
+            }
+        });
+    }
+
+    /** 更新弹窗内 AI 识别状态文本 */
+    private void setStatus(String text) {
+        HANDLER.post(() -> {
+            if (binding.aiStatus != null) {
+                binding.aiStatus.setVisibility(View.VISIBLE);
+                binding.aiStatus.setText(text);
             }
         });
     }
@@ -224,16 +244,18 @@ public class XbpqDialog extends BaseAlertDialog {
         return obj.get(key).getAsString();
     }
 
-    /** Step1: 分析首页，生成分类配置并给出分类页链接 */
+    /** Step1: 分析首页，识别站名与真实分类，生成分类配置并给出分类页链接 */
     private String buildPrompt1(String html, String url) {
         return "你是一个视频网站解析专家。下面是视频网站 " + url + " 的首页 HTML 源码。\n\n"
                 + "请完成以下任务：\n"
-                + "1. 找出网站的分类导航列表，生成\"分类\"字段，格式为\"分类名$分类ID#分类名$分类ID\"（如\"电影$1#电视剧$2\"），分类ID从分类链接中提取数字部分，只保留主要分类（电影/电视剧/综艺/动漫等），不要包含首页/搜索/登录等非内容分类\n"
-                + "2. 找出分类页链接模板，生成\"分类url\"字段，必须包含 {cateId}（分类ID）和 {catePg}（页码）占位符，如 https://example.com/vodshow/id/{cateId}/page/{catePg}.html\n"
-                + "3. 给出一个真实的分类页完整链接（用于下一步抓取），生成\"分类页链接\"字段\n\n"
+                + "1. 识别网站名称（站名），生成\"站名\"字段，从网站标题、logo 或页脚文字中提取真实站名（如\"茄子影视\"），不要用域名\n"
+                + "2. 找出网站的真实分类导航列表，生成\"分类\"字段，格式为\"分类名$分类ID#分类名$分类ID\"（如\"电影$1#电视剧$2\"），分类ID从分类链接中提取数字部分，只保留真实内容分类（电影/电视剧/综艺/动漫/纪录片/短剧等），不要包含首页/搜索/登录/我的/排行等非内容分类\n"
+                + "3. 找出分类页链接模板，生成\"分类url\"字段，必须包含 {cateId}（分类ID）和 {catePg}（页码）占位符，如 https://example.com/vodshow/id/{cateId}/page/{catePg}.html\n"
+                + "4. 给出一个真实的分类页完整链接（用于下一步抓取），生成\"分类页链接\"字段\n\n"
                 + "首页 HTML 源码（截断）：\n" + html + "\n\n"
                 + "只返回一个 JSON 对象，不要输出任何解释文字、不要用 markdown 代码块包裹：\n"
                 + "{\n"
+                + "  \"站名\": \"...\",\n"
                 + "  \"分类url\": \"...\",\n"
                 + "  \"分类\": \"...\",\n"
                 + "  \"分类页链接\": \"...\"\n"
@@ -320,7 +342,9 @@ public class XbpqDialog extends BaseAlertDialog {
         JsonObject root = new JsonObject();
         String host = UrlUtil.host(url);
         root.addProperty("key", "xbpq_" + host.replace(".", "_"));
-        root.addProperty("name", host);
+        String name = getString(step1, "站名");
+        if (TextUtils.isEmpty(name)) name = host;
+        root.addProperty("name", name);
         root.addProperty("type", 3);
         root.addProperty("api", API);
         root.add("ext", ext);
