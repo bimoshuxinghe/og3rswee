@@ -215,6 +215,17 @@ public class VodConfig extends BaseConfig {
             }
         }
         getSites().addAll(localNasSites);
+
+        // Add AI-detected XBPQ sites persisted in local db, appended after network sites
+        List<Site> localXbpqSites = dbSites.stream()
+                .filter(site -> site.getKey() != null && site.getKey().startsWith("xbpq_"))
+                .toList();
+        for (Site site : localXbpqSites) {
+            if (TextUtils.isEmpty(site.getJar())) {
+                site.setJar(spider);
+            }
+        }
+        getSites().addAll(localXbpqSites);
         setHome(config, getSites().isEmpty() ? new Site() : getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().get(0)), false);
     }
 
