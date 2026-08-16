@@ -36,7 +36,7 @@ public class XbpqDialog extends BaseAlertDialog {
     private static final String JAR = "assets://1118.jar";
     private static final String API = "csp_XBPQ";
     private static final String AI_URL = "https://api.siliconflow.cn/v1/chat/completions";
-    private static final String AI_MODEL = "deepseek-ai/DeepSeek-R1";
+    private static final String AI_MODEL = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
@@ -127,7 +127,7 @@ public class XbpqDialog extends BaseAlertDialog {
                 HANDLER.post(() -> {
                     binding.aiDetect.setEnabled(true);
                     Notify.dismiss();
-                    Notify.show(R.string.auto_site_ai_failed);
+                    Notify.show("AI识别失败：" + e.getMessage());
                 });
             }
         });
@@ -151,7 +151,10 @@ public class XbpqDialog extends BaseAlertDialog {
                 .post(requestBody)
                 .build();
         try (Response response = OkHttp.client(120).newCall(request).execute()) {
-            if (!response.isSuccessful()) return "";
+            if (!response.isSuccessful()) {
+                String err = response.body() == null ? "" : response.body().string();
+                throw new Exception("HTTP " + response.code() + ": " + err);
+            }
             String text = response.body().string();
             JsonObject obj = JsonParser.parseString(text).getAsJsonObject();
             String content = obj.getAsJsonArray("choices").get(0).getAsJsonObject().getAsJsonObject("message").get("content").getAsString();
@@ -160,6 +163,8 @@ public class XbpqDialog extends BaseAlertDialog {
     }
 
     private String extractJson(String content) {
+        if (content == null) return "";
+        content = content.replaceAll("(?s) 思考.*?/思考", "").trim();
         int start = content.indexOf('{');
         int end = content.lastIndexOf('}');
         if (start >= 0 && end > start) return content.substring(start, end + 1);
