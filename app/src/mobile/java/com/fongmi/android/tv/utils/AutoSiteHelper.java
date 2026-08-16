@@ -63,36 +63,34 @@ public class AutoSiteHelper {
     }
 
     /** 三步 AI 识别：抓首页 -> 分类页 -> 详情页，最终回调生成好的配置 JSON。
-     *  分类优先从【网站框架】(首页导航链接) 直接解析，AI 仅补充框架类型/URL 模板/站名，保证分类准确。 */
+     *  分类、分类url、分类页链接均由 AI 从首页框架解析生成（框架正则仅作兜底）；
+     *  播放链接按 XBPQ 文档处理「直链/解析/跳转」，相对链接自动补全域名前缀。 */
     public void detect(String url, StatusListener listener, Callback callback) {
         EXECUTOR.execute(() -> {
             try {
-                // Step0: 抓首页，先从框架提取真实分类（不依赖 AI）
+                // Step0: 抓首页
                 postStatus(listener, "正在抓取首页...");
                 String homeHtml = fetchHtml(url);
                 if (TextUtils.isEmpty(homeHtml)) {
                     postError(callback, "首页抓取失败");
                     return;
                 }
-                CategoryInfo framework = extractCategories(homeHtml, url);
-                if (framework != null && !TextUtils.isEmpty(framework.cate)) {
-                    postStatus(listener, "已从网站框架识别分类：" + framework.cate.replace("#", "、"));
-                } else {
-                    postStatus(listener, "未从框架识别到分类，改用 AI 分析...");
-                }
-                // Step1: AI 仅识别框架类型 + 生成分类 URL 模板 + 站名
-                postStatus(listener, "AI 分析网站框架中...");
+                // Step1: 由 AI 从首页框架解析分类 / 分类url(含分页) / 分类页链接 / 站名 / 框架类型
+                postStatus(listener, "AI 解析网站分类与框架中...");
                 JsonObject step1 = callAi(buildPrompt1(homeHtml, url));
                 String cate = getString(step1, "分类");
                 String cateUrlTpl = getString(step1, "分类url");
-                // 优先使用框架解析出的分类，AI 仅在框架解析失败时使用
-                if (framework != null && !TextUtils.isEmpty(framework.cate)) {
-                    cate = framework.cate;
-                    if (TextUtils.isEmpty(cateUrlTpl) && framework.sampleUrl != null) {
-                        cateUrlTpl = buildCateUrlTemplate(framework.sampleUrl, url);
+                // 框架正则仅作兜底（特殊 UI 无法靠正则提取时，优先使用 AI 结果）
+                if (TextUtils.isEmpty(cate) || TextUtils.isEmpty(cateUrlTpl)) {
+                    CategoryInfo framework = extractCategories(homeHtml, url);
+                    if (framework != null) {
+                        if (TextUtils.isEmpty(cate)) cate = framework.cate;
+                        if (TextUtils.isEmpty(cateUrlTpl) && framework.sampleUrl != null) {
+                            cateUrlTpl = buildCateUrlTemplate(framework.sampleUrl, url);
+                        }
                     }
                 }
-                String realCateUrl = framework != null ? framework.sampleUrl : getString(step1, "分类页链接");
+                String realCateUrl = getString(step1, "分类页链接");
                 if (TextUtils.isEmpty(realCateUrl)) realCateUrl = extractLink(homeHtml, new String[]{"vodshow", "vodtype", "list", "show", "type", "cateId"});
                 // Step2: 抓分类页，AI 分析影片列表并选一个影片
                 postStatus(listener, "正在抓取分类影片列表...");
@@ -265,20 +263,28 @@ public class AutoSiteHelper {
         return obj.get(key).getAsString();
     }
 
-    /** Step1: 仅识别网站框架类型、生成分类 URL 模板、识别站名（分类已由框架直接解析，不依赖 AI） */
+    /** Step1: 由 AI 从首页框架解析分类、分类url(含分页)、分类页链接、站名、框架类型 */
     private String buildPrompt1(String html, String url) {
-        return "你是一个视频网站解析专家。下面是视频网站 " + url + " 的首页 HTML 源码。\n\n"
+        return "你是一个视频网站解析专家，熟悉 XBPQ(小暴脾气) 爬虫框架。下面是视频网站 " + url + " 的首页 HTML 源码。\n\n"
                 + "请完成以下任务：\n"
-                + "1. 识别网站的【框架类型】，如苹果CMS、苹果CMS-V10、海洋CMS、max|maccms、自定义PHP影视站等，生成\"框架\"字段（简短说明即可）\n"
-                + "2. 根据首页中分类链接的规律，生成\"分类url\"字段（分类页链接模板），必须包含 {cateId}（分类ID占位符）和 {catePg}（页码占位符），例如 https://example.com/vodshow/id/{cateId}/page/{catePg}.html 或 https://example.com/index.php/vod/type/id/{cateId}.html?p={catePg}\n"
-                + "3. 识别网站真实名称（站名），从网站标题、logo、页脚文字中提取（如\"茄子影视\"），不要用域名；生成\"站名\"字段\n\n"
-                + "注意：分类（电影/电视剧/动漫等）已由程序从网站框架自动提取，你不需要生成\"分类\"字段。\n\n"
-                + "首页 HTML 源码（截断）：\n" + html + "\n\n"
+                + "1. 识别网站的【框架类型】(如苹果CMS、苹果CMS-V10、海洋CMS、max|maccms、自定义PHP影视站等)，生成\"框架\"字段。\n"
+                + "2. 从首页真实分类导航中提取全部影片分类，生成\"分类\"字段，格式必须严格为 分类名$分类ID，多个用 # 连接，例如：电影$1#电视剧$2#动漫$3#综艺$4。\n"
+                + "   - 分类ID必须是能嵌入\"分类url\"占位符 {cateId} 中的真实值(通常是分类链接路径里的数字，或拼音/英文标识)。\n"
+                + "   - 不要包含 首页/搜索/排行/热门/最新/推荐/我的/登录/注册/关于/客服 等非影视分类。\n"
+                + "3. 生成\"分类url\"字段(分类页链接模板)，必须包含 {cateId}(分类ID占位符)和 {catePg}(页码占位符)，且分页段格式必须与框架匹配，例如：\n"
+                + "   - 苹果CMS/海洋CMS: https://example.com/vodshow/{cateId}.html 或 https://example.com/vodshow/{cateId}/page/{catePg}.html\n"
+                + "   - 苹果CMS V10: https://example.com/index.php/vod/type/id/{cateId}.html?p={catePg} 或 .../page/{catePg}.html\n"
+                + "   - 海阔/其他框架: ...?pg={catePg} 等，以真实规律为准，不要臆造。\n"
+                + "4. 给出\"分类页链接\"字段：取上面第一个真实分类对应的完整分类页 URL(用于下一步抓取影片列表)。\n"
+                + "5. 识别网站真实名称(站名)，从标题/logo/页脚提取，不要用域名，生成\"站名\"字段。\n\n"
+                + "首页 HTML 源码(截断)：\n" + html + "\n\n"
                 + "只返回一个 JSON 对象，不要输出任何解释文字、不要用 markdown 代码块包裹：\n"
                 + "{\n"
                 + "  \"框架\": \"...\",\n"
                 + "  \"站名\": \"...\",\n"
-                + "  \"分类url\": \"...\"\n"
+                + "  \"分类\": \"电影$1#电视剧$2#动漫$3\",\n"
+                + "  \"分类url\": \"https://example.com/vodshow/{cateId}.html?p={catePg}\",\n"
+                + "  \"分类页链接\": \"https://example.com/vodshow/1.html\"\n"
                 + "}";
     }
 
@@ -313,27 +319,30 @@ public class AutoSiteHelper {
                 + "}";
     }
 
-    /** Step3: 分析详情页，生成播放线路与播放链接截取规则 */
+    /** Step3: 分析详情页，生成播放线路与播放链接截取规则（按 XBPQ 文档处理直链/解析/跳转） */
     private String buildPrompt3(String html, String url) {
         return "你是一个视频网站解析专家，熟悉 XBPQ(小暴脾气) 爬虫框架的截取规则语法。下面是视频网站 " + url + " 的一个影片详情页 HTML 源码。\n\n"
-                + "XBPQ 播放相关规则语法（必须严格遵守）：\n"
-                + "1. 线路数组：获取所有线路 tab 的容器，如 p:div[class*=tabs]||线路名 或 起始&&结束。每个线路是一个播放源（如\"线路一\"\"备用\"）。\n"
+                + "XBPQ 播放相关规则语法(必须严格遵守)：\n"
+                + "1. 线路数组：获取所有线路 tab 的容器，如 p:div[class*=tabs] span 或 起始&&结束。每个线路是一个播放源(如\"线路一\"\"备用\")。\n"
                 + "2. 线路标题：从线路 tab 中提取线路名称，如 p:span->text。\n"
-                + "3. 播放数组：单个线路下剧集列表容器，如 p:div[class*=plays]||<a\n"
-                + "4. 播放列表：剧集节点，如 p:a（每个 <a> 是一项）\n"
-                + "5. 播放标题：剧集名，如 p:a->text\n"
-                + "6. 播放链接：剧集播放地址，如 p:a->href\n"
-                + "7. 简介：剧情简介文本，用 起始&&结束 截取，或 p:div[class*=desc]->text\n\n"
+                + "3. 播放数组：单个线路下剧集列表容器，如 p:div[class*=plays] 或 p:ul li。\n"
+                + "4. 播放列表：剧集节点，如 p:a(每个 <a> 是一项)。\n"
+                + "5. 播放标题：剧集名，如 p:a->text。\n"
+                + "6. 播放链接：剧集对应的链接，如 p:a->href。\n"
+                + "7. 简介：剧情简介文本，用 起始&&结束 截取，或 p:div[class*=desc]->text。\n\n"
                 + "示例 HTML 片段：\n"
                 + "<div class=\"play-tabs\"><span class=\"on\">线路一</span><span>线路二</span></div>\n"
                 + "<div class=\"plays-list\"><a href=\"/play/123-1.html\">第01集</a><a href=\"/play/123-2.html\">第02集</a></div>\n"
                 + "对应正确规则：线路数组=p:div.play-tabs span，线路标题=p:span->text，播放数组=p:div.plays-list，播放列表=p:a，播放标题=p:a->text，播放链接=p:a->href\n\n"
                 + "请完成任务：\n"
-                + "1. 给出播放线路的截取规则：线路数组、线路标题\n"
-                + "2. 给出剧集列表的截取规则：播放数组、播放列表、播放标题、播放链接\n"
-                + "3. 给出剧情简介的截取规则：简介\n"
-                + "注意：播放链接必须是可直接访问的真实播放地址（.html/.m3u8等），不要编造。\n\n"
-                + "详情页 HTML 源码（截断）：\n" + html + "\n\n"
+                + "1. 给出播放线路的截取规则：线路数组、线路标题。\n"
+                + "2. 给出剧集列表的截取规则：播放数组、播放列表、播放标题、播放链接。\n"
+                + "3. 给出剧情简介的截取规则：简介。\n"
+                + "4. 关于播放链接的重要说明(严格按 XBPQ 文档)：列表里的 href 大多是【播放页】链接(如 /play/123-1.html)，不是直链。\n"
+                + "   - 若能直接从详情页/播放页找到 .m3u8 或 .mp4 直链，播放链接就用直链。\n"
+                + "   - 若只有播放页链接，播放链接就填播放页 href，并尽量给出\"解析\"字段：一个能把播放页转为直链的解析接口(形如 https://解析地址/api?url= )，没有可用解析接口则\"解析\"留空。\n"
+                + "   - 播放链接若为相对路径，请补全为完整 http(s) 绝对路径。\n\n"
+                + "详情页 HTML 源码(截断)：\n" + html + "\n\n"
                 + "如果 HTML 源码为空或无法获取，所有字段返回空字符串。\n"
                 + "只返回一个 JSON 对象，不要输出任何解释文字、不要用 markdown 代码块包裹：\n"
                 + "{\n"
@@ -343,11 +352,12 @@ public class AutoSiteHelper {
                 + "  \"播放数组\": \"...\",\n"
                 + "  \"播放列表\": \"...\",\n"
                 + "  \"播放标题\": \"...\",\n"
-                + "  \"播放链接\": \"...\"\n"
+                + "  \"播放链接\": \"...\",\n"
+                + "  \"解析\": \"\"\n"
                 + "}";
     }
 
-    /** 合并结果生成最终配置。分类与分类URL优先来自框架解析，AI 仅补充站名与列表/播放规则。 */
+    /** 合并结果生成最终配置。分类/分类url/分类页链接优先来自 AI，框架正则仅兜底；播放链接按文档补解析与域名前缀。 */
     private String mergeConfig(String url, String cate, String cateUrlTpl, String siteName, JsonObject step2, JsonObject step3) {
         JsonObject ext = new JsonObject();
         ext.addProperty("主页url", url);
@@ -358,10 +368,20 @@ public class AutoSiteHelper {
             String v = getString(step2, k);
             if (!TextUtils.isEmpty(v)) ext.addProperty(k, v);
         }
-        String[] keys3 = {"简介", "线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"};
+        // 链接为相对路径时补全域名前缀
+        String link = getString(step2, "链接");
+        if (!TextUtils.isEmpty(link) && !link.startsWith("http")) {
+            ext.addProperty("链接前缀", schemeHost(url));
+        }
+        String[] keys3 = {"简介", "线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
         for (String k : keys3) {
             String v = getString(step3, k);
             if (!TextUtils.isEmpty(v)) ext.addProperty(k, v);
+        }
+        // 播放链接为相对路径时补全域名前缀
+        String playLink = getString(step3, "播放链接");
+        if (!TextUtils.isEmpty(playLink) && !playLink.startsWith("http")) {
+            ext.addProperty("播放链接前缀", schemeHost(url));
         }
         JsonObject root = new JsonObject();
         String host = UrlUtil.host(url);
@@ -372,6 +392,12 @@ public class AutoSiteHelper {
         root.addProperty("api", API);
         root.add("ext", ext);
         return App.gson().toJson(root);
+    }
+
+    /** 取 url 的 scheme+host，用于给相对链接补全绝对路径 */
+    private String schemeHost(String url) {
+        String scheme = url.startsWith("https") ? "https://" : "http://";
+        return scheme + UrlUtil.host(url);
     }
 
     private String extractJson(String content) {
