@@ -167,6 +167,8 @@
     <string name="auto_site_ai_no_key">請先在設定中配置AI Key</string>
     <string name="auto_site_ai_failed">AI識別失敗，可嘗試手動貼上JSON配置</string>
     <string name="setting_ai_key">AI Key</string>
+    <string name="setting_ai_model">AI 模型名稱</string>
+    <string name="setting_ai_url">API 位址（OpenAI 相容）</string>
     <string name="ai_key_hint">矽基流動 API Key</string>
     <string name="ai_key_not_set">未配置</string>
     <string name="ai_key_cleared">AI Key 已清除</string>

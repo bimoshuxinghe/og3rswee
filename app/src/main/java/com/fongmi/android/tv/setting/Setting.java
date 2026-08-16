@@ -446,4 +446,22 @@ public class Setting {
     public static boolean hasAiKey() {
         return !getAiKey().isEmpty();
     }
+
+    /** AI 模型 ID，默认使用硅基流动免费模型 Qwen2-7B；可改为任意 OpenAI 兼容模型。 */
+    public static String getAiModel() {
+        return Prefers.getString("ai_model", "Qwen/Qwen2-7B-Instruct");
+    }
+
+    public static void putAiModel(String value) {
+        Prefers.put("ai_model", value == null ? "" : value.trim());
+    }
+
+    /** AI API 地址（OpenAI 兼容接口），默认硅基流动。用户可改为任意兼容端点。 */
+    public static String getAiUrl() {
+        return Prefers.getString("ai_url", "https://api.siliconflow.cn/v1/chat/completions");
+    }
+
+    public static void putAiUrl(String value) {
+        Prefers.put("ai_url", value == null ? "" : value.trim());
+    }
 }

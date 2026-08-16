@@ -30,8 +30,6 @@ public class AutoSiteHelper {
 
     public static final String JAR = "assets://1118.jar";
     public static final String API = "csp_XBPQ";
-    private static final String AI_URL = "https://api.siliconflow.cn/v1/chat/completions";
-    private static final String AI_MODEL = "deepseek-ai/DeepSeek-V4-Flash";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
@@ -367,7 +365,7 @@ public class AutoSiteHelper {
 
     private JsonObject callAi(String prompt) throws Exception {
         JsonObject body = new JsonObject();
-        body.addProperty("model", AI_MODEL);
+        body.addProperty("model", Setting.getAiModel());
         body.addProperty("temperature", 0.1);
         JsonObject msg = new JsonObject();
         msg.addProperty("role", "user");
@@ -377,7 +375,7 @@ public class AutoSiteHelper {
         body.add("messages", messages);
         RequestBody requestBody = RequestBody.create(body.toString(), JSON);
         Request request = new Request.Builder()
-                .url(AI_URL)
+                .url(Setting.getAiUrl())
                 .addHeader("Authorization", "Bearer " + Setting.getAiKey())
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)

@@ -52,7 +52,9 @@ public class SettingAutoSiteFragment extends BaseFragment {
 
     @Override
     protected void initView() {
+        mBinding.aiUrl.setText(Setting.getAiUrl());
         mBinding.aiKey.setText(Setting.getAiKey());
+        mBinding.aiModel.setText(Setting.getAiModel());
         mAdapter = new AutoSiteListAdapter(this::onDeleteSite);
         mBinding.siteList.setAdapter(mAdapter);
         updateEmptyTip();
@@ -84,7 +86,7 @@ public class SettingAutoSiteFragment extends BaseFragment {
     }
 
     private void onConfirm() {
-        saveAiKey();
+        saveAiConfig();
         String input = mBinding.url.getText().toString().trim();
         if (TextUtils.isEmpty(input)) {
             Notify.show(R.string.auto_site_empty);
@@ -98,7 +100,7 @@ public class SettingAutoSiteFragment extends BaseFragment {
     }
 
     private void onAiDetect() {
-        saveAiKey();
+        saveAiConfig();
         String input = mBinding.url.getText().toString().trim();
         if (TextUtils.isEmpty(input)) {
             Notify.show(R.string.auto_site_empty);
@@ -144,8 +146,10 @@ public class SettingAutoSiteFragment extends BaseFragment {
         });
     }
 
-    private void saveAiKey() {
+    private void saveAiConfig() {
+        Setting.putAiUrl(mBinding.aiUrl.getText().toString().trim());
         Setting.putAiKey(mBinding.aiKey.getText().toString().trim());
+        Setting.putAiModel(mBinding.aiModel.getText().toString().trim());
     }
 
     private void addFromUrl(String url) {

@@ -60,6 +60,26 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:hint="@string/setting_ai_url"
+                app:hintTextColor="#CCFFFFFF"
+                app:boxStrokeColor="#88FFFFFF"
+                app:endIconMode="clear_text"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/aiUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:inputType="textUri"
+                    android:singleLine="true"
+                    tools:text="https://api.siliconflow.cn/v1/chat/completions" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:hint="@string/setting_ai_key"
                 app:hintTextColor="#CCFFFFFF"
                 app:boxStrokeColor="#88FFFFFF"
@@ -74,6 +94,26 @@
                     android:inputType="textPassword"
                     android:singleLine="true"
                     tools:text="sk-xxxxxxxx" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/setting_ai_model"
+                app:hintTextColor="#CCFFFFFF"
+                app:boxStrokeColor="#88FFFFFF"
+                app:endIconMode="clear_text"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/aiModel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:inputType="text"
+                    android:singleLine="true"
+                    tools:text="Qwen/Qwen2-7B-Instruct" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout

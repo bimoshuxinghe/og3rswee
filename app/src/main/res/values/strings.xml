@@ -182,6 +182,8 @@
     <string name="ai_status_title">AI Detecting</string>
     <string name="ai_status_loading">Preparing…</string>
     <string name="setting_ai_key">AI Key</string>
+    <string name="setting_ai_model">AI Model</string>
+    <string name="setting_ai_url">API Address (OpenAI compatible)</string>
     <string name="ai_key_hint">SiliconFlow API Key</string>
     <string name="ai_key_not_set">Not configured</string>
     <string name="ai_key_cleared">AI Key cleared</string>
