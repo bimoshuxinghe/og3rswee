@@ -64,7 +64,7 @@ public class AutoSiteHelper {
      *  分类url 是【含 {cateId}/{catePg} 占位符的模板】，分类字段是“名称$ID#...”，两者同时存在
      *  （参考小暴脾气官方写法：茄子影视/小友影视/冰河影视 ext 既有"分类url"模板又有"分类"字段）；
      *  XBPQ 运行时会用“分类”字段里的真实ID替换模板中的 {cateId} 拼出每个分类的列表页；
-     *  影片列表规则(数组/标题/图片/链接)由 AI 分析一个真实分类页得出，播放规则由 AI 分析详情页得出；
+     *  影片列表规则(列表/标题/图片/链接)由 AI 分析一个真实分类页得出，播放规则由 AI 分析详情页得出；
      *  播放链接按 XBPQ 文档处理「直链/解析/跳转」，相对链接自动补全域名前缀。 */
     public void detect(String url, StatusListener listener, Callback callback) {
         EXECUTOR.execute(() -> {
@@ -125,8 +125,8 @@ public class AutoSiteHelper {
                 }
                 postStatus(listener, "AI 从列表选影片中...");
                 JsonObject step2 = callAi(buildPrompt2(cateHtml, sampleCateUrl));
-                // 检测 AI 标记的 JS 动态渲染：若数组=JS_DYNAMIC，回退用首页重新分析
-                String arraySel = getString(step2, "数组");
+                // 检测 AI 标记的 JS 动态渲染：若列表=JS_DYNAMIC，回退用首页重新分析
+                String arraySel = getString(step2, "列表");
                 if ("JS_DYNAMIC".equals(arraySel)) {
                     postStatus(listener, "检测到JS动态渲染，使用首页分析...");
                     step2 = callAi(buildPrompt2(homeHtml, url));
@@ -157,7 +157,7 @@ public class AutoSiteHelper {
                         postStatus(listener, "AI 分析播放页真实线路与选集...");
                         JsonObject step4 = callAi(buildPrompt4(playPageHtml, playPageUrl));
                         // 用播放页的线路/集数覆盖掉详情页可能残留的CTA假结果
-                        String[] playKeys = {"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
+                        String[] playKeys = {"线路", "线路标题", "播放列表", "播放标题", "播放链接", "解析"};
                         for (String k : playKeys) {
                             String v = getString(step4, k);
                             if (!TextUtils.isEmpty(v)) step3.addProperty(k, v);
@@ -524,22 +524,22 @@ public class AutoSiteHelper {
                 + "  4. 连字符(-)和下划线(_)必须保留: stui-vodlist__thumb 不能写成 stuivodlistthumb\n\n"
                 + "【常见CMS模板的正确选择器参考(仅作格式示意，绝不能直接套用！先看真实class)】\n"
                 + "苹果CMS V10 + stui模板(最常见):\n"
-                + "  数组: p:ul.stui-vodlist li\n"
+                + "  列表: p:ul.stui-vodlist li\n"
                 + "  标题: p:a.stui-vodlist__thumb->text  (或 p:h4.title a->text)\n"
                 + "  图片: p:a.stui-vodlist__thumb->data-original  (注意是data-original不是src)\n"
                 + "  链接: p:a.stui-vodlist__thumb->href\n"
                 + "苹果CMS V10 + myui模板:\n"
-                + "  数组: p:ul.myui-vodlist li\n"
+                + "  列表: p:ul.myui-vodlist li\n"
                 + "  标题: p:a.myui-vodlist__thumb->text\n"
                 + "  图片: p:a.myui-vodlist__thumb->data-original\n"
                 + "  链接: p:a.myui-vodlist__thumb->href\n"
                 + "苹果CMS V10 + mx/mxp模板(飞快TV等):\n"
-                + "  数组: p:section.mxp-list module-items .module-item\n"
+                + "  列表: p:section.mxp-list module-items .module-item\n"
                 + "  标题: p:a.module-poster-item->text\n"
                 + "  图片: p:a.module-poster-item->data-original\n"
                 + "  链接: p:a.module-poster-item->href\n"
                 + "自定义模板(如枫叶4K cd-zj.com 等小众站):\n"
-                + "  数组: p:div.public-list-div  (容器可能是div不是ul！直接用源码里的class)\n"
+                + "  列表: p:div.public-list-div  (容器可能是div不是ul！直接用源码里的class)\n"
                 + "  标题: p:a.public-list-exp->title  (标题可能写在<a>的title属性里，不是文字！也可用->text)\n"
                 + "  图片: p:a.public-list-exp img->data-src  (懒加载属性名为data-src，不是data-original！)\n"
                 + "  链接: p:a.public-list-exp->href\n\n"
@@ -551,19 +551,19 @@ public class AutoSiteHelper {
                 + "  常见情况: 在<a>的title属性(如 title=\"片名\")、或<img>的alt属性、或在<span>/<p>文字里\n"
                 + "  若卡片内看不到片名文字，优先试 ->title 或 ->alt\n\n"
                 + "【关键字段说明】\n"
-                + "- \"数组\": 包裹每部影片的最小重复单元(如 p:ul.xxx li 或 p:div.xxx 或 p:section xxx .item)\n"
-                + "- \"标题\": 数组内取片名的选择器(通常在<a>标签上用 ->text，或 ->title/->alt 当片名写在属性里)\n"
-                + "- \"图片\": 数组内取海报图的选择器+属性名(必须看img/a实际用 src 还是 data-original/data-src 等)\n"
-                + "- \"链接\": 数组内取详情页href的选择器(通常在<a>标签上用 ->href)\n"
+                + "- \"列表\": 包裹每部影片的最小重复单元(如 p:ul.xxx li 或 p:div.xxx 或 p:section xxx .item)\n"
+                + "- \"标题\": 列表内取片名的选择器(通常在<a>标签上用 ->text，或 ->title/->alt 当片名写在属性里)\n"
+                + "- \"图片\": 列表内取海报图的选择器+属性名(必须看img/a实际用 src 还是 data-original/data-src 等)\n"
+                + "- \"链接\": 列表内取详情页href的选择器(通常在<a>标签上用 ->href)\n"
                 + "- 相对路径会自动补全域名前缀\n\n"
                 + "【JS动态渲染检测】\n"
                 + "如果分类页HTML中找不到影片列表(没有voddetail/vodplay/video等详情链接，\n"
                 + "只有script标签或骨架屏)，说明该站用JS动态加载影片列表。\n"
-                + "此时返回: {\"数组\":\"JS_DYNAMIC\",\"标题\":\"\",\"图片\":\"\",\"链接\":\"\",\"详情页链接\":\"\"}\n"
+                + "此时返回: {\"列表\":\"JS_DYNAMIC\",\"标题\":\"\",\"图片\":\"\",\"链接\":\"\",\"详情页链接\":\"\"}\n"
                 + "程序会用首页HTML重新分析。\n\n"
                 + "===== 任务 =====\n"
                 + "分析下面分类页HTML，先找到影片列表区域，观察真实标签和class名(原样抄写！)，再输出JSON:\n"
-                + "1. \"数组\": 影片容器选择器(用源码中真实的class，原样抄写！)\n"
+                + "1. \"列表\": 影片容器选择器(用源码中真实的class，原样抄写！)\n"
                 + "2. \"标题\": 片名选择器\n"
                 + "3. \"图片\": 海报图选择器+属性名\n"
                 + "4. \"链接\": 详情页href选择器\n"
@@ -572,7 +572,7 @@ public class AutoSiteHelper {
                 + "分类页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"数组\":\"p:ul.stui-vodlist li\",\"标题\":\"p:a.stui-vodlist__thumb->text\",\"图片\":\"p:a.stui-vodlist__thumb->data-original\",\"链接\":\"p:a.stui-vodlist__thumb->href\",\"详情页链接\":\"https://...\"}";
+                + "{\"列表\":\"p:ul.stui-vodlist li\",\"标题\":\"p:a.stui-vodlist__thumb->text\",\"图片\":\"p:a.stui-vodlist__thumb->data-original\",\"链接\":\"p:a.stui-vodlist__thumb->href\",\"详情页链接\":\"https://...\"}";
     }
 
     /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
@@ -608,7 +608,7 @@ public class AutoSiteHelper {
                 + "  特征三（位置）：在某个线路 tab 对应的内容区内（class 常含 source-content/list/content/episode）\n"
                 + "  特征四（链接）：href 是真实的播放页 URL（如 /play/xxx-1-1.html），不是 \"#\"\n\n"
                 + "【🚫 自检规则 —— 输出前必须检查】\n"
-                + "  1. 你的「线路数组」选出来的元素，数量是否 ≥ 2？如果只有1个且名字是「直接播放/立即播放」，100%错了，重选！\n"
+                + "  1. 你的「线路」选出来的元素，数量是否 ≥ 2？如果只有1个且名字是「直接播放/立即播放」，100%错了，重选！\n"
                 + "  2. 你的「播放列表」选出来的元素，是否包含「第X集」格式的文字？如果选出来的是视频标题名（如「凡人修仙传」），100%错了，重选！\n"
                 + "  3. 如果播放区域里同时存在「直接播放」按钮和「XX线路」tabs，前者是假的，后者才是真的！\n\n"
                 + "【🔑 关键：CTA按钮跟进机制（最重要！）】\n"
@@ -617,15 +617,15 @@ public class AutoSiteHelper {
                 + "【判定规则——只要详情页有这类CTA按钮，就一律去播放页，不要在详情页提取线路/集数！】\n"
                 + "→ 如果你在详情页里看到 ANY 一个文字含「立即播放/立刻播放/直接播放/免费观看/点击播放」的按钮或链接：\n"
                 + "   ① 在「播放页URL」字段填入那个按钮/链接的真实href（不要填#或空）\n"
-                + "   ② 「线路数组」「线路标题」「播放数组」「播放列表」「播放标题」「播放链接」全部留空\n"
+                + "   ② 「线路」「线路标题」「播放列表」「播放标题」「播放链接」全部留空\n"
                 + "   ③ 程序会自动用这个URL去抓取播放页，从播放页获取真实的线路和集数（播放页结构更简单，AI更容易做对）\n"
                 + "→ 只有当你【完全没找到】任何CTA按钮，且详情页本身就有≥2个线路tab和集数列表时，才直接在详情页输出线路/集数字段（播放页URL留空）。\n\n"
                 + "【播放相关字段说明】\n"
                 + "- \"简介\": 剧情简介文本（从影片信息区提取，不是播放按钮的文字）\n"
                 + "- \"播放页URL\": 【重要新字段】若详情页只有CTA无多线路，填入CTA按钮的href；若有真线路则留空\n"
-                + "- \"线路数组\": 所有播放线路tab的容器选择器（找 class 含 source/tab 的容器，排除 play-now/cloud-play）\n"
+                + "- \"线路\": 所有播放线路tab的容器选择器（找 class 含 source/tab 的容器，排除 play-now/cloud-play）\n"
                 + "- \"线路标题\": 从tab取线路名(如 BF线路/FF线路/线路1)\n"
-                + "- \"播放数组\": 单线路下剧集列表容器（在线路对应的内容区内）\n"
+                + "- \"播放列表\": 单线路下剧集列表容器（在线路对应的内容区内）\n"
                 + "- \"播放列表\": 每个剧集节点(通常是<a>标签，文字是 第1集/APP秒播/番外篇 等)\n"
                 + "- \"播放标题\": 剧集名称(如 第1集/第01集)\n"
                 + "- \"播放链接\": 剧集地址(通常是/play/xxx.html，不是直链)\n"
@@ -644,9 +644,9 @@ public class AutoSiteHelper {
                 + "输出JSON字段：\n"
                 + "1. \"简介\": 剧情简介\n"
                 + "2. \"播放页URL\": 若只有CTA无多线路，填CTA按钮href；否则留空\n"
-                + "3. \"线路数组\": 真正的线路容器选择器（排除 play-now-btn/cloud-play-btn）\n"
+                + "3. \"线路\": 真正的线路容器选择器（排除 play-now-btn/cloud-play-btn）\n"
                 + "4. \"线路标题\": 线路名选择器\n"
-                + "5. \"播放数组\": 剧集容器选择器（在 .play-source-content 内）\n"
+                + "5. \"播放列表\": 剧集容器选择器（在 .play-source-content 内）\n"
                 + "6. \"播放列表\": 剧集节点选择器\n"
                 + "7. \"播放标题\": 剧集名选择器\n"
                 + "8. \"播放链接\": 剧集地址选择器\n"
@@ -655,7 +655,7 @@ public class AutoSiteHelper {
                 + "详情页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"简介\":\"...\",\"播放页URL\":\"\",\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+                + "{\"简介\":\"...\",\"播放页URL\":\"\",\"线路\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放列表\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
     }
 
     /** Step4: 分析【播放页】（从详情页"立即播放"按钮跳转过来的页面）。
@@ -690,9 +690,9 @@ public class AutoSiteHelper {
                 + "   - 每个 <a> 的 href 是该集的播放地址\n\n"
                 + "3. **解析接口**：如果页面里有 m3u8/mp4 直链可直接用；否则留空\n\n"
                 + "===== 输出JSON字段 =====\n"
-                + "- \"线路数组\": 线路tabs容器选择器（如 p:div.play-source 或 p:ul.source-tabs）\n"
+                + "- \"线路\": 线路tabs容器选择器（如 p:div.play-source 或 p:ul.source-tabs）\n"
                 + "- \"线路标题\": 从单个tab取线路名的选择器（如 p:a->text）\n"
-                + "- \"播放数组\": 剧集列表容器选择器（在线路内容区内）\n"
+                + "- \"播放列表\": 剧集列表容器选择器（在线路内容区内）\n"
                 + "- \"播放列表\": 单个剧集节点选择器（通常是 <a> 标签）\n"
                 + "- \"播放标题\": 剧集名称选择器（如 p:a->text，取出的文字是「第1集」这种）\n"
                 + "- \"播放链接\": 剧集地址选择器（如 p:a->href）\n"
@@ -701,18 +701,18 @@ public class AutoSiteHelper {
                 + "播放页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+                + "{\"线路\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放列表\":\"p:真实\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
     }
 
     /** 合并结果生成最终配置。
      *  ext 的“分类url”为含{cateId}的模板，“分类”为 名称$ID#...，两者配合供 XBPQ 拼出各分类页
      *  （参考小暴脾气官方写法：茄子/小友/冰河等 ext 既有"分类url"模板又有"分类"字段）。
-     *  影片列表规则来自 Step2（数组/标题/图片/链接），播放规则来自 Step3。 */
+     *  影片列表规则来自 Step2（列表/标题/图片/链接），播放规则来自 Step3。 */
     private String mergeConfig(String url, String siteName, String cate, String cateUrlTpl, JsonObject step2, JsonObject step3) {
         JsonObject ext = new JsonObject();
         if (!TextUtils.isEmpty(cateUrlTpl)) ext.addProperty("分类url", cateUrlTpl);
         if (!TextUtils.isEmpty(cate)) ext.addProperty("分类", cate);
-        String[] keys2 = {"数组", "标题", "图片", "链接"};
+        String[] keys2 = {"列表", "标题", "图片", "链接"};
         for (String k : keys2) {
             String v = getString(step2, k);
             if (!TextUtils.isEmpty(v)) ext.addProperty(k, v);
@@ -722,7 +722,7 @@ public class AutoSiteHelper {
         if (!TextUtils.isEmpty(link) && !link.startsWith("http")) {
             ext.addProperty("链接前缀", schemeHost(url));
         }
-        String[] keys3 = {"简介", "线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
+        String[] keys3 = {"简介", "线路", "线路标题", "播放列表", "播放标题", "播放链接", "解析"};
         for (String k : keys3) {
             String v = getString(step3, k);
             if (!TextUtils.isEmpty(v)) ext.addProperty(k, v);
