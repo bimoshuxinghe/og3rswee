@@ -138,28 +138,25 @@ public class AutoSiteHelper {
                 String detailHtml = TextUtils.isEmpty(detailUrl) ? "" : fetchHtml(detailUrl, 40000);
                 postStatus(listener, "AI 分析播放线路与选集...");
                 JsonObject step3 = callAi(buildPrompt3(detailHtml, detailUrl));
-                // Step4: 【关键修复】若详情页只有"立即播放/直接播放"类CTA按钮（无真正多线路），
-                //  说明真正的线路和集数在播放页里——必须跟进去抓。
-                //  判定条件任一命中即触发：
-                //   a) AI 返回了明确的"播放页URL"字段（AI 在详情页里找到了立即播放按钮的href）
-                //   b) 线路只有1个且名字匹配 CTA 关键词（直接播放/立即播放/免费观看/点击播放）
+                // Step4: 【关键修复】详情页只要含"立即播放/立刻播放/直接播放"类CTA按钮，
+                //  就一律跟进去抓【播放页】——播放页结构更干净（真线路tabs+完整集数），AI更容易做对。
+                //  判定：a) AI 在"播放页URL"字段返回了CTA的href；
+                //        b) 程序直接在详情页HTML里扫到CTA关键词（不依赖AI判断，更稳）。
                 String playPageUrl = getString(step3, "播放页URL");
-                String lineArray = getString(step3, "线路数组");
-                String lineTitle = getString(step3, "线路标题");
-                boolean isCtaOnlyLine = !TextUtils.isEmpty(lineArray) && !TextUtils.isEmpty(lineTitle)
-                        && lineTitle.matches(".*(直接播放|立即播放|免费观看|点击播放|网盘播放).*");
-                boolean needFollowPlayPage = (!TextUtils.isEmpty(playPageUrl)) || isCtaOnlyLine;
-                if (needFollowPlayPage && TextUtils.isEmpty(playPageUrl)) {
-                    // 情况b: AI没给播放页URL但线路明显是CTA → 从详情页HTML正则提取"立即播放"按钮的href
+                boolean hasCtaInHtml = detailHtml.contains("立即播放") || detailHtml.contains("立刻播放")
+                        || detailHtml.contains("直接播放") || detailHtml.contains("免费观看")
+                        || detailHtml.contains("点击播放") || detailHtml.contains("网盘播放");
+                if (TextUtils.isEmpty(playPageUrl) && hasCtaInHtml) {
+                    // AI没给播放页URL但HTML里明显有CTA → 正则提取"立即播放"按钮的href
                     playPageUrl = extractPlayButtonHref(detailHtml);
                 }
                 if (!TextUtils.isEmpty(playPageUrl)) {
                     postStatus(listener, "正在跟进播放页获取真实线路...");
                     String playPageHtml = fetchHtml(playPageUrl, 40000);
-                    if (containsVodLink(playPageHtml) || playPageHtml.contains("第") || playPageHtml.contains("episode")) {
+                    if (playPageHtml.length() > 200 && (containsVodLink(playPageHtml) || playPageHtml.contains("第") || playPageHtml.contains("集") || playPageHtml.contains("episode"))) {
                         postStatus(listener, "AI 分析播放页真实线路与选集...");
                         JsonObject step4 = callAi(buildPrompt4(playPageHtml, playPageUrl));
-                        // 用播放页的线路/集数覆盖掉详情页的CTA假结果
+                        // 用播放页的线路/集数覆盖掉详情页可能残留的CTA假结果
                         String[] playKeys = {"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
                         for (String k : playKeys) {
                             String v = getString(step4, k);
@@ -322,25 +319,38 @@ public class AutoSiteHelper {
      *  若取到的段内含连续2个以上分隔符(-或_)，只取分隔符之前的数字/字母作为ID（如 "1-----------" → "1"，"dy--------" → "dy"）。
      *  这类 "ID+固定后缀" 格式常见于某些CMS站：/vshow/{cateId}-----------.html 或 /cupfox-list/{id}-----------.html
      *  （后面短横线是地区/年份等筛选项的空占位符，属于固定后缀，不是ID的一部分）。 */
+    /** 取 URL 路径的【最后一个非空段】（去掉扩展名与 query/fragment），如 /type/guoman/ → guoman。
+     *  用路径拆分而非脆弱正则，避免 /type/guoman/ 这类目录式URL被错判。 */
+    private String lastPathSegment(String url) {
+        if (TextUtils.isEmpty(url)) return "";
+        String u = url;
+        int h = u.indexOf('#'); if (h >= 0) u = u.substring(0, h);
+        int q = u.indexOf('?'); if (q >= 0) u = u.substring(0, q);
+        // 去掉结尾斜杠，取最后一个非空段
+        while (u.length() > 0 && u.charAt(u.length() - 1) == '/') u = u.substring(0, u.length() - 1);
+        int slash = u.lastIndexOf('/');
+        String seg = slash >= 0 ? u.substring(slash + 1) : u;
+        // 去掉扩展名（.html/.php/.aspx）
+        int dot = seg.lastIndexOf('.');
+        if (dot > 0) {
+            String ext = seg.substring(dot + 1).toLowerCase();
+            if (ext.matches("html?|php|aspx?")) seg = seg.substring(0, dot);
+        }
+        return seg;
+    }
+
+    /** 从分类链接中提取分类ID：数字(1/2/随机大数)或拼音/单词slug(纯字母段)。
+     *  取路径【最后一个非空段】——如 /type/guoman/ → guoman、/vshow/1-----------.html → 1（保留后缀前的数字）。
+     *  若段内含连续2个以上分隔符(-或_)，只取分隔符之前的数字/字母作为ID（如 "1-----------" → "1"，"dy--------" → "dy"）。 */
     private String extractId(String href) {
         if (TextUtils.isEmpty(href)) return "";
-        // 收集路径中所有非空段（去掉扩展名与query/fragment），从后往前找第一个含数字/字母的段
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("/([^/?.#]+?)(?:\\.(html?|php|aspx?))?(?:[?#]|$)");
-        java.util.regex.Matcher m = p.matcher(href);
-        java.util.ArrayList<String> segs = new java.util.ArrayList<>();
-        while (m.find()) {
-            if (m.group(1) != null && !m.group(1).isEmpty()) segs.add(m.group(1));
-        }
-        String last = null;
-        for (int i = segs.size() - 1; i >= 0; i--) {
-            if (segs.get(i).matches(".*[a-zA-Z0-9].*")) { last = segs.get(i); break; }
-        }
-        if (last == null || last.isEmpty()) return "";
+        String last = lastPathSegment(href);
+        if (last.isEmpty() || !last.matches(".*[a-zA-Z0-9].*")) return "";
         // 如果段内含连续2个以上的分隔符（-或_），只取分隔符之前的数字/字母作为ID
         java.util.regex.Pattern sepPat = java.util.regex.Pattern.compile("^([a-zA-Z0-9]+)[- _]{2,}");
         java.util.regex.Matcher sm = sepPat.matcher(last);
         if (sm.find()) return sm.group(1);   // "1-----------" → "1", "dy--------" → "dy"
-        // 无特殊分隔符，整个段就是ID
+        // 无特殊分隔符，整个段就是ID（可能是数字、随机大数、拼音slug）
         return last;
     }
 
@@ -355,39 +365,37 @@ public class AutoSiteHelper {
 
     /** 兜底：从真实分类页链接推导分类url模板。
      *  不依赖任何框架关键词（/vod /vodshow /list /type /id 等前缀各站不同，必须由 AI 从真实 href 读取），
-     *  仅用通用启发式：把路径中【最后一个含数字或字母的段】(代表分类ID)替换为 {cateId}，其余照搬真实 href。
+     *  仅用通用启发式：把路径中【最后一个非空段】(代表分类ID，数字/拼音slug均可)替换为 {cateId}，其余照搬真实 href。
      *  特殊处理：若ID后面跟连续分隔符（如 "1-----------"），这些是固定筛选项占位符，必须保留（→ {cateId}-----------）。
+     *  目录式URL（/type/guoman/ 末尾斜杠）也正确保留斜杠。
      *  优先使用 AI 推导的模板；此兜底仅在 AI 未给出含 {cateId} 的模板时启用。 */
     private String deriveCateUrlTpl(String realUrl) {
         if (TextUtils.isEmpty(realUrl)) return "";
-        // 收集路径中所有非空段，从后往前找第一个含数字/字母的段作为分类ID所在段
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("(/[^/?.#]+?)(\\.(html?|php|aspx?))?(?:[?#]|$)");
-        java.util.regex.Matcher m = p.matcher(realUrl);
-        java.util.ArrayList<String[]> segs = new java.util.ArrayList<>();
-        while (m.find()) {
-            if (m.group(1) != null && !m.group(1).isEmpty())
-                segs.add(new String[]{m.group(1), m.group(2), String.valueOf(m.start()), String.valueOf(m.end())});
+        String u = realUrl;
+        int h = u.indexOf('#'); if (h >= 0) u = u.substring(0, h);
+        int q = u.indexOf('?'); if (q >= 0) u = u.substring(0, q);
+        boolean trailingSlash = u.endsWith("/");
+        String work = trailingSlash ? u.substring(0, u.length() - 1) : u;
+        int slash = work.lastIndexOf('/');
+        if (slash < 0) return "";
+        String seg = work.substring(slash + 1);
+        if (seg.isEmpty() || !seg.matches(".*[a-zA-Z0-9].*")) return "";
+        String ext = "";
+        int dot = seg.lastIndexOf('.');
+        if (dot > 0) {
+            String e = seg.substring(dot + 1).toLowerCase();
+            if (e.matches("html?|php|aspx?")) { ext = seg.substring(dot); seg = seg.substring(0, dot); }
         }
-        for (int i = segs.size() - 1; i >= 0; i--) {
-            String seg = segs.get(i)[0];
-            if (!seg.matches(".*[a-zA-Z0-9].*")) continue;   // 跳过纯空白占位符段
-            String ext = segs.get(i)[1];
-            int s = Integer.parseInt(segs.get(i)[2]);
-            int e = Integer.parseInt(segs.get(i)[3]);
-            // 检查段内是否有 "ID+固定后缀" 格式（如 "1-----------" 或 "dy--------"）
-            java.util.regex.Pattern sepPat = java.util.regex.Pattern.compile("^([a-zA-Z0-9]+)([- _]{2,}.*)$");
-            java.util.regex.Matcher sm = sepPat.matcher(seg);
-            String replacement;
-            if (sm.find()) {
-                // 有固定后缀：只替换ID部分，保留后缀 → {cateId}-----------
-                replacement = "/" + "{cateId}" + sm.group(2) + (ext == null ? "" : ext);
-            } else {
-                // 无特殊后缀，整段替换
-                replacement = "/" + "{cateId}" + (ext == null ? "" : ext);
-            }
-            return realUrl.substring(0, s) + replacement + realUrl.substring(e);
+        // 检查段内是否有 "ID+固定后缀" 格式（如 "1-----------" 或 "dy--------"）
+        java.util.regex.Pattern sepPat = java.util.regex.Pattern.compile("^([a-zA-Z0-9]+)([- _]{2,}.*)$");
+        java.util.regex.Matcher sm = sepPat.matcher(seg);
+        String replacement;
+        if (sm.find()) {
+            replacement = "{cateId}" + sm.group(2) + ext;          // 保留固定后缀
+        } else {
+            replacement = "{cateId}" + ext;                         // 整段替换
         }
-        return "";
+        return work.substring(0, slash + 1) + replacement + (trailingSlash ? "/" : "");
     }
 
     /** 用真实分类ID拼出用于【本机抓取分析】的分类页URL：
@@ -464,7 +472,7 @@ public class AutoSiteHelper {
                 + "  ⚠️ 极其重要——【原样复制】真实链接里的【固定后缀】！某些站的链接形如 /vshow/1-----------.html 或 /cupfox-list/13-----------.html，\n"
                 + "     其中数字(1/13)是分类ID，后面一长串短横线(-----------)是地区/年份等筛选项的【空占位符，属于固定后缀不可省略】，\n"
                 + "     正确模板必须写成 /vshow/{cateId}-----------.html（保留 -----------，只把 1 换成 {cateId}），【绝对不能】丢掉短横线写成 /vshow/{cateId}.html！\n"
-                + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /vodshow/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /vshow/{cateId}-----------.html 、 /vodshow/area/{area}/id/{cateId}/page/{catePg}/year/{year}.html\n"
+                + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /vodshow/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /type/{cateId}/（目录式URL末尾带/，如 /type/guoman/ 国产动漫）、 /vshow/{cateId}-----------.html 、 /vodshow/area/{area}/id/{cateId}/page/{catePg}/year/{year}.html\n"
                 + "- \"站名\": 网站真实名称(从<title>/logo提取，不要用域名)\n\n"
                 + "【绝对禁止】\n"
                 + "- 编造源码中不存在的class名、标签或链接\n"
@@ -603,16 +611,15 @@ public class AutoSiteHelper {
                 + "  1. 你的「线路数组」选出来的元素，数量是否 ≥ 2？如果只有1个且名字是「直接播放/立即播放」，100%错了，重选！\n"
                 + "  2. 你的「播放列表」选出来的元素，是否包含「第X集」格式的文字？如果选出来的是视频标题名（如「凡人修仙传」），100%错了，重选！\n"
                 + "  3. 如果播放区域里同时存在「直接播放」按钮和「XX线路」tabs，前者是假的，后者才是真的！\n\n"
-                + "【🔑 关键：CTA按钮跟进机制】\n"
-                + "很多站的详情页【没有真正的多线路tabs】，只有一个「立即播放/直接播放」按钮。\n"
-                + "这种情况下，真正的线路和集数在点击该按钮后跳转到的【播放页】里。\n"
-                + "→ 如果你发现页面里：\n"
-                + "   (a) 只有1个线路类元素且名字是「直接播放/立即播放」，或者\n"
-                + "   (b) 找不到任何真正的多线路tabs（≥2个不同名字的tab），\n"
-                + "   那么你必须：\n"
-                + "   ① 在「播放页URL」字段填入那个「立即播放/直接播放」<a>标签的真实href（不是#）\n"
+                + "【🔑 关键：CTA按钮跟进机制（最重要！）】\n"
+                + "很多站的详情页顶部有一个「立即播放/立刻播放/直接播放/免费观看/点击播放」按钮（或类似CTA），\n"
+                + "点击它会跳转到真正的【播放页】，那里才有干净的线路tabs（如BF线路/优速/极速）和完整集数列表。\n"
+                + "【判定规则——只要详情页有这类CTA按钮，就一律去播放页，不要在详情页提取线路/集数！】\n"
+                + "→ 如果你在详情页里看到 ANY 一个文字含「立即播放/立刻播放/直接播放/免费观看/点击播放」的按钮或链接：\n"
+                + "   ① 在「播放页URL」字段填入那个按钮/链接的真实href（不要填#或空）\n"
                 + "   ② 「线路数组」「线路标题」「播放数组」「播放列表」「播放标题」「播放链接」全部留空\n"
-                + "   ③ 程序会自动用这个URL去抓取播放页，从播放页获取真实的线路和集数\n\n"
+                + "   ③ 程序会自动用这个URL去抓取播放页，从播放页获取真实的线路和集数（播放页结构更简单，AI更容易做对）\n"
+                + "→ 只有当你【完全没找到】任何CTA按钮，且详情页本身就有≥2个线路tab和集数列表时，才直接在详情页输出线路/集数字段（播放页URL留空）。\n\n"
                 + "【播放相关字段说明】\n"
                 + "- \"简介\": 剧情简介文本（从影片信息区提取，不是播放按钮的文字）\n"
                 + "- \"播放页URL\": 【重要新字段】若详情页只有CTA无多线路，填入CTA按钮的href；若有真线路则留空\n"
@@ -630,9 +637,9 @@ public class AutoSiteHelper {
                 + "- 相对路径会自动补全域名前缀\n\n"
                 + "===== 任务 =====\n"
                 + "分析下面详情页HTML：\n"
-                + "1. 先找到「播放列表」区域（搜索 id/class 含 play-list/play/source/tab）\n"
-                + "2. 判断页面是否有真正的多线路tabs（≥2个不同名字的tab）\n"
-                + "3. 若有真线路 → 正常输出线路/集数选择器；若无（只有CTA按钮）→ 输出CTA的href到「播放页URL」\n"
+                + "1. 先扫描页面，看有没有文字含「立即播放/立刻播放/直接播放/免费观看/点击播放」的按钮或链接\n"
+                + "2. 【若有CTA按钮】→ 在「播放页URL」填它的href，线路/集数字段全部留空（交给播放页分析）\n"
+                + "3. 【若无CTA按钮且详情页本身有≥2个线路tab】→ 正常输出线路/集数选择器，「播放页URL」留空\n"
                 + "4. 用自检规则验证你的选择是否正确\n\n"
                 + "输出JSON字段：\n"
                 + "1. \"简介\": 剧情简介\n"
