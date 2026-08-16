@@ -11,7 +11,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        app:navigationIconTint="@android:color/white"
+        app:navigationIconTint="?attr/colorOnSurface"
         app:title="@string/setting_auto_site"
         app:titleTextAppearance="@style/ToolbarTextAppearance" />
 
@@ -35,7 +35,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/auto_site_hint"
-                android:textColor="#EEFFFFFF"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="14sp" />
 
             <com.google.android.material.textfield.TextInputLayout
@@ -43,15 +43,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/auto_site_hint"
-                app:hintTextColor="#CCFFFFFF"
-                app:boxStrokeColor="#88FFFFFF"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/url"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="?attr/colorOnSurface"
                     android:inputType="textUri"
                     android:singleLine="true" />
             </com.google.android.material.textfield.TextInputLayout>
@@ -61,8 +59,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/setting_ai_url"
-                app:hintTextColor="#CCFFFFFF"
-                app:boxStrokeColor="#88FFFFFF"
                 app:endIconMode="clear_text"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -70,7 +66,7 @@
                     android:id="@+id/aiUrl"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="?attr/colorOnSurface"
                     android:inputType="textUri"
                     android:singleLine="true"
                     tools:text="https://api.siliconflow.cn/v1/chat/completions" />
@@ -81,8 +77,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/setting_ai_key"
-                app:hintTextColor="#CCFFFFFF"
-                app:boxStrokeColor="#88FFFFFF"
                 app:endIconMode="clear_text"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -90,7 +84,7 @@
                     android:id="@+id/aiKey"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="?attr/colorOnSurface"
                     android:inputType="textPassword"
                     android:singleLine="true"
                     tools:text="sk-xxxxxxxx" />
@@ -101,8 +95,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:hint="@string/setting_ai_model"
-                app:hintTextColor="#CCFFFFFF"
-                app:boxStrokeColor="#88FFFFFF"
                 app:endIconMode="clear_text"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -110,7 +102,7 @@
                     android:id="@+id/aiModel"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="?attr/colorOnSurface"
                     android:inputType="text"
                     android:singleLine="true"
                     tools:text="Qwen/Qwen2-7B-Instruct" />
@@ -129,8 +121,7 @@
                     android:layout_height="48dp"
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
-                    android:text="@string/auto_site_ai"
-                    android:textColor="#EEFFFFFF" />
+                    android:text="@string/auto_site_ai" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/confirm"
@@ -146,7 +137,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/auto_site_list_title"
-                android:textColor="#EEFFFFFF"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -166,7 +157,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:text="@string/auto_site_list_empty"
-                android:textColor="#AAFFFFFF"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="13sp"
                 android:visibility="gone" />
 
