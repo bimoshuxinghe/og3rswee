@@ -178,6 +178,7 @@
     <string name="auto_site_list_title">已添加站点</string>
     <string name="auto_site_list_empty">暂无已添加的站点</string>
     <string name="auto_site_deleted">站点已删除</string>
+    <string name="auto_site_ai_temp">AI调试站点已添加（临时，重启或刷新后失效，请勿长期使用）</string>
     <string name="setting_ai_key">AI Key</string>
     <string name="setting_ai_model">AI 模型名称</string>
     <string name="setting_ai_url">API 地址（OpenAI 兼容）</string>

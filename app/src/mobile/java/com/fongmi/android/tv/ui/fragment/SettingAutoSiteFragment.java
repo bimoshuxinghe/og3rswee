@@ -36,6 +36,7 @@ public class SettingAutoSiteFragment extends BaseFragment {
     private FragmentSettingAutoSiteBinding mBinding;
     private AiStatusDialog mStatusDialog;
     private AutoSiteListAdapter mAdapter;
+    private boolean mFromAi = false;
 
     public static SettingAutoSiteFragment newInstance() {
         return new SettingAutoSiteFragment();
@@ -130,7 +131,9 @@ public class SettingAutoSiteFragment extends BaseFragment {
                     return;
                 }
                 mBinding.url.setText("");
+                mFromAi = true;
                 addFromJson(config);
+                mFromAi = false;
             }
 
             @Override
@@ -219,13 +222,22 @@ public class SettingAutoSiteFragment extends BaseFragment {
     }
 
     private void save(Site site) {
-        site.save();
+        if (!mFromAi) {
+            // 手动添加的站点：正常持久化到数据库
+            site.save();
+        }
         VodConfig.get().getSites().add(site);
         if (mAdapter != null && AutoSiteListAdapter.isAutoSite(site)) {
             mAdapter.add(site);
             updateEmptyTip();
         }
         RefreshEvent.home();
-        Notify.show(R.string.auto_site_success);
+        if (mFromAi) {
+            // AI识别的站点为调试功能：仅本次会话临时生效，不写入数据库，
+            // 重启软件或长按logo刷新配置后自动丢失，避免坏配置长期污染用户体验。
+            Notify.show(R.string.auto_site_ai_temp);
+        } else {
+            Notify.show(R.string.auto_site_success);
+        }
     }
 }

@@ -176,6 +176,7 @@
     <string name="auto_site_ai_loading">AI detecting site structure…</string>
     <string name="auto_site_ai_no_key">Please configure AI Key in settings first</string>
     <string name="auto_site_ai_failed">AI detection failed, try manual JSON</string>
+    <string name="auto_site_ai_temp">AI debug site added (temporary, lost after restart/refresh, do not use long-term)</string>
     <string name="auto_site_list_title">Added Sites</string>
     <string name="auto_site_list_empty">No sites added yet</string>
     <string name="auto_site_deleted">Site deleted</string>
