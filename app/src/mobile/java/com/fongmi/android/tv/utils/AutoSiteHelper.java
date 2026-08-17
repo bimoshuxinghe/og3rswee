@@ -180,9 +180,8 @@ public class AutoSiteHelper {
                 }
                 // 合并配置
                 postStatus(listener, "正在生成配置...");
-                String config = mergeConfig(url, siteName, cate, cateUrlTpl, step2, step3);
                 // 后置CTA清洗：程序层面检测并移除假线路/假选集（不依赖AI判断）
-                config = sanitizeCtaLines(config);
+                String config = sanitizeCtaLines(mergeConfig(url, siteName, cate, cateUrlTpl, step2, step3));
                 HANDLER.post(() -> callback.onSuccess(config));
             } catch (Exception e) {
                 postError(callback, e.getMessage());
