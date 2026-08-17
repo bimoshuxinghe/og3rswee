@@ -76,11 +76,8 @@ public class AutoSiteHelper {
                     postError(callback, "首页抓取失败");
                     return;
                 }
-                // JS 渲染站检测：部分站点首页是空壳 + JS 重定向(window.location.href)，静态抓取拿不到内容
-                if (homeHtml.length() < 800 && homeHtml.contains("window.location")) {
-                    postError(callback, "该站点需 JS 渲染（首页为 JS 重定向空壳），当前静态抓取无法识别，请换用支持 JS 渲染的站点");
-                    return;
-                }
+                // （已移除 JS 渲染站前置拦截：不再因首页短/含 window.location 而拒绝，
+                //  让 AI 自行判断能否从静态内容中提取有效信息）
                 // Step1: AI 识别【站名 + 分类(名称$ID) + 分类url模板】。
                 // 关键：分类url 必须是【含 {cateId} 占位符的模板】，XBPQ 运行时会用“分类”字段里的真实ID替换它拼出分类页；
                 //  分类url 模板由 AI【直接阅读首页HTML里的真实分类链接】推导——把链接里的分类ID段替换为 {cateId}，
@@ -548,11 +545,11 @@ public class AutoSiteHelper {
                 + "  标题: p:a.myui-vodlist__thumb->text\n"
                 + "  图片: p:a.myui-vodlist__thumb->data-original\n"
                 + "  链接: p:a.myui-vodlist__thumb->href\n"
-                + "苹果CMS V10 + mx/mxp模板(飞快TV等):\n"
-                + "  数组: p:section.mxp-list module-items .module-item\n"
-                + "  标题: p:a.module-poster-item->text\n"
-                + "  图片: p:a.module-poster-item->data-original\n"
-                + "  链接: p:a.module-poster-item->href\n"
+                + "苹果CMS V10 + mx/mxp模板(飞快TV/电影先生等):\n"
+                + "  数组: p:div.module-item   (最小的影片卡片单元，容器div，看源码真实class)\n"
+                + "  标题: p:a.module-item__name->text  (或 p:a->title，看片名在文字还是title属性)\n"
+                + "  图片: p:img->data-original  (看真实属性名：data-original/data-src/src)\n"
+                + "  链接: p:a.module-item__name->href  (取包裹片名的<a>的href)\n"
                 + "自定义模板(如枫叶4K cd-zj.com 等小众站):\n"
                 + "  数组: p:div.public-list-div  (容器可能是div不是ul！直接用源码里的class)\n"
                 + "  标题: p:a.public-list-exp->title  (标题可能写在<a>的title属性里，不是文字！也可用->text)\n"
@@ -565,17 +562,19 @@ public class AutoSiteHelper {
                 + "【⚠️ 标题位置——可能不在文字里】\n"
                 + "  常见情况: 在<a>的title属性(如 title=\"片名\")、或<img>的alt属性、或在<span>/<p>文字里\n"
                 + "  若卡片内看不到片名文字，优先试 ->title 或 ->alt\n\n"
-                + "【关键字段说明】\n"
-                + "- \"数组\": 包裹每部影片的最小重复单元(如 p:ul.xxx li 或 p:div.xxx 或 p:section xxx .item)\n"
-                + "- \"标题\": 列表内取片名的选择器(通常在<a>标签上用 ->text，或 ->title/->alt 当片名写在属性里)\n"
-                + "- \"图片\": 列表内取海报图的选择器+属性名(必须看img/a实际用 src 还是 data-original/data-src 等)\n"
-                + "- \"链接\": 列表内取详情页href的选择器(通常在<a>标签上用 ->href)\n"
+                + "【关键字段说明（严格按XBPQ官方文档写法）】\n"
+                + "- \"数组\": 包裹每部影片的最小重复单元。两种写法皆可（推荐②，最稳）：\n"
+                + "    ① jsoup选择器(只用路径): p:ul.xxx li 或 p:div.xxx 或 p:section.xxx .item\n"
+                + "    ② 截取语法: class=\"xxx\"&&</a>  (截取每个影片卡片的完整标签块)\n"
+                + "- \"标题\": 在每个卡片内取片名。写法：p:a->text 或 p:h4->text 或 p:a->title(片名写在<a>的title属性里时)\n"
+                + "- \"图片\": 在每个卡片内取海报。写法：p:img->data-original 或 p:img->data-src 或 p:img->src(必须看源码真实属性名)\n"
+                + "- \"链接\": 在每个卡片内取详情页href。写法：p:a->href\n"
                 + "- 相对路径会自动补全域名前缀\n\n"
-                + "【JS动态渲染检测】\n"
-                + "如果分类页HTML中找不到影片列表(没有voddetail/vodplay/video等详情链接，\n"
-                + "只有script标签或骨架屏)，说明该站用JS动态加载影片列表。\n"
-                + "此时返回: {\"数组\":\"JS_DYNAMIC\",\"标题\":\"\",\"图片\":\"\",\"链接\":\"\",\"详情页链接\":\"\"}\n"
-                + "程序会用首页HTML重新分析。\n\n"
+                + "【⚠️ 属性字段必须带 ->属性】\n"
+                + "  标题/图片/链接/播放标题/播放链接 这类字段，必须写成\"p:标签->属性\"或\"属性名=&&\"（带属性），\n"
+                + "  绝不能只写 \"p:div.xxx\"（纯路径）！纯路径只用于数组/播放数组/播放列表。\n"
+                + "  错误示例(会显示选择器原文): 标题: \"p:div.module-item\"  ← 缺少->text\n"
+                + "  正确示例: 标题: \"p:a.module-item__name->text\" 或 标题: \"p:a->title\"\n\n"
                 + "===== 任务 =====\n"
                 + "分析下面分类页HTML，先找到影片列表区域，观察真实标签和class名(原样抄写！)，再输出JSON:\n"
                 + "1. \"数组\": 影片容器选择器(用源码中真实的class，原样抄写！)\n"
@@ -670,7 +669,7 @@ public class AutoSiteHelper {
                 + "详情页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"简介\":\"...\",\"播放页URL\":\"\",\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实容器\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+                + "{\"简介\":\"...\",\"播放页URL\":\"\",\"线路数组\":\"p:div.play-source\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:ul.play-list\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
     }
 
     /** Step4: 分析【播放页】（从详情页"立即播放"按钮跳转过来的页面）。
