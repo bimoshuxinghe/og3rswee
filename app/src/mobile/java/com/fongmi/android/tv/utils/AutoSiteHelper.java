@@ -210,7 +210,7 @@ public class AutoSiteHelper {
                                 java.util.regex.Pattern.CASE_INSENSITIVE);
                         titleIsCta = ctaTxtPat.matcher(lineTitle).find();
                     }
-                    if (looksLikeCta || titleIsCta) {
+                    if (looksLikeCtaSelector || titleIsCta) {
                         // 尝试最后一次提取CTA href并跟进
                         String fallbackUrl = extractPlayButtonHref(detailHtml);
                         if (TextUtils.isEmpty(fallbackUrl)) {
