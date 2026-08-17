@@ -131,17 +131,30 @@ public class AutoSiteHelper {
                 String detailHtml = TextUtils.isEmpty(detailUrl) ? "" : fetchHtml(detailUrl, 40000);
                 postStatus(listener, "AI 分析播放线路与选集...");
                 JsonObject step3 = callAi(buildPrompt3(detailHtml, detailUrl));
-                // Step4: 【关键修复】详情页只要含"立即播放/立刻播放/直接播放"类CTA按钮，
+                // Step4: 【关键修复】详情页只要含"立即播放/立刻播放/直接播放"等CTA按钮，
                 //  就一律跟进去抓【播放页】——播放页结构更干净（真线路tabs+完整集数），AI更容易做对。
-                //  判定：a) AI 在"播放页URL"字段返回了CTA的href；
-                //        b) 程序直接在详情页HTML里扫到CTA关键词（不依赖AI判断，更稳）。
+                //  判定（三级优先级，逐级降级）：
+                //    Lv1: AI 在"播放页URL"字段返回了CTA的href（最理想）
+                //    Lv2: 程序在HTML里扫到CTA关键词 → 正则提取href（不依赖AI判断）
+                //    Lv3: 【新增】模糊匹配——HTML含"播放"且AI给的线路选择器看起来像CTA → 强制覆盖
                 String playPageUrl = getString(step3, "播放页URL");
+                // 精确CTA词表（用于判定+提取）
                 boolean hasCtaInHtml = detailHtml.contains("立即播放") || detailHtml.contains("立刻播放")
                         || detailHtml.contains("立即观看") || detailHtml.contains("开始播放")
                         || detailHtml.contains("在线播放") || detailHtml.contains("直接播放")
                         || detailHtml.contains("免费观看") || detailHtml.contains("点击播放")
                         || detailHtml.contains("网盘播放") || detailHtml.contains("播放全集");
-                if (TextUtils.isEmpty(playPageUrl) && hasCtaInHtml) {
+                // 模糊CTA检测：页面中任何位置出现含"播放"二字的独立按钮/链接文字
+                // 匹配模式：<a...>xxx播放xxx</a> 或 <button...>xxx播放xxx</button> 或 <span class="btn...">xxx播放</span>
+                boolean hasFuzzyCta = false;
+                if (!hasCtaInHtml && detailHtml.length() > 500) {
+                    java.util.regex.Pattern fuzzyPat = java.util.regex.Pattern.compile(
+                            "<(?:a|button|span)\\b[^>]*(?:class|id)=['\"][^'\"]*(?:btn|play|now|cloud)['\"][^>]*>[^<]*?播放",
+                            java.util.regex.Pattern.CASE_INSENSITIVE);
+                    hasFuzzyCta = fuzzyPat.matcher(detailHtml).find();
+                }
+                // 【Lv2】AI没给播放页URL但HTML里明显有CTA → 正则提取按钮href
+                if (TextUtils.isEmpty(playPageUrl) && (hasCtaInHtml || hasFuzzyCta)) {
                     // AI没给播放页URL但HTML里明显有CTA → 正则提取"立即播放"按钮的href
                     playPageUrl = extractPlayButtonHref(detailHtml);
                     if (TextUtils.isEmpty(playPageUrl)) {
@@ -167,13 +180,63 @@ public class AutoSiteHelper {
                             if (!TextUtils.isEmpty(v)) step3.addProperty(k, v);
                         }
                     }
-                } else if (hasCtaInHtml) {
+                } else if (hasCtaInHtml || hasFuzzyCta) {
                     // 详情页有CTA但始终拿不到真实播放页链接：清掉step3里残留的假线路/集数，
                     // 避免把"立即播放/开始播放"按钮当成一条线路显示在详情页
                     for (String bad : new String[]{"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
                         step3.remove(bad);
                     }
                     postStatus(listener, "检测到CTA按钮但无真实播放页链接，已跳过假线路");
+                }
+                // 【Lv3 强制CTA覆盖】AI可能给了播放页URL但也给了假线路选择器，
+                // 或者AI完全忽略了CTA直接输出了假线路。只要检测到CTA且step3的线路字段看起来像单元素CTA，
+                // 且还没被播放页结果覆盖过 → 再次尝试提取+跟进（防御性兜底）
+                if ((hasCtaInHtml || hasFuzzyCta) && TextUtils.isEmpty(playPageUrl)) {
+                    String lineVal = getString(step3, "线路数组");
+                    String lineTitle = getString(step3, "线路标题");
+                    // 如果AI给的线路值看起来像单个CTA按钮的选择器（短、含btn/play/now等关键词）
+                    boolean looksLikeCtaSelector = false;
+                    if (!TextUtils.isEmpty(lineVal) && lineVal.length() < 60) {
+                        java.util.regex.Pattern ctaSelPat = java.util.regex.Pattern.compile(
+                                "btn|play.*now|cloud.*play|now.*play|video.*play|important",
+                                java.util.regex.Pattern.CASE_INSENSITIVE);
+                        looksLikeCtaSelector = ctaSelPat.matcher(lineVal).find();
+                    }
+                    // 或者线路标题的值含CTA词（AI把按钮文字当成了线路名）
+                    boolean titleIsCta = false;
+                    if (!TextUtils.isEmpty(lineTitle)) {
+                        java.util.regex.Pattern ctaTxtPat = java.util.regex.Pattern.compile(
+                                "直接播放|立即播放|立刻播放|立即观看|开始播放|在线播放|免费观看|点击播放",
+                                java.util.regex.Pattern.CASE_INSENSITIVE);
+                        titleIsCta = ctaTxtPat.matcher(lineTitle).find();
+                    }
+                    if (looksLikeCta || titleIsCta) {
+                        // 尝试最后一次提取CTA href并跟进
+                        String fallbackUrl = extractPlayButtonHref(detailHtml);
+                        if (TextUtils.isEmpty(fallbackUrl)) {
+                            fallbackUrl = extractLink(detailHtml, new String[]{"player", "play", "vod", "show", "bofang"});
+                        }
+                        if (!TextUtils.isEmpty(fallbackUrl) && !fallbackUrl.equals(detailUrl)) {
+                            if (!fallbackUrl.startsWith("http")) {
+                                fallbackUrl = schemeHost(url) + (fallbackUrl.startsWith("/") ? "" : "/") + fallbackUrl;
+                            }
+                            String fpHtml = fetchHtml(fallbackUrl, 30000);
+                            if (fpHtml.length() > 200) {
+                                JsonObject step4b = callAi(buildPrompt4(fpHtml, fallbackUrl));
+                                String[] playKeys2 = {"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
+                                for (String k : playKeys2) {
+                                    String v = getString(step4b, k);
+                                    if (!TextUtils.isEmpty(v)) step3.addProperty(k, v);
+                                }
+                                postStatus(listener, "强制CTA覆盖：从播放页获取到真实线路");
+                            }
+                        } else {
+                            // 连fallback都拿不到 → 彻底清空假线路
+                            for (String bad : new String[]{"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
+                                step3.remove(bad);
+                            }
+                        }
+                    }
                 }
                 // 合并配置
                 postStatus(listener, "正在生成配置...");
@@ -625,15 +688,23 @@ public class AutoSiteHelper {
                 + "  1. 你的「线路数组」选出来的元素，数量是否 ≥ 2？如果只有1个且名字是「直接播放/立即播放」，100%错了，重选！\n"
                 + "  2. 你的「播放列表」选出来的元素，是否包含「第X集」格式的文字？如果选出来的是视频标题名（如「凡人修仙传」），100%错了，重选！\n"
                 + "  3. 如果播放区域里同时存在「直接播放」按钮和「XX线路」tabs，前者是假的，后者才是真的！\n\n"
-                + "【🔑 关键：CTA按钮跟进机制（最重要！）】\n"
-                + "很多站的详情页顶部有一个「立即播放/立刻播放/直接播放/免费观看/点击播放」按钮（或类似CTA），\n"
-                + "点击它会跳转到真正的【播放页】，那里才有干净的线路tabs（如BF线路/优速/极速）和完整集数列表。\n"
-                + "【判定规则——只要详情页有这类CTA按钮，就一律去播放页，不要在详情页提取线路/集数！】\n"
-                + "→ 如果你在详情页里看到 ANY 一个文字含「立即播放/立刻播放/直接播放/免费观看/点击播放」的按钮或链接：\n"
-                + "   ① 在「播放页URL」字段填入那个按钮/链接的真实href（不要填#或空）\n"
-                + "   ② 「线路数组」「线路标题」「播放数组」「播放列表」「播放标题」「播放链接」全部留空\n"
-                + "   ③ 程序会自动用这个URL去抓取播放页，从播放页获取真实的线路和集数（播放页结构更简单，AI更容易做对）\n"
-                + "→ 只有当你【完全没找到】任何CTA按钮，且详情页本身就有≥2个线路tab和集数列表时，才直接在详情页输出线路/集数字段（播放页URL留空）。\n\n"
+                + "【🔑 关键：CTA按钮跟进机制（最重要！必须严格执行！）】\n"
+                + "【模糊匹配规则】只要页面中存在任何含「播放」二字的独立可点击元素（<a>链接/<button>按钮/<span>标签），\n"
+                + "且它不是剧集列表中的「第X集/第X话」链接，就 100% 是CTA播放按钮！\n"
+                + "常见CTA文字：「直接播放」「立即播放」「立刻播放」「开始播放」「在线播放」「免费观看」\n"
+                + "         「点击播放」「网盘播放」「播放全集」「立即观看」「XX播放」\n"
+                + "【判定方法——按顺序执行】\n"
+                + "  Step1: 用眼睛扫描整个页面HTML，找到所有含「播放」的 <a> 或 <button> 元素\n"
+                + "  Step2: 判断这些元素是不是剧集链接（剧集链接的文字格式是「第1集/EP01/01/番外篇」，不含「播放」二字）\n"
+                + "  Step3: 只要找到 ANY 一个非剧集的「XXX播放」元素 → 它就是CTA按钮 → 执行跟进\n"
+                + "【跟进操作（找到CTA后必须这样做）】\n"
+                + "   ① 在「播放页URL」字段填入那个CTA按钮的真实href（不要填#或空，如果是#就找同区域其他链接）\n"
+                + "   ② 「线路数组」「线路标题」「播放数组」「播放列表」「播放标题」「播放链接」「解析」全部留空（填空字符串\"\"）\n"
+                + "   ③ 程序会自动用播放页URL去抓取播放页，从播放页获取真实的线路tabs和完整集数列表\n"
+                + "   ④ ⚠️ 绝对不要把CTA按钮的选择器填入「线路数组」或「播放列表」字段！\n"
+                + "【只有一种情况不跟进】你扫描了整个页面，完全找不到任何含「播放」的按钮/链接，\n"
+                + " 且详情页本身就有 ≥2 个线路tab（如「线路1」「线路2」）和 ≥2 个剧集链接（如「第1集」「第2集」），\n"
+                + " 才直接输出线路/集数字段，「播放页URL」留空。\n\n"
                 + "【播放相关字段说明】\n"
                 + "- \"简介\": 剧情简介文本（从影片信息区提取，不是播放按钮的文字）\n"
                 + "- \"播放页URL\": 【重要新字段】若详情页只有CTA无多线路，填入CTA按钮的href；若有真线路则留空\n"
@@ -649,12 +720,18 @@ public class AutoSiteHelper {
                 + "- 若源码中有.m3u8/.mp4直链可直接用\n"
                 + "- 若只有播放页href，填该href并在\"解析\"字段给一个解析接口\n"
                 + "- 相对路径会自动补全域名前缀\n\n"
-                + "===== 任务 =====\n"
-                + "分析下面详情页HTML：\n"
-                + "1. 先扫描页面，看有没有文字含「立即播放/立刻播放/直接播放/免费观看/点击播放」的按钮或链接\n"
-                + "2. 【若有CTA按钮】→ 在「播放页URL」填它的href，线路/集数字段全部留空（交给播放页分析）\n"
-                + "3. 【若无CTA按钮且详情页本身有≥2个线路tab】→ 正常输出线路/集数选择器，「播放页URL」留空\n"
-                + "4. 用自检规则验证你的选择是否正确\n\n"
+                + "===== 任务（按顺序严格执行）=====\n"
+                + "Step1: 【CTA模糊匹配——最重要！】扫描整个页面HTML，找所有含「播放」二字的 <a>/<button>/<span> 元素\n"
+                + "  - 排除剧集链接（「第X集/第X话/EPX/番外篇」不含「播放」二字，不是CTA）\n"
+                + "  - 只要找到 ANY 一个非剧集的「XXX播放」元素 → 它就是CTA → 跳到 Step2\n"
+                + "  - 如果完全找不到任何含「播放」的按钮/链接 → 跳到 Step3\n"
+                + "Step2: 【有CTA→跟进播放页】\n"
+                + "  - 「播放页URL」= CTA按钮的href（不要#或空，如果是JS触发#就找附近的真实URL）\n"
+                + "  - 所有线路/集数字段全部填空字符串 \"\"\n"
+                + "  - 停止分析，直接输出JSON\n"
+                + "Step3: 【无CTA→在详情页提取线路/集数】\n"
+                + "  - 确认页面有 ≥2 个线路tab 和 ≥2 个剧集链接\n"
+                + "  - 正常输出线路/集数选择器，「播放页URL」留空\n\n"
                 + "输出JSON字段：\n"
                 + "1. \"简介\": 剧情简介\n"
                 + "2. \"播放页URL\": 若只有CTA无多线路，填CTA按钮href；否则留空\n"
@@ -762,6 +839,8 @@ public class AutoSiteHelper {
      *        或单集电影把片名"九门[全集]"当成了选集。
      *  检测规则：
      *  1. 线路数组/线路标题 的值含CTA关键词 → 删掉所有播放相关字段
+     *  1.5 线路选择器匹配CTA按钮典型class模式(btn/play-now/cloud-play等) → 删掉
+     *  1.6 线路标题值含CTA文字（AI把按钮文本当线路名）→ 删掉
      *  2. 播放列表/播放标题 的值不含"第X集/EP/集"格式且看起来像片名 → 删掉选集字段 */
     private String sanitizeCtaLines(String configJson) {
         try {
@@ -769,7 +848,7 @@ public class AutoSiteHelper {
             if (root == null || !root.has("ext")) return configJson;
             JsonObject ext = root.getAsJsonObject("ext");
             boolean dirty = false;
-            // 规则1：检测假线路（CTA按钮被当成线路）
+            // 规则1：检测假线路——线路值含CTA关键词
             String[] lineKeys = {"线路数组", "线路"};
             java.util.regex.Pattern ctaPat = java.util.regex.Pattern.compile(
                     "直接播放|立即播放|立刻播放|立即观看|开始播放|在线播放|免费观看|点击播放|网盘播放|播放全集",
@@ -778,13 +857,35 @@ public class AutoSiteHelper {
                 if (ext.has(lk)) {
                     String lv = ext.get(lk).getAsString();
                     if (ctaPat.matcher(lv).find()) {
-                        // CTA关键词命中 → 清掉所有播放字段
                         for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
                             ext.remove(rk);
                         }
                         dirty = true;
                         break;
                     }
+                }
+            }
+            // 规则1.5：检测CTA选择器模式——线路选择器含btn/play-now/cloud-play等典型CTA class
+            if (!dirty && ext.has("线路数组")) {
+                String sel = ext.get("线路数组").getAsString();
+                java.util.regex.Pattern ctaSelPat = java.util.regex.Pattern.compile(
+                        "btn.*play|play.*now|play.*btn|cloud.*play|now.*play|video.*play|btn-important|btn-large",
+                        java.util.regex.Pattern.CASE_INSENSITIVE);
+                if (ctaSelPat.matcher(sel).find()) {
+                    for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
+                        ext.remove(rk);
+                    }
+                    dirty = true;
+                }
+            }
+            // 规则1.6：检测线路标题值含CTA文字（AI把按钮文本当线路名）
+            if (!dirty && ext.has("线路标题")) {
+                String lt = ext.get("线路标题").getAsString();
+                if (ctaPat.matcher(lt).find()) {
+                    for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
+                        ext.remove(rk);
+                    }
+                    dirty = true;
                 }
             }
             // 规则2：检测假选集（片名被当剧集，如"九门[全集]"）
