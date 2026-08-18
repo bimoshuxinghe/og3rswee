@@ -38,6 +38,13 @@ public final class AdProbeManager {
 
     private static volatile AdProbeManager instance;
 
+    private AdAudioProbe probe;
+    private Player player;
+    private String lastUrl;
+    private Map<String, String> lastHeaders;
+    private String rulesUrl;
+    private boolean showSkipNotice = true;
+
     private final PlaybackClock clock = () -> {
         Player p = player;
         if (p == null) return 0L;
@@ -68,13 +75,6 @@ public final class AdProbeManager {
             }
         }
     };
-
-    private AdAudioProbe probe;
-    private Player player;
-    private String lastUrl;
-    private Map<String, String> lastHeaders;
-    private String rulesUrl;
-    private boolean showSkipNotice = true;
 
     public static AdProbeManager get() {
         if (instance == null) {
