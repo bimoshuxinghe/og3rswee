@@ -74,3 +74,9 @@
 # Chaquopy & PyLoader Bridge
 -keep class com.fongmi.chaquo.** { *; }
 -keep class com.chaquo.python.** { *; }
+
+# JNA (pulled in by :zlive via Native.load) — desktop-only API references are unavailable on Android.
+-dontwarn java.awt.Component
+-keep class com.sun.jna.** { *; }
+-keepclassmembers class com.sun.jna.** { *; }
+-dontwarn com.sun.jna.**
