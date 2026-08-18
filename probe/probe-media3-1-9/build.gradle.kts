@@ -32,5 +32,6 @@ dependencies {
     implementation(libs.media3.decoder)
     implementation(libs.media3.extractor)
     implementation(libs.media3.database)
-    compileOnly(libs.annotation)
+    // 对齐 media3 fork 解析出的 annotation 版本(1.6.0)，避免 compile/runtime consistent resolution 冲突
+    compileOnly("androidx.annotation:annotation:1.6.0")
 }
