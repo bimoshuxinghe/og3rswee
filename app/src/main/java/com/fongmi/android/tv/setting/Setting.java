@@ -122,22 +122,6 @@ public class Setting {
         Prefers.put("ai_adblock", aiAdblock);
     }
 
-    public static String getAiAdblockKeywords() {
-        return Prefers.getString("ai_adblock_keywords", "麻将来了,澳门,赌场,娱乐城,荷官,百家乐,老虎机,时时彩,六合彩,彩票,下注,投注,首充,提现,棋牌,捕鱼,斗地主");
-    }
-
-    public static void putAiAdblockKeywords(String keywords) {
-        Prefers.put("ai_adblock_keywords", keywords);
-    }
-
-    public static int getAiAdblockSkipSeconds() {
-        return Prefers.getInt("ai_adblock_skip_seconds", 15);
-    }
-
-    public static void putAiAdblockSkipSeconds(int seconds) {
-        Prefers.put("ai_adblock_skip_seconds", seconds);
-    }
-
     /** 智能趣广告的规则后台地址（采集器 APK 生成的指纹经此后台下发）。为空时停用检测。 */
     public static String getAdRulesUrl() {
         return Prefers.getString("ad_rules_url", "");
