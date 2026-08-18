@@ -74,15 +74,3 @@
 # Chaquopy & PyLoader Bridge
 -keep class com.fongmi.chaquo.** { *; }
 -keep class com.chaquo.python.** { *; }
-
-# JNA desktop-only API references are unavailable on Android.
--dontwarn java.awt.Component
-
-# JNA keep rules for R8: preserve class/member names accessed by libjnidispatch.so via JNI.
--keep class com.sun.jna.** { *; }
--keepclassmembers class com.sun.jna.** { *; }
--dontwarn com.sun.jna.**
-
-# Vosk keep rules: preserve native method holders.
--keep class org.vosk.** { *; }
--keepclassmembers class org.vosk.** { *; }

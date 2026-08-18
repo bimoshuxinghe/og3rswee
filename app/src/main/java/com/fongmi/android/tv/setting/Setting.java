@@ -138,6 +138,15 @@ public class Setting {
         Prefers.put("ai_adblock_skip_seconds", seconds);
     }
 
+    /** 智能趣广告的规则后台地址（采集器 APK 生成的指纹经此后台下发）。为空时停用检测。 */
+    public static String getAdRulesUrl() {
+        return Prefers.getString("ad_rules_url", "");
+    }
+
+    public static void putAdRulesUrl(String url) {
+        Prefers.put("ad_rules_url", url == null ? "" : url.trim());
+    }
+
     public static boolean isZhuyin() {
         return Prefers.getBoolean("zhuyin");
     }

@@ -31,7 +31,6 @@ import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
 import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
-import com.fongmi.android.tv.player.vosk.VoskAdblock;
 import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.Setting;
@@ -77,28 +76,18 @@ public class PlayerManager implements ParseCallback {
         this.player = engine.getPlayer();
         this.callback = callback;
         this.pendingStartPositionMs = C.TIME_UNSET;
-        VoskAdblock.get().setEnabled(Setting.isAiAdblock());
-        VoskAdblock.get().addListener(this::onAdDetected);
+        AdProbeManager.get().init(App.get(), player);
     }
 
     public void release() {
         try { if (player != null) player.removeListener(listener); } catch (Exception e) { e.printStackTrace(); }
         App.removeCallbacks(runnable);
         releaseDanmakuController();
+        AdProbeManager.get().release();
         if (engine == null) return;
         try { engine.release(); } catch (Exception e) { e.printStackTrace(); }
         engine = null;
         player = null;
-    }
-
-    private void onAdDetected(long skipMs) {
-        if (player == null) return;
-        long position = player.getCurrentPosition();
-        if (position == C.TIME_UNSET) return;
-        long duration = player.getDuration();
-        long target = position + skipMs;
-        if (duration != C.TIME_UNSET && duration > 0) target = Math.min(target, duration);
-        player.seekTo(target);
     }
 
     public Player getPlayer() {
@@ -350,6 +339,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void seekTo(long time) {
+        AdProbeManager.get().onHostSeek(time);
         try { player.seekTo(time); } catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -435,6 +425,7 @@ public class PlayerManager implements ParseCallback {
         try {
             player = engine.rebuild(listener);
             callback.onPlayerRebuild(player);
+            AdProbeManager.get().setPlayer(player);
         } catch (Exception e) {
             e.printStackTrace();
             if (callback != null) callback.onError(engine != null && e instanceof PlaybackException ? engine.getErrorMessage((PlaybackException) e) : e.getMessage());
@@ -454,6 +445,7 @@ public class PlayerManager implements ParseCallback {
             engine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
             player = engine.getPlayer();
             callback.onPlayerRebuild(player);
+            AdProbeManager.get().setPlayer(player);
         } catch (Exception e) {
             e.printStackTrace();
             if (callback != null) callback.onError(e.getMessage());
@@ -552,6 +544,7 @@ public class PlayerManager implements ParseCallback {
         App.post(runnable, timeout);
         callback.onPrepare();
         initTrack = false;
+        AdProbeManager.get().open(getUrl(), getHeaders());
     }
 
     private void ensureEngineForSpec() {

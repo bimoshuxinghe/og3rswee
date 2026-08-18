@@ -66,4 +66,12 @@ include ':quickjs'
 include ':thunder'
 include ':tvbus'
 include ':zlive'
+
+// m3u8-ad-audio-probe SDK（智能趣广告替代方案）作为本地子模块引入，
+// 复用 TV-Mobile 的 AGP / Media3 本地 fork toolchain。
+include ':probe:probe-api'
+include ':probe:probe-adapter-api'
+include ':probe:probe-core'
+include ':probe:probe-runtime'
+include ':probe:probe-media3-1-9'
 rootProject.name = "TV"

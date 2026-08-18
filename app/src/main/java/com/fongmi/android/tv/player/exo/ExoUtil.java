@@ -9,7 +9,6 @@ import android.view.Display;
 import android.view.WindowManager;
 import android.view.accessibility.CaptioningManager;
 
-import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
@@ -40,8 +39,6 @@ import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.bean.Drm;
 import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.player.PlayerHelper;
-import com.fongmi.android.tv.player.vosk.VoskAdblock;
-import com.fongmi.android.tv.player.vosk.VoskAudioProcessor;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
 import com.fongmi.android.tv.setting.PlayerSetting;
@@ -173,7 +170,7 @@ public class ExoUtil {
         return new DefaultRenderersFactory(App.get()) {
             @Override
             protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams) {
-                return new DefaultAudioSink.Builder(context).setEnableFloatOutput(enableFloatOutput).setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams).setAudioProcessors(new AudioProcessor[]{new VoskAudioProcessor(VoskAdblock.get())}).build();
+                return new DefaultAudioSink.Builder(context).setEnableFloatOutput(enableFloatOutput).setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams).build();
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);
     }
