@@ -19,8 +19,8 @@ android {
 }
 
 dependencies {
-    api(project(":probe-api"))
-    api(project(":probe-adapter-api"))
-    implementation(project(":probe-core"))
+    api(project(":probe:probe-api"))
+    api(project(":probe:probe-adapter-api"))
+    implementation(project(":probe:probe-core"))
     compileOnly(libs.annotation)
 }

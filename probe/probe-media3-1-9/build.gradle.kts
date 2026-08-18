@@ -21,7 +21,7 @@ android {
 }
 
 dependencies {
-    api(project(":probe-adapter-api"))
+    api(project(":probe:probe-adapter-api"))
     // AudioSink 属于 Media3 不稳定 API，所有组件必须绑定同一版本。
     // 此处仅声明 androidx.media3:* 坐标，由 dependencySubstitution 路由到本地 fork。
     implementation(libs.media3.exoplayer)

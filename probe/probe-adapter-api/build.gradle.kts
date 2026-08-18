@@ -19,5 +19,5 @@ android {
 }
 
 dependencies {
-    api(project(":probe-api"))
+    api(project(":probe:probe-api"))
 }
