@@ -39,6 +39,7 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initView() {
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
+        updateSkipModeText();
         updateRulesPathText();
     }
 
@@ -46,7 +47,33 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initEvent() {
         mBinding.adblock.setOnClickListener(this::setAdblock);
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
+        mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
         mBinding.adRulesUrl.setOnClickListener(view -> showRulesPathDialog());
+    }
+
+    private void updateSkipModeText() {
+        int mode = Setting.getAdSkipMode();
+        int resId;
+        if (mode == Setting.AD_SKIP_MODE_NOTICE) {
+            resId = R.string.ad_skip_mode_notice;
+        } else if (mode == Setting.AD_SKIP_MODE_SKIP_ONLY) {
+            resId = R.string.ad_skip_mode_skip_only;
+        } else {
+            resId = R.string.ad_skip_mode_notice_and_skip;
+        }
+        mBinding.adSkipModeText.setText(resId);
+    }
+
+    private void cycleSkipMode(View view) {
+        int mode = Setting.getAdSkipMode();
+        if (mode == Setting.AD_SKIP_MODE_NOTICE) {
+            Setting.putAdSkipMode(Setting.AD_SKIP_MODE_NOTICE_AND_SKIP);
+        } else if (mode == Setting.AD_SKIP_MODE_NOTICE_AND_SKIP) {
+            Setting.putAdSkipMode(Setting.AD_SKIP_MODE_SKIP_ONLY);
+        } else {
+            Setting.putAdSkipMode(Setting.AD_SKIP_MODE_NOTICE);
+        }
+        updateSkipModeText();
     }
 
     private void setAdblock(View view) {

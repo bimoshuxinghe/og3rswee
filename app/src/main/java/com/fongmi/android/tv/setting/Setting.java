@@ -122,6 +122,20 @@ public class Setting {
         Prefers.put("ai_adblock", aiAdblock);
     }
 
+    /** 广告跳过模式：0=仅提示，1=提示+自动跳过，2=仅自动跳过（默认提示+自动跳过）。 */
+    public static final int AD_SKIP_MODE_NOTICE = 0;
+    public static final int AD_SKIP_MODE_NOTICE_AND_SKIP = 1;
+    public static final int AD_SKIP_MODE_SKIP_ONLY = 2;
+    public static final int DEFAULT_AD_SKIP_MODE = AD_SKIP_MODE_NOTICE_AND_SKIP;
+
+    public static int getAdSkipMode() {
+        return Prefers.getInt("ad_skip_mode", DEFAULT_AD_SKIP_MODE);
+    }
+
+    public static void putAdSkipMode(int mode) {
+        Prefers.put("ad_skip_mode", mode);
+    }
+
     /** 智能趣广告的规则文件路径（采集器 APK 生成的 RULES.JSON）。为空时使用默认路径。 */
     public static final String DEFAULT_RULES_PATH = "/storage/emulated/0/Download/m3u8-ad-audio/RULES.JSON";
 

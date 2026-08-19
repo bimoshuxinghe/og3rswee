@@ -48,7 +48,6 @@ public final class AdProbeManager {
     private String lastUrl;
     private Map<String, String> lastHeaders;
     private String rulesPath;
-    private boolean showSkipNotice = true;
 
     private final PlaybackClock clock = () -> {
         Player p = player;
@@ -62,14 +61,22 @@ public final class AdProbeManager {
         public void onSkipRequested(SkipRequest request) {
             Player p = player;
             if (p == null) return;
+            int mode = Setting.getAdSkipMode();
             long target = request.getSeekTargetPositionMs();
+            // 0=仅提示，1=提示+自动跳过，2=仅自动跳过
+            if (mode == Setting.AD_SKIP_MODE_NOTICE) {
+                Notify.show(ResUtil.getString(R.string.ad_skipped));
+                return;
+            }
             if (target < 0L) return;
             try {
                 p.seekTo(target);
             } catch (Exception ignored) {
                 // 宿主 seek 失败不应影响后续检测
             }
-            if (showSkipNotice) Notify.show(ResUtil.getString(R.string.ad_skipped));
+            if (mode == Setting.AD_SKIP_MODE_NOTICE_AND_SKIP) {
+                Notify.show(ResUtil.getString(R.string.ad_skipped));
+            }
         }
 
         @Override
