@@ -4,8 +4,8 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
-import androidx.media3.common.Cue;
 import androidx.media3.common.Player;
+import androidx.media3.common.text.Cue;
 import androidx.media3.common.text.CueGroup;
 
 import com.fongmi.android.tv.R;
