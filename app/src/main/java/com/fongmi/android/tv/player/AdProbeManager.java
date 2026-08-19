@@ -22,6 +22,7 @@ import io.github.fongmi.adaudio.probe.PlaybackClock;
 import io.github.fongmi.adaudio.probe.ProbeError;
 import io.github.fongmi.adaudio.probe.ProbeListener;
 import io.github.fongmi.adaudio.probe.ProbeMedia;
+import io.github.fongmi.adaudio.probe.RuleReplacementResult;
 import io.github.fongmi.adaudio.probe.SkipRequest;
 
 /**
