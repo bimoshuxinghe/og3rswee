@@ -52,7 +52,7 @@ public final class TextAdRuleManager {
     private final List<Rule> rules = new ArrayList<>();
 
     private Player player;
-    private boolean loadedPath;
+    private String loadedPath;
 
     private final Player.Listener listener = new Player.Listener() {
         @Override
@@ -180,7 +180,7 @@ public final class TextAdRuleManager {
             this.jumpMs = jumpMs;
         }
 
-        static Rule parse(String rawLine) {
+        Rule parse(String rawLine) {
             if (rawLine == null) return null;
             String line = rawLine.trim();
             if (line.isEmpty() || line.startsWith("//")) return null;
