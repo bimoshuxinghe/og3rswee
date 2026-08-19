@@ -131,6 +131,15 @@ public class Setting {
         Prefers.put("ad_auto_collect", autoCollect);
     }
 
+    /** 文本关键词规则：监听字幕文本，按通配规则匹配并跳过广告。 */
+    public static boolean isTextAdRule() {
+        return Prefers.getBoolean("ad_text_rule", true);
+    }
+
+    public static void putTextAdRule(boolean textAdRule) {
+        Prefers.put("ad_text_rule", textAdRule);
+    }
+
     /** 广告跳过模式：0=仅提示，1=提示+自动跳过，2=仅自动跳过（默认提示+自动跳过）。 */
     public static final int AD_SKIP_MODE_NOTICE = 0;
     public static final int AD_SKIP_MODE_NOTICE_AND_SKIP = 1;

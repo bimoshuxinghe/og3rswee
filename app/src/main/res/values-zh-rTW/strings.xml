@@ -225,6 +225,8 @@
     <string name="ad_skip_mode_skip_only">僅自動跳過</string>
     <string name="ad_auto_collect">自動採集規則</string>
     <string name="ad_auto_collect_summary">播放時後台掃描 HLS 廣告候選，自動生成音頻指紋規則並注入</string>
+    <string name="ad_text_rule">文本關鍵詞規則</string>
+    <string name="ad_text_rule_summary">匹配字幕文本的通配規則（如 本片*贊助##廣告之後*回來#30），命中即跳過廣告</string>
     <string name="ad_rule_collected">已生成廣告規則：%1$s</string>
     <string name="ad_rule_collect_failed">廣告規則採集失敗</string>
     <string name="ad_skipped">廣告已跳過</string>

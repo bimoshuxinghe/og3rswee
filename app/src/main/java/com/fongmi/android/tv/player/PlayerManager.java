@@ -77,6 +77,7 @@ public class PlayerManager implements ParseCallback {
         this.callback = callback;
         this.pendingStartPositionMs = C.TIME_UNSET;
         AdProbeManager.get().init(App.get(), player);
+        TextAdRuleManager.get().attach(player);
     }
 
     public void release() {
@@ -84,6 +85,7 @@ public class PlayerManager implements ParseCallback {
         App.removeCallbacks(runnable);
         releaseDanmakuController();
         AdProbeManager.get().release();
+        TextAdRuleManager.get().detach();
         if (engine == null) return;
         try { engine.release(); } catch (Exception e) { e.printStackTrace(); }
         engine = null;
@@ -545,6 +547,7 @@ public class PlayerManager implements ParseCallback {
         callback.onPrepare();
         initTrack = false;
         AdProbeManager.get().open(getUrl(), getHeaders());
+        TextAdRuleManager.get().onMediaOpened();
     }
 
     private void ensureEngineForSpec() {

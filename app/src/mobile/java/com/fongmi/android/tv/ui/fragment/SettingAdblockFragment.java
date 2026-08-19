@@ -96,6 +96,12 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adAutoCollectText.setText(getSwitch(enabled));
     }
 
+    private void setTextRule(View view) {
+        boolean enabled = !Setting.isTextAdRule();
+        Setting.putTextAdRule(enabled);
+        mBinding.adTextRuleText.setText(getSwitch(enabled));
+    }
+
     private void updateRulesPathText() {
         String path = Setting.getAdRulesPath();
         // 显示简短路径（如果太长则只显示文件名）
