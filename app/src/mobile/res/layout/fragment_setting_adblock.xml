@@ -95,7 +95,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="16dp"
-                    android:text="@string/ad_rules_url"
+                    android:text="@string/ad_rules_path"
                     android:textColor="@color/white"
                     android:textSize="16sp" />
 
@@ -106,10 +106,10 @@
                     android:ellipsize="end"
                     android:gravity="end"
                     android:maxLines="1"
-                    android:text="@string/ad_rules_url_empty"
+                    android:text="@string/ad_rules_path_empty"
                     android:textColor="@color/white"
                     android:textSize="16sp"
-                    tools:text="https://rules.example.com/ad-rules.json" />
+                    tools:text="/storage/emulated/0/Download/m3u8-ad-audio/RULES.JSON" />
 
             </androidx.appcompat.widget.LinearLayoutCompat>
 

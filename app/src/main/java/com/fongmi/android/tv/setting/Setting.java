@@ -122,13 +122,15 @@ public class Setting {
         Prefers.put("ai_adblock", aiAdblock);
     }
 
-    /** 智能趣广告的规则后台地址（采集器 APK 生成的指纹经此后台下发）。为空时停用检测。 */
-    public static String getAdRulesUrl() {
-        return Prefers.getString("ad_rules_url", "");
+    /** 智能趣广告的规则文件路径（采集器 APK 生成的 RULES.JSON）。为空时使用默认路径。 */
+    public static final String DEFAULT_RULES_PATH = "/storage/emulated/0/Download/m3u8-ad-audio/RULES.JSON";
+
+    public static String getAdRulesPath() {
+        return Prefers.getString("ad_rules_path", DEFAULT_RULES_PATH);
     }
 
-    public static void putAdRulesUrl(String url) {
-        Prefers.put("ad_rules_url", url == null ? "" : url.trim());
+    public static void putAdRulesPath(String path) {
+        Prefers.put("ad_rules_path", (path == null || path.trim().isEmpty()) ? DEFAULT_RULES_PATH : path.trim());
     }
 
     public static boolean isZhuyin() {

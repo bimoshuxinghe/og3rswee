@@ -39,14 +39,14 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initView() {
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
-        updateRulesUrlText();
+        updateRulesPathText();
     }
 
     @Override
     protected void initEvent() {
         mBinding.adblock.setOnClickListener(this::setAdblock);
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
-        mBinding.adRulesUrl.setOnClickListener(view -> showRulesUrlDialog());
+        mBinding.adRulesUrl.setOnClickListener(view -> showRulesPathDialog());
     }
 
     private void setAdblock(View view) {
@@ -61,26 +61,29 @@ public class SettingAdblockFragment extends BaseFragment {
         AdProbeManager.get().setEnabled(enabled, requireContext());
     }
 
-    private void updateRulesUrlText() {
-        String url = Setting.getAdRulesUrl();
-        mBinding.adRulesUrlText.setText(TextUtils.isEmpty(url) ? getString(R.string.ad_rules_url_empty) : url);
+    private void updateRulesPathText() {
+        String path = Setting.getAdRulesPath();
+        // 显示简短路径（如果太长则只显示文件名）
+        String display = TextUtils.isEmpty(path) ? getString(R.string.ad_rules_path_empty)
+                : (path.length() > 60 ? "..." + path.substring(path.length() - 57) : path);
+        mBinding.adRulesUrlText.setText(display);
     }
 
-    private void showRulesUrlDialog() {
+    private void showRulesPathDialog() {
         EditText editText = new EditText(requireContext());
-        editText.setText(Setting.getAdRulesUrl());
-        editText.setHint(R.string.ad_rules_url_hint);
-        editText.setSingleLine(true);
+        editText.setText(Setting.getAdRulesPath());
+        editText.setHint(R.string.ad_rules_path_hint);
+        editText.setSingleLine(false);
+        editText.setMinLines(2);
         new MaterialAlertDialogBuilder(requireActivity())
-                .setTitle(R.string.ad_rules_url_title)
+                .setTitle(R.string.ad_rules_path_title)
                 .setView(editText)
                 .setNegativeButton(R.string.dialog_negative, null)
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    String url = editText.getText().toString().trim();
-                    Setting.putAdRulesUrl(url);
-                    AdProbeManager.get().setRulesUrl(url, requireContext());
-                    updateRulesUrlText();
-                    Notify.show(R.string.ad_rules_url_saved);
+                    String path = editText.getText().toString().trim();
+                    AdProbeManager.get().setRulesPath(path);  // 内部会自动 putAdRulesPath + reload
+                    updateRulesPathText();
+                    Notify.show(R.string.ad_rules_path_saved);
                 })
                 .show();
     }

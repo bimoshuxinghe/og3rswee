@@ -8,6 +8,9 @@ import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -26,7 +29,8 @@ import io.github.fongmi.adaudio.probe.SkipRequest;
  *
  * <p>SDK 自包含：内部用无声纯音频 ExoPlayer 快速解码并与规则指纹匹配，宿主只负责
  * 提供当前播放位置（{@link PlaybackClock}）、在收到跳转请求时 seek 自己的播放器、
- * 以及在自身拖动时通知探针。规则由采集器 APK 生成并经后台地址下发，未配置时 fail-open，
+ * 以及在自身拖动时通知探针。规则由采集器 APK 生成本地 RULES.JSON 文件，
+ * 探针通过 {@code replaceRulesJson()} 注入，未配置或文件不存在时 fail-open，
  * 不影响正常播放。</p>
  */
 public final class AdProbeManager {
@@ -42,7 +46,7 @@ public final class AdProbeManager {
     private Player player;
     private String lastUrl;
     private Map<String, String> lastHeaders;
-    private String rulesUrl;
+    private String rulesPath;
     private boolean showSkipNotice = true;
 
     private final PlaybackClock clock = () -> {
@@ -74,6 +78,11 @@ public final class AdProbeManager {
                 // 当前媒体分析已停止，等待下一次 open 或规则刷新
             }
         }
+
+        @Override
+        public void onRulesReplaced(RuleReplacementResult result) {
+            // 规则替换终态回调（本地文件加载成功/失败均可在此处理）
+        }
     };
 
     public static AdProbeManager get() {
@@ -91,7 +100,7 @@ public final class AdProbeManager {
     /** 绑定宿主播放器并（按需）创建探针实例。每次 PlayerManager 重建都会调用。 */
     public void init(Context context, Player player) {
         this.player = player;
-        this.rulesUrl = Setting.getAdRulesUrl();
+        this.rulesPath = Setting.getAdRulesPath();
         ensureProbe(context);
     }
 
@@ -100,16 +109,43 @@ public final class AdProbeManager {
         this.player = player;
     }
 
+    /**
+     * 创建探针实例（无远程 URL），然后尝试从本地规则文件加载规则。
+     * 文件不存在或格式错误时不抛异常（fail-open）。
+     */
     private void ensureProbe(Context context) {
         if (probe != null) return;
-        String url = (rulesUrl == null || rulesUrl.trim().isEmpty()) ? null : rulesUrl.trim();
         try {
-            probe = AdAudioProbe.create(context.getApplicationContext(), url, clock, listener);
+            probe = AdAudioProbe.builder(context.getApplicationContext())
+                    .setPlaybackClock(clock)
+                    .setListener(listener)
+                    .build();
             probe.setEnabled(Setting.isAiAdblock());
+            loadRulesFromFile();  // 初始化后立即尝试加载本地规则
         } catch (RuntimeException | LinkageError e) {
-            // 适配器与运行环境不兼容时放弃探针，绝不影响宿主播放
             e.printStackTrace();
             probe = null;
+        }
+    }
+
+    /** 从当前 rulesPath 读取 RULES.JSON 并注入探针。文件不存在或读取失败时静默忽略。 */
+    private void loadRulesFromFile() {
+        if (probe == null || rulesPath == null || rulesPath.trim().isEmpty()) return;
+        File file = new File(rulesPath.trim());
+        if (!file.exists() || !file.isFile() || !file.canRead()) return;
+        StringBuilder sb = new StringBuilder((int) Math.min(file.length(), 4 * 1024 * 1024));
+        try (BufferedReader reader = new BufferedReader(new FileReader(file), 8192)) {
+            char[] buf = new char[8192];
+            int len;
+            while ((len = reader.read(buf)) != -1) {
+                sb.append(buf, 0, len);
+            }
+            String json = sb.toString().trim();
+            if (!json.isEmpty()) {
+                probe.replaceRulesJson(json);
+            }
+        } catch (Exception ignored) {
+            // 规则文件读取失败不影响宿主播放
         }
     }
 
@@ -147,20 +183,17 @@ public final class AdProbeManager {
         if (enabled && lastUrl != null) open(lastUrl, lastHeaders);
     }
 
-    /** 规则后台地址变化时重建探针以加载新规则。 */
-    public void setRulesUrl(String url, Context context) {
-        if (url == null) url = "";
-        if (url.trim().equals(rulesUrl == null ? "" : rulesUrl.trim())) return;
-        rulesUrl = url;
-        if (probe != null) {
-            try {
-                probe.close();
-            } catch (RuntimeException | LinkageError ignored) {
-            }
-            probe = null;
-        }
-        ensureProbe(context);
-        if (lastUrl != null) open(lastUrl, lastHeaders);
+    /**
+     * 规则文件路径变化时重新加载规则（不需要重建探针实例，
+     * 直接用 {@code replaceRulesJson()} 原子替换即可）。
+     */
+    public void setRulesPath(String path) {
+        String normalized = (path == null || path.trim().isEmpty())
+                ? Setting.DEFAULT_RULES_PATH : path.trim();
+        if (normalized.equals(rulesPath)) return;
+        rulesPath = normalized;
+        Setting.putAdRulesPath(normalized);
+        loadRulesFromFile();  // 异步解析并原子替换规则
     }
 
     /** 停止当前分析会话（保留实例与规则缓存），用于 PlayerManager 释放时。 */
