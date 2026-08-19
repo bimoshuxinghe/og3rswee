@@ -241,6 +241,10 @@
     <string name="ad_auto_collect_summary">播放时后台扫描 HLS 广告候选，自动生成音频指纹规则并注入</string>
     <string name="ad_text_rule">文本关键词规则</string>
     <string name="ad_text_rule_summary">匹配字幕文本的通配规则（如 本片*赞助##广告之后*回来#30），命中即跳过广告</string>
+    <string name="ad_text_rule_enable">启用文本关键词规则</string>
+    <string name="ad_text_rule_hint">每行一条规则。语法：* 通配符、## 多句、#N 跳过 N 秒、[a,b] 在 a 秒后跳到 b、// 注释。示例：本片*赞助##广告之后*回来#30</string>
+    <string name="ad_text_rule_saved">文本规则已保存</string>
+    <string name="ad_text_rule_save_failed">保存文本规则失败</string>
     <string name="ad_rule_collected">已生成广告规则：%1$s</string>
     <string name="ad_rule_collect_failed">广告规则采集失败</string>
     <string name="ad_skipped">广告已跳过</string>
