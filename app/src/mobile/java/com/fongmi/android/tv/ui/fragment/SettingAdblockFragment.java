@@ -39,6 +39,7 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initView() {
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
+        mBinding.adAutoCollectText.setText(getSwitch(Setting.isAutoCollect()));
         updateSkipModeText();
         updateRulesPathText();
     }
@@ -47,6 +48,7 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initEvent() {
         mBinding.adblock.setOnClickListener(this::setAdblock);
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
+        mBinding.adAutoCollect.setOnClickListener(this::setAutoCollect);
         mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
         mBinding.adRulesUrl.setOnClickListener(view -> showRulesPathDialog());
     }
@@ -86,6 +88,12 @@ public class SettingAdblockFragment extends BaseFragment {
         Setting.putAiAdblock(enabled);
         mBinding.aiAdblockText.setText(getSwitch(enabled));
         AdProbeManager.get().setEnabled(enabled, requireContext());
+    }
+
+    private void setAutoCollect(View view) {
+        boolean enabled = !Setting.isAutoCollect();
+        Setting.putAutoCollect(enabled);
+        mBinding.adAutoCollectText.setText(getSwitch(enabled));
     }
 
     private void updateRulesPathText() {

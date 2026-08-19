@@ -45,6 +45,7 @@ public final class AdProbeManager {
 
     private AdAudioProbe probe;
     private Player player;
+    private Context appContext;
     private String lastUrl;
     private Map<String, String> lastHeaders;
     private String rulesPath;
@@ -108,6 +109,7 @@ public final class AdProbeManager {
     /** 绑定宿主播放器并（按需）创建探针实例。每次 PlayerManager 重建都会调用。 */
     public void init(Context context, Player player) {
         this.player = player;
+        if (context != null) this.appContext = context.getApplicationContext();
         this.rulesPath = Setting.getAdRulesPath();
         ensureProbe(context);
     }
@@ -166,6 +168,18 @@ public final class AdProbeManager {
         try {
             ProbeMedia media = ProbeMedia.builder(url).setHeaders(filterHeaders(headers)).build();
             probe.open(media);
+        } catch (RuntimeException | LinkageError e) {
+            e.printStackTrace();
+        }
+        // 内置采集器：后台扫描 HLS 广告候选并生成指纹规则（开关开启时）
+        AdRuleCollector.get().maybeCollect(url, headers, appContext);
+    }
+
+    /** 采集器生成新规则后注入探针（原子替换，fail-open）。 */
+    public void applyCollectedRules(String json) {
+        if (probe == null || json == null || json.trim().isEmpty()) return;
+        try {
+            probe.replaceRulesJson(json);
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
         }

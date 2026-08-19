@@ -219,6 +219,14 @@
     <string name="player_aac_track">AAC優先</string>
     <string name="player_adblock">智慧去廣</string>
     <string name="ai_adblock">音頻去廣</string>
+    <string name="ad_skip_mode">跳過模式</string>
+    <string name="ad_skip_mode_notice">僅提示</string>
+    <string name="ad_skip_mode_notice_and_skip">提示+自動跳過</string>
+    <string name="ad_skip_mode_skip_only">僅自動跳過</string>
+    <string name="ad_auto_collect">自動採集規則</string>
+    <string name="ad_auto_collect_summary">播放時後台掃描 HLS 廣告候選，自動生成音頻指紋規則並注入</string>
+    <string name="ad_rule_collected">已生成廣告規則：%1$s</string>
+    <string name="ad_rule_collect_failed">廣告規則採集失敗</string>
     <string name="ad_skipped">廣告已跳過</string>
     <string name="ad_rules_path">廣告規則檔案</string>
     <string name="ad_rules_path_title">設定規則檔案路徑</string>

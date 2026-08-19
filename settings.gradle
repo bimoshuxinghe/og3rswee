@@ -74,4 +74,5 @@ include ':probe:probe-adapter-api'
 include ':probe:probe-core'
 include ':probe:probe-runtime'
 include ':probe:probe-media3-1-9'
+include ':probe:probe-collector-tools'
 rootProject.name = "TV"

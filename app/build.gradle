@@ -130,6 +130,7 @@ dependencies {
     // 智能趣广告（音频探针）本地子模块
     implementation project(':probe:probe-runtime')
     implementation project(':probe:probe-media3-1-9')
+    implementation project(':probe:probe-collector-tools')
     implementation libs.appcompat
     implementation libs.lifecycle.service
     implementation libs.media

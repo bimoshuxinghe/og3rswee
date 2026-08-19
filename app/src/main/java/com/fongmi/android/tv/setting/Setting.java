@@ -122,6 +122,15 @@ public class Setting {
         Prefers.put("ai_adblock", aiAdblock);
     }
 
+    /** 自动采集：播放时后台扫描广告候选并生成音频指纹规则。 */
+    public static boolean isAutoCollect() {
+        return Prefers.getBoolean("ad_auto_collect", true);
+    }
+
+    public static void putAutoCollect(boolean autoCollect) {
+        Prefers.put("ad_auto_collect", autoCollect);
+    }
+
     /** 广告跳过模式：0=仅提示，1=提示+自动跳过，2=仅自动跳过（默认提示+自动跳过）。 */
     public static final int AD_SKIP_MODE_NOTICE = 0;
     public static final int AD_SKIP_MODE_NOTICE_AND_SKIP = 1;
