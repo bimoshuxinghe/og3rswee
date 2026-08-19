@@ -139,7 +139,7 @@ public final class TextAdRuleManager {
             JSONArray arr = root.optJSONArray("textRules");
             if (arr == null) return;
             for (int i = 0; i < arr.length(); i++) {
-                Rule rule = Rule.parse(arr.optString(i));
+                Rule rule = Rule.parse(this, arr.optString(i));
                 if (rule != null) rules.add(rule);
             }
         } catch (Exception ignored) {
@@ -165,22 +165,24 @@ public final class TextAdRuleManager {
         Notify.show(ResUtil.getString(R.string.ad_skipped));
     }
 
-    /** 单条文本规则（非静态内部类，可直接调度跳转）。 */
-    private final class Rule {
+    /** 单条文本规则。静态内部类，通过 owner 调用外部实例方法。 */
+    private static final class Rule {
 
+        private final TextAdRuleManager owner;
         private final List<Pattern> segments = new ArrayList<>();
         private final long skipMs;
         private final long delayMs;
         private final long jumpMs;
         private int index;
 
-        private Rule(long skipMs, long delayMs, long jumpMs) {
+        private Rule(TextAdRuleManager owner, long skipMs, long delayMs, long jumpMs) {
+            this.owner = owner;
             this.skipMs = skipMs;
             this.delayMs = delayMs;
             this.jumpMs = jumpMs;
         }
 
-        Rule parse(String rawLine) {
+        static Rule parse(TextAdRuleManager owner, String rawLine) {
             if (rawLine == null) return null;
             String line = rawLine.trim();
             if (line.isEmpty() || line.startsWith("//")) return null;
@@ -200,7 +202,7 @@ public final class TextAdRuleManager {
             }
             if (line.isEmpty()) return null;
 
-            Rule rule = new Rule(skipMs, delayMs, jumpMs);
+            Rule rule = new Rule(owner, skipMs, delayMs, jumpMs);
             String[] parts = line.split("##", -1);
             for (String part : parts) {
                 String pattern = part.trim();
@@ -239,12 +241,12 @@ public final class TextAdRuleManager {
 
         private void trigger(long positionMs, Player p) {
             if (jumpMs > 0L) {
-                scheduleSeek(p, positionMs + jumpMs, delayMs);
+                owner.scheduleSeek(p, positionMs + jumpMs, delayMs);
             } else {
                 long dist = skipMs > 0L ? skipMs : DEFAULT_SKIP_MS;
                 p.seekTo(positionMs + dist);
             }
-            notifyHit();
+            owner.notifyHit();
         }
 
         void reset() {
