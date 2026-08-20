@@ -52,15 +52,14 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
             .add(Player.COMMAND_PLAY_PAUSE)
             .add(Player.COMMAND_PREPARE)
             .add(Player.COMMAND_STOP)
-            .add(Player.COMMAND_SEEK)
+            .add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             .add(Player.COMMAND_SET_SPEED_AND_PITCH)
             .add(Player.COMMAND_SET_VOLUME)
             .add(Player.COMMAND_SET_VIDEO_SURFACE)
             .add(Player.COMMAND_SET_MEDIA_ITEM)
             .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             .add(Player.COMMAND_GET_TRACKS)
-            .add(Player.COMMAND_SELECT_TRACK)
-            .add(Player.COMMAND_DESELECT_TRACK)
+            .add(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS)
             .build();
 
     private final Context context;
@@ -385,7 +384,7 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
         } catch (Exception ignored) {}
 
         try {
-            Media media = new Media(libVLC, Media.Type.Unknown, url);
+            Media media = new Media(libVLC, url);
             // 设置硬解
             if (decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
                 media.setHWDecoderEnabled(true, false);
