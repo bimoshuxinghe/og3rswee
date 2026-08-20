@@ -473,7 +473,9 @@ public class PlayerManager implements ParseCallback {
     }
 
     private boolean canUseVlc(PlaySpec spec) {
-        return (PlayerSetting.isVlc() || IsoMedia.shouldPreferVlc(spec == null ? null : spec.getUrl())) && isVlcSupported(spec);
+        // VLC 仅当用户手动选择引擎时启用；伪装分段/coffee m3u8 等源实测 VLC demux 失败（下载有数据但取不到音视频轨），
+        // 默认交由 EXO（OkHttp 透传 headers）解析，避免强制 VLC 导致转圈/无轨。
+        return PlayerSetting.isVlc() && isVlcSupported(spec);
     }
 
     private boolean isVlcSupported(PlaySpec spec) {
