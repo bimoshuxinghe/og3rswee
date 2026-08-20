@@ -430,6 +430,9 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
                     userAgent = entry.getValue();
                 } else if (HttpHeaders.REFERER.equalsIgnoreCase(entry.getKey())) {
                     referer = entry.getValue();
+                } else {
+                    // libvlc http 模块通过 http-header 透传自定义 headers（Cookie、token 等）
+                    media.addOption(":http-header=" + entry.getKey() + ": " + entry.getValue());
                 }
             }
             if (userAgent == null) {
