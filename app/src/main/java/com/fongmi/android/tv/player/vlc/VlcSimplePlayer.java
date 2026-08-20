@@ -343,18 +343,14 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
             options.add("--network-caching=1500");
             options.add("--file-caching=1500");
             options.add("--live-caching=3000");
-            options.add("--no-stats");
+            options.add("--stats");
             options.add("--no-video-title-show");
             options.add("--sub-autodetect-file");
             options.add("--no-sub-autodetect-fuzzy");
             options.add("--sub-scale=1.0");
             options.add("--verbose=0");
-            if (decode == com.fongmi.android.tv.player.engine.PlayerEngine.HARD) {
-                options.add("--avcodec-hw=mediacodec");
-                options.add("--mediacodec-threads=4");
-            } else {
-                options.add("--avcodec-hw=none");
-            }
+            options.add("--no-drop-late-frames");
+            options.add("--no-skip-frames");
             libVLC = new LibVLC(context, options);
             mediaPlayer = new MediaPlayer(libVLC);
             mediaPlayer.setEventListener(this);
