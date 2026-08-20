@@ -41,7 +41,7 @@
     <string name="skip_time_hint">00:00</string>
     <string name="skip_clear">Clear skip</string>
     <string name="play_exo">EXO</string>
-    <string name="play_mpv">MPV</string>
+    <string name="play_vlc">VLC</string>
     <string name="play_next">Next</string>
     <string name="play_prev">Prev</string>
     <string name="play_stop">Stop</string>
@@ -272,11 +272,6 @@
     <string name="player_preload_seconds">Preload time</string>
     <string name="preload_thread_unit">thread</string>
     <string name="player_tunnel">Tunnel mode</string>
-    <string name="player_mpv_config">MPV config</string>
-    <string name="player_mpv_config_default">Default</string>
-    <string name="player_mpv_render">MPV render</string>
-    <string name="player_mpv_audio_passthrough">MPV audio passthrough</string>
-    <string name="player_mpv_dolby_passthrough">MPV Dolby passthrough</string>
     <string name="player_exo_dolby_vision_passthrough">EXO Dolby Vision passthrough</string>
     <string name="player_buffer">Buffer time</string>
     <string name="player_speed">Press speed</string>
@@ -347,12 +342,6 @@
     <string-array name="select_render">
         <item>Surface</item>
         <item>Texture</item>
-    </string-array>
-
-    <string-array name="select_mpv_render">
-        <item>OpenGL</item>
-        <item>GPU Next</item>
-        <item>Vulkan</item>
     </string-array>
 
     <string-array name="select_size">

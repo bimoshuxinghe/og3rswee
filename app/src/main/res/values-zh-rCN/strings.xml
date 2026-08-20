@@ -41,7 +41,7 @@
     <string name="skip_time_hint">00&#58;00</string>
     <string name="skip_clear">&#x6E05;&#x7A7A;&#x8DF3;&#x8FC7;&#x8BBE;&#x7F6E;</string>
     <string name="play_exo">EXO</string>
-    <string name="play_mpv">MPV</string>
+    <string name="play_vlc">VLC</string>
     <string name="play_next">下集</string>
     <string name="play_prev">上集</string>
     <string name="play_stop">停止</string>
@@ -270,11 +270,6 @@
     <string name="player_preload_seconds">预载时间</string>
     <string name="preload_thread_unit">条</string>
     <string name="player_tunnel">隧道模式</string>
-    <string name="player_mpv_config">MPV配置</string>
-    <string name="player_mpv_config_default">默认</string>
-    <string name="player_mpv_render">MPV渲染</string>
-    <string name="player_mpv_audio_passthrough">MPV音频直通</string>
-    <string name="player_mpv_dolby_passthrough">MPV杜比直通</string>
     <string name="player_exo_dolby_vision_passthrough">EXO杜比视界直通</string>
     <string name="player_buffer">缓冲时间</string>
     <string name="player_speed">长按倍速</string>
@@ -365,12 +360,6 @@
     <string-array name="select_caption">
         <item>预设</item>
         <item>系统</item>
-    </string-array>
-
-    <string-array name="select_mpv_render">
-        <item>OpenGL</item>
-        <item>GPU Next</item>
-        <item>Vulkan</item>
     </string-array>
 
     <string-array name="select_track">

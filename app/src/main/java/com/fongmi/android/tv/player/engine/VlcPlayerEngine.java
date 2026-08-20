@@ -12,7 +12,7 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.player.exo.ExoUtil;
-import com.fongmi.android.tv.player.mpv.MpvSimplePlayer;
+import com.fongmi.android.tv.player.vlc.VlcSimplePlayer;
 import com.fongmi.android.tv.utils.ResUtil;
 
 import android.util.Log;
@@ -21,22 +21,22 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class MpvPlayerEngine implements PlayerEngine {
+public class VlcPlayerEngine implements PlayerEngine {
 
-    private MpvSimplePlayer player;
+    private VlcSimplePlayer player;
     private int decode;
 
-    public MpvPlayerEngine(int decode, Player.Listener listener) {
+    public VlcPlayerEngine(int decode, Player.Listener listener) {
         this.decode = decode;
         this.player = buildPlayer(listener);
     }
 
     public static boolean isAvailable() {
-        return MpvSimplePlayer.isAvailable();
+        return VlcSimplePlayer.isAvailable();
     }
 
     public static String getAvailabilityError() {
-        return MpvSimplePlayer.getAvailabilityError();
+        return VlcSimplePlayer.getAvailabilityError();
     }
 
     @Override
@@ -68,7 +68,7 @@ public class MpvPlayerEngine implements PlayerEngine {
 
     @Override
     public boolean canSetDecodeWithoutRebuild() {
-        return true;
+        return false;
     }
 
     @Override
@@ -89,15 +89,13 @@ public class MpvPlayerEngine implements PlayerEngine {
     @Override
     public void start(PlaySpec spec, long positionMs) {
         MediaItem item = ExoUtil.getMediaItem(spec, decode);
-        // 确保播放器处于 IDLE/ENDED 状态再加载，避免 Empty playlist 崩溃
-        // MPV 的 loadfile replace 会立即替换上一画面，实现挤掉起播
         ensureIdleOrEnded(player);
         try {
             player.setMediaItem(item, positionMs);
             player.prepare();
             player.play();
         } catch (Exception e) {
-            Log.w("MpvPlayerEngine", "start failed, retry after clear.", e);
+            Log.w("VlcPlayerEngine", "start failed, retry after clear.", e);
             try {
                 player.clearMediaItems();
             } catch (Exception ignored) {
@@ -107,7 +105,7 @@ public class MpvPlayerEngine implements PlayerEngine {
                 player.prepare();
                 player.play();
             } catch (Exception e2) {
-                Log.e("MpvPlayerEngine", "start retry failed.", e2);
+                Log.e("VlcPlayerEngine", "start retry failed.", e2);
             }
         }
     }
@@ -131,7 +129,8 @@ public class MpvPlayerEngine implements PlayerEngine {
     @Override
     public void setMetadata(MediaMetadata data) {
         MediaItem current = player.getCurrentMediaItem();
-        if (current != null) player.replaceMediaItem(player.getCurrentMediaItemIndex(), current.buildUpon().setMediaMetadata(data).build());
+        if (current != null)
+            player.replaceMediaItem(player.getCurrentMediaItemIndex(), current.buildUpon().setMediaMetadata(data).build());
     }
 
     @Override
@@ -176,7 +175,8 @@ public class MpvPlayerEngine implements PlayerEngine {
 
     @Override
     public boolean canSetSubtitleStyle() {
-        return true;
+        // libvlc 3.6.2 不支持运行时字幕缩放/位置调整
+        return false;
     }
 
     @Override
@@ -221,7 +221,7 @@ public class MpvPlayerEngine implements PlayerEngine {
 
     @Override
     public String getErrorMessage(PlaybackException e) {
-        return e.getMessage() == null ? "MPV 播放失败" : e.getMessage();
+        return e.getMessage() == null ? "VLC 播放失败" : e.getMessage();
     }
 
     @Override
@@ -229,8 +229,8 @@ public class MpvPlayerEngine implements PlayerEngine {
         return ErrorAction.FATAL;
     }
 
-    private MpvSimplePlayer buildPlayer(Player.Listener listener) {
-        MpvSimplePlayer player = new MpvSimplePlayer(App.get(), decode);
+    private VlcSimplePlayer buildPlayer(Player.Listener listener) {
+        VlcSimplePlayer player = new VlcSimplePlayer(App.get(), decode);
         player.addListener(listener);
         player.setPlayWhenReady(true);
         return player;

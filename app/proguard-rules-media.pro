@@ -37,9 +37,6 @@
     native <methods>;
 }
 
--keep class is.xyz.mpv.MPVLib { *; }
--keep class is.xyz.mpv.MPVLib$* { *; }
-
 # === Media3 Decoder 全包保护 ===
 # R8 无法看到 JNI native 代码中的方法引用，会误删/重命名"未使用"的方法
 # FfmpegAudioDecoder.growOutputBuffer 是 private 方法，仅被 native 代码调用

@@ -24,7 +24,7 @@ public class ErrorMsgProvider {
             case PlaybackException.ERROR_CODE_DECODING_FAILED -> "Decoding Failed";
             case PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> "Decoding Format Unsupported";
             case PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED -> "Decoding Resources Reclaimed";
-            case PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES -> "设备解码能力不足，建议切换 MPV 或让媒体服务器转码";
+            case PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES -> "设备解码能力不足，建议切换 VLC 或让媒体服务器转码";
             case PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED -> "Audio Track Init Failed";
             case PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED -> "Audio Track Write Failed";
             case PlaybackException.ERROR_CODE_DRM_UNSPECIFIED -> "DRM Unspecified";
