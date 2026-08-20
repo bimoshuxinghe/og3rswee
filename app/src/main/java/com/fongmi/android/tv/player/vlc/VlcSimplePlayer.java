@@ -124,7 +124,7 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
     public static boolean isAvailable() {
         if (!availabilityChecked) {
             try {
-                Class.forName("org.videolan.libvlc.LibVLC");
+                System.loadLibrary("vlc");
                 nativeAvailable = true;
             } catch (Throwable e) {
                 nativeAvailable = false;
