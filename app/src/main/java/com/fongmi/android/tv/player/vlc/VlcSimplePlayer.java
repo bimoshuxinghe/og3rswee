@@ -361,7 +361,7 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
             if (currentSurface != null && currentSurface.isValid()) {
                 try {
                     mediaPlayer.getVLCVout().setVideoSurface(currentSurface, null);
-                    mediaPlayer.getVLCVout().attachViews(null);
+                    mediaPlayer.getVLCVout().attachViews(videoLayoutListener);
                     voutAttached = true;
                 } catch (Exception ignored) {}
             }
@@ -690,7 +690,7 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
                 vout.addCallback(voutCallback);
                 vout.setVideoSurface(surface, null);
                 if (!voutAttached) {
-                    vout.attachViews(null);
+                    vout.attachViews(videoLayoutListener);
                     voutAttached = true;
                 }
             } catch (Exception e) {
@@ -797,22 +797,22 @@ public final class VlcSimplePlayer extends SimpleBasePlayer implements MediaPlay
     }
 
     private void updateVideoSize() {
-        // libvlc 3.6 无法直接查询视频尺寸，尺寸由 voutCallback.onNewLayout 上报
+        // libvlc 3.6 无法直接查询视频尺寸，尺寸由 videoLayoutListener.onNewVideoLayout 上报
     }
 
     private final IVLCVout.Callback voutCallback = new IVLCVout.Callback() {
-        @Override
-        public void onNewLayout(IVLCVout vlcVout, int width, int height, int visibleWidth, int visibleHeight, int sarNum, int sarDen) {
-            if (width > 0 && height > 0) {
-                videoSize = new VideoSize(width, height);
-                invalidateState();
-            }
-        }
         @Override
         public void onSurfacesCreated(IVLCVout vlcVout) {
         }
         @Override
         public void onSurfacesDestroyed(IVLCVout vlcVout) {
+        }
+    };
+
+    private final IVLCVout.OnNewVideoLayoutListener videoLayoutListener = (vlcVout, width, height, visibleWidth, visibleHeight, sarNum, sarDen) -> {
+        if (width > 0 && height > 0) {
+            videoSize = new VideoSize(width, height);
+            invalidateState();
         }
     };
 

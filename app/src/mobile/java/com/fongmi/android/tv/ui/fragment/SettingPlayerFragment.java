@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.ui.fragment;
 
+import android.content.Intent;
 import android.provider.Settings;
 
 import android.view.LayoutInflater;
