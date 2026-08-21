@@ -52,7 +52,11 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
     }
 
     private void addAll() {
-        for (Site site : VodConfig.get().getSites()) if (!site.isHide()) mItems.add(site);
+        for (Site site : VodConfig.get().getSites()) {
+            if (site.isHide()) continue;
+            if ("local_file_system".equals(site.getKey())) continue;
+            mItems.add(site);
+        }
     }
 
     public void filter(String query) {
@@ -62,6 +66,7 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         } else {
             for (Site site : VodConfig.get().getSites()) {
                 if (site.isHide()) continue;
+                if ("local_file_system".equals(site.getKey())) continue;
                 if (site.getName().toLowerCase().contains(query.toLowerCase())
                         || com.fongmi.android.tv.utils.Pinyin.getInitials(site.getName()).contains(query.toLowerCase())) {
                     mItems.add(site);

@@ -38,6 +38,12 @@ import androidx.media3.common.VideoSize;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.flexbox.AlignItems;
+import com.google.android.flexbox.FlexDirection;
+import com.google.android.flexbox.FlexWrap;
+import com.google.android.flexbox.FlexboxLayoutManager;
+import com.google.android.flexbox.JustifyContent;
 import androidx.core.widget.NestedScrollView;
 import androidx.transition.ChangeBounds;
 import androidx.transition.TransitionManager;
@@ -474,16 +480,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.episode.setHasFixedSize(true);
         mBinding.episode.setItemAnimator(null);
         if (layoutMode == 0) {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(2, 8));
+            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else if (layoutMode == 1) {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
         } else if (layoutMode == 3) {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(4, 8));
+            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
@@ -505,6 +509,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.parse.setItemAnimator(null);
         mBinding.control.parse.addItemDecoration(new SpaceItemDecoration(8));
         mBinding.control.parse.setAdapter(mParseAdapter = new ParseAdapter(this, ViewType.DARK));
+    }
+
+    private RecyclerView.LayoutManager createEpisodeFlexbox() {
+        FlexboxLayoutManager flexbox = new FlexboxLayoutManager(this, FlexDirection.ROW, FlexWrap.WRAP);
+        flexbox.setJustifyContent(JustifyContent.CENTER);
+        flexbox.setAlignItems(AlignItems.FLEX_START);
+        return flexbox;
     }
 
     private void setVideoView() {
@@ -1066,16 +1077,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         Setting.putLayoutMode(layoutMode);
         while (mBinding.episode.getItemDecorationCount() > 0) mBinding.episode.removeItemDecorationAt(0);
         if (layoutMode == 0) {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(2, 8));
+            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else if (layoutMode == 1) {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
             mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
         } else if (layoutMode == 3) {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 4));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(4, 8));
+            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));

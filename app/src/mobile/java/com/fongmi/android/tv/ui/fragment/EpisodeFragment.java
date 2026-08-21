@@ -6,7 +6,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.bean.Episode;
@@ -14,7 +14,11 @@ import com.fongmi.android.tv.databinding.FragmentEpisodeBinding;
 import com.fongmi.android.tv.ui.adapter.EpisodeAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.base.ViewType;
-import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
+import com.google.android.flexbox.AlignItems;
+import com.google.android.flexbox.FlexDirection;
+import com.google.android.flexbox.FlexWrap;
+import com.google.android.flexbox.FlexboxLayoutManager;
+import com.google.android.flexbox.JustifyContent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,8 +58,10 @@ public class EpisodeFragment extends BaseFragment implements EpisodeAdapter.OnCl
         EpisodeAdapter adapter;
         mBinding.recycler.setHasFixedSize(true);
         mBinding.recycler.setItemAnimator(null);
-        mBinding.recycler.setLayoutManager(new GridLayoutManager(getContext(), getSpanCount()));
-        mBinding.recycler.addItemDecoration(new SpaceItemDecoration(getSpanCount(), 8));
+        FlexboxLayoutManager flexbox = new FlexboxLayoutManager(getContext(), FlexDirection.ROW, FlexWrap.WRAP);
+        flexbox.setJustifyContent(JustifyContent.CENTER);
+        flexbox.setAlignItems(AlignItems.FLEX_START);
+        mBinding.recycler.setLayoutManager(flexbox);
         mBinding.recycler.setAdapter(adapter = new EpisodeAdapter(this, ViewType.GRID, getItems()));
         mBinding.recycler.scrollToPosition(adapter.getPosition());
     }

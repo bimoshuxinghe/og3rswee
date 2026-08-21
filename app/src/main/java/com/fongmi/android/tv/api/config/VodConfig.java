@@ -195,16 +195,6 @@ public class VodConfig extends BaseConfig {
         List<Site> dbSites = Site.findAll();
         Map<String, Site> items = dbSites.stream().collect(Collectors.toMap(Site::getKey, Function.identity(), (k1, k2) -> k1));
         getSites().forEach(site -> site.sync(items.get(site.getKey())));
-        
-        // Add Local File System Site
-        Site localFileSite = new Site();
-        localFileSite.setKey("local_file_system");
-        localFileSite.setName(App.get().getString(com.fongmi.android.tv.R.string.home_local));
-        localFileSite.setApi("csp_LocalFile");
-        localFileSite.setExt("file:///" + com.github.catvod.utils.Path.root().getAbsolutePath());
-        localFileSite.setJar(spider);
-        localFileSite.setType(3);
-        getSites().add(localFileSite);
 
         List<Site> localNasSites = dbSites.stream()
                 .filter(site -> site.getKey() != null && site.getKey().startsWith("local_nas_"))
