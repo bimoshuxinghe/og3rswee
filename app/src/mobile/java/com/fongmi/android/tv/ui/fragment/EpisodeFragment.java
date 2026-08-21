@@ -62,6 +62,7 @@ public class EpisodeFragment extends BaseFragment implements EpisodeAdapter.OnCl
         flexbox.setJustifyContent(JustifyContent.CENTER);
         flexbox.setAlignItems(AlignItems.FLEX_START);
         mBinding.recycler.setLayoutManager(flexbox);
+        mBinding.recycler.addItemDecoration(new SpaceItemDecoration(8));
         mBinding.recycler.setAdapter(adapter = new EpisodeAdapter(this, ViewType.GRID, getItems()));
         mBinding.recycler.scrollToPosition(adapter.getPosition());
     }

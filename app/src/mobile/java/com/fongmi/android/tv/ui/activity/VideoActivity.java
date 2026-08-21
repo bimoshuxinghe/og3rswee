@@ -1072,28 +1072,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         initSearch(name, false);
     }
 
-    private void onMore() {
-        layoutMode = (layoutMode + 1) % 4;
-        Setting.putLayoutMode(layoutMode);
-        while (mBinding.episode.getItemDecorationCount() > 0) mBinding.episode.removeItemDecorationAt(0);
-        if (layoutMode == 0) {
-            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
-            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
-        } else if (layoutMode == 1) {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
-            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
-        } else if (layoutMode == 3) {
-            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
-            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
-        } else {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(1, 8));
-            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.LIST));
-        }
-        showActiveGroup();
-    }
-
     private void onActor() {
         mBinding.actor.setMaxLines(mBinding.actor.getMaxLines() == 1 ? Integer.MAX_VALUE : 1);
     }
