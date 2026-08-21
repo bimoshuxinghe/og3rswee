@@ -74,7 +74,7 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
     }
 
     private void onUp(View view) {
-        if (isStyleSupported()) {
+        if (isMpv()) {
             player.addSubtitlePosition();
             return;
         }
@@ -83,7 +83,7 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
     }
 
     private void onDown(View view) {
-        if (isStyleSupported()) {
+        if (isMpv()) {
             player.subSubtitlePosition();
             return;
         }
@@ -92,7 +92,7 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
     }
 
     private void onLarge(View view) {
-        if (isStyleSupported()) {
+        if (isMpv()) {
             player.addSubtitleSize();
             return;
         }
@@ -101,7 +101,7 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
     }
 
     private void onSmall(View view) {
-        if (isStyleSupported()) {
+        if (isMpv()) {
             player.subSubtitleSize();
             return;
         }
@@ -110,7 +110,7 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
     }
 
     private void onReset(View view) {
-        if (isStyleSupported()) {
+        if (isMpv()) {
             player.resetSubtitleStyle();
             return;
         }
@@ -119,7 +119,7 @@ public final class SubtitleDialog extends BaseBottomSheetDialog {
         subtitleView.reset();
     }
 
-    private boolean isStyleSupported() {
+    private boolean isMpv() {
         return player != null && player.canSetSubtitleStyle();
     }
 

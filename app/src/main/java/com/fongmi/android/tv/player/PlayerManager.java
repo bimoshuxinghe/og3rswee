@@ -28,9 +28,10 @@ import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.impl.ParseCallback;
 import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
-import com.fongmi.android.tv.player.engine.VlcPlayerEngine;
+import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
+import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.setting.PlayerSetting;
@@ -208,7 +209,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public String getEngineText() {
-        return ResUtil.getString(isVlcEngine() ? R.string.play_vlc : R.string.play_exo);
+        return ResUtil.getString(isMpvEngine() ? R.string.play_mpv : R.string.play_exo);
     }
 
     public String getPositionTime(long delta) {
@@ -405,18 +406,18 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void toggleEngine() {
-        setEngine(isVlcEngine() ? PlayerSetting.ENGINE_EXO : PlayerSetting.ENGINE_VLC);
+        setEngine(isMpvEngine() ? PlayerSetting.ENGINE_EXO : PlayerSetting.ENGINE_MPV);
     }
 
     public void setEngine(int target) {
-        String reason = target == PlayerSetting.ENGINE_VLC ? getVlcUnsupportedReason(spec) : "";
+        String reason = target == PlayerSetting.ENGINE_MPV ? getMpvUnsupportedReason(spec) : "";
         if (!TextUtils.isEmpty(reason)) {
-            Log.e(TAG, "VLC unsupported: " + reason + ", url=" + (spec == null ? "null" : spec.getUrl()));
-            Notify.show("VLC 不可用：" + reason);
+            Log.e(TAG, "MPV unsupported: " + reason + ", url=" + (spec == null ? "null" : spec.getUrl()));
+            Notify.show("MPV 不可用：" + reason);
             PlayerSetting.putEngine(PlayerSetting.ENGINE_EXO);
             return;
         }
-        int old = isVlcEngine() ? PlayerSetting.ENGINE_VLC : PlayerSetting.ENGINE_EXO;
+        int old = isMpvEngine() ? PlayerSetting.ENGINE_MPV : PlayerSetting.ENGINE_EXO;
         PlayerSetting.putEngine(target);
         if (old == target) return;
         switchEngine();
@@ -461,30 +462,28 @@ public class PlayerManager implements ParseCallback {
     }
 
     private PlayerEngine createEngine(int decode) {
-        return canUseVlc(spec) ? new VlcPlayerEngine(decode, listener) : new ExoPlayerEngine(decode, listener);
+        return canUseMpv(spec) ? new MpvPlayerEngine(decode, listener) : new ExoPlayerEngine(decode, listener);
     }
 
-    private boolean isVlcEngine() {
-        return engine instanceof VlcPlayerEngine;
+    private boolean isMpvEngine() {
+        return engine instanceof MpvPlayerEngine;
     }
 
-    public boolean isVlc() {
-        return isVlcEngine();
+    public boolean isMpv() {
+        return isMpvEngine();
     }
 
-    private boolean canUseVlc(PlaySpec spec) {
-        // VLC 仅当用户手动选择引擎时启用；伪装分段/coffee m3u8 等源实测 VLC demux 失败（下载有数据但取不到音视频轨），
-        // 默认交由 EXO（OkHttp 透传 headers）解析，避免强制 VLC 导致转圈/无轨。
-        return PlayerSetting.isVlc() && isVlcSupported(spec);
+    private boolean canUseMpv(PlaySpec spec) {
+        return (PlayerSetting.isMpv() || MpvMedia.shouldPreferMpv(spec == null ? null : spec.getUrl())) && isMpvSupported(spec);
     }
 
-    private boolean isVlcSupported(PlaySpec spec) {
-        return TextUtils.isEmpty(getVlcUnsupportedReason(spec));
+    private boolean isMpvSupported(PlaySpec spec) {
+        return TextUtils.isEmpty(getMpvUnsupportedReason(spec));
     }
 
-    private String getVlcUnsupportedReason(PlaySpec spec) {
-        if (!VlcPlayerEngine.isAvailable()) {
-            String error = VlcPlayerEngine.getAvailabilityError();
+    private String getMpvUnsupportedReason(PlaySpec spec) {
+        if (!MpvPlayerEngine.isAvailable()) {
+            String error = MpvPlayerEngine.getAvailabilityError();
             return TextUtils.isEmpty(error) ? "native 库加载失败" : error;
         }
         if (spec == null) return "";
@@ -552,8 +551,8 @@ public class PlayerManager implements ParseCallback {
     }
 
     private void ensureEngineForSpec() {
-        boolean useVlc = canUseVlc(spec);
-        if (useVlc != isVlcEngine()) switchEngineOnly();
+        boolean useMpv = canUseMpv(spec);
+        if (useMpv != isMpvEngine()) switchEngineOnly();
     }
 
     private void setDanmakus(List<Danmaku> items) {

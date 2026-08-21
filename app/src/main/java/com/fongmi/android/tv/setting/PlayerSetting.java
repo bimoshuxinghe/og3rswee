@@ -4,26 +4,32 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.view.View;
 
 import com.fongmi.android.tv.App;
+import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Prefers;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 public class PlayerSetting {
 
     public static final int ENGINE_EXO = 0;
-    public static final int ENGINE_VLC = 1;
+    public static final int ENGINE_MPV = 1;
 
     public static int getEngine() {
-        return Math.min(Math.max(Prefers.getInt("player_engine", ENGINE_EXO), ENGINE_EXO), ENGINE_VLC);
+        return Math.min(Math.max(Prefers.getInt("player_engine", ENGINE_EXO), ENGINE_EXO), ENGINE_MPV);
     }
 
     public static void putEngine(int engine) {
-        Prefers.put("player_engine", Math.min(Math.max(engine, ENGINE_EXO), ENGINE_VLC));
+        Prefers.put("player_engine", Math.min(Math.max(engine, ENGINE_EXO), ENGINE_MPV));
     }
 
-    public static boolean isVlc() {
-        return getEngine() == ENGINE_VLC;
+    public static boolean isMpv() {
+        return getEngine() == ENGINE_MPV;
     }
 
     public static boolean isPreload() {
@@ -79,6 +85,77 @@ public class PlayerSetting {
         Drawable background = view.getBackground();
         if (background == null) return;
         background.mutate().setAlpha(Math.round((100 - getControllerTransparency()) * 2.55f));
+    }
+
+    public static File getMpvConfigDir() {
+        File dir = Path.files("mpv");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    public static File getMpvConfigFile() {
+        return new File(getMpvConfigDir(), "mpv.conf");
+    }
+
+    public static boolean hasMpvConfig() {
+        return Path.exists(getMpvConfigFile());
+    }
+
+    public static String getMpvConfigName() {
+        return Prefers.getString("mpv_config_name");
+    }
+
+    public static boolean importMpvConfig(String path) {
+        if (TextUtils.isEmpty(path)) return false;
+        File source = new File(path);
+        if (!Path.exists(source)) return false;
+        File target = getMpvConfigFile();
+        if (!source.getAbsolutePath().equals(target.getAbsolutePath())) Path.copy(source, target);
+        if (!Path.exists(target)) return false;
+        Prefers.put("mpv_config_name", source.getName());
+        return true;
+    }
+
+    public static boolean importMpvConfigUrl(String url) {
+        if (TextUtils.isEmpty(url)) return false;
+        url = url.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return false;
+        String text = OkHttp.string(url);
+        if (TextUtils.isEmpty(text)) return false;
+        File target = getMpvConfigFile();
+        Path.write(target, text.getBytes(StandardCharsets.UTF_8));
+        if (!Path.exists(target)) return false;
+        Prefers.put("mpv_config_name", url);
+        return true;
+    }
+
+    public static void clearMpvConfig() {
+        Path.clear(getMpvConfigFile());
+        Prefers.remove("mpv_config_name");
+    }
+
+    public static int getMpvRender() {
+        return Math.min(Math.max(Prefers.getInt("mpv_render"), 0), 2);
+    }
+
+    public static void putMpvRender(int render) {
+        Prefers.put("mpv_render", Math.min(Math.max(render, 0), 2));
+    }
+
+    public static boolean isMpvAudioPassthrough() {
+        return Prefers.getBoolean("mpv_audio_passthrough");
+    }
+
+    public static void putMpvAudioPassthrough(boolean passthrough) {
+        Prefers.put("mpv_audio_passthrough", passthrough);
+    }
+
+    public static boolean isMpvDolbyPassthrough() {
+        return Prefers.getBoolean("mpv_dolby_passthrough");
+    }
+
+    public static void putMpvDolbyPassthrough(boolean passthrough) {
+        Prefers.put("mpv_dolby_passthrough", passthrough);
     }
 
     public static boolean isExoDolbyVisionPassthrough() {
@@ -257,6 +334,22 @@ public class PlayerSetting {
         Prefers.put("subtitle_position", value);
     }
 
+    public static float getMpvSubtitleScale() {
+        return Prefers.getFloat("mpv_subtitle_scale", 1.0f);
+    }
+
+    public static void putMpvSubtitleScale(float value) {
+        Prefers.put("mpv_subtitle_scale", value);
+    }
+
+    public static float getMpvSubtitlePosition() {
+        return Prefers.getFloat("mpv_subtitle_position", 100.0f);
+    }
+
+    public static void putMpvSubtitlePosition(float value) {
+        Prefers.put("mpv_subtitle_position", value);
+    }
+
     // === Subtitle style settings (matching APK's l41/j41 configuration) ===
 
     public static int getSubtitleStyleSource() {
@@ -364,5 +457,42 @@ public class PlayerSetting {
 
     public static void putPreloadTime(int time) {
         Prefers.put("preload_time", Math.min(Math.max(time, 20), 120));
+    }
+
+    public static int getMpvCacheSecs() {
+        int preloadTime = getPreloadTime();
+        int rounded = Math.round((preloadTime - 20) / 10.0f) * 10 + 20;
+        return Math.min(120, Math.max(rounded, 20));
+    }
+
+    // === MPV GPU settings (matching APK's separate boolean flags) ===
+
+    public static boolean isMpvGpuNext() {
+        return Prefers.getBoolean("mpv_gpu_next", getMpvRender() >= 1);
+    }
+
+    public static boolean isMpvVulkan() {
+        return Prefers.getBoolean("mpv_vulkan", getMpvRender() == 2);
+    }
+
+    // === Subtitle scale calculation (matching APK's l41.w() and l41.x()) ===
+
+    public static float getMpvSubtitleScaleValue(Context context) {
+        float textSize = Prefers.getFloat("subtitle_text_size", 0.0f);
+        float scale;
+        if (textSize == 0.0f) {
+            scale = 1.0f;
+        } else {
+            scale = textSize / 0.0533f;
+        }
+        scale = Prefers.getFloat("subtitle_scale", scale);
+        if (scale == 1.0f && getSubtitleStyleSource() == 1) {
+            android.view.accessibility.CaptioningManager cm = (android.view.accessibility.CaptioningManager)
+                    context.getSystemService(Context.CAPTIONING_SERVICE);
+            if (cm != null) {
+                scale *= cm.getFontScale();
+            }
+        }
+        return scale;
     }
 }

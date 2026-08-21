@@ -37,15 +37,8 @@
     native <methods>;
 }
 
-# === libvlc 全包保护 ===
-# libvlc-all-3.6.2.aar 不自带 consumer proguard rules，release 开启 minify 时必须手动 keep，
-# 否则 R8 混淆 org.videolan.libvlc 内部类（如 MediaPlayer$Event）会导致 JNI 字段/方法查找失败，
-# new LibVLC() 时 native 层崩溃（SIGSEGV/SIGABRT）直接闪退回桌面，Java try-catch 无法捕获。
--keep class org.videolan.libvlc.** { *; }
--keepclassmembers class org.videolan.libvlc.** { *; }
--keep interface org.videolan.libvlc.** { *; }
--keepclassmembers class org.videolan.libvlc.interfaces.** { *; }
--keep enum org.videolan.libvlc.** { *; }
+-keep class is.xyz.mpv.MPVLib { *; }
+-keep class is.xyz.mpv.MPVLib$* { *; }
 
 # === Media3 Decoder 全包保护 ===
 # R8 无法看到 JNI native 代码中的方法引用，会误删/重命名"未使用"的方法

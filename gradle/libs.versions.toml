@@ -22,7 +22,6 @@ swiperefreshlayout = "1.2.0"
 viewpager2 = "1.1.0"
 media3 = "1.10.0"
 nextlib = "1.10.0-0.12.1"
-libvlc = "3.6.2"
 
 androidGifDrawable = "1.2.31"
 androidautosize = "1.2.1"
@@ -61,7 +60,6 @@ desugar = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.
 leanback = { group = "androidx.leanback", name = "leanback", version.ref = "leanback" }
 lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
 media = { group = "androidx.media", name = "media", version.ref = "media" }
-libvlc = { group = "org.videolan.android", name = "libvlc-all", version.ref = "libvlc" }
 palette = { group = "androidx.palette", name = "palette", version.ref = "palette" }
 preference = { group = "androidx.preference", name = "preference", version.ref = "preference" }
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }

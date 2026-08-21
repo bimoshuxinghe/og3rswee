@@ -19,7 +19,7 @@ import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.player.exo.ErrorMsgProvider;
 import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.player.exo.TrackUtil;
-import com.fongmi.android.tv.player.IsoMedia;
+import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.server.process.IsoStream;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -118,7 +118,7 @@ public class ExoPlayerEngine implements PlayerEngine {
         this.isRtspStream = spec.getUrl() != null && spec.getUrl().startsWith("rtsp://");
         // 检测是否为 ISO 镜像，需要先解析文件系统再通过代理播放
         String url = spec.getUrl();
-        if (url != null && IsoMedia.isBluRayIso(url)) {
+        if (url != null && MpvMedia.isBluRayIso(url)) {
             if (isoResolving) return;
             if (TextUtils.equals(url, isoOriginalUrl) && !TextUtils.isEmpty(isoProxyUrl)) {
                 startInternal(positionMs);
