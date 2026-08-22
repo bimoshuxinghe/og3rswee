@@ -1,0 +1,321 @@
+package com.fongmi.android.tv.player;
+
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.annotation.NonNull;
+
+import com.fongmi.android.tv.setting.Setting;
+import com.github.catvod.net.OkHttp;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.MediaType;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+/**
+ * 云端广告规则同步管理器。
+ * <p>
+ * 负责：
+ * 1. 拉取：GET rules_server.php，把云端 RULES.JSON 与本地合并（音频按 id 去重、文本按内容去重），
+ *    revision 取较大值，原子写回本地并注入 AdProbeManager。
+ * 2. 上传：POST rules_server.php（带 X-Rules-Token），把本地尚未上传过的规则增量上传，
+ *    成功后把新规则 id 记入 Setting.ad_cloud_uploaded_ids 防止重复上传。
+ */
+public final class AdCloudSyncManager {
+
+    private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    private AdCloudSyncManager() {
+    }
+
+    private static class Holder {
+        private static final AdCloudSyncManager INSTANCE = new AdCloudSyncManager();
+    }
+
+    public static AdCloudSyncManager get() {
+        return Holder.INSTANCE;
+    }
+
+    /** 同步结果回调（主线程）。 */
+    public interface SyncCallback {
+        /** 云端已加载。audioCount/textRuleCount 为云端合并后的本地总条数；added 为本次新增条数。 */
+        void onLoaded(int audioCount, int textRuleCount, int added);
+
+        /** 未配置云端地址。 */
+        void onNoUrl();
+
+        /** 拉取/合并失败。message 为可展示的错误信息。 */
+        void onError(@NonNull String message);
+    }
+
+    /** 拉取云端规则并合并到本地。 */
+    public void syncFromCloud(SyncCallback callback) {
+        String url = Setting.getAdCloudUrl();
+        if (url == null || url.trim().isEmpty()) {
+            if (callback != null) callback.onNoUrl();
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                Response resp = OkHttp.get().newCall(new Request.Builder()
+                        .url(url.trim()).header("Accept", "application/json")
+                        .header("Cache-Control", "no-cache").build()).execute();
+                String body;
+                try {
+                    if (!resp.isSuccessful()) {
+                        String err = "HTTP " + resp.code();
+                        resp.close();
+                        postError(callback, err);
+                        return;
+                    }
+                    body = resp.body() != null ? resp.body().string() : "";
+                } finally {
+                    resp.close();
+                }
+                if (body == null || body.trim().isEmpty()) {
+                    postError(callback, "empty response");
+                    return;
+                }
+                JSONObject cloud = new JSONObject(body.trim());
+                Result result = mergeIntoLocal(cloud);
+                postLoaded(callback, result);
+            } catch (Exception e) {
+                postError(callback, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+            }
+        });
+    }
+
+    /** 上传本地新增规则到云端（增量、幂等）。 */
+    public void uploadNewRules() {
+        String url = Setting.getAdCloudUrl();
+        String token = Setting.getAdCloudToken();
+        if (url == null || url.trim().isEmpty() || token == null || token.trim().isEmpty()) return;
+        executor.execute(() -> {
+            try {
+                File file = new File(Setting.getAdRulesPath());
+                JSONObject root = readOrCreate(file);
+                JSONArray rules = root.optJSONArray("rules");
+                JSONArray textRules = root.optJSONArray("textRules");
+
+                Set<String> uploaded = new HashSet<>();
+                String saved = Setting.getAdCloudUploadedIds();
+                if (saved != null && !saved.isEmpty()) {
+                    for (String id : saved.split(",")) {
+                        if (!id.trim().isEmpty()) uploaded.add(id.trim());
+                    }
+                }
+
+                JSONArray newRules = new JSONArray();
+                int added = 0;
+                if (rules != null) {
+                    for (int i = 0; i < rules.length(); i++) {
+                        JSONObject rule = rules.optJSONObject(i);
+                        if (rule == null) continue;
+                        String id = rule.optString("id");
+                        if (id.isEmpty() || uploaded.contains(id)) continue;
+                        newRules.put(rule);
+                        uploaded.add(id);
+                        added++;
+                    }
+                }
+                JSONArray newText = new JSONArray();
+                if (textRules != null) {
+                    for (int i = 0; i < textRules.length(); i++) {
+                        String t = textRules.optString(i);
+                        if (t.isEmpty()) continue;
+                        String key = "text:" + t;
+                        if (uploaded.contains(key)) continue;
+                        newText.put(t);
+                        uploaded.add(key);
+                        added++;
+                    }
+                }
+                if (added == 0) return;
+
+                JSONObject payload = new JSONObject();
+                payload.put("rules", newRules);
+                payload.put("textRules", newText);
+                payload.put("revision", root.optLong("revision", 0L));
+
+                RequestBody body = RequestBody.create(payload.toString(), JSON);
+                Response resp = OkHttp.newCall(new Request.Builder()
+                        .url(url.trim())
+                        .header("X-Rules-Token", token)
+                        .header("Content-Type", "application/json")
+                        .post(body).build()).execute();
+                try {
+                    if (!resp.isSuccessful()) return;
+                    String respBody = resp.body() != null ? resp.body().string() : "";
+                    JSONObject out = new JSONObject(respBody.trim());
+                    if (!out.optBoolean("ok", false)) return;
+                } finally {
+                    resp.close();
+                }
+                // 上传成功后再持久化已上传 id（避免失败误记）
+                StringBuilder ids = new StringBuilder();
+                for (String id : uploaded) {
+                    if (ids.length() > 0) ids.append(',');
+                    ids.append(id);
+                }
+                Setting.putAdCloudUploadedIds(ids.toString());
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private void postLoaded(SyncCallback callback, Result r) {
+        MAIN.post(() -> {
+            if (callback != null) callback.onLoaded(r.audioCount, r.textRuleCount, r.added);
+        });
+    }
+
+    private void postError(SyncCallback callback, String msg) {
+        MAIN.post(() -> {
+            if (callback != null) callback.onError(msg);
+        });
+    }
+
+    private static class Result {
+        int audioCount;
+        int textRuleCount;
+        int added;
+    }
+
+    /** 把云端文档合并进本地 RULES.JSON，原子写回并注入探针。 */
+    private Result mergeIntoLocal(JSONObject cloud) throws Exception {
+        File file = new File(Setting.getAdRulesPath());
+        JSONObject local = readOrCreate(file);
+        long localRev = local.optLong("revision", 0L);
+        long cloudRev = cloud.optLong("revision", 0L);
+
+        // 合并音频规则（按 id 去重）
+        Set<String> seen = new HashSet<>();
+        JSONArray merged = new JSONArray();
+        JSONArray localRules = local.optJSONArray("rules");
+        if (localRules != null) {
+            for (int i = 0; i < localRules.length(); i++) {
+                JSONObject rule = localRules.optJSONObject(i);
+                if (rule == null) continue;
+                String id = rule.optString("id");
+                if (id.isEmpty() || seen.contains(id)) continue;
+                seen.add(id);
+                merged.put(rule);
+            }
+        }
+        int added = 0;
+        JSONArray cloudRules = cloud.optJSONArray("rules");
+        if (cloudRules != null) {
+            for (int i = 0; i < cloudRules.length(); i++) {
+                JSONObject rule = cloudRules.optJSONObject(i);
+                if (rule == null) continue;
+                String id = rule.optString("id");
+                if (id.isEmpty() || seen.contains(id)) continue;
+                seen.add(id);
+                merged.put(rule);
+                added++;
+            }
+        }
+
+        // 合并文本规则（按内容去重）
+        Set<String> textSeen = new HashSet<>();
+        JSONArray mergedText = new JSONArray();
+        JSONArray localText = local.optJSONArray("textRules");
+        if (localText != null) {
+            for (int i = 0; i < localText.length(); i++) {
+                String t = localText.optString(i);
+                if (t.isEmpty() || textSeen.contains(t)) continue;
+                textSeen.add(t);
+                mergedText.put(t);
+            }
+        }
+        JSONArray cloudText = cloud.optJSONArray("textRules");
+        if (cloudText != null) {
+            for (int i = 0; i < cloudText.length(); i++) {
+                String t = cloudText.optString(i);
+                if (t.isEmpty() || textSeen.contains(t)) continue;
+                textSeen.add(t);
+                mergedText.put(t);
+                added++;
+            }
+        }
+
+        // 新文档：格式字段保留云端，revision 取较大值
+        JSONObject out = new JSONObject();
+        out.put("format", "ad-audio-probe-rules");
+        out.put("schemaVersion", 1);
+        out.put("algorithm", "spectral-sequence-v1");
+        out.put("revision", Math.max(localRev, cloudRev));
+        out.put("rules", merged);
+        out.put("textRules", mergedText);
+
+        writeAtomic(file, out.toString(2));
+
+        // 注入探针（本地规则 + 云端规则合并结果）
+        AdProbeManager.get().applyCollectedRules(out.toString());
+        // 新规则顺手增量上传，让本地采集的规则也能回流到云端
+        uploadNewRules();
+
+        Result r = new Result();
+        r.audioCount = merged.length();
+        r.textRuleCount = mergedText.length();
+        r.added = added;
+        return r;
+    }
+
+    private JSONObject readOrCreate(File file) throws Exception {
+        JSONObject root = new JSONObject();
+        if (file.exists() && file.isFile() && file.length() > 0L) {
+            StringBuilder sb = new StringBuilder((int) Math.min(file.length(), 4 * 1024 * 1024));
+            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+                char[] buf = new char[8192];
+                int len;
+                while ((len = reader.read(buf)) != -1) sb.append(buf, 0, len);
+            }
+            try {
+                JSONObject parsed = new JSONObject(sb.toString().trim());
+                if (parsed.has("rules")) root = parsed;
+            } catch (Exception ignored) {
+            }
+        }
+        if (!root.has("format")) root.put("format", "ad-audio-probe-rules");
+        if (!root.has("schemaVersion")) root.put("schemaVersion", 1);
+        if (!root.has("algorithm")) root.put("algorithm", "spectral-sequence-v1");
+        if (!root.has("revision")) root.put("revision", 0L);
+        if (!root.has("rules")) root.put("rules", new JSONArray());
+        if (!root.has("textRules")) root.put("textRules", new JSONArray());
+        return root;
+    }
+
+    private void writeAtomic(File file, String content) throws Exception {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
+        File tmp = new File(file.getAbsolutePath() + ".tmp");
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(tmp), StandardCharsets.UTF_8)) {
+            writer.write(content);
+        }
+        if (file.exists() && !file.delete()) {
+            throw new Exception("cannot replace rules file");
+        }
+        if (!tmp.renameTo(file)) {
+            throw new Exception("cannot write rules file");
+        }
+    }
+}

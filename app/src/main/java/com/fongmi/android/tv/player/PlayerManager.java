@@ -78,6 +78,7 @@ public class PlayerManager implements ParseCallback {
         this.pendingStartPositionMs = C.TIME_UNSET;
         AdProbeManager.get().init(App.get(), player);
         TextAdRuleManager.get().attach(player);
+        VoskAsrManager.get().start(App.get());
     }
 
     public void release() {
@@ -86,6 +87,7 @@ public class PlayerManager implements ParseCallback {
         releaseDanmakuController();
         AdProbeManager.get().release();
         TextAdRuleManager.get().detach();
+        VoskAsrManager.get().stop();
         if (engine == null) return;
         try { engine.release(); } catch (Exception e) { e.printStackTrace(); }
         engine = null;

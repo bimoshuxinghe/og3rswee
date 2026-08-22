@@ -170,7 +170,13 @@ public class ExoUtil {
         return new DefaultRenderersFactory(App.get()) {
             @Override
             protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams) {
-                return new DefaultAudioSink.Builder(context).setEnableFloatOutput(enableFloatOutput).setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams).build();
+                DefaultAudioSink.Builder builder = new DefaultAudioSink.Builder(context)
+                        .setEnableFloatOutput(enableFloatOutput)
+                        .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams);
+                if (com.fongmi.android.tv.setting.Setting.isVoskEnabled()) {
+                    builder.setAudioProcessors(new com.fongmi.android.tv.player.VoskAudioProcessor());
+                }
+                return builder.build();
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);
     }

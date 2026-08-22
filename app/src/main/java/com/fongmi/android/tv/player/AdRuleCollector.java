@@ -200,6 +200,8 @@ public final class AdRuleCollector {
                 writeAtomic(file, root.toString());
                 String json = root.toString();
                 AdProbeManager.get().applyCollectedRules(json);
+                // 本地新规则默认自动上传到云端（增量、幂等）
+                AdCloudSyncManager.get().uploadNewRules();
                 Notify.show(ResUtil.getString(R.string.ad_rule_collected, draft.getId()));
             }
         } catch (Exception e) {

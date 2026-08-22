@@ -8,7 +8,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <application>
+    <!-- enableAutofill=false: 规避 Android 12+ Autofill 框架在 BottomSheetDialog 弹窗交互时的 NPE 崩溃（点击音轨列表闪退） -->
+    <application
+        android:enableAutofill="false">
 
         <activity
             android:name=".ui.activity.HomeActivity"

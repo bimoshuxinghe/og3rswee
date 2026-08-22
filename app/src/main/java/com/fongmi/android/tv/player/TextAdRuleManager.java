@@ -44,15 +44,19 @@ import java.util.regex.Pattern;
  */
 public final class TextAdRuleManager {
 
-    private static final long DEFAULT_SKIP_MS = 30_000L;
-
     private static volatile TextAdRuleManager instance;
+
+    /** 字幕规则匹配窗口：字幕命中后窗口期内需完整走完多句序列。 */
+    private static final long MATCH_WINDOW_MS = 20_000;
+    /** 语音识别命中冷却：同一段广告口语反复出现时不重复跳转。 */
+    private static final long SPEECH_COOLDOWN_MS = 15_000;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final List<Rule> rules = new ArrayList<>();
 
     private Player player;
     private String loadedPath;
+    private long lastSpeechHitMs;
 
     private final Player.Listener listener = new Player.Listener() {
         @Override
@@ -165,6 +169,31 @@ public final class TextAdRuleManager {
         Notify.show(ResUtil.getString(R.string.ad_skipped));
     }
 
+    /** 用户设置的默认跳过秒数（无 #N 后缀的规则使用）。 */
+    private long defaultSkipMs() {
+        return Setting.getAdTextSkipSeconds() * 1000L;
+    }
+
+    /**
+     * 语音识别（Vosk）文本入口：把识别出的口语文本按关键字规则匹配并跳秒。
+     * Vosk partial 结果会连续重复，故带冷却窗口，避免同一句广告反复触发跳转。
+     */
+    public void matchSpokenText(String text) {
+        Player p = player;
+        if (p == null || !Setting.isVoskEnabled() || rules.isEmpty()) return;
+        long pos = p.getCurrentPosition();
+        if (pos - lastSpeechHitMs < SPEECH_COOLDOWN_MS) return;
+        if (text == null) return;
+        String normalized = text.replaceAll("\\s+", "").toLowerCase(Locale.US);
+        if (normalized.isEmpty()) return;
+        for (Rule rule : rules) {
+            if (rule.consume(normalized, pos, p)) {
+                lastSpeechHitMs = pos;
+                break;
+            }
+        }
+    }
+
     /** 单条文本规则。静态内部类，通过 owner 调用外部实例方法。 */
     private static final class Rule {
 
@@ -243,7 +272,7 @@ public final class TextAdRuleManager {
             if (jumpMs > 0L) {
                 owner.scheduleSeek(p, positionMs + jumpMs, delayMs);
             } else {
-                long dist = skipMs > 0L ? skipMs : DEFAULT_SKIP_MS;
+                long dist = skipMs > 0L ? skipMs : owner.defaultSkipMs();
                 p.seekTo(positionMs + dist);
             }
             owner.notifyHit();

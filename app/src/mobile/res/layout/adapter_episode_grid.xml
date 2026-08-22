@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.textview.MaterialTextView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/card"
+    android:id="@+id/text"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="5dp"
@@ -10,23 +10,16 @@
     android:layout_marginBottom="6dp"
     android:background="@drawable/shape_episode"
     android:foreground="?attr/selectableItemBackground"
+    android:gravity="center"
     android:minHeight="36dp"
     android:paddingStart="12dp"
     android:paddingTop="6dp"
     android:paddingEnd="12dp"
-    android:paddingBottom="6dp">
-
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/text"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:ellipsize="end"
-        android:focusable="false"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:singleLine="true"
-        android:textColor="#EEF2F8"
-        android:textSize="14sp"
-        tools:text="第 20 集 一个稍微长一点的视频名称" />
-
-</FrameLayout>
+    android:paddingBottom="6dp"
+    android:singleLine="true"
+    android:ellipsize="end"
+    android:focusable="false"
+    android:includeFontPadding="false"
+    android:textColor="#EEF2F8"
+    android:textSize="14sp"
+    tools:text="第 20 集 一个稍微长一点的视频名称" />

@@ -21,6 +21,7 @@ startup = "1.2.0"
 swiperefreshlayout = "1.2.0"
 viewpager2 = "1.1.0"
 media3 = "1.10.0"
+vosk = "0.3.47"
 nextlib = "1.10.0-0.12.1"
 
 androidGifDrawable = "1.2.31"
@@ -126,6 +127,7 @@ media3-session = { group = "androidx.media3", name = "media3-session", version.r
 media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 media3-decoder-ffmpeg = { group = "androidx.media3", name = "media3-decoder-ffmpeg", version.ref = "media3" }
 media3-ui-danmaku = { group = "androidx.media3", name = "media3-ui-danmaku", version.ref = "media3" }
+vosk-android = { group = "com.alphacephei", name = "vosk-android", version.ref = "vosk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

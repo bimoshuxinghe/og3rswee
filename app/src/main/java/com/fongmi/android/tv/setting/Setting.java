@@ -140,6 +140,43 @@ public class Setting {
         Prefers.put("ad_text_rule", textAdRule);
     }
 
+    /** 文本关键词命中后向后跳过的秒数（无 #N 后缀的规则使用，默认 30 秒）。 */
+    public static int getAdTextSkipSeconds() {
+        return Prefers.getInt("ad_text_skip_seconds", 30);
+    }
+
+    public static void putAdTextSkipSeconds(int seconds) {
+        int v = Math.max(1, Math.min(300, seconds));
+        Prefers.put("ad_text_skip_seconds", v);
+    }
+
+    /** 语音识别（Vosk）去广告总开关，默认关闭，由用户下载模型后自行开启。 */
+    public static boolean isVoskEnabled() {
+        return Prefers.getBoolean("vosk_enabled", false);
+    }
+
+    public static void putVoskEnabled(boolean enabled) {
+        Prefers.put("vosk_enabled", enabled);
+    }
+
+    /** Vosk 中文模型目录路径（下载解压后写入）。 */
+    public static String getVoskModelPath() {
+        return Prefers.getString("vosk_model_path", "");
+    }
+
+    public static void putVoskModelPath(String path) {
+        Prefers.put("vosk_model_path", path);
+    }
+
+    /** Vosk 模型下载 URL，默认使用 Vosk 官方中文小模型。 */
+    public static String getVoskModelUrl() {
+        return Prefers.getString("vosk_model_url", "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip");
+    }
+
+    public static void putVoskModelUrl(String url) {
+        Prefers.put("vosk_model_url", url);
+    }
+
     /** 广告跳过模式：0=仅提示，1=提示+自动跳过，2=仅自动跳过（默认提示+自动跳过）。 */
     public static final int AD_SKIP_MODE_NOTICE = 0;
     public static final int AD_SKIP_MODE_NOTICE_AND_SKIP = 1;
@@ -163,6 +200,33 @@ public class Setting {
 
     public static void putAdRulesPath(String path) {
         Prefers.put("ad_rules_path", (path == null || path.trim().isEmpty()) ? DEFAULT_RULES_PATH : path.trim());
+    }
+
+    /** 云端广告规则共享服务器地址（rules_server.php），为空则不启用云端同步。 */
+    public static String getAdCloudUrl() {
+        return Prefers.getString("ad_cloud_url", "");
+    }
+
+    public static void putAdCloudUrl(String url) {
+        Prefers.put("ad_cloud_url", (url == null || url.trim().isEmpty()) ? "" : url.trim());
+    }
+
+    /** 云端上传令牌（X-Rules-Token），仅上传时使用；只拉取可留空。 */
+    public static String getAdCloudToken() {
+        return Prefers.getString("ad_cloud_token", "");
+    }
+
+    public static void putAdCloudToken(String token) {
+        Prefers.put("ad_cloud_token", token == null ? "" : token.trim());
+    }
+
+    /** 已上传到云端的规则 id 集合（逗号分隔），用于增量上传去重。 */
+    public static String getAdCloudUploadedIds() {
+        return Prefers.getString("ad_cloud_uploaded_ids", "");
+    }
+
+    public static void putAdCloudUploadedIds(String ids) {
+        Prefers.put("ad_cloud_uploaded_ids", ids == null ? "" : ids);
     }
 
     public static boolean isZhuyin() {

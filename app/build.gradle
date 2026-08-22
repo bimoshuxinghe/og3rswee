@@ -135,6 +135,7 @@ dependencies {
     implementation libs.lifecycle.service
     implementation libs.media
     implementation libs.bundles.media3
+    implementation libs.vosk.android
     implementation libs.palette
     implementation libs.recyclerview
     implementation libs.room.runtime

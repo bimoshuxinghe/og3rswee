@@ -174,10 +174,16 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     public void setTrack(List<com.fongmi.android.tv.bean.Track> tracks) {
+        if (tracks == null || tracks.isEmpty()) return;
         for (com.fongmi.android.tv.bean.Track track : tracks) {
             String[] parts = parseTrackFormat(track.getFormat());
-            if (parts == null) continue;
-            setMpvProperty(getTrackProperty(track.getType()), track.isSelected() ? parts[2] : "no");
+            if (parts == null || parts.length < 3) continue;
+            String value = track.isSelected() ? parts[2] : "no";
+            try {
+                setMpvProperty(getTrackProperty(track.getType()), value);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         buildTracks();
         invalidateState();

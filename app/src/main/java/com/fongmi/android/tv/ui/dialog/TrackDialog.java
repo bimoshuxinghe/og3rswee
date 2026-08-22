@@ -149,8 +149,13 @@ public final class TrackDialog extends BaseBottomSheetDialog implements TrackAda
 
     @Override
     public void onItemClick(Track item) {
-        player.setTrack(Arrays.asList(item.key(player.getKey()).save()));
-        dismiss();
+        try {
+            player.setTrack(Arrays.asList(item.key(player.getKey()).save()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (isAdded()) dismiss();
+        }
     }
 
     private final ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
