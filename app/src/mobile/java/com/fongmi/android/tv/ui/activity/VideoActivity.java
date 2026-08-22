@@ -39,11 +39,7 @@ import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.flexbox.AlignItems;
-import com.google.android.flexbox.FlexDirection;
-import com.google.android.flexbox.FlexWrap;
-import com.google.android.flexbox.FlexboxLayoutManager;
-import com.google.android.flexbox.JustifyContent;
+
 import androidx.core.widget.NestedScrollView;
 import androidx.transition.ChangeBounds;
 import androidx.transition.TransitionManager;
@@ -181,6 +177,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private Clock mClock;
     private PiP mPiP;
     private int layoutMode = 0;
+    private SpaceItemDecoration mEpisodeDecoration;
     private VodReader mReader;
     private boolean isReaderContent;
     private boolean isMusicDiscVisible;
@@ -379,7 +376,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @SuppressLint("ClickableViewAccessibility")
     protected void initEvent() {
         mBinding.name.setOnClickListener(view -> onName());
-        mBinding.more.setOnClickListener(view -> onMore());
         if (mBinding.musicBtn != null) mBinding.musicBtn.setOnClickListener(view -> toggleMusicDisc());
         if (mBinding.musicDiscView != null) {
             mBinding.musicDiscView.musicPrev.setOnClickListener(view -> checkPrev());
@@ -405,6 +401,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.content.setOnClickListener(view -> onContent());
         mBinding.reverse.setOnClickListener(view -> onReverse());
         if (mBinding.download != null) mBinding.download.setOnClickListener(view -> onDownload());
+        if (mBinding.shortBtn != null) mBinding.shortBtn.setOnClickListener(view -> onShortShow());
+        updateShortBtn();
+        mBinding.more.setOnClickListener(view -> onMore());
         mBinding.director.setOnClickListener(view -> onDirector());
         mBinding.name.setOnLongClickListener(view -> onChange());
         mBinding.content.setOnLongClickListener(view -> onCopy());
@@ -479,15 +478,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         layoutMode = Setting.getLayoutMode();
         mBinding.episode.setHasFixedSize(true);
         mBinding.episode.setItemAnimator(null);
-        if (layoutMode == 0) {
-            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
-            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
-        } else if (layoutMode == 1) {
-            mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
-            mBinding.episode.addItemDecoration(new SpaceItemDecoration(8));
-            mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.HORI));
-        } else if (layoutMode == 3) {
-            mBinding.episode.setLayoutManager(createEpisodeFlexbox());
+        if (layoutMode == 0 || layoutMode == 1 || layoutMode == 3) {
+            mBinding.episode.setLayoutManager(createEpisodeGrid());
+            mBinding.episode.addItemDecoration(mEpisodeDecoration = new SpaceItemDecoration(getEpisodeSpan(), 8));
             mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
         } else {
             mBinding.episode.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
@@ -511,11 +504,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.parse.setAdapter(mParseAdapter = new ParseAdapter(this, ViewType.DARK));
     }
 
-    private RecyclerView.LayoutManager createEpisodeFlexbox() {
-        FlexboxLayoutManager flexbox = new FlexboxLayoutManager(this, FlexDirection.ROW, FlexWrap.WRAP);
-        flexbox.setJustifyContent(JustifyContent.CENTER);
-        flexbox.setAlignItems(AlignItems.FLEX_START);
-        return flexbox;
+    private int getEpisodeSpan() {
+        return layoutMode == 1 ? 2 : (layoutMode == 3 ? 1 : 4);
+    }
+
+    private RecyclerView.LayoutManager createEpisodeGrid() {
+        return new androidx.recyclerview.widget.GridLayoutManager(this, getEpisodeSpan());
     }
 
     private void setVideoView() {
@@ -985,7 +979,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.reverse.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
         if (mBinding.download != null) mBinding.download.setVisibility(items.isEmpty() || !Setting.isHomeDownload() ? View.GONE : View.VISIBLE);
         mBinding.episode.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
-        mBinding.more.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
+        mBinding.more.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
+        if (mBinding.shortBtn != null) mBinding.shortBtn.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
         mAllEpisodes = new ArrayList<>(items);
         List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(items.size());
         if (mBinding.group == null || groups.size() <= 1) {
@@ -1544,6 +1539,29 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void onEpisodes() {
         EpisodeListDialog.create().episodes(mAllEpisodes).show(this);
+    }
+
+    private void onMore() {
+        int next = layoutMode == 0 ? 1 : (layoutMode == 1 ? 3 : 0);
+        Setting.putLayoutMode(next);
+        layoutMode = next;
+        if (mEpisodeDecoration != null) mBinding.episode.removeItemDecoration(mEpisodeDecoration);
+        mBinding.episode.setLayoutManager(createEpisodeGrid());
+        mBinding.episode.addItemDecoration(mEpisodeDecoration = new SpaceItemDecoration(getEpisodeSpan(), 8));
+        mBinding.episode.setAdapter(mEpisodeAdapter = new EpisodeAdapter(this, ViewType.GRID));
+        showActiveGroup();
+    }
+
+    private void onShortShow() {
+        Setting.putShortShow(!Setting.isShortShow());
+        updateShortBtn();
+        mEpisodeAdapter.notifyDataSetChanged();
+    }
+
+    private void updateShortBtn() {
+        if (mBinding.shortBtn != null) {
+            mBinding.shortBtn.setColorFilter(android.graphics.Color.parseColor(Setting.isShortShow() ? "#5EF2C2" : "#E8EDF4"));
+        }
     }
 
     private boolean onTextLong() {

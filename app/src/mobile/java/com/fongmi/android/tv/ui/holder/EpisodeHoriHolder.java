@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.fongmi.android.tv.bean.Episode;
 import com.fongmi.android.tv.databinding.AdapterEpisodeHoriBinding;
+import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.adapter.EpisodeAdapter;
 import com.fongmi.android.tv.ui.base.BaseEpisodeHolder;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -25,7 +26,12 @@ public class EpisodeHoriHolder extends BaseEpisodeHolder {
     public void initView(Episode item) {
         binding.text.setMaxWidth(maxWidth);
         binding.text.setSelected(item.isSelected());
-        binding.text.setText(item.getDesc().concat(item.getName()));
+        binding.text.setText(getShowText(item));
         binding.text.setOnClickListener(v -> listener.onItemClick(item));
+    }
+
+    private String getShowText(Episode item) {
+        if (Setting.isShortShow() && item.getNumber() > 0) return "第" + item.getNumber() + "集";
+        return item.getDesc().concat(item.getName());
     }
 }

@@ -139,6 +139,7 @@
     <string name="setting_live_boot">Boot to Live</string>
     <string name="setting_theme_color">Theme color</string>
     <string name="setting_home">Personalized Settings</string>
+    <string name="episode_short_show">Short</string>
     <string name="setting_home_menu">Home Navigation</string>
     <string name="home_continue">Continue Watching</string>
     <string name="nav_download">Download</string>

@@ -312,6 +312,14 @@ public class Setting {
         Prefers.put("layout_mode", value);
     }
 
+    public static boolean isShortShow() {
+        return Prefers.getBoolean("episode_short_show", false);
+    }
+
+    public static void putShortShow(boolean value) {
+        Prefers.put("episode_short_show", value);
+    }
+
     public static boolean isAlwaysTime() {
         return Prefers.getBoolean("always_time", false);
     }
