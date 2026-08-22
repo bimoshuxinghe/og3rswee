@@ -281,6 +281,7 @@
     <string name="ad_vosk_enabled">Voice rules enabled</string>
     <string name="ad_vosk_disabled">Voice rules off</string>
     <string name="ad_vosk_model_missing">Model missing, please re-download</string>
+    <string name="ad_vosk_model_invalid">Model files invalid/incomplete, please delete and re-download</string>
     <string name="ad_vosk_delete">Delete model</string>
     <string name="ad_vosk_delete_confirm">Delete the downloaded model? This cannot be undone.</string>
     <string name="ad_vosk_deleted">Model deleted</string>

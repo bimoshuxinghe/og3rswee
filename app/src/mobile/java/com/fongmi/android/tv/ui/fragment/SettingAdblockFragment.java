@@ -1,6 +1,5 @@
 package com.fongmi.android.tv.ui.fragment;
 
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -59,8 +58,6 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adTextRuleText.setText(getSwitch(Setting.isTextAdRule()));
         updateSkipModeText();
         updateSkipSecondsText();
-        updateRulesPathText();
-        updateCloudUrlText();
         updateVoskText();
     }
 
@@ -72,8 +69,6 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adTextRule.setOnClickListener(this::showTextRuleDialog);
         mBinding.adTextSkipSeconds.setOnClickListener(this::showSkipSecondsDialog);
         mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
-        mBinding.adRulesUrl.setOnClickListener(view -> showRulesPathDialog());
-        mBinding.adCloudUrl.setOnClickListener(view -> showCloudUrlDialog());
         mBinding.adVosk.setOnClickListener(view -> toggleVosk());
         mBinding.adVoskButton.setOnClickListener(view -> onVoskButton());
     }
@@ -266,80 +261,25 @@ public class SettingAdblockFragment extends BaseFragment {
         }
     }
 
-    private void updateRulesPathText() {
-        String path = Setting.getAdRulesPath();
-        // 显示简短路径（如果太长则只显示文件名）
-        String display = TextUtils.isEmpty(path) ? getString(R.string.ad_rules_path_empty)
-                : (path.length() > 60 ? "..." + path.substring(path.length() - 57) : path);
-        mBinding.adRulesUrlText.setText(display);
-    }
-
-    private void updateCloudUrlText() {
-        String url = Setting.getAdCloudUrl();
-        String display = TextUtils.isEmpty(url) ? getString(R.string.ad_cloud_url_empty)
-                : (url.length() > 40 ? "..." + url.substring(url.length() - 37) : url);
-        mBinding.adCloudUrlText.setText(display);
-    }
-
-    private void showCloudUrlDialog() {
-        LinearLayout layout = new LinearLayout(requireContext());
-        layout.setOrientation(LinearLayout.VERTICAL);
-        int padding = (int) (16 * getResources().getDisplayMetrics().density);
-        layout.setPadding(padding, padding, padding, 0);
-
-        EditText urlEdit = new EditText(requireContext());
-        urlEdit.setText(Setting.getAdCloudUrl());
-        urlEdit.setHint(R.string.ad_cloud_url_hint);
-        urlEdit.setSingleLine(false);
-        urlEdit.setMinLines(2);
-        layout.addView(urlEdit);
-
-        EditText tokenEdit = new EditText(requireContext());
-        tokenEdit.setText(Setting.getAdCloudToken());
-        tokenEdit.setHint(R.string.ad_cloud_token_hint);
-        tokenEdit.setSingleLine(true);
-        LinearLayout.LayoutParams tokenLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        tokenLp.topMargin = (int) (12 * getResources().getDisplayMetrics().density);
-        layout.addView(tokenEdit, tokenLp);
-
-        new MaterialAlertDialogBuilder(requireActivity())
-                .setTitle(R.string.ad_cloud_url_title)
-                .setView(layout)
-                .setNegativeButton(R.string.dialog_negative, null)
-                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    Setting.putAdCloudUrl(urlEdit.getText().toString());
-                    Setting.putAdCloudToken(tokenEdit.getText().toString());
-                    updateCloudUrlText();
-                    Notify.show(R.string.ad_cloud_saved);
-                })
-                .show();
-    }
-
-    private void showRulesPathDialog() {
-        EditText editText = new EditText(requireContext());
-        editText.setText(Setting.getAdRulesPath());
-        editText.setHint(R.string.ad_rules_path_hint);
-        editText.setSingleLine(false);
-        editText.setMinLines(2);
-        new MaterialAlertDialogBuilder(requireActivity())
-                .setTitle(R.string.ad_rules_path_title)
-                .setView(editText)
-                .setNegativeButton(R.string.dialog_negative, null)
-                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    String path = editText.getText().toString().trim();
-                    AdProbeManager.get().setRulesPath(path);  // 内部会自动 putAdRulesPath + reload
-                    updateRulesPathText();
-                    Notify.show(R.string.ad_rules_path_saved);
-                })
-                .show();
-    }
-
     /** 模型目录是否真实存在（用于状态展示与开启校验）。 */
     private boolean voskModelExists() {
         String path = Setting.getVoskModelPath();
         if (path == null || path.isEmpty()) return false;
         return new File(path).isDirectory();
+    }
+
+    /** 模型目录是否包含 Vosk 必需文件（缺关键文件会导致 native 加载崩溃）。 */
+    private boolean voskModelValid() {
+        String path = Setting.getVoskModelPath();
+        if (path == null || path.isEmpty()) return false;
+        File modelDir = new File(path);
+        if (!modelDir.isDirectory()) return false;
+        // Vosk 加载模型必需 conf/model.conf + am/final.mdl；language_model.mat 缺失/无效也会导致加载失败
+        boolean hasConf = new File(modelDir, "conf/model.conf").isFile();
+        boolean hasAm = new File(modelDir, "am/final.mdl").isFile();
+        boolean hasLang = new File(modelDir, "language_model.mat").isFile();
+        if (hasLang && !hasConf && !hasAm) return false; // 只有 language_model.mat 而无核心文件，视为无效
+        return hasConf && hasAm;
     }
 
     private void updateVoskText() {
@@ -353,6 +293,9 @@ public class SettingAdblockFragment extends BaseFragment {
         if (!voskModelExists()) {
             mBinding.adVoskText.setText(R.string.ad_vosk_not_downloaded);
             mBinding.adVoskButton.setText(R.string.ad_vosk_download);
+        } else if (!voskModelValid()) {
+            mBinding.adVoskText.setText(R.string.ad_vosk_model_invalid);
+            mBinding.adVoskButton.setText(R.string.ad_vosk_delete);
         } else if (Setting.isVoskEnabled()) {
             mBinding.adVoskText.setText(R.string.ad_vosk_enabled);
             mBinding.adVoskButton.setText(R.string.ad_vosk_delete);
@@ -362,31 +305,40 @@ public class SettingAdblockFragment extends BaseFragment {
         }
     }
 
-    /** 点击整行：开启/关闭开关（仅模型已存在时生效）。 */
+    /** 点击整行：开启/关闭开关（仅模型已存在且有效时生效）。 */
     private void toggleVosk() {
         if (VoskModelManager.get().isDownloading()) return;
         if (!voskModelExists()) {
             Notify.show(R.string.ad_vosk_model_missing);
             return;
         }
+        if (!voskModelValid()) {
+            Notify.show(R.string.ad_vosk_model_invalid);
+            return;
+        }
         boolean enabled = !Setting.isVoskEnabled();
         Setting.putVoskEnabled(enabled);
         VoskAsrManager.get().stop();
         if (enabled) {
-            VoskAsrManager.get().start(requireContext());
-            Notify.show(R.string.ad_vosk_enabled);
+            boolean ok = VoskAsrManager.get().start(requireContext());
+            if (!ok) {
+                Setting.putVoskEnabled(false);
+                Notify.show(R.string.ad_vosk_model_invalid);
+            } else {
+                Notify.show(R.string.ad_vosk_enabled);
+            }
         } else {
             Notify.show(R.string.ad_vosk_disabled);
         }
         updateVoskText();
     }
 
-    /** 点击按钮：未下载 -> 确认下载；已下载未开启 -> 提示点击整行开启；已开启 -> 删除模型。 */
+    /** 点击按钮：未下载 -> 确认下载；已下载未开启 -> 提示点击整行开启；已开启/无效 -> 删除模型。 */
     private void onVoskButton() {
         if (VoskModelManager.get().isDownloading()) return;
         if (!voskModelExists()) {
             confirmDownload();
-        } else if (Setting.isVoskEnabled()) {
+        } else if (Setting.isVoskEnabled() || !voskModelValid()) {
             confirmDeleteVosk();
         } else {
             Notify.show(R.string.ad_vosk_download_ok);
@@ -407,7 +359,7 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adVoskText.setText(getString(R.string.ad_vosk_downloading, 0));
         mBinding.adVoskButton.setEnabled(false);
         mBinding.adVoskButton.setText(R.string.ad_vosk_downloading_confirm);
-        VoskModelManager.get().download(requireContext(), new VoskModelManager.Callback() {
+        VoskModelManager.get().download(requireContext(), new VoskModelManager.ModelCallback() {
             @Override
             public void onProgress(int percent) {
                 if (!isAdded()) return;

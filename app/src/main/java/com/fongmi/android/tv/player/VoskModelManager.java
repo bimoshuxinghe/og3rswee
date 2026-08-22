@@ -39,7 +39,7 @@ public final class VoskModelManager {
 
     private volatile boolean downloading;
 
-    public interface Callback {
+    public interface ModelCallback {
         void onProgress(int percent);
 
         void onSuccess(@NonNull File modelDir);
@@ -64,7 +64,7 @@ public final class VoskModelManager {
     }
 
     /** 下载并解压模型。目标目录：filesDir/vosk-model-small-cn-0.22（按 URL 文件名推导）。 */
-    public void download(@NonNull Context context, @Nullable Callback callback) {
+    public void download(@NonNull Context context, @Nullable ModelCallback callback) {
         if (downloading) return;
         String url = Setting.getVoskModelUrl();
         if (url == null || url.trim().isEmpty()) {
@@ -132,6 +132,13 @@ public final class VoskModelManager {
                     }
                     if (!zipFile.delete()) zipFile.deleteOnExit();
                     File realModelDir = findModelDir(modelDir);
+                    // 解压后校验模型完整性：缺 conf/model.conf 或 am/final.mdl 视为下载损坏
+                    if (!isModelComplete(realModelDir)) {
+                        downloading = false;
+                        deleteRecursively(modelDir);
+                        if (callback != null) mainHandler.post(() -> callback.onError("incomplete model"));
+                        return;
+                    }
                     Setting.putVoskModelPath(realModelDir.getAbsolutePath());
                     downloading = false;
                     if (callback != null) mainHandler.post(() -> callback.onSuccess(realModelDir));
@@ -199,5 +206,12 @@ public final class VoskModelManager {
             }
         }
         return dir;
+    }
+
+    /** 模型完整性校验：Vosk 加载必需 conf/model.conf + am/final.mdl。 */
+    private static boolean isModelComplete(File modelDir) {
+        if (modelDir == null || !modelDir.isDirectory()) return false;
+        return new File(modelDir, "conf/model.conf").isFile()
+                && new File(modelDir, "am/final.mdl").isFile();
     }
 }

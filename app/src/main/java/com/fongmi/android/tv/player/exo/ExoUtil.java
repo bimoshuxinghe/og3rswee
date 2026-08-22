@@ -174,7 +174,7 @@ public class ExoUtil {
                         .setEnableFloatOutput(enableFloatOutput)
                         .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams);
                 if (com.fongmi.android.tv.setting.Setting.isVoskEnabled()) {
-                    builder.setAudioProcessors(new com.fongmi.android.tv.player.VoskAudioProcessor());
+                    builder.setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{new com.fongmi.android.tv.player.VoskAudioProcessor()});
                 }
                 return builder.build();
             }

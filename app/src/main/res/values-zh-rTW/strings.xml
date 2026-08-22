@@ -261,6 +261,7 @@
     <string name="ad_vosk_enabled">語音辨識已開啟</string>
     <string name="ad_vosk_disabled">語音辨識已關閉</string>
     <string name="ad_vosk_model_missing">模型缺失，請重新下載</string>
+    <string name="ad_vosk_model_invalid">模型檔案不完整或無效，請刪除後重新下載</string>
     <string name="ad_vosk_delete">刪除模型</string>
     <string name="ad_vosk_delete_confirm">確定刪除已下載的模型？此操作不可恢復。</string>
     <string name="ad_vosk_deleted">模型已刪除</string>

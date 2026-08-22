@@ -75,7 +75,7 @@ public final class AdCloudSyncManager {
         }
         executor.execute(() -> {
             try {
-                Response resp = OkHttp.get().newCall(new Request.Builder()
+                Response resp = OkHttp.client().newCall(new Request.Builder()
                         .url(url.trim()).header("Accept", "application/json")
                         .header("Cache-Control", "no-cache").build()).execute();
                 String body;
@@ -156,7 +156,7 @@ public final class AdCloudSyncManager {
                 payload.put("revision", root.optLong("revision", 0L));
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);
-                Response resp = OkHttp.newCall(new Request.Builder()
+                Response resp = OkHttp.client().newCall(new Request.Builder()
                         .url(url.trim())
                         .header("X-Rules-Token", token)
                         .header("Content-Type", "application/json")

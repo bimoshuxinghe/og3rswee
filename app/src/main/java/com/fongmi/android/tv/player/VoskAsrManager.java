@@ -77,7 +77,8 @@ public final class VoskAsrManager {
                 if (model != null) model.close();
                 model = new Model(modelPath);
                 loadedModelPath = modelPath;
-            } catch (Exception e) {
+            } catch (Throwable t) {
+                // Vosk native 层对无效模型可能抛 ClassCastException/Error，一律视为加载失败
                 model = null;
                 loadedModelPath = null;
                 return false;
@@ -86,7 +87,7 @@ public final class VoskAsrManager {
         try {
             if (recognizer != null) recognizer.close();
             recognizer = new Recognizer(model, TARGET_SAMPLE_RATE);
-        } catch (Exception e) {
+        } catch (Throwable t) {
             return false;
         }
         queue.clear();

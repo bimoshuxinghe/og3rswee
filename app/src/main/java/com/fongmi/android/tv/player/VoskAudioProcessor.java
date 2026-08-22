@@ -16,7 +16,7 @@ import java.nio.ByteBuffer;
 public final class VoskAudioProcessor extends BaseAudioProcessor {
 
     @Override
-    public AudioFormat onConfigure(AudioFormat inputAudioFormat) {
+    public AudioFormat onConfigure(AudioFormat inputAudioFormat) throws AudioProcessor.UnhandledAudioFormatException {
         // 只支持 PCM（16bit/float），透传不改格式；其它格式抛异常让链跳过
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             throw new AudioProcessor.UnhandledAudioFormatException(inputAudioFormat);
@@ -41,6 +41,6 @@ public final class VoskAudioProcessor extends BaseAudioProcessor {
         // 原样透传
         ByteBuffer output = replaceOutputBuffer(remaining);
         output.put(inputBuffer);
-        queueOutput();
+        output.flip();
     }
 }

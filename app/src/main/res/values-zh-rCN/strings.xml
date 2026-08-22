@@ -275,6 +275,7 @@
     <string name="ad_vosk_enabled">语音识别已开启</string>
     <string name="ad_vosk_disabled">语音识别已关闭</string>
     <string name="ad_vosk_model_missing">模型缺失，请重新下载</string>
+    <string name="ad_vosk_model_invalid">模型文件不完整或无效，请删除后重新下载</string>
     <string name="ad_vosk_delete">删除模型</string>
     <string name="ad_vosk_delete_confirm">确定删除已下载的模型？此操作不可恢复。</string>
     <string name="ad_vosk_deleted">模型已删除</string>
