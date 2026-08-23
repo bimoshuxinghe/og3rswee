@@ -267,6 +267,9 @@
     <string name="ad_vosk_deleted">模型已刪除</string>
     <string name="ad_vosk_url">模型下載位址</string>
     <string name="ad_vosk_url_hint">預設：https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip</string>
+    <string name="ad_vosk_recognized_title">最近辨識內容</string>
+    <string name="ad_vosk_recognized_empty">暫無辨識內容。播放影片後，辨識到的語音會顯示在這裡。</string>
+    <string name="ad_vosk_status_format">狀態：%1$s | 收到音訊：%2$d | 辨識：%3$d | 命中：%4$s</string>
     <string name="player_always_time">時鐘常顯</string>
     <string name="player_always_progress">播放時長常顯</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>

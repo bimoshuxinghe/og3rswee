@@ -20,6 +20,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import net.sourceforge.pinyin4j.PinyinHelper;
+import net.sourceforge.pinyin4j.format.HanyuPinyinCaseType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinOutputFormat;
+import net.sourceforge.pinyin4j.format.HanyuPinyinToneType;
+import net.sourceforge.pinyin4j.format.HanyuPinyinVCharType;
+import net.sourceforge.pinyin4j.format.exception.BadHanyuPinyinOutputFormatCombination;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -46,6 +53,14 @@ public final class TextAdRuleManager {
 
     private static volatile TextAdRuleManager instance;
 
+    private static final HanyuPinyinOutputFormat PINYIN_FORMAT = new HanyuPinyinOutputFormat();
+
+    static {
+        PINYIN_FORMAT.setCaseType(HanyuPinyinCaseType.LOWERCASE);
+        PINYIN_FORMAT.setToneType(HanyuPinyinToneType.WITHOUT_TONE);
+        PINYIN_FORMAT.setVCharType(HanyuPinyinVCharType.WITH_V);
+    }
+
     /** 字幕规则匹配窗口：字幕命中后窗口期内需完整走完多句序列。 */
     private static final long MATCH_WINDOW_MS = 20_000;
     /** 语音识别命中冷却：同一段广告口语反复出现时不重复跳转。 */
@@ -56,7 +71,7 @@ public final class TextAdRuleManager {
 
     private Player player;
     private String loadedPath;
-    private long lastSpeechHitMs;
+    private long lastSpeechHitMs = Long.MIN_VALUE;
 
     private final Player.Listener listener = new Player.Listener() {
         @Override
@@ -68,8 +83,9 @@ public final class TextAdRuleManager {
                 if (cue == null || cue.text == null || cue.text.length() == 0) continue;
                 String text = cue.text.toString().replaceAll("\\s+", "").toLowerCase(Locale.US);
                 if (text.isEmpty()) continue;
+                String textPinyin = toPinyin(text);
                 for (Rule rule : rules) {
-                    if (rule.consume(text, pos, p)) break;
+                    if (rule.consume(text, textPinyin, pos, p)) break;
                 }
             }
         }
@@ -176,22 +192,97 @@ public final class TextAdRuleManager {
 
     /**
      * 语音识别（Vosk）文本入口：把识别出的口语文本按关键字规则匹配并跳秒。
-     * Vosk partial 结果会连续重复，故带冷却窗口，避免同一句广告反复触发跳转。
+     * Vosk partial 结果会连续重复，故带冷却窗口，避免同一句广告口语反复触发跳转。
+     *
+     * @return 是否命中规则并触发跳转
      */
-    public void matchSpokenText(String text) {
+    public boolean matchSpokenText(String text) {
         Player p = player;
-        if (p == null || !Setting.isVoskEnabled() || rules.isEmpty()) return;
+        if (p == null || !Setting.isVoskEnabled() || rules.isEmpty()) return false;
         long pos = p.getCurrentPosition();
-        if (pos - lastSpeechHitMs < SPEECH_COOLDOWN_MS) return;
-        if (text == null) return;
+        if (pos - lastSpeechHitMs < SPEECH_COOLDOWN_MS) return false;
+        if (text == null) return false;
         String normalized = text.replaceAll("\\s+", "").toLowerCase(Locale.US);
-        if (normalized.isEmpty()) return;
+        if (normalized.isEmpty()) return false;
+        String textPinyin = toPinyin(normalized);
         for (Rule rule : rules) {
-            if (rule.consume(normalized, pos, p)) {
+            if (rule.consume(normalized, textPinyin, pos, p)) {
                 lastSpeechHitMs = pos;
-                break;
+                return true;
             }
         }
+        return false;
+    }
+
+    /** 汉字转拼音（不带声调），英文数字保留小写，标点符号忽略。 */
+    private static String toPinyin(String text) {
+        StringBuilder sb = new StringBuilder(text.length() * 2);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+                sb.append(Character.toLowerCase(c));
+            } else if (c >= '\u4e00' && c <= '\u9fff') {
+                try {
+                    String[] arr = PinyinHelper.toHanyuPinyinStringArray(c, PINYIN_FORMAT);
+                    if (arr != null && arr.length > 0) sb.append(arr[0]);
+                } catch (BadHanyuPinyinOutputFormatCombination ignored) {
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    /** 按 * 拆分规则段并转拼音，返回参与模糊匹配的拼音块（至少 2 个汉字）。 */
+    private static List<String> toPinyinChunks(String pattern) {
+        List<String> chunks = new ArrayList<>();
+        for (String part : pattern.split("\\*", -1)) {
+            String py = toPinyin(part.trim());
+            if (py.length() >= 4) chunks.add(py);
+        }
+        return chunks;
+    }
+
+    /** 顺序包含匹配：文本拼音依次包含每个拼音块即命中（容忍同音字/漏字）。 */
+    private static boolean pinyinMatch(String textPinyin, List<String> chunks) {
+        if (textPinyin == null || chunks == null || chunks.isEmpty()) return false;
+        int from = 0;
+        for (String chunk : chunks) {
+            int idx = textPinyin.indexOf(chunk, from);
+            if (idx < 0) return false;
+            from = idx + chunk.length();
+        }
+        return true;
+    }
+
+    /** 规则段转字符数组（去掉 * 通配，统一小写），用于按字命中率匹配。 */
+    private static char[] toChars(String pattern) {
+        StringBuilder sb = new StringBuilder(pattern.length());
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c == '*') continue;
+            sb.append(Character.toLowerCase(c));
+        }
+        return sb.toString().toCharArray();
+    }
+
+    /**
+     * 按字命中率模糊匹配：规则字符按顺序在文本中查找，命中数 ≥ 规则长度的 75%（向上取整）
+     * 即视为命中。例如 4 字规则命中 3 字（75%）、3 字规则命中 3 字、2 字规则命中 2 字才触发。
+     */
+    private static boolean charRatioMatch(String text, char[] ruleChars) {
+        if (ruleChars.length == 0) return false;
+        int threshold = (int) Math.ceil(ruleChars.length * 0.75);
+        if (threshold < 1) threshold = 1;
+        int idx = 0, matched = 0;
+        for (char c : ruleChars) {
+            int found = text.indexOf(c, idx);
+            if (found >= 0) {
+                matched++;
+                idx = found + 1;
+                if (matched >= threshold) return true;
+            }
+        }
+        return false;
     }
 
     /** 单条文本规则。静态内部类，通过 owner 调用外部实例方法。 */
@@ -199,6 +290,8 @@ public final class TextAdRuleManager {
 
         private final TextAdRuleManager owner;
         private final List<Pattern> segments = new ArrayList<>();
+        private final List<List<String>> pinyinSegments = new ArrayList<>();
+        private final List<char[]> charSegments = new ArrayList<>();
         private final long skipMs;
         private final long delayMs;
         private final long jumpMs;
@@ -237,6 +330,8 @@ public final class TextAdRuleManager {
                 String pattern = part.trim();
                 if (pattern.isEmpty()) continue;
                 rule.segments.add(Pattern.compile(toRegex(pattern)));
+                rule.pinyinSegments.add(toPinyinChunks(pattern));
+                rule.charSegments.add(toChars(pattern));
             }
             return rule.segments.isEmpty() ? null : rule;
         }
@@ -257,10 +352,13 @@ public final class TextAdRuleManager {
             return sb.toString();
         }
 
-        /** 消费一条字幕文本；命中最后一段时触发跳转并返回 true。 */
-        boolean consume(String text, long positionMs, Player p) {
+        /** 消费一条字幕/语音文本；命中最后一段时触发跳转并返回 true。 */
+        boolean consume(String text, String textPinyin, long positionMs, Player p) {
             if (index >= segments.size()) return false;
-            if (!segments.get(index).matcher(text).find()) return false;
+            Pattern seg = segments.get(index);
+            if (!seg.matcher(text).find()
+                    && !charRatioMatch(text, charSegments.get(index))
+                    && !pinyinMatch(textPinyin, pinyinSegments.get(index))) return false;
             index++;
             if (index < segments.size()) return false;
             reset();

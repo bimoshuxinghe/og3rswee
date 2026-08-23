@@ -37,6 +37,16 @@ public class SettingAdblockFragment extends BaseFragment {
 
     private FragmentSettingAdblockBinding mBinding;
 
+    private final VoskAsrManager.Listener voskListener = new VoskAsrManager.Listener() {
+        @Override
+        public void onSpeech(String text, boolean partial, boolean matched) {
+            if (!isAdded() || mBinding == null) return;
+            String tag = matched ? " [命中]" : (partial ? " [识别中]" : " [完成]");
+            mBinding.adVoskRecognized.setText(text + tag);
+            updateVoskStatus();
+        }
+    };
+
     public static SettingAdblockFragment newInstance() {
         return new SettingAdblockFragment();
     }
@@ -59,6 +69,14 @@ public class SettingAdblockFragment extends BaseFragment {
         updateSkipModeText();
         updateSkipSecondsText();
         updateVoskText();
+        updateVoskStatus();
+        VoskAsrManager.get().addListener(voskListener);
+    }
+
+    @Override
+    public void onDestroyView() {
+        VoskAsrManager.get().removeListener(voskListener);
+        super.onDestroyView();
     }
 
     @Override
@@ -274,12 +292,14 @@ public class SettingAdblockFragment extends BaseFragment {
         if (path == null || path.isEmpty()) return false;
         File modelDir = new File(path);
         if (!modelDir.isDirectory()) return false;
-        // Vosk 加载模型必需 conf/model.conf + am/final.mdl；language_model.mat 缺失/无效也会导致加载失败
+        // Vosk 加载模型必需 conf/model.conf + am/final.mdl；graph/ivector 缺失也会导致 native 加载失败
         boolean hasConf = new File(modelDir, "conf/model.conf").isFile();
         boolean hasAm = new File(modelDir, "am/final.mdl").isFile();
         boolean hasLang = new File(modelDir, "language_model.mat").isFile();
         if (hasLang && !hasConf && !hasAm) return false; // 只有 language_model.mat 而无核心文件，视为无效
-        return hasConf && hasAm;
+        return hasConf && hasAm
+                && new File(modelDir, "graph/Gr.fst").isFile()
+                && new File(modelDir, "ivector/final.ie").isFile();
     }
 
     private void updateVoskText() {
@@ -305,6 +325,19 @@ public class SettingAdblockFragment extends BaseFragment {
         }
     }
 
+    /** 刷新识别诊断状态：模型状态 / 收到音频帧数 / 识别次数 / 最近是否命中。 */
+    private void updateVoskStatus() {
+        if (mBinding == null) return;
+        String state = Setting.isVoskEnabled() ? "识别中" : "未开启";
+        if (!Setting.isVoskEnabled() && !voskModelExists()) state = "未下载";
+        else if (!Setting.isVoskEnabled() && !voskModelValid()) state = "模型无效";
+        mBinding.adVoskStatus.setText(getString(R.string.ad_vosk_status_format,
+                state,
+                VoskAsrManager.get().getFedFrameCount(),
+                VoskAsrManager.get().getRecognizedCount(),
+                VoskAsrManager.get().isLastRecognizedMatched() ? "是" : "否"));
+    }
+
     /** 点击整行：开启/关闭开关（仅模型已存在且有效时生效）。 */
     private void toggleVosk() {
         if (VoskModelManager.get().isDownloading()) return;
@@ -323,7 +356,12 @@ public class SettingAdblockFragment extends BaseFragment {
             boolean ok = VoskAsrManager.get().start(requireContext());
             if (!ok) {
                 Setting.putVoskEnabled(false);
-                Notify.show(R.string.ad_vosk_model_invalid);
+                String err = VoskAsrManager.get().getLastError();
+                if (err != null && !err.isEmpty()) {
+                    Notify.show("Vosk: " + err);
+                } else {
+                    Notify.show(R.string.ad_vosk_model_invalid);
+                }
             } else {
                 Notify.show(R.string.ad_vosk_enabled);
             }
@@ -331,6 +369,7 @@ public class SettingAdblockFragment extends BaseFragment {
             Notify.show(R.string.ad_vosk_disabled);
         }
         updateVoskText();
+        updateVoskStatus();
     }
 
     /** 点击按钮：未下载 -> 确认下载；已下载未开启 -> 提示点击整行开启；已开启/无效 -> 删除模型。 */

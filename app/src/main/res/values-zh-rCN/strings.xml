@@ -243,7 +243,7 @@
     <string name="ad_text_rule">文本关键词规则</string>
     <string name="ad_text_rule_summary">匹配字幕文本的通配规则（如 本片*赞助##广告之后*回来#30），命中即跳过广告</string>
     <string name="ad_text_rule_enable">启用文本关键词规则</string>
-    <string name="ad_text_rule_hint">每行一条规则。语法：* 通配符、## 多句、#N 跳过 N 秒、[a,b] 在 a 秒后跳到 b、// 注释。示例：本片*赞助##广告之后*回来#30</string>
+    <string name="ad_text_rule_hint">直接输入想跳过的关键词，每行一个</string>
     <string name="ad_text_rule_saved">文本规则已保存</string>
     <string name="ad_text_rule_save_failed">保存文本规则失败</string>
     <string name="ad_rule_collected">已生成广告规则：%1$s</string>
@@ -281,6 +281,9 @@
     <string name="ad_vosk_deleted">模型已删除</string>
     <string name="ad_vosk_url">模型下载地址</string>
     <string name="ad_vosk_url_hint">默认：https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip</string>
+    <string name="ad_vosk_recognized_title">最近识别内容</string>
+    <string name="ad_vosk_recognized_empty">暂无识别内容。播放视频后，识别到的语音会显示在这里。</string>
+    <string name="ad_vosk_status_format">状态：%1$s | 收到音频：%2$d | 识别：%3$d | 命中：%4$s</string>
     <string name="player_always_time">时钟常显</string>
     <string name="player_always_progress">播放时长常显</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>

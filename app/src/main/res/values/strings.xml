@@ -261,7 +261,7 @@
     <string name="ad_text_rule">Text keyword rules</string>
     <string name="ad_text_rule_summary">Match subtitle text with wildcard rules (e.g. 本片*赞助##广告之后*回来#30) and skip ads</string>
     <string name="ad_text_rule_enable">Enable text keyword rules</string>
-    <string name="ad_text_rule_hint">One rule per line. Syntax: * wildcard, ## multi-line, #N skip N seconds, [a,b] jump to b after a seconds, // comment. Example: 本片*赞助##广告之后*回来#30</string>
+    <string name="ad_text_rule_hint">Enter keywords to skip, one per line</string>
     <string name="ad_text_rule_saved">Text rules saved</string>
     <string name="ad_text_rule_save_failed">Failed to save text rules</string>
     <string name="ad_text_skip_seconds">Keyword skip seconds</string>
@@ -287,6 +287,9 @@
     <string name="ad_vosk_deleted">Model deleted</string>
     <string name="ad_vosk_url">Model URL</string>
     <string name="ad_vosk_url_hint">Default: https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip</string>
+    <string name="ad_vosk_recognized_title">Recently recognized speech</string>
+    <string name="ad_vosk_recognized_empty">Nothing recognized yet. Play a video and speech should appear here.</string>
+    <string name="ad_vosk_status_format">State: %1$s | Audio fed: %2$d | Recognized: %3$d | Hit: %4$s</string>
     <string name="ad_rule_collected">Ad rule generated: %1$s</string>
     <string name="ad_rule_collect_failed">Ad rule collection failed</string>
     <string name="player_always_time">Always display clock</string>
