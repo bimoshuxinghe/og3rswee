@@ -212,8 +212,10 @@ public class Setting {
     }
 
     /** 云端上传令牌（X-Rules-Token），仅上传时使用；只拉取可留空。 */
+    public static final String DEFAULT_AD_CLOUD_TOKEN = "zhinengquguang-xinghe";
+
     public static String getAdCloudToken() {
-        return Prefers.getString("ad_cloud_token", "");
+        return Prefers.getString("ad_cloud_token", DEFAULT_AD_CLOUD_TOKEN);
     }
 
     public static void putAdCloudToken(String token) {
