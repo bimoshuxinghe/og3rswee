@@ -202,9 +202,11 @@ public class Setting {
         Prefers.put("ad_rules_path", (path == null || path.trim().isEmpty()) ? DEFAULT_RULES_PATH : path.trim());
     }
 
-    /** 云端广告规则共享服务器地址（rules_server.php），为空则不启用云端同步。 */
+    /** 云端广告规则共享服务器地址（rules.php），为空则不启用云端同步。 */
+    public static final String DEFAULT_AD_CLOUD_URL = "http://itv666.cc/gg/rules.php";
+
     public static String getAdCloudUrl() {
-        return Prefers.getString("ad_cloud_url", "");
+        return Prefers.getString("ad_cloud_url", DEFAULT_AD_CLOUD_URL);
     }
 
     public static void putAdCloudUrl(String url) {
