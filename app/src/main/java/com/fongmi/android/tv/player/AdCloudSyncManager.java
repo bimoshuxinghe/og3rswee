@@ -113,7 +113,6 @@ public final class AdCloudSyncManager {
                 File file = new File(Setting.getAdRulesPath());
                 JSONObject root = readOrCreate(file);
                 JSONArray rules = root.optJSONArray("rules");
-                JSONArray textRules = root.optJSONArray("textRules");
 
                 Set<String> uploaded = new HashSet<>();
                 String saved = Setting.getAdCloudUploadedIds();
@@ -136,23 +135,10 @@ public final class AdCloudSyncManager {
                         added++;
                     }
                 }
-                JSONArray newText = new JSONArray();
-                if (textRules != null) {
-                    for (int i = 0; i < textRules.length(); i++) {
-                        String t = textRules.optString(i);
-                        if (t.isEmpty()) continue;
-                        String key = "text:" + t;
-                        if (uploaded.contains(key)) continue;
-                        newText.put(t);
-                        uploaded.add(key);
-                        added++;
-                    }
-                }
                 if (added == 0) return;
 
                 JSONObject payload = new JSONObject();
                 payload.put("rules", newRules);
-                payload.put("textRules", newText);
                 payload.put("revision", root.optLong("revision", 0L));
 
                 RequestBody body = RequestBody.create(payload.toString(), JSON);
@@ -234,7 +220,8 @@ public final class AdCloudSyncManager {
             }
         }
 
-        // 合并文本规则（按内容去重）
+        // 文本规则纯本地：不合并云端 textRules，避免云端历史残留污染本地。
+        // textRules 由设置页手动输入维护，Vosk/TextAdRuleManager 只读本地 RULES.JSON。
         Set<String> textSeen = new HashSet<>();
         JSONArray mergedText = new JSONArray();
         JSONArray localText = local.optJSONArray("textRules");
@@ -244,16 +231,6 @@ public final class AdCloudSyncManager {
                 if (t.isEmpty() || textSeen.contains(t)) continue;
                 textSeen.add(t);
                 mergedText.put(t);
-            }
-        }
-        JSONArray cloudText = cloud.optJSONArray("textRules");
-        if (cloudText != null) {
-            for (int i = 0; i < cloudText.length(); i++) {
-                String t = cloudText.optString(i);
-                if (t.isEmpty() || textSeen.contains(t)) continue;
-                textSeen.add(t);
-                mergedText.put(t);
-                added++;
             }
         }
 
@@ -268,8 +245,16 @@ public final class AdCloudSyncManager {
 
         writeAtomic(file, out.toString(2));
 
-        // 注入探针（本地规则 + 云端规则合并结果）
-        AdProbeManager.get().applyCollectedRules(out.toString());
+        // 注入探针：只给探针纯音频指纹规则。
+        // textRules 是 Vosk/TextAdRuleManager 的文本关键词规则，探针 SDK 严格解析器
+        // 遇到未知字段会整体拒绝，因此音频与文本必须分开读取、分开注入。
+        JSONObject probeDoc = new JSONObject();
+        probeDoc.put("format", "ad-audio-probe-rules");
+        probeDoc.put("schemaVersion", 1);
+        probeDoc.put("algorithm", "spectral-sequence-v1");
+        probeDoc.put("revision", Math.max(localRev, cloudRev));
+        probeDoc.put("rules", merged);
+        AdProbeManager.get().applyCollectedRules(probeDoc.toString());
         // 新规则顺手增量上传，让本地采集的规则也能回流到云端
         uploadNewRules();
 

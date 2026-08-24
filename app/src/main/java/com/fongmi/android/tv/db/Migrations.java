@@ -56,4 +56,11 @@ public class Migrations {
             database.execSQL("CREATE TABLE IF NOT EXISTS `Download` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `vodName` TEXT, `vodPic` TEXT, `episodeName` TEXT, `key` TEXT, `flag` TEXT, `episodeUrl` TEXT, `url` TEXT, `headers` TEXT, `downloadPath` TEXT, `totalTs` INTEGER NOT NULL, `downloadedTs` INTEGER NOT NULL, `progress` INTEGER NOT NULL, `status` INTEGER NOT NULL, `createTime` INTEGER NOT NULL)");
         }
     };
+
+    public static final Migration MIGRATION_37_38 = new Migration(37, 38) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE Site ADD COLUMN `group` TEXT DEFAULT NULL");
+        }
+    };
 }

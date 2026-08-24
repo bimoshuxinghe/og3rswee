@@ -208,10 +208,12 @@ public final class VoskModelManager {
         return dir;
     }
 
-    /** 模型完整性校验：Vosk 加载必需 conf/model.conf + am/final.mdl。 */
+    /** 模型完整性校验：Vosk 加载必需 conf/model.conf + am/final.mdl + graph + ivector 全套文件。 */
     private static boolean isModelComplete(File modelDir) {
         if (modelDir == null || !modelDir.isDirectory()) return false;
         return new File(modelDir, "conf/model.conf").isFile()
-                && new File(modelDir, "am/final.mdl").isFile();
+                && new File(modelDir, "am/final.mdl").isFile()
+                && new File(modelDir, "graph/Gr.fst").isFile()
+                && new File(modelDir, "ivector/final.ie").isFile();
     }
 }
