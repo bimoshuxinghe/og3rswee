@@ -8,10 +8,13 @@ import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -152,7 +155,7 @@ public final class AdProbeManager {
             }
             String json = sb.toString().trim();
             if (!json.isEmpty()) {
-                probe.replaceRulesJson(json);
+                probe.replaceRulesJson(sanitizeForProbe(json));
             }
         } catch (Exception ignored) {
             // 规则文件读取失败不影响宿主播放
@@ -179,9 +182,30 @@ public final class AdProbeManager {
     public void applyCollectedRules(String json) {
         if (probe == null || json == null || json.trim().isEmpty()) return;
         try {
-            probe.replaceRulesJson(json);
+            probe.replaceRulesJson(sanitizeForProbe(json));
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 探针 SDK 使用严格 rules-v1 解析器，遇到未知字段（如文本跳秒规则用的
+     * {@code textRules} 数组）会整体拒绝规则。这里在注入前剥离非音纹字段，
+     * 只保留探针必需的 format/schemaVersion/algorithm/revision/rules，
+     * 保证与 Vosk 文本规则共存于同一 RULES.JSON 时音纹跳广告仍可生效。
+     */
+    private static String sanitizeForProbe(String json) {
+        try {
+            JSONObject root = new JSONObject(json);
+            JSONObject out = new JSONObject();
+            if (root.has("format")) out.put("format", root.optString("format"));
+            if (root.has("schemaVersion")) out.put("schemaVersion", root.optInt("schemaVersion", 1));
+            if (root.has("algorithm")) out.put("algorithm", root.optString("algorithm"));
+            if (root.has("revision")) out.put("revision", root.optLong("revision", 0L));
+            if (root.has("rules")) out.put("rules", root.optJSONArray("rules"));
+            return out.toString();
+        } catch (Exception e) {
+            return json;
         }
     }
 

@@ -86,6 +86,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
         Notify.createChannel();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
+        // 异步拉取云端广告规则合并到本地 RULES.JSON（幂等），保证音纹跳广告无需手动放置规则文件
+        com.fongmi.android.tv.utils.Task.execute(() ->
+                com.fongmi.android.tv.player.AdCloudSyncManager.get().syncFromCloud(null));
         registerActivityLifecycleCallbacks(this);
     }
 
