@@ -21,6 +21,7 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
     private final List<Site> mItems;
     private boolean search;
     private boolean change;
+    private String group = "";
 
     public SiteAdapter(OnClickListener listener) {
         this.listener = listener;
@@ -39,6 +40,8 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         boolean onSearchLongClick(Site item);
 
         boolean onChangeLongClick(Site item);
+
+        void onTextLongClick(Site item);
     }
 
     public SiteAdapter search(boolean search) {
@@ -51,10 +54,19 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         return this;
     }
 
+    public void setGroup(String group) {
+        this.group = group == null ? "" : group;
+    }
+
+    private boolean matchGroup(Site site) {
+        return group.isEmpty() || group.equals(site.getGroup());
+    }
+
     private void addAll() {
         for (Site site : VodConfig.get().getSites()) {
             if (site.isHide()) continue;
             if ("local_file_system".equals(site.getKey())) continue;
+            if (!matchGroup(site)) continue;
             mItems.add(site);
         }
     }
@@ -67,6 +79,7 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
             for (Site site : VodConfig.get().getSites()) {
                 if (site.isHide()) continue;
                 if ("local_file_system".equals(site.getKey())) continue;
+                if (!matchGroup(site)) continue;
                 if (site.getName().toLowerCase().contains(query.toLowerCase())
                         || com.fongmi.android.tv.utils.Pinyin.getInitials(site.getName()).contains(query.toLowerCase())) {
                     mItems.add(site);
@@ -104,6 +117,10 @@ public class SiteAdapter extends RecyclerView.Adapter<SiteAdapter.ViewHolder> {
         holder.binding.search.setVisibility(search ? View.VISIBLE : View.GONE);
         holder.binding.change.setVisibility(change ? View.VISIBLE : View.GONE);
         holder.binding.text.setOnClickListener(v -> listener.onTextClick(item));
+        holder.binding.text.setOnLongClickListener(v -> {
+            listener.onTextLongClick(item);
+            return true;
+        });
         holder.binding.search.setOnClickListener(v -> listener.onSearchClick(position, item));
         holder.binding.change.setOnClickListener(v -> listener.onChangeClick(position, item));
         holder.binding.search.setOnLongClickListener(v -> listener.onSearchLongClick(item));
