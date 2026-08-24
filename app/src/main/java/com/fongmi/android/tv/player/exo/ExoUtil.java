@@ -169,14 +169,17 @@ public class ExoUtil {
     private static RenderersFactory buildRenderersFactory(int renderMode) {
         return new DefaultRenderersFactory(App.get()) {
             @Override
-            protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams) {
+            protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParameters) {
                 DefaultAudioSink.Builder builder = new DefaultAudioSink.Builder(context)
                         .setEnableFloatOutput(enableFloatOutput)
-                        .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams);
+                        .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParameters);
+                AudioSink sink = builder.build();
                 if (com.fongmi.android.tv.setting.Setting.isVoskEnabled()) {
-                    builder.setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{new com.fongmi.android.tv.player.VoskAudioProcessor()});
+                    // 独立旁路采集：不向播放链路注册任何 AudioProcessor，
+                    // 由 VoskAudioSink 在 handleBuffer 入口复制 PCM，播放链路完全解耦
+                    sink = new com.fongmi.android.tv.player.VoskAudioSink(sink);
                 }
-                return builder.build();
+                return sink;
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);
     }
