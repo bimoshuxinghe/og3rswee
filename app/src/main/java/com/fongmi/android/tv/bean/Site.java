@@ -82,6 +82,9 @@ public class Site implements Parcelable {
     @SerializedName("changeable")
     private Integer changeable;
 
+    @SerializedName("group")
+    private String group;
+
     @Ignore
     @SerializedName("quickSearch")
     private Integer quickSearch;
@@ -118,6 +121,7 @@ public class Site implements Parcelable {
         this.timeout = (Integer) in.readValue(Integer.class.getClassLoader());
         this.searchable = (Integer) in.readValue(Integer.class.getClassLoader());
         this.changeable = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.group = in.readString();
         this.categories = in.createStringArrayList();
         this.style = in.readParcelable(Style.class.getClassLoader());
         this.selected = in.readByte() != 0;
@@ -300,6 +304,14 @@ public class Site implements Parcelable {
         this.changeable = changeable;
     }
 
+    public String getGroup() {
+        return TextUtils.isEmpty(group) ? "" : group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
+    }
+
     public Site setChangeable(boolean changeable) {
         if (getChangeable() != 0) setChangeable(changeable ? 1 : 2);
         return this;
@@ -382,6 +394,7 @@ public class Site implements Parcelable {
         dest.writeValue(this.timeout);
         dest.writeValue(this.searchable);
         dest.writeValue(this.changeable);
+        dest.writeString(this.group);
         dest.writeStringList(this.categories);
         dest.writeParcelable(this.style, flags);
         dest.writeByte(this.selected ? (byte) 1 : (byte) 0);
