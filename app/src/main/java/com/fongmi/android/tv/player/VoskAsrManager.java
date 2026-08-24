@@ -50,6 +50,8 @@ public final class VoskAsrManager {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final BlockingQueue<PcmFrame> queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean loading = new AtomicBoolean(false);
+    private final Object lock = new Object();
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
 
     private Thread worker;
@@ -132,8 +134,12 @@ public final class VoskAsrManager {
     }
 
     /**
-     * 尝试加载模型并启动识别线程。总开关开启时才真正启动；
-     * 模型缺失时静默返回 false，不阻塞播放。
+     * 尝试启动识别。总开关开启时才真正启动；模型缺失时静默返回 false，不阻塞播放。
+     *
+     * <p>模型加载在后台线程异步执行（Vosk 中文模型加载耗时可达数秒），
+     * 绝不阻塞主线程/播放初始化，避免播放超时被误判为失败而触发切线路。</p>
+     *
+     * @return true=已接受启动请求（模型已加载或正在后台加载），false=开关/模型路径不可用
      */
     public boolean start(Context context) {
         if (!Setting.isVoskEnabled()) return false;
@@ -141,61 +147,93 @@ public final class VoskAsrManager {
         if (TextUtils.isEmpty(modelPath)) return false;
         File modelDir = new File(modelPath);
         if (!modelDir.exists() || !modelDir.isDirectory()) return false;
-        if (running.get()) return true;
-
-        // 模型目录变化时重新加载
-        if (model == null || !modelPath.equals(loadedModelPath)) {
-            try {
-                if (model != null) model.close();
-                model = new Model(modelPath);
-                loadedModelPath = modelPath;
-                lastError = null;
-            } catch (Throwable t) {
-                // Vosk native 层对无效模型可能抛 ClassCastException/Error，一律视为加载失败；
-                // 记录具体原因（缺文件/库缺失/内存不足等），供设置页展示定位
-                model = null;
-                loadedModelPath = null;
-                lastError = rootCause(t);
-                return false;
+        synchronized (lock) {
+            if (running.get()) return true;
+            // 模型已缓存且路径一致：直接启动识别线程，无需重新加载
+            if (model != null && modelPath.equals(loadedModelPath)) {
+                startWorkerLocked();
+                return true;
             }
         }
+        // 模型未加载：后台异步加载，加载完成后自动启动识别线程
+        if (loading.compareAndSet(false, true)) {
+            new Thread(() -> {
+                try {
+                    Model m;
+                    try {
+                        m = new Model(modelPath);
+                    } catch (Throwable t) {
+                        lastError = rootCause(t);
+                        return;
+                    }
+                    synchronized (lock) {
+                        if (model != null) {
+                            try { model.close(); } catch (Exception ignored) { }
+                        }
+                        model = m;
+                        loadedModelPath = modelPath;
+                        lastError = null;
+                        if (!running.get()) startWorkerLocked();
+                    }
+                } finally {
+                    loading.set(false);
+                }
+            }, "vosk-model-load").start();
+        }
+        return true;
+    }
+
+    /** 在持锁状态下启动识别线程（模型必须已就绪）。 */
+    private void startWorkerLocked() {
         try {
             if (recognizer != null) recognizer.close();
             recognizer = new Recognizer(model, TARGET_SAMPLE_RATE);
         } catch (Throwable t) {
             lastError = t.getClass().getSimpleName() + ": " + t.getMessage();
-            return false;
+            return;
         }
         queue.clear();
         running.set(true);
         worker = new Thread(this::loop, "vosk-asr");
         worker.setDaemon(true);
         worker.start();
-        return true;
     }
 
-    /** 停止识别并释放资源。 */
+    /**
+     * 停止识别并释放识别器。模型保留缓存（不 close），避免每次播放/切线路
+     * 都重新加载模型导致耗时阻塞；真正释放见 {@link #release()}。
+     */
     public void stop() {
-        running.set(false);
-        if (worker != null) {
-            worker.interrupt();
-            worker = null;
-        }
-        queue.clear();
-        if (recognizer != null) {
-            try {
-                recognizer.close();
-            } catch (Exception ignored) {
+        synchronized (lock) {
+            running.set(false);
+            if (worker != null) {
+                worker.interrupt();
+                worker = null;
             }
-            recognizer = null;
-        }
-        if (model != null) {
-            try {
-                model.close();
-            } catch (Exception ignored) {
+            queue.clear();
+            if (recognizer != null) {
+                try {
+                    recognizer.close();
+                } catch (Exception ignored) {
+                }
+                recognizer = null;
             }
-            model = null;
-            loadedModelPath = null;
+            // model 保留缓存，加快下次 start 速度
+        }
+    }
+
+    /** 真正释放模型资源（应用退出等场景调用）。 */
+    public void release() {
+        synchronized (lock) {
+            stop();
+            if (model != null) {
+                try {
+                    model.close();
+                } catch (Exception ignored) {
+                }
+                model = null;
+                loadedModelPath = null;
+            }
         }
     }
 

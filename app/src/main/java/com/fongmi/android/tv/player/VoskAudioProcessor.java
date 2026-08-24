@@ -25,11 +25,6 @@ public final class VoskAudioProcessor extends BaseAudioProcessor {
     }
 
     @Override
-    public boolean isActive() {
-        return true;
-    }
-
-    @Override
     public void queueInput(ByteBuffer inputBuffer) {
         int remaining = inputBuffer.remaining();
         if (remaining > 0) {
