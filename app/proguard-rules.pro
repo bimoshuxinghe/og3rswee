@@ -80,3 +80,7 @@
 -keep class com.sun.jna.** { *; }
 -keepclassmembers class com.sun.jna.** { *; }
 -dontwarn com.sun.jna.**
+
+# Vosk ASR (native JNI bindings must not be stripped/obfuscated)
+-keep class org.vosk.** { *; }
+-dontwarn org.vosk.**
