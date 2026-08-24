@@ -265,7 +265,7 @@
     <string name="ad_cloud_no_url">未配置云端规则地址，仅使用本地规则。</string>
     <string name="ad_cloud_sync_failed">云端规则同步失败：%1$s</string>
     <string name="ad_vosk">语音识别去广告（Vosk）</string>
-    <string name="ad_vosk_summary">用本地 Vosk 模型识别广告语音，再按关键字规则跳广告。模型不内置，需自行下载后开启。</string>
+    <string name="ad_vosk_summary">用本地 Vosk 模型识别广告语音，再按关键字规则跳广告。模型不内置，需自行下载后开启。开启后播放将自动使用 EXO 引擎以保证音频采集。</string>
     <string name="ad_vosk_not_downloaded">未下载模型</string>
     <string name="ad_vosk_downloading">下载中… %1$d%%</string>
     <string name="ad_vosk_download">下载模型</string>

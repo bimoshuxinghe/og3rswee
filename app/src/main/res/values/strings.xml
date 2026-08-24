@@ -271,7 +271,7 @@
     <string name="ad_text_skip_seconds_invalid">Invalid seconds</string>
     <string name="ad_text_skip_seconds_value">%1$d s</string>
     <string name="ad_vosk">Voice keyword rules (Vosk)</string>
-    <string name="ad_vosk_summary">Detect ad speech with a local Vosk model, then match your keyword rules and skip. Model is NOT bundled; download it yourself before enabling.</string>
+    <string name="ad_vosk_summary">Detect ad speech with a local Vosk model, then match your keyword rules and skip. Model is NOT bundled; download it yourself before enabling. Playback will automatically use the EXO engine while enabled.</string>
     <string name="ad_vosk_not_downloaded">Model not downloaded</string>
     <string name="ad_vosk_downloading">Downloading… %1$d%%</string>
     <string name="ad_vosk_download">Download model</string>

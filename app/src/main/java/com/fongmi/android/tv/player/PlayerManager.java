@@ -476,6 +476,9 @@ public class PlayerManager implements ParseCallback {
     }
 
     private boolean canUseMpv(PlaySpec spec) {
+        // 语音识别（Vosk）仅 EXO 音频链路能采集 PCM（VoskAudioSink 旁路），
+        // MPV 走 libmpv ao 输出无 PCM 回调，开启 Vosk 时强制使用 EXO 引擎保证去广告生效。
+        if (Setting.isVoskEnabled()) return false;
         return (PlayerSetting.isMpv() || MpvMedia.shouldPreferMpv(spec == null ? null : spec.getUrl())) && isMpvSupported(spec);
     }
 
