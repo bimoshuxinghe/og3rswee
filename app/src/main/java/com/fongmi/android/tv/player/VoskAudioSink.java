@@ -14,6 +14,7 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
 import androidx.media3.exoplayer.analytics.PlayerId;
 import androidx.media3.exoplayer.audio.AudioCapabilities;
+import androidx.media3.exoplayer.audio.AudioOffloadSupport;
 import androidx.media3.exoplayer.audio.AudioOutputProvider;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
@@ -79,7 +80,7 @@ public final class VoskAudioSink implements AudioSink {
     }
 
     @Override
-    public AudioSink.AudioOffloadSupport getFormatOffloadSupport(Format format) {
+    public AudioOffloadSupport getFormatOffloadSupport(Format format) {
         return delegate.getFormatOffloadSupport(format);
     }
 
