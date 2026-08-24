@@ -1,19 +1,20 @@
 package com.fongmi.android.tv.player;
 
+import android.media.AudioDeviceInfo;
+
 import androidx.annotation.Nullable;
 import androidx.media3.common.AudioAttributes;
-import androidx.media3.common.AudioDeviceInfo;
 import androidx.media3.common.AuxEffectInfo;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackParameters;
-import androidx.media3.common.PlayerId;
-import androidx.media3.common.audio.AudioCapabilities;
-import androidx.media3.common.audio.AudioOutputProvider;
 import androidx.media3.common.util.Clock;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.Util;
+import androidx.media3.exoplayer.analytics.PlayerId;
+import androidx.media3.exoplayer.audio.AudioCapabilities;
+import androidx.media3.exoplayer.audio.AudioOutputProvider;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
 
@@ -53,7 +54,7 @@ public final class VoskAudioSink implements AudioSink {
     }
 
     @Override
-    public void setListener(Listener listener) {
+    public void setListener(AudioSink.Listener listener) {
         delegate.setListener(listener);
     }
 
@@ -78,7 +79,7 @@ public final class VoskAudioSink implements AudioSink {
     }
 
     @Override
-    public AudioOffloadSupport getFormatOffloadSupport(Format format) {
+    public AudioSink.AudioOffloadSupport getFormatOffloadSupport(Format format) {
         return delegate.getFormatOffloadSupport(format);
     }
 
@@ -89,7 +90,7 @@ public final class VoskAudioSink implements AudioSink {
 
     @Override
     public void configure(Format inputFormat, int specifiedBufferSize, @Nullable int[] outputChannels)
-            throws ConfigurationException {
+            throws AudioSink.ConfigurationException {
         if (inputFormat != null
                 && MimeTypes.AUDIO_RAW.equals(inputFormat.sampleMimeType)
                 && Util.isEncodingLinearPcm(inputFormat.pcmEncoding)) {
@@ -116,7 +117,7 @@ public final class VoskAudioSink implements AudioSink {
 
     @Override
     public boolean handleBuffer(ByteBuffer buffer, long presentationTimeUs, int encodedAccessUnitCount)
-            throws InitializationException, WriteException {
+            throws AudioSink.InitializationException, AudioSink.WriteException {
         if (voskActive() && buffer != null && buffer.hasRemaining()) {
             try {
                 int remaining = buffer.remaining();
@@ -131,7 +132,7 @@ public final class VoskAudioSink implements AudioSink {
     }
 
     @Override
-    public void playToEndOfStream() throws WriteException {
+    public void playToEndOfStream() throws AudioSink.WriteException {
         delegate.playToEndOfStream();
     }
 
@@ -224,7 +225,7 @@ public final class VoskAudioSink implements AudioSink {
 
     @androidx.annotation.RequiresApi(29)
     @Override
-    public void setOffloadMode(@OffloadMode int offloadMode) {
+    public void setOffloadMode(@AudioSink.OffloadMode int offloadMode) {
         delegate.setOffloadMode(offloadMode);
     }
 
