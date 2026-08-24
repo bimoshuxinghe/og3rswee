@@ -71,7 +71,7 @@ public final class TextAdRuleManager {
 
     private Player player;
     private String loadedPath;
-    private long lastSpeechHitMs = Long.MIN_VALUE;
+    private long lastSpeechHitMs = 0L;
 
     private final Player.Listener listener = new Player.Listener() {
         @Override

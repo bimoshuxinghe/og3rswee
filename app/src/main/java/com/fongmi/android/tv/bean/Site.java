@@ -343,6 +343,7 @@ public class Site implements Parcelable {
         if (item == null) return this;
         if (getChangeable() != 0) setChangeable(Math.max(1, item.getChangeable()));
         if (getSearchable() != 0) setSearchable(Math.max(1, item.getSearchable()));
+        if (TextUtils.isEmpty(getGroup())) setGroup(item.getGroup());
         return this;
     }
 
