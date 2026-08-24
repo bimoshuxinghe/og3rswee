@@ -119,12 +119,18 @@ public final class VoskAudioSink implements AudioSink {
     @Override
     public boolean handleBuffer(ByteBuffer buffer, long presentationTimeUs, int encodedAccessUnitCount)
             throws AudioSink.InitializationException, AudioSink.WriteException {
-        if (voskActive() && buffer != null && buffer.hasRemaining()) {
+        // Vosk 总开关开启即计数（含 voskReady=false 的非 PCM 帧），便于诊断"音频是否到达旁路"
+        if (Setting.isVoskEnabled() && buffer != null && buffer.hasRemaining()) {
             try {
                 int remaining = buffer.remaining();
                 byte[] copy = new byte[remaining];
                 buffer.duplicate().get(copy);
-                VoskAsrManager.get().feedPcm(copy, pcmSampleRate, pcmChannelCount, pcmIsFloat);
+                if (voskReady) {
+                    VoskAsrManager.get().feedPcm(copy, pcmSampleRate, pcmChannelCount, pcmIsFloat);
+                } else {
+                    // 收到音频但 configure 未提供 PCM 格式（压缩直通等），仅记录计数便于诊断
+                    VoskAsrManager.get().feedPcm(copy, -1, 0, false);
+                }
             } catch (Throwable t) {
                 // 完全隔离：Vosk 采集任何异常都不影响播放链路
             }

@@ -59,8 +59,14 @@ public final class VoskAsrManager {
     private Recognizer recognizer;
     private String loadedModelPath;
     private volatile String lastError;
-    /** 累计收到的 PCM 帧数（诊断用：判断播放器音频是否真正进入识别链路）。 */
+    /** 播放器侧收到的 PCM 帧数（VoskAudioSink.handleBuffer 入口，含识别线程未就绪时丢弃的帧）。 */
+    private volatile long pcmReceivedCount;
+    /** 实际喂给识别器的 PCM 帧数（诊断用：判断识别线程是否在跑）。 */
     private volatile long fedFrameCount;
+    /** 模型加载失败冷却：同一路径失败后短时间不重复尝试，避免每次建播放器都重试。 */
+    private static final long LOAD_FAILURE_COOLDOWN_MS = 30_000;
+    private volatile String failedModelPath;
+    private volatile long failedAtMs;
     /** 累计识别出非空文本的次数（诊断用）。 */
     private volatile long recognizedCount;
     /** 最近一次识别文本（诊断/展示用）。 */
@@ -88,6 +94,11 @@ public final class VoskAsrManager {
     /** 最近一次加载失败的具体原因（无失败时为 null）。 */
     public String getLastError() {
         return lastError;
+    }
+
+    /** 播放器侧收到的 PCM 帧数（含识别线程未就绪时丢弃的帧）。 */
+    public long getPcmReceivedCount() {
+        return pcmReceivedCount;
     }
 
     public long getFedFrameCount() {
@@ -147,6 +158,11 @@ public final class VoskAsrManager {
         if (TextUtils.isEmpty(modelPath)) return false;
         File modelDir = new File(modelPath);
         if (!modelDir.exists() || !modelDir.isDirectory()) return false;
+        // 模型加载失败冷却：避免每次建播放器都重试同一个坏模型
+        if (modelPath.equals(failedModelPath)
+                && System.currentTimeMillis() - failedAtMs < LOAD_FAILURE_COOLDOWN_MS) {
+            return false;
+        }
         synchronized (lock) {
             if (running.get()) return true;
             // 模型已缓存且路径一致：直接启动识别线程，无需重新加载
@@ -164,6 +180,8 @@ public final class VoskAsrManager {
                         m = new Model(modelPath);
                     } catch (Throwable t) {
                         lastError = rootCause(t);
+                        failedModelPath = modelPath;
+                        failedAtMs = System.currentTimeMillis();
                         return;
                     }
                     synchronized (lock) {
@@ -173,6 +191,8 @@ public final class VoskAsrManager {
                         model = m;
                         loadedModelPath = modelPath;
                         lastError = null;
+                        failedModelPath = null;
+                        failedAtMs = 0L;
                         if (!running.get()) startWorkerLocked();
                     }
                 } finally {
@@ -246,6 +266,8 @@ public final class VoskAsrManager {
      * @param isFloat    true=float PCM，false=16bit PCM
      */
     public void feedPcm(byte[] data, int sampleRate, int channels, boolean isFloat) {
+        // 播放器侧收到 PCM 即计数（含识别线程未就绪时丢弃的帧），用于诊断"音频是否到达旁路"
+        pcmReceivedCount++;
         if (!running.get() || recognizer == null) return;
         if (data == null || data.length == 0 || sampleRate <= 0 || channels <= 0) return;
         fedFrameCount++;

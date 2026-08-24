@@ -283,7 +283,7 @@
     <string name="ad_vosk_url_hint">默认：https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip</string>
     <string name="ad_vosk_recognized_title">最近识别内容</string>
     <string name="ad_vosk_recognized_empty">暂无识别内容。播放视频后，识别到的语音会显示在这里。</string>
-    <string name="ad_vosk_status_format">状态：%1$s | 收到音频：%2$d | 识别：%3$d | 命中：%4$s</string>
+    <string name="ad_vosk_status_format">状态：%1$s | 收到音频：%2$d | 已识别：%3$d | 识别次数：%4$d | 命中：%5$s</string>
     <string name="player_always_time">时钟常显</string>
     <string name="player_always_progress">播放时长常显</string>
     <string name="always_progress_format">%1$s/%2$s · 完成%3$s</string>

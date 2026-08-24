@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.ui.fragment;
 
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -331,11 +332,15 @@ public class SettingAdblockFragment extends BaseFragment {
         String state = Setting.isVoskEnabled() ? "识别中" : "未开启";
         if (!Setting.isVoskEnabled() && !voskModelExists()) state = "未下载";
         else if (!Setting.isVoskEnabled() && !voskModelValid()) state = "模型无效";
-        mBinding.adVoskStatus.setText(getString(R.string.ad_vosk_status_format,
+        String lastError = VoskAsrManager.get().getLastError();
+        String text = getString(R.string.ad_vosk_status_format,
                 state,
+                VoskAsrManager.get().getPcmReceivedCount(),
                 VoskAsrManager.get().getFedFrameCount(),
                 VoskAsrManager.get().getRecognizedCount(),
-                VoskAsrManager.get().isLastRecognizedMatched() ? "是" : "否"));
+                VoskAsrManager.get().isLastRecognizedMatched() ? "是" : "否");
+        if (!TextUtils.isEmpty(lastError)) text += "\n" + lastError;
+        mBinding.adVoskStatus.setText(text);
     }
 
     /** 点击整行：开启/关闭开关（仅模型已存在且有效时生效）。 */

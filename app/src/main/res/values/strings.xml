@@ -289,7 +289,7 @@
     <string name="ad_vosk_url_hint">Default: https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip</string>
     <string name="ad_vosk_recognized_title">Recently recognized speech</string>
     <string name="ad_vosk_recognized_empty">Nothing recognized yet. Play a video and speech should appear here.</string>
-    <string name="ad_vosk_status_format">State: %1$s | Audio fed: %2$d | Recognized: %3$d | Hit: %4$s</string>
+    <string name="ad_vosk_status_format">State: %1$s | Audio: %2$d | Fed: %3$d | Recognized: %4$d | Hit: %5$s</string>
     <string name="ad_rule_collected">Ad rule generated: %1$s</string>
     <string name="ad_rule_collect_failed">Ad rule collection failed</string>
     <string name="player_always_time">Always display clock</string>
