@@ -148,6 +148,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.restore.setOnClickListener(this::onRestore);
         mBinding.sync.setOnClickListener(view -> onSync());
         mBinding.version.setOnClickListener(this::onVersion);
+        mBinding.debug.setOnClickListener(this::onDebug);
         mBinding.vod.setOnLongClickListener(this::onVodEdit);
         mBinding.vodHome.setOnClickListener(this::onVodHome);
         mBinding.live.setOnLongClickListener(this::onLiveEdit);
@@ -291,6 +292,32 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     private void onVersion(View view) {
         showAuthor = !showAuthor;
         setVersionText();
+    }
+
+    private void onDebug(View view) {
+        if (com.fongmi.android.tv.server.DebugServer.isRunning()) {
+            com.fongmi.android.tv.server.DebugServer.stop();
+            mBinding.debugText.setText("未启动");
+            Notify.show("调试服务已停止");
+        } else {
+            com.fongmi.android.tv.server.DebugServer.start();
+            mBinding.debugText.setText("运行中 127.0.0.1:1314");
+            Notify.show("调试页: http://127.0.0.1:1314  局域网: http://" + getLocalIp() + ":1314");
+        }
+    }
+
+    private String getLocalIp() {
+        try {
+            for (java.util.Enumeration<java.net.NetworkInterface> en = java.net.NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
+                java.net.NetworkInterface ni = en.nextElement();
+                for (java.util.Enumeration<java.net.InetAddress> ee = ni.getInetAddresses(); ee.hasMoreElements(); ) {
+                    java.net.InetAddress ia = ee.nextElement();
+                    if (!ia.isLoopbackAddress() && ia instanceof java.net.Inet4Address) return ia.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "127.0.0.1";
     }
 
     private void onTmdb(View view) {

@@ -455,26 +455,41 @@ def get_last_engine():
     return _last_engine
 
 
+def _dbg(msg):
+    """记录调试日志到 App 内置日志（DbgLog，供本地调试页查看）；失败静默忽略。"""
+    try:
+        from java import jclass
+        jclass('com.fongmi.chaquo.DbgLog').log(msg)
+    except Exception:
+        pass
+
+
 def decrypt_n(n_value, player_url, session=None):
     """解密 n 参数值；失败返回 None"""
     if not n_value or not player_url:
         return None
+    _dbg('nsig decrypt_n enter player=%s n=%s' % (player_url[:80], str(n_value)[:16]))
     key = 'fn:' + player_url
     fn = _fn_cache.get(key)
     if fn is None:
         fn = _compile_decrypt_func(player_url, session)
         if fn is None:
             _fn_cache[key] = False
+            _dbg('nsig compile FAIL player=%s reason=%s' % (player_url[:80], _last_error))
             return None
         _fn_cache[key] = fn
+        _dbg('nsig compile OK engine=%s player=%s' % (_last_engine, player_url[:80]))
     elif fn is False:
         return None
     try:
         decrypted = fn(n_value)
-    except Exception:
+    except Exception as e:
+        _dbg('nsig exec EXC %r' % (e,))
         return None
     if decrypted and decrypted != str(n_value):
+        _dbg('nsig OK engine=%s n=%s -> %s' % (_last_engine, str(n_value)[:16], str(decrypted)[:16]))
         return decrypted
+    _dbg('nsig FAIL engine=%s reason=%s' % (_last_engine, _last_error))
     return None
 
 
