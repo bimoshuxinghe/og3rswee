@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""壳子内置 js2py n-sig 解密服务（所有 YouTube 类 TVBox 线路通用）。
+"""壳子内置 n-sig 解密服务（所有 YouTube 类 TVBox 线路通用）。
 
 背景：YouTube 媒体 URL 中的 n 参数是加密签名（n-sig），未解密/解密失效时
-CDN 会拒绝请求（403），播放中途弹 Bad HTTP Status。本模块利用壳子内置的
-js2py，直接执行 player.js 中提取的真实 JS 解密函数，无需依赖在线 API，
-也无需线路各自实现解密。
+CDN 会拒绝请求（403），播放中途弹 Bad HTTP Status。本模块优先使用壳子
+Java 侧内置的 QuickJS 引擎（ES2020+ 完整支持）执行 player.js 中提取的
+真实 JS 解密函数，彻底规避 js2py 对现代 JS 静默失败的问题；QuickJS 不可用
+时依次兜底 js2py、yt-dlp JSInterpreter。
 
 线路用法（py_youtube.py 等任意线路）：
     from base.nsig import decrypt_nsig
@@ -15,6 +16,7 @@ js2py，直接执行 player.js 中提取的真实 JS 解密函数，无需依赖
     new_n = decrypt_n(n_value, player_url, session=self.session)
 
 解密函数按 player_url 缓存，重复调用零额外开销。
+诊断：get_last_error() 返回失败原因；get_last_engine() 返回成功引擎。
 """
 
 import re
@@ -219,31 +221,85 @@ def _extract_raw_js_object(code, name):
     return None
 
 
-def _extract_nsig_deps_raw(code, func_body):
-    """提取主函数体引用的依赖函数/对象的原始 JS 定义"""
+_JS_BUILTIN_OBJS = {'Array', 'String', 'Math', 'Number', 'RegExp', 'JSON', 'Object',
+                    'Promise', 'Map', 'Set', 'Date', 'Symbol', 'BigInt', 'Function',
+                    'Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array',
+                    'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array',
+                    'Float64Array', 'BigInt64Array', 'BigUint64Array', 'ArrayBuffer',
+                    'DataView', 'Error', 'TypeError', 'RangeError', 'ReferenceError',
+                    'SyntaxError', 'EvalError', 'URIError', 'AggregateError',
+                    'WeakMap', 'WeakSet', 'Proxy', 'Reflect', 'globalThis'}
+_JS_BUILTIN_FUNCS = {'split', 'join', 'reverse', 'slice', 'splice', 'push', 'pop',
+                     'shift', 'unshift', 'concat', 'map', 'filter', 'reduce',
+                     'forEach', 'find', 'findIndex', 'includes', 'indexOf',
+                     'lastIndexOf', 'some', 'every', 'sort', 'fill', 'copyWithin',
+                     'flat', 'flatMap', 'charAt', 'charCodeAt', 'codePointAt',
+                     'fromCharCode', 'fromCodePoint', 'toString', 'valueOf', 'keys',
+                     'values', 'entries', 'has', 'get', 'set', 'add', 'delete', 'clear',
+                     'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURI',
+                     'encodeURIComponent', 'decodeURI', 'decodeURIComponent',
+                     'escape', 'unescape', 'atob', 'btoa', 'String', 'Array', 'Math',
+                     'Number', 'RegExp', 'JSON', 'Object', 'Promise', 'Map', 'Set',
+                     'Date', 'Symbol', 'BigInt', 'Function', 'window', 'document',
+                     'navigator', 'location', 'setTimeout', 'clearTimeout',
+                     'setInterval', 'clearInterval', 'queueMicrotask', 'alert',
+                     'console', 'globalThis', 'undefined', 'NaN', 'Infinity'}
+
+
+def _extract_nsig_deps_all(code, func_name):
+    """递归（BFS）提取主函数及其依赖函数/对象的原始 JS 定义，防循环。
+
+    只提取一层依赖的版本在遇到「函数A调用B，B又调用C」时会让 QuickJS
+    执行报 ReferenceError。这里用队列 BFS 把整条依赖链都抠出来。
+    """
     deps = {}
-    # 模式1: obj.method(...) -> 依赖对象
-    for obj_name, _ in re.findall(r'([a-zA-Z0-9_$]+)\.([a-zA-Z0-9_$]+)\(', func_body):
-        if obj_name in ('Array', 'String', 'Math', 'Number', 'RegExp', 'JSON', 'Object'):
+    queue = [(func_name, 'function')]
+    seen = set()
+    while queue:
+        name, kind = queue.pop(0)
+        if name in seen:
             continue
-        if obj_name not in deps:
-            raw = _extract_raw_js_object(code, obj_name)
-            if raw:
-                deps[obj_name] = raw
-    # 模式2: func(...) -> 依赖函数
-    for call_name in re.findall(r'\b([a-zA-Z0-9_$]{2,})\s*\(', func_body):
-        if call_name in ('split', 'join', 'reverse', 'slice', 'splice', 'push', 'pop',
-                         'shift', 'unshift', 'concat', 'map', 'filter', 'reduce',
-                         'charCodeAt', 'fromCharCode', 'parseInt', 'parseFloat',
-                         'encodeURIComponent', 'decodeURIComponent', 'String', 'Array',
-                         'Math', 'Number', 'RegExp', 'JSON', 'Object', 'window',
-                         'document', 'navigator', 'location', 'setTimeout', 'Date'):
+        seen.add(name)
+        if kind == 'function':
+            raw = _extract_raw_js_function(code, name)
+            body = _extract_js_function_body(code, name) if raw else ''
+        else:
+            raw = _extract_raw_js_object(code, name)
+            body = ''
+        if not raw:
             continue
-        if call_name not in deps and _verify_is_function(code, call_name):
-            raw = _extract_raw_js_function(code, call_name)
-            if raw:
-                deps[call_name] = raw
+        deps[name] = raw
+        if not body:
+            continue
+        # 对象方法调用：obj.method(...) -> 依赖对象
+        for obj_name, _ in re.findall(r'([a-zA-Z0-9_$]+)\.([a-zA-Z0-9_$]+)\(', body):
+            if obj_name in _JS_BUILTIN_OBJS or obj_name in deps or obj_name in seen:
+                continue
+            if _extract_raw_js_object(code, obj_name):
+                queue.append((obj_name, 'object'))
+        # 函数调用：func(...) -> 依赖函数
+        for call_name in re.findall(r'\b([a-zA-Z0-9_$]{2,})\s*\(', body):
+            if call_name in _JS_BUILTIN_FUNCS or call_name in deps or call_name in seen:
+                continue
+            if _verify_is_function(code, call_name):
+                queue.append((call_name, 'function'))
     return deps
+
+
+def _build_js_source(func_name, main_raw, deps):
+    """组装交给 JS 引擎执行的源码：依赖定义 + 主函数定义（只定义，不调用）。
+
+    函数声明存在提升，依赖顺序不影响调用；调用由引擎侧在函数定义完成后执行。
+    """
+    parts = []
+    seen = set()
+    for name, raw in deps.items():
+        if name in seen:
+            continue
+        seen.add(name)
+        parts.append(raw)
+    parts.append(main_raw)
+    return '\n'.join(parts)
 
 
 def _build_js2py_code(func_name, main_raw, deps):
@@ -261,10 +317,30 @@ def _build_js2py_code(func_name, main_raw, deps):
     return '\n'.join(parts)
 
 
+_last_engine = ''  # 最近一次成功使用的引擎（quickjs/js2py/jsinterp/None）
+
+
+def _quickjs_decrypt(js_src, func_name, n_value):
+    """通过 Chaquopy 调 Java 侧 QuickJS 引擎执行解密；返回新 n 或 None。"""
+    try:
+        from java import jclass
+        Cls = jclass('com.fongmi.chaquo.NsigDecryptor')
+        res = Cls.decrypt(js_src, func_name, str(n_value))
+        if res is None:
+            return None
+        return str(res)
+    except Exception as e:
+        _last_error = 'quickjs java bridge error: %r' % (e,)
+        return None
+
+
 def _compile_decrypt_func(player_url, session=None):
     """编译并缓存 player_url 对应的解密函数；失败返回 None，原因写入 _last_error。
-    路径A: 壳子内置 js2py 执行原始 JS；路径B: yt-dlp JSInterpreter 解释执行（支持现代语法）"""
-    global _last_error
+    路径A: Java 侧 QuickJS 引擎执行原始 JS（壳子内置，ES2020+，最可靠）
+    路径B: 壳子内置 js2py 执行原始 JS
+    路径C: yt-dlp JSInterpreter 解释执行（支持部分现代语法）"""
+    global _last_error, _last_engine
+    _last_engine = ''
     js2py = None
     try:
         import js2py
@@ -280,13 +356,41 @@ def _compile_decrypt_func(player_url, session=None):
         _last_error = 'nsig function name not found in player.js (len=%d)' % len(code)
         return None
 
-    # ---- 路径A: js2py ----
+    # ---- 路径A: QuickJS（Java 侧） ----
+    try:
+        main_raw = _extract_raw_js_function(code, func_name)
+        main_body = _extract_js_function_body(code, func_name)
+        if main_raw and main_body:
+            deps = _extract_nsig_deps_all(code, func_name)
+            js_src = _build_js_source(func_name, main_raw, deps)
+
+            def fn_quickjs(n_value):
+                out = _quickjs_decrypt(js_src, func_name, n_value)
+                if out is None:
+                    _last_error = 'quickjs exec failed (n=%s)' % (str(n_value)[:16],)
+                    return None
+                return out
+
+            # 冒烟验证：QuickJS 是完整引擎，只要执行成功结果即可信
+            smoke = fn_quickjs('smoke_test_123')
+            if smoke is None:
+                _last_error = 'quickjs smoke test failed; fallback to js2py'
+            else:
+                _last_error = ''
+                _last_engine = 'quickjs'
+                return fn_quickjs
+        else:
+            _last_error = 'nsig main function extract failed (func=%s)' % func_name
+    except Exception as e:
+        _last_error = 'quickjs unexpected: %r' % (e,)
+
+    # ---- 路径B: js2py ----
     if js2py is not None:
         try:
             main_raw = _extract_raw_js_function(code, func_name)
             main_body = _extract_js_function_body(code, func_name)
             if main_raw and main_body:
-                deps = _extract_nsig_deps_raw(code, main_body)
+                deps = _extract_nsig_deps_all(code, func_name)
                 js_src = _build_js2py_code(func_name, main_raw, deps)
                 ctx = js2py.EvalJs()
                 try:
@@ -309,11 +413,12 @@ def _compile_decrypt_func(player_url, session=None):
                         _last_error = 'js2py smoke test failed; fallback to jsinterp'
                     else:
                         _last_error = ''
+                        _last_engine = 'js2py'
                         return fn_js2py
         except Exception as e:
             _last_error = 'js2py unexpected: %r' % (e,)
 
-    # ---- 路径B: yt-dlp JSInterpreter ----
+    # ---- 路径C: yt-dlp JSInterpreter ----
     try:
         from .jsinterp import JSInterpreter
         interp = JSInterpreter(code)
@@ -333,6 +438,7 @@ def _compile_decrypt_func(player_url, session=None):
             return None
 
         _last_error = ''
+        _last_engine = 'jsinterp'
         return fn_jsinterp
     except Exception as e:
         _last_error = 'jsinterp compile error: %r (func=%s)' % (e, func_name)
@@ -342,6 +448,11 @@ def _compile_decrypt_func(player_url, session=None):
 def get_last_error():
     """返回最近一次解密失败原因（供线路打印诊断）"""
     return _last_error
+
+
+def get_last_engine():
+    """返回最近一次成功使用的解密引擎（quickjs/js2py/jsinterp/空）"""
+    return _last_engine
 
 
 def decrypt_n(n_value, player_url, session=None):
@@ -368,28 +479,29 @@ def decrypt_n(n_value, player_url, session=None):
 
 
 def decrypt_nsig(media_url, player_url, session=None):
-    """解密媒体 URL 中的 n 参数并替换，返回完整 URL；失败返回原 URL"""
+    """解密媒体 URL 中的 n 参数并替换，返回完整 URL；失败返回原 URL。
+
+    替换策略：直接从原始 query 中定位 n 参数值（含 URL 编码原样），
+    只替换该值，其余参数与顺序一概不动，避免 quote 不一致导致替换失败。
+    """
     try:
-        from urllib.parse import urlparse, urlunparse, parse_qs, quote
+        from urllib.parse import urlparse, urlunparse, unquote, quote
     except ImportError:
-        from urllib.parse import urlparse, urlunparse, parse_qs, quote
+        from urllib.parse import urlparse, urlunparse, unquote, quote
     try:
         parsed = urlparse(media_url)
-        query = parse_qs(parsed.query)
-        n_value = query.get('n', [None])[0]
+        m = re.search(r'(^|&)n=([^&]+)', parsed.query)
+        if not m:
+            return media_url
+        n_raw = m.group(2)          # URL 中原始编码值
+        n_value = unquote(n_raw)    # 解码后的真实 n 值
         if not n_value:
             return media_url
         decrypted = decrypt_n(n_value, player_url, session)
         if not decrypted or decrypted == n_value:
             return media_url
-        import re as _re
-        new_query = parsed.query.replace('n=' + quote(n_value), 'n=' + quote(decrypted), 1)
-        if new_query == parsed.query:
-            new_query = _re.sub(r'([?&])n=' + _re.escape(quote(n_value)) + r'(&|$)',
-                                r'\1n=' + quote(decrypted) + r'\2', parsed.query)
-        if new_query == parsed.query:
-            new_query = _re.sub(r'([?&])n=' + _re.escape(n_value) + r'(&|$)',
-                                r'\1n=' + quote(decrypted) + r'\2', parsed.query)
+        new_n_raw = quote(decrypted, safe='')
+        new_query = parsed.query[:m.start(2)] + new_n_raw + parsed.query[m.end(2):]
         return urlunparse(parsed._replace(query=new_query))
     except Exception:
         return media_url
