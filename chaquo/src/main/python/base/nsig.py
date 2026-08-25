@@ -23,6 +23,7 @@ import requests
 
 _player_cache = {}
 _fn_cache = {}
+_last_error = ''   # 最近一次失败原因（供线路打印诊断）
 
 _DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
@@ -261,42 +262,86 @@ def _build_js2py_code(func_name, main_raw, deps):
 
 
 def _compile_decrypt_func(player_url, session=None):
-    """编译并缓存 player_url 对应的解密函数；失败返回 None"""
+    """编译并缓存 player_url 对应的解密函数；失败返回 None，原因写入 _last_error。
+    路径A: 壳子内置 js2py 执行原始 JS；路径B: yt-dlp JSInterpreter 解释执行（支持现代语法）"""
+    global _last_error
+    js2py = None
     try:
         import js2py
-    except Exception:
+    except Exception as e:
+        _last_error = 'js2py import failed: %r' % (e,)
+
+    code = _get_player_code(player_url, session)
+    if not code:
+        _last_error = 'player.js fetch empty: %s' % (player_url[:80],)
         return None
+    func_name = _extract_nsig_function_name(code)
+    if not func_name:
+        _last_error = 'nsig function name not found in player.js (len=%d)' % len(code)
+        return None
+
+    # ---- 路径A: js2py ----
+    if js2py is not None:
+        try:
+            main_raw = _extract_raw_js_function(code, func_name)
+            main_body = _extract_js_function_body(code, func_name)
+            if main_raw and main_body:
+                deps = _extract_nsig_deps_raw(code, main_body)
+                js_src = _build_js2py_code(func_name, main_raw, deps)
+                ctx = js2py.EvalJs()
+                try:
+                    ctx.execute(js_src)
+                except Exception as e:
+                    _last_error = 'js2py compile error: %r (func=%s deps=%d)' % (e, func_name, len(deps))
+                else:
+                    def fn_js2py(n_value):
+                        try:
+                            n_esc = str(n_value).replace('\\', '\\\\').replace('"', '\\"')
+                            ctx.execute('var __n__ = "%s";' % n_esc)
+                            ctx.execute('var __decrypted__ = %s(__n__);' % func_name)
+                            return str(ctx.eval('__decrypted__'))
+                        except Exception as e:
+                            _last_error = 'js2py exec error: %r' % (e,)
+                            return None
+                    # 冒烟验证：js2py 对现代语法可能静默返回 None，必须实测一次
+                    smoke = fn_js2py('smoke_test_123')
+                    if smoke is None:
+                        _last_error = 'js2py smoke test failed; fallback to jsinterp'
+                    else:
+                        _last_error = ''
+                        return fn_js2py
+        except Exception as e:
+            _last_error = 'js2py unexpected: %r' % (e,)
+
+    # ---- 路径B: yt-dlp JSInterpreter ----
     try:
-        code = _get_player_code(player_url, session)
-        if not code:
-            return None
-        func_name = _extract_nsig_function_name(code)
-        if not func_name:
-            return None
-        main_raw = _extract_raw_js_function(code, func_name)
-        if not main_raw:
-            return None
-        main_body = _extract_js_function_body(code, func_name)
-        if not main_body:
-            return None
-        deps = _extract_nsig_deps_raw(code, main_body)
-        js_src = _build_js2py_code(func_name, main_raw, deps)
+        from .jsinterp import JSInterpreter
+        interp = JSInterpreter(code)
+        func = interp.extract_function(func_name)
 
-        ctx = js2py.EvalJs()
-        ctx.execute(js_src)
-
-        def fn(n_value):
+        def fn_jsinterp(n_value):
             try:
-                n_esc = str(n_value).replace('\\', '\\\\').replace('"', '\\"')
-                ctx.execute('var __n__ = "%s";' % n_esc)
-                ctx.execute('var __decrypted__ = %s(__n__);' % func_name)
-                return str(ctx.eval('__decrypted__'))
-            except Exception:
+                return str(func((n_value,)))
+            except Exception as e:
+                _last_error = 'jsinterp exec error: %r' % (e,)
                 return None
 
-        return fn
-    except Exception:
+        # 冒烟验证：jsinterp 对不支持语法可能静默返回 None
+        smoke = fn_jsinterp('smoke_test_123')
+        if smoke is None:
+            _last_error = 'jsinterp smoke test failed (unsupported syntax?)'
+            return None
+
+        _last_error = ''
+        return fn_jsinterp
+    except Exception as e:
+        _last_error = 'jsinterp compile error: %r (func=%s)' % (e, func_name)
         return None
+
+
+def get_last_error():
+    """返回最近一次解密失败原因（供线路打印诊断）"""
+    return _last_error
 
 
 def decrypt_n(n_value, player_url, session=None):
