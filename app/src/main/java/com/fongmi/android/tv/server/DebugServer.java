@@ -23,7 +23,7 @@ public class DebugServer extends NanoHTTPD {
         super(PORT);
     }
 
-    public static synchronized void start() {
+    public static synchronized void startServer() {
         if (instance != null) return;
         instance = new DebugServer();
         try {
@@ -38,7 +38,7 @@ public class DebugServer extends NanoHTTPD {
         return instance != null && instance.wasStarted();
     }
 
-    public static synchronized void stop() {
+    public static synchronized void stopServer() {
         if (instance != null) {
             instance.stop();
             instance = null;
