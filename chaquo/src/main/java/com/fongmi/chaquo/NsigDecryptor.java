@@ -25,6 +25,10 @@ public class NsigDecryptor {
     private static volatile QuickJSContext ctx;
     private static volatile boolean initFailed = false;
 
+    // 大脚本缓存：完整 player.js + solver 只 evaluate 一次，之后直接复用已编译函数
+    private static volatile String cachedSourceHash = null;
+    private static volatile JSFunction cachedFn = null;
+
     private static QuickJSContext ctx() {
         if (initFailed) return null;
         if (ctx == null) {
@@ -44,20 +48,44 @@ public class NsigDecryptor {
     }
 
     /**
-     * 用 QuickJS 执行解密函数并返回解密后的 n 值。
-     * 每次调用重新 evaluate jsSource（保证函数定义最新），
-     * 通过 synchronized 串行化 QuickJSContext 访问（QuickJS 非线程安全）。
+     * 预编译并缓存 jsSource 中的解密函数。
+     * 只 evaluate 脚本并缓存函数引用，不实际调用——用于 Python 侧冒烟验证：
+     * 能成功 evaluate 完整 player.js 且 __nsolver__ 存在，即认为该路径可信。
+     * @return true 表示 evaluate 成功且函数存在；false 表示失败（含任何异常）。
      */
-    public static synchronized String decrypt(String jsSource, String funcName, String nValue) {
+    public static synchronized boolean prepare(String jsSource, String funcName) {
         QuickJSContext c = ctx();
-        if (c == null || jsSource == null || funcName == null || nValue == null) return null;
+        if (c == null || jsSource == null || funcName == null) return false;
         try {
+            if (cachedSourceHash != null && cachedSourceHash.equals(jsSource) && cachedFn != null) {
+                return true;
+            }
             c.evaluate(jsSource);
             JSObject global = c.getGlobalObject();
-            if (global == null) return null;
+            if (global == null) return false;
             JSFunction fn = global.getJSFunction(funcName);
-            if (fn == null) return null;
-            Object res = fn.call(new Object[]{nValue});
+            if (fn == null) return false;
+            cachedSourceHash = jsSource;
+            cachedFn = fn;
+            return true;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 用 QuickJS 执行解密函数并返回解密后的 n 值。
+     * 通过 synchronized 串行化 QuickJSContext 访问（QuickJS 非线程安全）。
+     *
+     * 性能优化：当 jsSource 与上次相同时（同一 player 版本），直接复用缓存的
+     * JSFunction，不再重新 evaluate。完整 player.js 约 2.9MB，evaluate 一次约
+     * 数百 ms~数秒；解密本身只是函数调用（微秒级），缓存收益巨大。
+     */
+    public static synchronized String decrypt(String jsSource, String funcName, String nValue) {
+        if (!prepare(jsSource, funcName)) return null;
+        try {
+            Object res = cachedFn.call(new Object[]{nValue});
             if (res == null) return null;
             String out = String.valueOf(res);
             return out.isEmpty() ? null : out;

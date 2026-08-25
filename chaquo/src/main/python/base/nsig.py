@@ -322,6 +322,7 @@ _last_engine = ''  # 最近一次成功使用的引擎（quickjs/js2py/jsinterp/
 
 def _quickjs_decrypt(js_src, func_name, n_value):
     """通过 Chaquopy 调 Java 侧 QuickJS 引擎执行解密；返回新 n 或 None。"""
+    global _last_error
     try:
         from java import jclass
         Cls = jclass('com.fongmi.chaquo.NsigDecryptor')
@@ -332,6 +333,189 @@ def _quickjs_decrypt(js_src, func_name, n_value):
     except Exception as e:
         _last_error = 'quickjs java bridge error: %r' % (e,)
         return None
+
+
+def _quickjs_prepare(js_src, func_name):
+    """通过 Chaquopy 调 Java 侧 QuickJS 预编译（evaluate + 缓存函数引用）。
+
+    用于冒烟验证：能成功 evaluate 完整 player.js 且函数存在即可信，
+    不实际调用解密（避免无效输入返回 null 的误判）。
+    返回 True/False。
+    """
+    try:
+        from java import jclass
+        Cls = jclass('com.fongmi.chaquo.NsigDecryptor')
+        return bool(Cls.prepare(js_src, func_name))
+    except Exception as e:
+        _last_error = 'quickjs prepare bridge error: %r' % (e,)
+        return False
+
+
+# ---------- 方案A：全量 player.js + solver 注入（新版 URL 工厂模式） ----------
+
+_SETUP_NODES_JS = r"""
+if (typeof globalThis.XMLHttpRequest === "undefined") {
+    globalThis.XMLHttpRequest = { prototype: {} };
+}
+if (typeof URL === "undefined") {
+    globalThis.location = {
+        hash: "", host: "www.youtube.com", hostname: "www.youtube.com",
+        href: "https://www.youtube.com/watch?v=yt-dlp-wins", origin: "https://www.youtube.com",
+        password: "", pathname: "/watch", port: "", protocol: "https:",
+        search: "?v=yt-dlp-wins", username: "",
+    };
+} else {
+    globalThis.location = new URL("https://www.youtube.com/watch?v=yt-dlp-wins");
+}
+if (typeof globalThis.document === "undefined") {
+    globalThis.document = Object.create(null);
+}
+if (typeof globalThis.navigator === "undefined") {
+    globalThis.navigator = Object.create(null);
+}
+if (typeof globalThis.self === "undefined") {
+    globalThis.self = globalThis;
+}
+if (typeof globalThis.window === "undefined") {
+    globalThis.window = globalThis;
+}
+"""
+
+
+def _extract_factory_candidates(code):
+    """从 player.js 提取 URL 工厂函数候选（新版 n-sig 模式）。
+
+    新版 n-sig 不是独立函数：n 在 URL 对象方法内部修改。ejs 通过 AST 匹配
+    `X.Y("alr","yes")` 调用定位工厂函数（创建 URL 对象并 set("alr","yes")）。
+    这里用正则近似：找所有 `set("alr","yes")` 调用点，向前回溯最近的
+    `NAME=function(` 定义作为候选。真实工厂通常含 `new g.xxx(url, true)`。
+    """
+    cands = []
+    for m in re.finditer(r'set\s*\(\s*["\']alr["\']\s*,\s*["\']yes["\']', code):
+        pos = m.start()
+        seg = code[max(0, pos - 8000):pos]
+        matches = list(re.finditer(r'([A-Za-z0-9_$]{1,3})\s*=\s*function\s*\(', seg))
+        if not matches:
+            continue
+        name = matches[-1].group(1)
+        # 确认该函数定义存在且体含 new g.（URL 对象工厂特征）
+        m2 = re.search(r'\b' + re.escape(name) + r'\s*=\s*function\s*\(', code)
+        if not m2:
+            continue
+        brace = code.find('{', m2.end())
+        if brace < 0:
+            continue
+        depth = 0
+        in_str = None
+        esc = False
+        for i in range(brace, len(code)):
+            ch = code[i]
+            if esc:
+                esc = False
+                continue
+            if ch == '\\':
+                esc = True
+                continue
+            if in_str:
+                if ch == in_str:
+                    in_str = None
+                continue
+            if ch in ('"', "'", '`'):
+                in_str = ch
+                continue
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    body = code[m2.start():i + 1]
+                    if 'new g.' in body:
+                        cands.append(name)
+                    break
+    # 去重保持顺序
+    seen = set()
+    out = []
+    for n in cands:
+        if n not in seen:
+            seen.add(n)
+            out.append(n)
+    return out
+
+
+def _build_full_player_js(code, candidates):
+    """组装全量执行 JS：setupNodes + 完整 player.js（IIFE 内注入 solver）。
+
+    solver 定义在 player.js IIFE 内部（可访问词法作用域中的工厂函数），
+    并暴露到 globalThis.__nsolver__ 供 Java 侧调用。多个候选工厂逐个 try。
+    """
+    cands_json = ', '.join('"%s"' % n for n in candidates)
+    solver = r"""
+  var __nsolver__ = function(__n__) {
+    var cands = [%s];
+    for (var i = 0; i < cands.length; i++) {
+      try {
+        var fn = eval(cands[i]);
+        if (typeof fn !== "function") continue;
+        var url = fn("https://youtube.com/watch?v=yt-dlp-wins", "s", undefined);
+        if (!url || typeof url.set !== "function") continue;
+        url.set("n", __n__);
+        var proto = Object.getPrototypeOf(url);
+        var keys = Object.keys(proto).concat(Object.getOwnPropertyNames(proto));
+        for (var j = 0; j < keys.length; j++) {
+          var key = keys[j];
+          if (key !== "constructor" && key !== "set" && key !== "get" && key !== "clone") {
+            try { url[key](); } catch (e) {}
+            break;
+          }
+        }
+        var out = url.get("n");
+        if (out) return out;
+      } catch (e) {}
+    }
+    return null;
+  };
+  globalThis.__nsolver__ = __nsolver__;
+""" % cands_json
+    marker = '})(_yt_player);'
+    idx = code.rfind(marker)
+    if idx < 0:
+        return ''
+    injected = code[:idx] + solver + code[idx:]
+    return _SETUP_NODES_JS + '\n' + injected
+
+
+def _compile_full_player_func(code):
+    """方案A：全量执行。返回 fn(n) 或 None，失败原因写入 _last_error。"""
+    global _last_error, _last_engine
+    if not code:
+        _last_error = 'player.js empty'
+        return None
+    cands = _extract_factory_candidates(code)
+    if not cands:
+        _last_error = 'factory candidates not found (no set("alr","yes"))'
+        return None
+    js_src = _build_full_player_js(code, cands)
+    if not js_src:
+        _last_error = 'player IIFE marker not found'
+        return None
+
+    def fn_full(n_value):
+        out = _quickjs_decrypt(js_src, '__nsolver__', n_value)
+        if out is None:
+            _last_error = 'quickjs full-player exec failed (n=%s)' % (str(n_value)[:16],)
+            return None
+        return out
+
+    # 冒烟验证：QuickJS 能 evaluate 整个 player.js 且函数存在即可信。
+    # 注意不实际调用解密——无效输入会让解密函数返回 null，会造成误判；
+    # 真正的失败表现为 evaluate 抛异常（prepare 返回 False）。
+    if not _quickjs_prepare(js_src, '__nsolver__'):
+        _last_error = 'quickjs full-player prepare failed (cands=%s)' % (cands,)
+        return None
+    _last_error = ''
+    _last_engine = 'quickjs-full'
+    return fn_full
+
 
 
 def _compile_decrypt_func(player_url, session=None):
@@ -351,6 +535,12 @@ def _compile_decrypt_func(player_url, session=None):
     if not code:
         _last_error = 'player.js fetch empty: %s' % (player_url[:80],)
         return None
+
+    # ---- 路径A0: QuickJS 全量执行（方案A，适配新版 URL 工厂模式） ----
+    fn_full = _compile_full_player_func(code)
+    if fn_full is not None:
+        return fn_full
+
     func_name = _extract_nsig_function_name(code)
     if not func_name:
         _last_error = 'nsig function name not found in player.js (len=%d)' % len(code)
