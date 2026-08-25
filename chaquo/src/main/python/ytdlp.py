@@ -9,9 +9,12 @@ _BASE_OPTS = {
     'skip_download': True,
     'socket_timeout': 20,
     'retries': 2,
-    # 显式指定可直链播放的格式：优先含音视频的 mp4（progressive），
-    # 其次含音视频的任意直链，最后兜底交给 yt-dlp 默认选择
-    'format': ('best[ext=mp4][protocol^=http][vcodec!=none][acodec!=none]/'
+    # 显式指定可直链播放的格式：优先 HLS（m3u8）分段流——ExoPlayer 逐段
+    # 拉取、持续刷新清单，不会因单条直链过期/被 CDN 拒绝而中途 Bad HTTP
+    # Status；其次 DASH（mpd）清单；最后才用 progressive mp4 单文件直链兜底
+    'format': ('best[ext=m3u8][protocol^=http][vcodec!=none][acodec!=none]/'
+               'best[ext=mpd][protocol^=http]/'
+               'best[ext=mp4][protocol^=http][vcodec!=none][acodec!=none]/'
                'best[vcodec!=none][acodec!=none]/best'),
 }
 
@@ -50,12 +53,12 @@ def extract(url, playlist=False):
 
 
 def _pick_url(info):
-    # 已选中格式的直链（format 选择器已优先 progressive 含音视频格式）
+    # 已选中格式的直链（format 选择器已优先 HLS/DASH 分段流）
     if info.get('url'):
         return info['url']
     formats = info.get('formats') or []
-    # 按容器类型偏好挑选 http 直链
-    for ext in ('mp4', 'm3u8', 'mpd'):
+    # 按容器类型偏好挑选 http 直链：m3u8/mpd 分段流优先，mp4 单文件直链兜底
+    for ext in ('m3u8', 'mpd', 'mp4'):
         for f in formats:
             if _is_http(f) and f.get('ext') == ext and f.get('url'):
                 return f['url']
