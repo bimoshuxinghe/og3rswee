@@ -7,8 +7,8 @@ import java.io.IOException;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * 本地调试日志服务：监听 127.0.0.1:1314（实际绑定所有网卡，局域网也可访问）。
- * 浏览器打开 http://127.0.0.1:1314 查看 Python 解密日志（n-sig 诊断）。
+ * 本地调试日志服务：监听 127.0.0.1:12138（实际绑定所有网卡，局域网也可访问）。
+ * 浏览器打开 http://127.0.0.1:12138 查看 Python 解密日志（n-sig 诊断）。
  * 路由：
  *   GET /      调试页（HTML，自动轮询 /api）
  *   GET /api   返回全部日志（纯文本）
@@ -16,7 +16,7 @@ import fi.iki.elonen.NanoHTTPD;
  */
 public class DebugServer extends NanoHTTPD {
 
-    private static final int PORT = 1314;
+    private static final int PORT = 12138;
     private static volatile DebugServer instance;
 
     private DebugServer() {

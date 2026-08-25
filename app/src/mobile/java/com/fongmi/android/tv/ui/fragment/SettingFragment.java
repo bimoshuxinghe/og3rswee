@@ -301,8 +301,8 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
             Notify.show("调试服务已停止");
         } else {
             com.fongmi.android.tv.server.DebugServer.startServer();
-            mBinding.debugText.setText("运行中 127.0.0.1:1314");
-            Notify.show("调试页: http://127.0.0.1:1314  局域网: http://" + getLocalIp() + ":1314");
+            mBinding.debugText.setText("运行中 127.0.0.1:12138");
+            Notify.show("调试页: http://127.0.0.1:12138  局域网: http://" + getLocalIp() + ":12138");
         }
     }
 
