@@ -135,7 +135,10 @@ dependencies {
     implementation libs.lifecycle.service
     implementation libs.media
     implementation libs.bundles.media3
-    implementation libs.vosk.android
+    implementation('com.alphacephei:vosk-android:0.3.47') {
+        exclude group: 'net.java.dev.jna', module: 'jna'
+    }
+    implementation 'net.java.dev.jna:jna:5.18.1@aar'
     implementation libs.palette
     implementation libs.recyclerview
     implementation libs.room.runtime
