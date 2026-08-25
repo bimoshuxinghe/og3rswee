@@ -171,13 +171,11 @@ public class ExoUtil {
         return new DefaultRenderersFactory(App.get()) {
             @Override
             protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParameters) {
-                // Vosk 语音采集：无条件注册 AudioProcessor（与历史可用版本 1b42276 一致）。
-                // 挂 DefaultAudioSink 内部处理链，isActive() 由 Vosk 总开关控制，
-                // 不依赖模型就绪状态，PCM 一定到达 queueInput。
+                // Vosk 语音采集：恢复 1b42276 可用方案，挂 DefaultAudioSink 内部 AudioProcessor 链
                 return new DefaultAudioSink.Builder(context)
                         .setEnableFloatOutput(enableFloatOutput)
                         .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParameters)
-                        .setAudioProcessors(new AudioProcessor[]{new com.fongmi.android.tv.player.VoskAudioProcessor()})
+                        .setAudioProcessors(new AudioProcessor[]{new com.fongmi.android.tv.player.vosk.VoskAudioProcessor(com.fongmi.android.tv.player.vosk.VoskAdblock.get())})
                         .build();
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);

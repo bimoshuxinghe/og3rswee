@@ -31,6 +31,7 @@ import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
 import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
+import com.fongmi.android.tv.player.vosk.VoskAdblock;
 import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.Setting;
@@ -78,7 +79,8 @@ public class PlayerManager implements ParseCallback {
         this.pendingStartPositionMs = C.TIME_UNSET;
         AdProbeManager.get().init(App.get(), player);
         TextAdRuleManager.get().attach(player);
-        VoskAsrManager.get().start(App.get());
+        VoskAdblock.get().setEnabled(Setting.isVoskEnabled());
+        VoskAdblock.get().addListener(this::onAdDetected);
     }
 
     public void release() {
@@ -87,11 +89,20 @@ public class PlayerManager implements ParseCallback {
         releaseDanmakuController();
         AdProbeManager.get().release();
         TextAdRuleManager.get().detach();
-        VoskAsrManager.get().stop();
         if (engine == null) return;
         try { engine.release(); } catch (Exception e) { e.printStackTrace(); }
         engine = null;
         player = null;
+    }
+
+    private void onAdDetected(long skipMs) {
+        if (player == null) return;
+        long position = player.getCurrentPosition();
+        if (position == C.TIME_UNSET) return;
+        long duration = player.getDuration();
+        long target = position + skipMs;
+        if (duration != C.TIME_UNSET && duration > 0) target = Math.min(target, duration);
+        player.seekTo(target);
     }
 
     public Player getPlayer() {

@@ -89,6 +89,12 @@ public class App extends Application implements Application.ActivityLifecycleCal
         // 异步拉取云端广告规则合并到本地 RULES.JSON（幂等），保证音纹跳广告无需手动放置规则文件
         com.fongmi.android.tv.utils.Task.execute(() ->
                 com.fongmi.android.tv.player.AdCloudSyncManager.get().syncFromCloud(null));
+        // 启动时预加载 AI 去广语音模型（VoskAdblock，1b42276 方案），避免播放时识别器未就绪
+        com.fongmi.android.tv.utils.Task.execute(() -> {
+            if (com.fongmi.android.tv.setting.Setting.isVoskEnabled()) {
+                com.fongmi.android.tv.player.vosk.VoskAdblock.get().setEnabled(true);
+            }
+        });
         registerActivityLifecycleCallbacks(this);
     }
 

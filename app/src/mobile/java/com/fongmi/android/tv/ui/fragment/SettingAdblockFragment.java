@@ -17,8 +17,8 @@ import com.fongmi.android.tv.databinding.FragmentSettingAdblockBinding;
 import com.fongmi.android.tv.player.AdCloudSyncManager;
 import com.fongmi.android.tv.player.AdProbeManager;
 import com.fongmi.android.tv.player.TextAdRuleManager;
-import com.fongmi.android.tv.player.VoskAsrManager;
 import com.fongmi.android.tv.player.VoskModelManager;
+import com.fongmi.android.tv.player.vosk.VoskAdblock;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.utils.Notify;
@@ -37,16 +37,6 @@ import java.nio.charset.StandardCharsets;
 public class SettingAdblockFragment extends BaseFragment {
 
     private FragmentSettingAdblockBinding mBinding;
-
-    private final VoskAsrManager.Listener voskListener = new VoskAsrManager.Listener() {
-        @Override
-        public void onSpeech(String text, boolean partial, boolean matched) {
-            if (!isAdded() || mBinding == null) return;
-            String tag = matched ? " [命中]" : (partial ? " [识别中]" : " [完成]");
-            mBinding.adVoskRecognized.setText(text + tag);
-            updateVoskStatus();
-        }
-    };
 
     public static SettingAdblockFragment newInstance() {
         return new SettingAdblockFragment();
@@ -71,13 +61,6 @@ public class SettingAdblockFragment extends BaseFragment {
         updateSkipSecondsText();
         updateVoskText();
         updateVoskStatus();
-        VoskAsrManager.get().addListener(voskListener);
-    }
-
-    @Override
-    public void onDestroyView() {
-        VoskAsrManager.get().removeListener(voskListener);
-        super.onDestroyView();
     }
 
     @Override
@@ -326,20 +309,20 @@ public class SettingAdblockFragment extends BaseFragment {
         }
     }
 
-    /** 刷新识别诊断状态：模型状态 / 收到音频帧数 / 识别次数 / 最近是否命中。 */
+    /** 刷新识别诊断状态：模型状态 / 识别器就绪 / 最近识别文本（VoskAdblock 1b42276 方案）。 */
     private void updateVoskStatus() {
         if (mBinding == null) return;
-        String state = Setting.isVoskEnabled() ? "识别中" : "未开启";
-        if (!Setting.isVoskEnabled() && !voskModelExists()) state = "未下载";
-        else if (!Setting.isVoskEnabled() && !voskModelValid()) state = "模型无效";
-        String lastError = VoskAsrManager.get().getLastError();
-        String text = getString(R.string.ad_vosk_status_format,
-                state,
-                VoskAsrManager.get().getPcmReceivedCount(),
-                VoskAsrManager.get().getFedFrameCount(),
-                VoskAsrManager.get().getRecognizedCount(),
-                VoskAsrManager.get().isLastRecognizedMatched() ? "是" : "否");
-        if (!TextUtils.isEmpty(lastError)) text += "\n" + lastError;
+        VoskAdblock vosk = VoskAdblock.get();
+        String state;
+        if (!voskModelExists()) state = "未下载";
+        else if (!voskModelValid()) state = "模型无效";
+        else if (!Setting.isVoskEnabled()) state = "未开启";
+        else state = vosk.isReady() ? "识别中" : "加载中";
+        String text = "状态: " + state;
+        if (Setting.isVoskEnabled() && vosk.isReady()) {
+            String last = vosk.getLastRecognizedText();
+            if (!TextUtils.isEmpty(last)) text += "\n最近识别: " + last;
+        }
         mBinding.adVoskStatus.setText(text);
     }
 
@@ -356,20 +339,11 @@ public class SettingAdblockFragment extends BaseFragment {
         }
         boolean enabled = !Setting.isVoskEnabled();
         Setting.putVoskEnabled(enabled);
-        VoskAsrManager.get().stop();
+        VoskAdblock.get().setEnabled(enabled);
         if (enabled) {
-            boolean ok = VoskAsrManager.get().start(requireContext());
-            if (!ok) {
-                Setting.putVoskEnabled(false);
-                String err = VoskAsrManager.get().getLastError();
-                if (err != null && !err.isEmpty()) {
-                    Notify.show("Vosk: " + err);
-                } else {
-                    Notify.show(R.string.ad_vosk_model_invalid);
-                }
-            } else {
-                Notify.show(R.string.ad_vosk_enabled);
-            }
+            Notify.show(R.string.ad_vosk_enabled);
+            // 模型异步加载，稍后刷新一次状态
+            if (mBinding != null) mBinding.getRoot().postDelayed(this::updateVoskStatus, 1500);
         } else {
             Notify.show(R.string.ad_vosk_disabled);
         }
@@ -432,7 +406,7 @@ public class SettingAdblockFragment extends BaseFragment {
                 .setMessage(R.string.ad_vosk_delete_confirm)
                 .setNegativeButton(R.string.dialog_negative, null)
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
-                    VoskAsrManager.get().stop();
+                    VoskAdblock.get().setEnabled(false);
                     VoskModelManager.get().delete(requireContext());
                     Notify.show(R.string.ad_vosk_deleted);
                     updateVoskText();
