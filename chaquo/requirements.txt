@@ -7,3 +7,4 @@ cachetools
 pycryptodome
 beautifulsoup4
 yt-dlp>=2024.10.22
+js2py
