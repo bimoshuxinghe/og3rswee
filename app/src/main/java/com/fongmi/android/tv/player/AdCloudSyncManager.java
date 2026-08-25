@@ -221,7 +221,7 @@ public final class AdCloudSyncManager {
         }
 
         // 文本规则纯本地：不合并云端 textRules，避免云端历史残留污染本地。
-        // textRules 由设置页手动输入维护，Vosk/TextAdRuleManager 只读本地 RULES.JSON。
+        // textRules 为历史遗留字段，现仅保留在 RULES.JSON 中，无运行逻辑依赖。
         Set<String> textSeen = new HashSet<>();
         JSONArray mergedText = new JSONArray();
         JSONArray localText = local.optJSONArray("textRules");
@@ -246,7 +246,7 @@ public final class AdCloudSyncManager {
         writeAtomic(file, out.toString(2));
 
         // 注入探针：只给探针纯音频指纹规则。
-        // textRules 是 Vosk/TextAdRuleManager 的文本关键词规则，探针 SDK 严格解析器
+        // textRules 为历史遗留字段，探针 SDK 严格解析器
         // 遇到未知字段会整体拒绝，因此音频与文本必须分开读取、分开注入。
         JSONObject probeDoc = new JSONObject();
         probeDoc.put("format", "ad-audio-probe-rules");

@@ -977,10 +977,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.next.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
         mBinding.control.prev.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
         mBinding.reverse.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
-        if (mBinding.download != null) mBinding.download.setVisibility(items.isEmpty() || !Setting.isHomeDownload() ? View.GONE : View.VISIBLE);
+        if (mBinding.download != null) mBinding.download.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.episode.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
-        mBinding.more.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
-        if (mBinding.shortBtn != null) mBinding.shortBtn.setVisibility(items.size() < 2 ? View.GONE : View.VISIBLE);
+        mBinding.more.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
+        if (mBinding.shortBtn != null) mBinding.shortBtn.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mAllEpisodes = new ArrayList<>(items);
         List<EpisodeGroupAdapter.Group> groups = EpisodeGroupAdapter.buildGroups(items.size());
         if (mBinding.group == null || groups.size() <= 1) {

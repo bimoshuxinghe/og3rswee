@@ -171,11 +171,9 @@ public class ExoUtil {
         return new DefaultRenderersFactory(App.get()) {
             @Override
             protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParameters) {
-                // Vosk 语音采集：恢复 1b42276 可用方案，挂 DefaultAudioSink 内部 AudioProcessor 链
                 return new DefaultAudioSink.Builder(context)
                         .setEnableFloatOutput(enableFloatOutput)
                         .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParameters)
-                        .setAudioProcessors(new AudioProcessor[]{new com.fongmi.android.tv.player.vosk.VoskAudioProcessor(com.fongmi.android.tv.player.vosk.VoskAdblock.get())})
                         .build();
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);

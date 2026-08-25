@@ -48,8 +48,12 @@ public class Source {
         return Loader.INSTANCE;
     }
 
-    private Extractor getExtractor(Uri uri) {
-        return extractors.stream().filter(extractor -> extractor.match(uri)).findFirst().orElse(null);
+    private List<Extractor> getExtractors(Uri uri) {
+        List<Extractor> matched = new ArrayList<>();
+        for (Extractor extractor : extractors) {
+            if (extractor.match(uri)) matched.add(extractor);
+        }
+        return matched;
     }
 
     private void addCallable(Iterator<Episode> iterator, List<Callable<List<Episode>>> items) {
@@ -88,10 +92,20 @@ public class Source {
     public String fetch(Result result) throws Exception {
         Uri uri = result.getUrl().uri();
         String url = result.getUrl().v();
-        Extractor extractor = getExtractor(uri);
-        if (extractor != null) result.setParse(0);
-        if (extractor instanceof Video) result.setParse(1);
-        return extractor == null ? url : extractor.fetch(url);
+        List<Extractor> matched = getExtractors(uri);
+        if (matched.isEmpty()) return url;
+        result.setParse(0);
+        if (matched.stream().anyMatch(e -> e instanceof Video)) result.setParse(1);
+        // 按注册顺序逐个尝试，例如 yt-dlp 失败时自动降级到 NewPipe（Youtube）
+        Exception last = null;
+        for (Extractor extractor : matched) {
+            try {
+                return extractor.fetch(url);
+            } catch (Exception e) {
+                last = e;
+            }
+        }
+        throw last != null ? last : new Exception("no extractor available");
     }
 
     public void stop() {

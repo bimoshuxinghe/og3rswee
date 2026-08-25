@@ -33,7 +33,14 @@ public class YtDlp implements Source.Extractor {
     public String fetch(String url) throws Exception {
         PyObject module = getModule();
         JSONObject obj = new JSONObject(module.callAttr("extract", url, false).toString());
-        return obj.optString("url");
+        if ("error".equals(obj.optString("type"))) {
+            throw new Exception(obj.optString("message", "yt-dlp parse failed"));
+        }
+        String playUrl = obj.optString("url");
+        if (playUrl.isEmpty()) {
+            throw new Exception("yt-dlp: no playable url");
+        }
+        return playUrl;
     }
 
     private static PyObject getModule() {

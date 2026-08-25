@@ -31,7 +31,7 @@ import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
 import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
-import com.fongmi.android.tv.player.vosk.VoskAdblock;
+
 import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.Setting;
@@ -78,9 +78,6 @@ public class PlayerManager implements ParseCallback {
         this.callback = callback;
         this.pendingStartPositionMs = C.TIME_UNSET;
         AdProbeManager.get().init(App.get(), player);
-        TextAdRuleManager.get().attach(player);
-        VoskAdblock.get().setEnabled(Setting.isVoskEnabled());
-        VoskAdblock.get().addListener(this::onAdDetected);
     }
 
     public void release() {
@@ -88,21 +85,10 @@ public class PlayerManager implements ParseCallback {
         App.removeCallbacks(runnable);
         releaseDanmakuController();
         AdProbeManager.get().release();
-        TextAdRuleManager.get().detach();
         if (engine == null) return;
         try { engine.release(); } catch (Exception e) { e.printStackTrace(); }
         engine = null;
         player = null;
-    }
-
-    private void onAdDetected(long skipMs) {
-        if (player == null) return;
-        long position = player.getCurrentPosition();
-        if (position == C.TIME_UNSET) return;
-        long duration = player.getDuration();
-        long target = position + skipMs;
-        if (duration != C.TIME_UNSET && duration > 0) target = Math.min(target, duration);
-        player.seekTo(target);
     }
 
     public Player getPlayer() {
@@ -487,9 +473,6 @@ public class PlayerManager implements ParseCallback {
     }
 
     private boolean canUseMpv(PlaySpec spec) {
-        // 语音识别（Vosk）仅 EXO 音频链路能采集 PCM（VoskAudioSink 旁路），
-        // MPV 走 libmpv ao 输出无 PCM 回调，开启 Vosk 时强制使用 EXO 引擎保证去广告生效。
-        if (Setting.isVoskEnabled()) return false;
         return (PlayerSetting.isMpv() || MpvMedia.shouldPreferMpv(spec == null ? null : spec.getUrl())) && isMpvSupported(spec);
     }
 
@@ -563,7 +546,6 @@ public class PlayerManager implements ParseCallback {
         callback.onPrepare();
         initTrack = false;
         AdProbeManager.get().open(getUrl(), getHeaders());
-        TextAdRuleManager.get().onMediaOpened();
     }
 
     private void ensureEngineForSpec() {

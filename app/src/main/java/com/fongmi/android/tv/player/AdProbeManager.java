@@ -189,10 +189,10 @@ public final class AdProbeManager {
     }
 
     /**
-     * 探针 SDK 使用严格 rules-v1 解析器，遇到未知字段（如文本跳秒规则用的
+     * 探针 SDK 使用严格 rules-v1 解析器，遇到未知字段（如历史遗留的
      * {@code textRules} 数组）会整体拒绝规则。这里在注入前剥离非音纹字段，
      * 只保留探针必需的 format/schemaVersion/algorithm/revision/rules，
-     * 保证与 Vosk 文本规则共存于同一 RULES.JSON 时音纹跳广告仍可生效。
+     * 保证音纹跳广告稳定生效。
      */
     private static String sanitizeForProbe(String json) {
         try {

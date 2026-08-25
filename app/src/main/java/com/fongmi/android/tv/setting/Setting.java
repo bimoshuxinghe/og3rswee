@@ -147,52 +147,6 @@ public class Setting {
         Prefers.put("ad_auto_collect", autoCollect);
     }
 
-    /** 文本关键词规则：监听字幕文本，按通配规则匹配并跳过广告。 */
-    public static boolean isTextAdRule() {
-        return Prefers.getBoolean("ad_text_rule", true);
-    }
-
-    public static void putTextAdRule(boolean textAdRule) {
-        Prefers.put("ad_text_rule", textAdRule);
-    }
-
-    /** 文本关键词命中后向后跳过的秒数（无 #N 后缀的规则使用，默认 30 秒）。 */
-    public static int getAdTextSkipSeconds() {
-        return Prefers.getInt("ad_text_skip_seconds", 30);
-    }
-
-    public static void putAdTextSkipSeconds(int seconds) {
-        int v = Math.max(1, Math.min(300, seconds));
-        Prefers.put("ad_text_skip_seconds", v);
-    }
-
-    /** 语音识别（Vosk）去广告总开关，默认关闭，由用户下载模型后自行开启。 */
-    public static boolean isVoskEnabled() {
-        return Prefers.getBoolean("vosk_enabled", false);
-    }
-
-    public static void putVoskEnabled(boolean enabled) {
-        Prefers.put("vosk_enabled", enabled);
-    }
-
-    /** Vosk 中文模型目录路径（下载解压后写入）。 */
-    public static String getVoskModelPath() {
-        return Prefers.getString("vosk_model_path", "");
-    }
-
-    public static void putVoskModelPath(String path) {
-        Prefers.put("vosk_model_path", path);
-    }
-
-    /** Vosk 模型下载 URL，默认使用 Vosk 官方中文小模型。 */
-    public static String getVoskModelUrl() {
-        return Prefers.getString("vosk_model_url", "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip");
-    }
-
-    public static void putVoskModelUrl(String url) {
-        Prefers.put("vosk_model_url", url);
-    }
-
     /** 广告跳过模式：0=仅提示，1=提示+自动跳过，2=仅自动跳过（默认提示+自动跳过）。 */
     public static final int AD_SKIP_MODE_NOTICE = 0;
     public static final int AD_SKIP_MODE_NOTICE_AND_SKIP = 1;
