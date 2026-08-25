@@ -31,6 +31,7 @@ import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
 import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
+import com.fongmi.android.tv.player.extractor.YtDlp;
 
 import com.fongmi.android.tv.player.mpv.MpvMedia;
 import com.fongmi.android.tv.setting.DanmakuSetting;
@@ -38,6 +39,7 @@ import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.Task;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
@@ -70,6 +72,7 @@ public class PlayerManager implements ParseCallback {
     private WsDanmakuClient wsDanmakuClient;
     private boolean initTrack;
     private int retry;
+    private int httpRetry;
 
     public PlayerManager(Callback callback) {
         this.runnable = () -> callback.onError(ResUtil.getString(R.string.error_play_timeout));
@@ -387,6 +390,7 @@ public class PlayerManager implements ParseCallback {
     public void reset() {
         App.removeCallbacks(runnable);
         retry = 0;
+        httpRetry = 0;
     }
 
     public void clear() {
@@ -514,6 +518,7 @@ public class PlayerManager implements ParseCallback {
     public void parse(String key, Result result, boolean useParse, MediaMetadata metadata, long positionMs) {
         stopParse();
         spec = PlaySpec.fromParse(result, key, metadata);
+        httpRetry = 0;
         pendingStartPositionMs = positionMs;
         parseJob = ParseJob.create(this).start(result, useParse);
     }
@@ -760,7 +765,11 @@ public class PlayerManager implements ParseCallback {
             if (action == PlayerEngine.ErrorAction.RECOVERED) {
                 setDanmakus(spec.getDanmakus());
             } else if (action == PlayerEngine.ErrorAction.FATAL) {
-                callback.onError(engine.getErrorMessage(e));
+                if (e.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS && retryYtHttp()) {
+                    // 已触发 YouTube 直链自动重解析，等待新直链后恢复播放
+                } else {
+                    callback.onError(engine.getErrorMessage(e));
+                }
             } else if (++retry > 1) {
                 callback.onError(engine.getErrorMessage(e));
             } else {
@@ -768,4 +777,37 @@ public class PlayerManager implements ParseCallback {
             }
         }
     };
+
+    /**
+     * YouTube 直链在播放中/快进时可能过期或被 CDN 拒绝（Bad HTTP Status）。
+     * 通过 YtDlp 记录的直链->原始URL 映射反查原始网页地址，重新解析一次新直链并恢复播放。
+     */
+    private boolean retryYtHttp() {
+        if (spec == null || spec.getUrl() == null || httpRetry >= 1) return false;
+        String original = YtDlp.getOriginal(spec.getUrl());
+        if (TextUtils.isEmpty(original)) return false;
+        httpRetry++;
+        long position = player != null ? player.getCurrentPosition() : C.TIME_UNSET;
+        Task.execute(() -> {
+            try {
+                Result r = new Result();
+                r.setUrl(original);
+                String direct = Source.get().fetch(r);
+                if (TextUtils.isEmpty(direct)) throw new Exception("empty url");
+                String newUrl = direct;
+                long startPos = position;
+                App.post(() -> {
+                    if (spec == null) return;
+                    spec.setUrl(newUrl);
+                    setMediaItem(Constant.TIMEOUT_PLAY, startPos);
+                });
+            } catch (Exception ex) {
+                String msg = ex.getMessage() == null ? ex.toString() : ex.getMessage();
+                App.post(() -> {
+                    if (callback != null) callback.onError("YouTube 重试失败: " + msg);
+                });
+            }
+        });
+        return true;
+    }
 }

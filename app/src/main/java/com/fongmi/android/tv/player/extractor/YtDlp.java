@@ -16,9 +16,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 public class YtDlp implements Source.Extractor {
+
+    // 直链 -> 原始 YouTube URL。播放中出现 Bad HTTP Status（直链过期/被 CDN 拒绝）时，
+    // 播放器层可通过直链反查原始网页地址，重新调用 yt-dlp 解析新直链并恢复播放。
+    private static final ConcurrentHashMap<String, String> ORIGINALS = new ConcurrentHashMap<>();
+
+    public static String getOriginal(String directUrl) {
+        return directUrl == null ? null : ORIGINALS.get(directUrl);
+    }
+
+    public static void clearOriginals() {
+        ORIGINALS.clear();
+    }
 
     public YtDlp() {
     }
@@ -40,6 +53,7 @@ public class YtDlp implements Source.Extractor {
         if (playUrl.isEmpty()) {
             throw new Exception("yt-dlp: no playable url");
         }
+        ORIGINALS.put(playUrl, url);
         return playUrl;
     }
 
@@ -54,6 +68,7 @@ public class YtDlp implements Source.Extractor {
 
     @Override
     public void exit() {
+        ORIGINALS.clear();
     }
 
     public record Parser(String url) implements Callable<List<Episode>> {

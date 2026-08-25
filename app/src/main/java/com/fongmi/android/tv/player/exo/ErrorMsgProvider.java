@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.player.exo;
 
 import androidx.media3.common.PlaybackException;
+import androidx.media3.datasource.HttpDataSource;
 
 public class ErrorMsgProvider {
 
@@ -10,7 +11,7 @@ public class ErrorMsgProvider {
             case PlaybackException.ERROR_CODE_UNSPECIFIED -> "Unspecified";
             case PlaybackException.ERROR_CODE_FAILED_RUNTIME_CHECK -> "Failed Runtime Check";
             case PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> "IO Unspecified";
-            case PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Bad HTTP Status";
+            case PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Bad HTTP Status" + httpCode(e);
             case PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE -> "Invalid HTTP Content Type";
             case PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "Network Connection Failed";
             case PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Network Connection Timeout";
@@ -37,5 +38,16 @@ public class ErrorMsgProvider {
             case PlaybackException.ERROR_CODE_DRM_LICENSE_ACQUISITION_FAILED -> "DRM License Acquisition Failed";
             default -> e.getErrorCodeName();
         };
+    }
+
+    private String httpCode(PlaybackException e) {
+        Throwable t = e;
+        while (t != null) {
+            if (t instanceof HttpDataSource.InvalidResponseCodeException) {
+                return " (" + ((HttpDataSource.InvalidResponseCodeException) t).responseCode + ")";
+            }
+            t = t.getCause();
+        }
+        return "";
     }
 }
