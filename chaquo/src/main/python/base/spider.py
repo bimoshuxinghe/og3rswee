@@ -111,6 +111,18 @@ class Spider(metaclass=ABCMeta):
     def json2str(str):
         return json.dumps(str, ensure_ascii=False)
     
+    def decrypt_nsig(self, url, player_url=""):
+        """使用壳子内置 js2py 解密 YouTube n-sig 参数（所有线路通用）。
+        任意 YouTube 线路在播放前调用：self.decrypt_nsig(media_url, player_url)
+        """
+        from base.nsig import decrypt_nsig
+        return decrypt_nsig(url, player_url, session=getattr(self, 'session', None))
+
+    def decrypt_n(self, n_value, player_url=""):
+        """解密 YouTube n 参数值（壳子内置 js2py，所有线路通用）"""
+        from base.nsig import decrypt_n
+        return decrypt_n(n_value, player_url, session=getattr(self, 'session', None))
+
     def getProxyUrl(self, local=True):
         return f'{Proxy.getUrl(local)}?do=py'
 
