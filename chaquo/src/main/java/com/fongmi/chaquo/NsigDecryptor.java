@@ -1,6 +1,7 @@
 package com.fongmi.chaquo;
 
 import com.whl.quickjs.android.QuickJSLoader;
+import com.whl.quickjs.wrapper.JSFunction;
 import com.whl.quickjs.wrapper.JSObject;
 import com.whl.quickjs.wrapper.QuickJSContext;
 
@@ -52,10 +53,11 @@ public class NsigDecryptor {
         if (c == null || jsSource == null || funcName == null || nValue == null) return null;
         try {
             c.evaluate(jsSource);
-            Object raw = c.getProperty(c.getGlobalObject(), funcName);
-            if (!(raw instanceof JSObject)) return null;
-            JSObject fn = (JSObject) raw;
-            Object res = fn.call(nValue);
+            JSObject global = c.getGlobalObject();
+            if (global == null) return null;
+            JSFunction fn = global.getJSFunction(funcName);
+            if (fn == null) return null;
+            Object res = fn.call(new Object[]{nValue});
             if (res == null) return null;
             String out = String.valueOf(res);
             return out.isEmpty() ? null : out;
