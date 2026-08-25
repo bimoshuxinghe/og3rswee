@@ -19,6 +19,7 @@ import androidx.media3.common.Player;
 import androidx.media3.common.TrackGroup;
 import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.Tracks;
+import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
 import androidx.media3.exoplayer.DefaultLoadControl;
@@ -170,16 +171,14 @@ public class ExoUtil {
         return new DefaultRenderersFactory(App.get()) {
             @Override
             protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParameters) {
-                DefaultAudioSink.Builder builder = new DefaultAudioSink.Builder(context)
+                // Vosk 语音采集：无条件注册 AudioProcessor（与历史可用版本 1b42276 一致）。
+                // 挂 DefaultAudioSink 内部处理链，isActive() 由 Vosk 总开关控制，
+                // 不依赖模型就绪状态，PCM 一定到达 queueInput。
+                return new DefaultAudioSink.Builder(context)
                         .setEnableFloatOutput(enableFloatOutput)
-                        .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParameters);
-                AudioSink sink = builder.build();
-                if (com.fongmi.android.tv.setting.Setting.isVoskEnabled()) {
-                    // 独立旁路采集：不向播放链路注册任何 AudioProcessor，
-                    // 由 VoskAudioSink 在 handleBuffer 入口复制 PCM，播放链路完全解耦
-                    sink = new com.fongmi.android.tv.player.VoskAudioSink(sink);
-                }
-                return sink;
+                        .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParameters)
+                        .setAudioProcessors(new AudioProcessor[]{new com.fongmi.android.tv.player.VoskAudioProcessor()})
+                        .build();
             }
         }.setEnableDecoderFallback(true).setExtensionRendererMode(renderMode);
     }
