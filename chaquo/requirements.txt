@@ -6,3 +6,4 @@ PySocks
 cachetools
 pycryptodome
 beautifulsoup4
+yt-dlp
