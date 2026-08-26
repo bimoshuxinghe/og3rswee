@@ -232,11 +232,13 @@ static void *render_thread_main(void *arg) {
         }
         int do_render = g_render_request;
         g_render_request = 0;
+        /* 在互斥锁保护下读取 render context，避免 teardown 释放时产生 use-after-free */
+        mpv_render_context *rctx = g_render_ctx;
         pthread_mutex_unlock(&g_render_mutex);
 
-        if (!do_render || !g_render_ctx) continue;
+        if (!do_render || !rctx) continue;
 
-        mpv_render_context_render(g_render_ctx, NULL);
+        mpv_render_context_render(rctx, NULL);
         eglSwapBuffers(g_egl_display, g_egl_surface);
     }
 
@@ -308,6 +310,9 @@ static int setup_egl_and_render(JNIEnv *env, jobject surface) {
         ANativeWindow_release(win);
         return -1;
     }
+    /* EGL context 只能同时绑定在一个线程上；校验通过后立即解绑，
+     * 让渲染线程成为唯一持有 context 的线程，避免 Java 调用线程与渲染线程竞态。 */
+    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
     mpv_opengl_init_params gl_init = {
             .get_proc_address = (void *(*)(void *, const char *)) eglGetProcAddress,
@@ -370,10 +375,12 @@ static void teardown_egl_and_render(void) {
         pthread_join(g_render_thread, NULL);
     }
 
+    pthread_mutex_lock(&g_render_mutex);
     if (g_render_ctx) {
         mpv_render_context_free(g_render_ctx);
         g_render_ctx = NULL;
     }
+    pthread_mutex_unlock(&g_render_mutex);
 
     if (g_egl_display != EGL_NO_DISPLAY) {
         if (g_egl_surface != EGL_NO_SURFACE) {

@@ -70,6 +70,11 @@
 
 # CatVod Spiders (Native Built-in)
 -keep class com.github.catvod.spider.** { *; }
+# 防止 R8 在 full mode 下优化/移除蜘蛛合成构造器，修复类似
+# NoSuchMethodError: <init>(ILjava/lang/Object;)V in Lcom/github/catvod/spider/d;
+-keepclassmembers class com.github.catvod.spider.** { <init>(...); }
+-keepclassmembers class com.github.catvod.crawler.** { <init>(...); }
+-keepattributes InnerClasses, EnclosingMethod, Synthetic, Signature, *Annotation*
 
 # Chaquopy & PyLoader Bridge
 -keep class com.fongmi.chaquo.** { *; }
