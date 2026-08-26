@@ -155,7 +155,7 @@ static void handle_event(JNIEnv *env, mpv_event *ev) {
         case MPV_EVENT_END_FILE: {
             mpv_event_end_file *ef = (mpv_event_end_file *) ev->data;
             if (!ef) break;
-            jstring es = to_jstring(env, ef->error_string ? ef->error_string : "");
+            jstring es = to_jstring(env, mpv_error_string(ef->error));
             (*env)->CallStaticVoidMethod(env, g_mpv_class, g_ev_end_file,
                                          (jint) ef->reason, (jint) ef->error, es);
             (*env)->DeleteLocalRef(env, es);
