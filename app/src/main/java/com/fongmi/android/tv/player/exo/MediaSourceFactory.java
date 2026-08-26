@@ -17,6 +17,7 @@ import androidx.media3.datasource.cache.NoOpCacheEvictor;
 import androidx.media3.datasource.cache.SimpleCache;
 import androidx.media3.datasource.okhttp.OkHttpDataSource;
 import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.dash.DashMediaSource;
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider;
 import androidx.media3.exoplayer.rtsp.RtspMediaSource;
 import androidx.media3.exoplayer.source.ConcatenatingMediaSource2;
@@ -69,7 +70,20 @@ public class MediaSourceFactory implements MediaSource.Factory {
         String url = mediaItem.requestMetadata.mediaUri != null ? mediaItem.requestMetadata.mediaUri.toString() : "";
         if (url.contains("***") && url.contains("|||")) return createConcatenatingMediaSource(mediaItem, url);
         if (url.startsWith("rtsp://")) return createRtspMediaSource(mediaItem);
+        if (isDashUrl(url)) return createDashMediaSource(mediaItem);
         else return defaultMediaSourceFactory.createMediaSource(mediaItem);
+    }
+
+    private boolean isDashUrl(String url) {
+        String lower = url.toLowerCase();
+        return lower.contains("type=mpd") || lower.endsWith(".mpd") || lower.contains(".mpd?") || lower.contains(".mpd&");
+    }
+
+    private MediaSource createDashMediaSource(MediaItem mediaItem) {
+        MediaItem item = mediaItem.buildUpon().setMimeType(MimeTypes.APPLICATION_MPD).build();
+        return new DashMediaSource.Factory(getDataSourceFactory())
+                .setLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy(3))
+                .createMediaSource(item);
     }
 
     private MediaSource createRtspMediaSource(MediaItem mediaItem) {
