@@ -10,8 +10,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class MPVLib {
 
     static {
+        // media-kit 官方 libmpv（libmpv-android-video-build v1.1.7）
         System.loadLibrary("mpv");
-        System.loadLibrary("player");
+        // MediaKit JNI 桥接层（源码 app/src/main/cpp/mpv_bridge.c，NDK 编译生成 libmpvkit.so）
+        System.loadLibrary("mpvkit");
     }
 
     private static final List<EventObserver> OBSERVERS = new CopyOnWriteArrayList<>();

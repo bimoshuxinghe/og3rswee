@@ -22,10 +22,22 @@ android {
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode 5890
         versionName "5.8.9"
+        externalNativeBuild {
+            cmake {
+                cflags "-std=c11"
+                arguments "-DANDROID_STL=none"
+            }
+        }
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]
             }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
         }
     }
 
