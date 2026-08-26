@@ -24,8 +24,7 @@ android {
         versionName "5.8.9"
         externalNativeBuild {
             cmake {
-                cflags "-std=c11"
-                arguments "-DANDROID_STL=none"
+                arguments "-DANDROID_STL=none", "-DCMAKE_C_FLAGS=-std=c11"
             }
         }
         javaCompileOptions {
