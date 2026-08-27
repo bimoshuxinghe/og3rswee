@@ -93,6 +93,13 @@
 # 与 proguard-rules-media.pro 中的 -dontoptimize 冗余，确保生效。
 -dontoptimize
 
+# 终极兜底：完全禁用 R8 类名/方法名混淆。
+# 之前的 -keep 在某些 R8 场景下并未生效（用户实测 5.8.10 仍报
+# "No direct method <init>(ILjava/lang/Object;)V in class Lcom/github/catvod/spider/d"），
+# 直接 -dontobfuscate 保证 com.github.catvod.spider.** 包下类名永远保持 WebDav/Local 等原名。
+# 代价是 APK 体积增加 ~3-5%，但彻底根除类名混淆导致的反射失败。
+-dontobfuscate
+
 # Chaquopy & PyLoader Bridge
 -keep class com.fongmi.chaquo.** { *; }
 -keep class com.chaquo.python.** { *; }
