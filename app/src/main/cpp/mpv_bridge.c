@@ -236,10 +236,12 @@ static void *render_thread_main(void *arg) {
         mpv_render_context *rctx = g_render_ctx;
         pthread_mutex_unlock(&g_render_mutex);
 
-        if (!do_render || !rctx) continue;
+        if (!do_render || !rctx || !g_egl_display || g_egl_surface == EGL_NO_SURFACE) continue;
 
         mpv_render_context_render(rctx, NULL);
-        eglSwapBuffers(g_egl_display, g_egl_surface);
+        if (g_egl_display != EGL_NO_DISPLAY && g_egl_surface != EGL_NO_SURFACE) {
+            eglSwapBuffers(g_egl_display, g_egl_surface);
+        }
     }
 
     eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
