@@ -69,12 +69,26 @@
 -keep class com.google.zxing.** { *; }
 
 # CatVod Spiders (Native Built-in)
+# 这些类被反射加载，且源码/库中含 lambda/合成类；R8 的 shrinking/obfuscation/optimizing
+# 都会破坏蜘蛛动态加载和对话框回调，导致 NoSuchMethodError / ClassCastException。
+# 使用最保守策略：类名、成员、构造器、合成属性全部保留，并显式禁用优化。
 -keep class com.github.catvod.spider.** { *; }
-# 防止 R8 在 full mode 下优化/移除蜘蛛合成构造器，修复类似
-# NoSuchMethodError: <init>(ILjava/lang/Object;)V in Lcom/github/catvod/spider/d;
--keepclassmembers class com.github.catvod.spider.** { <init>(...); }
--keepclassmembers class com.github.catvod.crawler.** { <init>(...); }
--keepattributes InnerClasses, EnclosingMethod, Synthetic, Signature, *Annotation*
+-keepclassmembers class com.github.catvod.spider.** { *; }
+-keepnames class com.github.catvod.spider.**
+-keepclassmembernames class com.github.catvod.spider.** { *; }
+-keep class com.github.catvod.crawler.** { *; }
+-keepclassmembers class com.github.catvod.crawler.** { *; }
+-keepnames class com.github.catvod.crawler.**
+-keepclassmembernames class com.github.catvod.crawler.** { *; }
+-keep class * extends com.github.catvod.crawler.Spider { *; }
+-keepclassmembers class * extends com.github.catvod.crawler.Spider { *; }
+-keepnames class * extends com.github.catvod.crawler.Spider
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod, Synthetic, Exceptions, LineNumberTable, MethodParameters, RuntimeVisibleAnnotations, RuntimeInvisibleAnnotations
+-dontwarn com.github.catvod.spider.**
+-dontwarn com.github.catvod.crawler.**
+# 禁用 R8 优化阶段，防止合成类/内部类/lambda 被合并或接口被剥离。
+# 与 proguard-rules-media.pro 中的 -dontoptimize 冗余，确保生效。
+-dontoptimize
 
 # Chaquopy & PyLoader Bridge
 -keep class com.fongmi.chaquo.** { *; }

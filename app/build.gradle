@@ -20,8 +20,8 @@ android {
         applicationId "xinghe.tv"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode 5890
-        versionName "5.8.9"
+        versionCode 5891
+        versionName "5.8.10"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_STL=none", "-DCMAKE_C_FLAGS=-std=c11"
@@ -90,7 +90,7 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.release
             }
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
         }
     }
 
