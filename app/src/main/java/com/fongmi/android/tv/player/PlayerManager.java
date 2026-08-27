@@ -445,17 +445,28 @@ public class PlayerManager implements ParseCallback {
 
     private void switchEngineOnly() {
         PlayerEngine old = engine;
-        try { if (player != null) player.removeListener(listener); } catch (Exception e) { e.printStackTrace(); }
+        try { if (player != null) player.removeListener(listener); } catch (Throwable t) { t.printStackTrace(); }
+        PlayerEngine newEngine = null;
         try {
-            engine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
-            player = engine.getPlayer();
-            callback.onPlayerRebuild(player);
-            AdProbeManager.get().setPlayer(player);
-        } catch (Exception e) {
-            e.printStackTrace();
-            if (callback != null) callback.onError(e.getMessage());
+            newEngine = createEngine(old == null ? PlayerEngine.HARD : old.getDecode());
+        } catch (Throwable t) {
+            Log.e(TAG, "switchEngineOnly: createEngine failed", t);
+            if (callback != null) callback.onError(t.getMessage());
         }
-        try { if (old != null) old.release(); } catch (Exception e) { e.printStackTrace(); }
+        if (newEngine != null && newEngine.getPlayer() != null) {
+            engine = newEngine;
+            player = newEngine.getPlayer();
+            try {
+                callback.onPlayerRebuild(player);
+                AdProbeManager.get().setPlayer(player);
+            } catch (Throwable t) {
+                Log.e(TAG, "switchEngineOnly: post-create init failed", t);
+                if (callback != null) callback.onError(t.getMessage());
+            }
+        } else {
+            engine = old; // 保持原 engine 引用不变，避免把 null 暴露给上层
+        }
+        try { if (old != null) old.release(); } catch (Throwable t) { t.printStackTrace(); }
     }
 
     private long getSwitchPosition() {
