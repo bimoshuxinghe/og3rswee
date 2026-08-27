@@ -16,7 +16,10 @@ public class WebDialog {
 
     private WebDialog(View view) {
         this.dialog = new MaterialAlertDialogBuilder(App.activity()).setView(view).create();
-        this.dialog.setOnDismissListener((DialogInterface.OnDismissListener) view);
+        // 注意：CustomWebView 实现了 DialogInterface.OnDismissListener 才能传 view，
+        // 调用方会在调用前判空，这里不强制转换避免 R8 优化阶段产生 ClassCastException。
+        this.dialog.setOnDismissListener(view instanceof DialogInterface.OnDismissListener
+                ? (DialogInterface.OnDismissListener) view : null);
     }
 
     public static WebDialog create(View view) {

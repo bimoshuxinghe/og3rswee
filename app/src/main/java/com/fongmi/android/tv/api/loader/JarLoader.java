@@ -55,16 +55,10 @@ public class JarLoader {
         if (Thread.interrupted()) return;
         if (!Path.exists(file) || !file.setReadOnly()) return;
         String cachePath = Path.jar().getAbsolutePath();
-        ClassLoader parentLoader = new ClassLoader(App.get().getClassLoader()) {
-            @Override
-            protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-                if (name.startsWith("com.github.catvod.spider.")) {
-                    throw new ClassNotFoundException(name);
-                }
-                return super.loadClass(name, resolve);
-            }
-        };
-        DexClassLoader loader = new DexClassLoader(file.getAbsolutePath(), cachePath, cachePath, parentLoader);
+        // 跟 FongMi/tv 一致：直接用 App 的 ClassLoader，不要自定义匿名 ClassLoader。
+        // 之前的匿名 ClassLoader 在 R8 优化后会被合成成奇怪的构造器签名 (I Object)V，
+        // 导致运行时 NoSuchMethodError "in class Lcom/github/catvod/spider/d"。
+        DexClassLoader loader = new DexClassLoader(file.getAbsolutePath(), cachePath, cachePath, App.get().getClassLoader());
         invokeInit(loader);
         invokeProxy(key, loader);
         loaders.put(key, loader);

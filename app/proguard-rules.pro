@@ -28,7 +28,10 @@
 # CatVod
 -keep class com.github.catvod.Proxy { *; }
 -keep class com.github.catvod.crawler.** { *; }
--keep class * extends com.github.catvod.crawler.Spider
+-keep class * extends com.github.catvod.crawler.Spider { *; }
+-keepclassmembers class * extends com.github.catvod.crawler.Spider { *; }
+-keepnames class * extends com.github.catvod.crawler.Spider
+-keep class com.github.catvod.crawler.Spider { *; }
 
 # Jianpian
 -keep class com.p2p.** { *; }
