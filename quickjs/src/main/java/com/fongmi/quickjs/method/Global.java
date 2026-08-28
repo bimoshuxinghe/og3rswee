@@ -18,9 +18,12 @@ import com.whl.quickjs.wrapper.QuickJSContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -31,16 +34,28 @@ public class Global {
     private final ExecutorService executor;
     private final QuickJSContext ctx;
     private final Timer timer;
+    private final Map<Integer, Timeout> timers;
+    private final AtomicInteger timerId;
+    private volatile boolean destroyed;
 
     private Global(QuickJSContext ctx, ExecutorService executor) {
         this.executor = executor;
-        this.timer = new Timer();
+        this.timerId = new AtomicInteger();
+        this.timers = new ConcurrentHashMap<>();
+        this.timer = new Timer("quickjs-timer", true);
         this.ctx = ctx;
         setProperty();
     }
 
     public static Global create(QuickJSContext ctx, ExecutorService executor) {
         return new Global(ctx, executor);
+    }
+
+    public void destroy() {
+        destroyed = true;
+        for (Timeout timeout : timers.values()) timeout.cancelAndRelease();
+        timers.clear();
+        timer.cancel();
     }
 
     private void setProperty() {
@@ -56,8 +71,15 @@ public class Global {
         }
     }
 
-    private void submit(Runnable runnable) {
-        if (!executor.isShutdown()) executor.submit(runnable);
+    private boolean submit(Runnable runnable) {
+        try {
+            if (destroyed) return false;
+            if (executor.isShutdown()) return false;
+            executor.submit(runnable);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     @Keep
@@ -92,9 +114,16 @@ public class Global {
 
     @Keep
     @JSMethod
-    public Object setTimeout(JSFunction func, Integer delay) {
-        func.hold();
-        schedule(func, delay);
+    public Integer setTimeout(JSFunction func, Integer delay) {
+        Timeout timeout = createTimeout(func);
+        if (timeout == null) return 0;
+        return schedule(timeout, delay) ? timeout.id : 0;
+    }
+
+    @Keep
+    @JSMethod
+    public Object clearTimeout(Integer id) {
+        cancel(id);
         return null;
     }
 
@@ -103,8 +132,7 @@ public class Global {
     public JSObject _http(String url, JSObject options) {
         JSFunction complete = options.getJSFunction("complete");
         if (complete == null) return req(url, options);
-        Req req = Req.objectFrom(options.stringify());
-        Connect.to(url, req).enqueue(getCallback(complete, req));
+        requestAsync(url, options, complete);
         return null;
     }
 
@@ -142,6 +170,14 @@ public class Global {
 
     @Keep
     @JSMethod
+    public String desX(String mode, boolean encrypt, String input, boolean inBase64, String key, String iv, boolean outBase64) {
+        String result = Crypto.des(mode, encrypt, input, inBase64, key, iv, outBase64);
+        Logger.t("desX").d("mode:%s\nencrypt:%s\ninBase64:%s\noutBase64:%s\nkey:%s\niv:%s\ninput:\n%s\nresult:\n%s", mode, encrypt, inBase64, outBase64, key, iv, input, result);
+        return result;
+    }
+
+    @Keep
+    @JSMethod
     public String aesX(String mode, boolean encrypt, String input, boolean inBase64, String key, String iv, boolean outBase64) {
         String result = Crypto.aes(mode, encrypt, input, inBase64, key, iv, outBase64);
         Logger.t("aesX").d("mode:%s\nencrypt:%s\ninBase64:%s\noutBase64:%s\nkey:%s\niv:%s\ninput:\n%s\nresult:\n%s", mode, encrypt, inBase64, outBase64, key, iv, input, result);
@@ -156,26 +192,118 @@ public class Global {
         return result;
     }
 
+    private void requestAsync(String url, JSObject options, JSFunction complete) {
+        complete.hold();
+        try {
+            Req req = Req.objectFrom(options.stringify());
+            Connect.to(url, req).enqueue(getCallback(complete, req));
+        } catch (Throwable e) {
+            completeError(complete);
+        }
+    }
+
     private Callback getCallback(JSFunction complete, Req req) {
         return new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response res) {
-                submit(() -> complete.call(Connect.success(ctx, req, res)));
+                completeSuccess(complete, req, res);
             }
 
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                submit(() -> complete.call(Connect.error(ctx)));
+                completeError(complete);
             }
         };
     }
 
-    private void schedule(JSFunction func, int delay) {
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                submit(func::call);
+    private void completeSuccess(JSFunction complete, Req req, Response res) {
+        boolean posted = postCallback(complete, () -> complete.call(Connect.success(ctx, req, res)));
+        if (!posted) res.close();
+    }
+
+    private void completeError(JSFunction complete) {
+        postCallback(complete, () -> complete.call(Connect.error(ctx)));
+    }
+
+    private boolean postCallback(JSFunction callback, Runnable runnable) {
+        boolean posted = submit(() -> callAndRelease(callback, runnable));
+        if (!posted) callback.release();
+        return posted;
+    }
+
+    private void callAndRelease(JSFunction callback, Runnable runnable) {
+        try {
+            if (!destroyed) runnable.run();
+        } finally {
+            callback.release();
+        }
+    }
+
+    private Timeout createTimeout(JSFunction func) {
+        if (func == null || destroyed) return null;
+        Timeout timeout = new Timeout(timerId.incrementAndGet(), func);
+        timers.put(timeout.id, timeout);
+        func.hold();
+        return timeout;
+    }
+
+    private boolean schedule(Timeout timeout, Integer delay) {
+        try {
+            timer.schedule(timeout, getDelay(delay));
+            return true;
+        } catch (Throwable e) {
+            cancel(timeout.id);
+            return false;
+        }
+    }
+
+    private int getDelay(Integer delay) {
+        return Math.max(0, delay == null ? 0 : delay);
+    }
+
+    private void cancel(Integer id) {
+        if (id == null) return;
+        Timeout timeout = timers.remove(id);
+        if (timeout != null) timeout.cancelAndRelease();
+    }
+
+    private class Timeout extends TimerTask {
+
+        private final JSFunction func;
+        private final int id;
+        private volatile boolean canceled;
+        private boolean released;
+
+        private Timeout(int id, JSFunction func) {
+            this.func = func;
+            this.id = id;
+        }
+
+        @Override
+        public void run() {
+            if (submit(this::fire)) return;
+            Global.this.cancel(id);
+        }
+
+        private void fire() {
+            if (canceled) return;
+            try {
+                func.call();
+            } finally {
+                Global.this.cancel(id);
             }
-        }, delay);
+        }
+
+        private synchronized void cancelAndRelease() {
+            canceled = true;
+            cancel();
+            release();
+        }
+
+        private synchronized void release() {
+            if (released) return;
+            released = true;
+            func.release();
+        }
     }
 }
