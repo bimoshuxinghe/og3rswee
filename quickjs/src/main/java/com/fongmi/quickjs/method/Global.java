@@ -188,41 +188,12 @@ public class Global {
 
     @Keep
     @JSMethod
-    public String rsaX(String mode, String pub, boolean encrypt, String input, boolean inBase64, String key, boolean outBase64) {
+    public String rsaX(String mode, boolean pub, boolean encrypt, String input, boolean inBase64, String key, boolean outBase64) {
         String result = Crypto.rsa(mode, pub, encrypt, input, inBase64, key, outBase64);
         DebugLog.i("Crypto", "rsaX mode=" + mode + " pub=" + pub + " encrypt=" + encrypt + " inLen=" + (input == null ? 0 : input.length()) + " outLen=" + (result == null ? 0 : result.length()));
         return result;
     }
 
-    @Keep
-    @JSMethod
-    public String cdnDefendX(String code) {
-        return Crypto.cdnDefend(code);
-    }
-
-    @Keep
-    @JSMethod
-    public String desX(String mode, boolean encrypt, String input, boolean inBase64, String key, String iv, boolean outBase64) {
-        String result = Crypto.des(mode, encrypt, input, inBase64, key, iv, outBase64);
-        Logger.t("desX").d("mode:%s\nencrypt:%s\ninBase64:%s\noutBase64:%s\nkey:%s\niv:%s\ninput:\n%s\nresult:\n%s", mode, encrypt, inBase64, outBase64, key, iv, input, result);
-        return result;
-    }
-
-    @Keep
-    @JSMethod
-    public String aesX(String mode, boolean encrypt, String input, boolean inBase64, String key, String iv, boolean outBase64) {
-        String result = Crypto.aes(mode, encrypt, input, inBase64, key, iv, outBase64);
-        Logger.t("aesX").d("mode:%s\nencrypt:%s\ninBase64:%s\noutBase64:%s\nkey:%s\niv:%s\ninput:\n%s\nresult:\n%s", mode, encrypt, inBase64, outBase64, key, iv, input, result);
-        return result;
-    }
-
-    @Keep
-    @JSMethod
-    public String rsaX(String mode, boolean pub, boolean encrypt, String input, boolean inBase64, String key, boolean outBase64) {
-        String result = Crypto.rsa(mode, pub, encrypt, input, inBase64, key, outBase64);
-        Logger.t("rsaX").d("mode:%s\npub:%s\nencrypt:%s\ninBase64:%s\noutBase64:%s\nkey:\n%s\ninput:\n%s\nresult:\n%s", mode, pub, encrypt, inBase64, outBase64, key, input, result);
-        return result;
-    }
 
     private void requestAsync(String url, JSObject options, JSFunction complete) {
         complete.hold();
