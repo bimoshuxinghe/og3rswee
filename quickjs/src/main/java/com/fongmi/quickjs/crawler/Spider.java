@@ -204,14 +204,22 @@ public class Spider extends com.github.catvod.crawler.Spider {
     }
 
     private void initializeJS() throws Exception {
-        submit(() -> {
-            long start = System.currentTimeMillis();
-            createCtx();
-            createFun();
-            createObj();
-            log("js init ok: " + api + " (" + (System.currentTimeMillis() - start) + "ms)");
-            return null;
-        }).get();
+        try {
+            submit(() -> {
+                long start = System.currentTimeMillis();
+                createCtx();
+                createFun();
+                createObj();
+                log("js init ok: " + api + " (" + (System.currentTimeMillis() - start) + "ms)");
+                return null;
+            }).get(TIMEOUT, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            logw("js init TIMEOUT after " + TIMEOUT + "s: " + api);
+            throw new RuntimeException("JS init timeout: " + api);
+        } catch (Exception e) {
+            logw("js init FAILED: " + e);
+            throw e;
+        }
     }
 
     private void createCtx() {
@@ -261,10 +269,24 @@ public class Spider extends com.github.catvod.crawler.Spider {
         cat = content.contains("__jsEvalReturn");
         log("js style: " + (cat ? "__jsEvalReturn (module)" : "default/drpy"));
         if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
-        ctx.evaluateModule(content.replace(spider, global), api);
-        ctx.evaluateModule(String.format(Asset.read("js/lib/spider.js"), api));
+        try {
+            ctx.evaluateModule(content.replace(spider, global), api);
+            log("js eval user module OK");
+        } catch (Throwable e) {
+            logw("js eval user module FAILED: " + e);
+            throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
+        }
+        try {
+            String template = Asset.read("js/lib/spider.js");
+            ctx.evaluateModule(String.format(template, api));
+            log("js eval spider template OK");
+        } catch (Throwable e) {
+            logw("js eval spider template FAILED: " + e);
+            throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
+        }
         jsObject = (JSObject) ctx.getProperty(ctx.getGlobalObject(), spider);
         if (jsObject == null) {
+            logw("js object is NULL (template did not set globalThis.__JS_SPIDER__): " + api);
             throw new RuntimeException("Failed to create JS spider object from: " + api);
         }
         log("js object created: " + api);
