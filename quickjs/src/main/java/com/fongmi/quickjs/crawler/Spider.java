@@ -223,7 +223,7 @@ public class Spider extends com.github.catvod.crawler.Spider {
         }
         cat = content.contains("__jsEvalReturn");
         DebugLog.i(TAG, api + " js loaded len=" + content.length() + " style=" + (cat ? "catvod" : "default/drpy"));
-        if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
+        if (!cat && isDrpyRule(content)) content += "\ntry { globalThis.__DRPY_RULE__ = rule; } catch (e) {}";
         try {
             ctx.evaluateModule(content.replace(spider, global), api);
         } catch (Throwable e) {
