@@ -58,6 +58,25 @@ public class Spider extends com.github.catvod.crawler.Spider {
         return executor.submit(callable);
     }
 
+    /** 日志双写：Logcat + 本地调试页（DebugServer 12138 /api，通过反射写 DbgLog 缓冲）。 */
+    private static void log(String msg) {
+        Log.i(TAG, msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[JsSpider] " + msg);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void logw(String msg) {
+        Log.w(TAG, msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[JsSpider] " + msg);
+        } catch (Throwable ignored) {
+        }
+    }
+
     /**
      * 调用 JS 导出函数并等待结果。
      * 带超时保护：若 JS 端 Promise 永不 resolve（异步卡死），
@@ -68,10 +87,10 @@ public class Spider extends com.github.catvod.crawler.Spider {
         Future<CompletableFuture<Object>> future = submit(() -> Async.run(jsObject, func, args));
         try {
             Object result = future.get(TIMEOUT, TimeUnit.SECONDS).get(TIMEOUT, TimeUnit.SECONDS);
-            Log.i(TAG, "js call '" + func + "' ok: " + (result == null ? "null" : result));
+            log("js call '" + func + "' ok: " + (result == null ? "null" : result));
             return result;
         } catch (TimeoutException e) {
-            Log.w(TAG, "js call '" + func + "' timeout after " + TIMEOUT + "s, fallback");
+            logw("js call '" + func + "' timeout after " + TIMEOUT + "s, fallback");
             return fallback(func);
         } catch (Exception e) {
             Log.e(TAG, "js call '" + func + "' failed", e);
@@ -188,7 +207,7 @@ public class Spider extends com.github.catvod.crawler.Spider {
             createCtx();
             createFun();
             createObj();
-            Log.i(TAG, "js init ok: " + api + " (" + (System.currentTimeMillis() - start) + "ms)");
+            log("js init ok: " + api + " (" + (System.currentTimeMillis() - start) + "ms)");
             return null;
         }).get();
     }
@@ -233,12 +252,12 @@ public class Spider extends com.github.catvod.crawler.Spider {
         String spider = "__JS_SPIDER__";
         String global = "globalThis." + spider;
         String content = Module.get().fetch(api);
-        Log.i(TAG, "fetch js: " + api + " -> " + (content == null ? "null" : content.length() + " bytes"));
+        log("fetch js: " + api + " -> " + (content == null ? "null" : content.length() + " bytes"));
         if (content == null || content.isEmpty()) {
             throw new RuntimeException("JS spider file is empty or failed to load: " + api);
         }
         cat = content.contains("__jsEvalReturn");
-        Log.i(TAG, "js style: " + (cat ? "__jsEvalReturn (module)" : "default/drpy"));
+        log("js style: " + (cat ? "__jsEvalReturn (module)" : "default/drpy"));
         if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
         ctx.evaluateModule(content.replace(spider, global), api);
         ctx.evaluateModule(String.format(Asset.read("js/lib/spider.js"), api));
@@ -246,7 +265,7 @@ public class Spider extends com.github.catvod.crawler.Spider {
         if (jsObject == null) {
             throw new RuntimeException("Failed to create JS spider object from: " + api);
         }
-        Log.i(TAG, "js object created: " + api);
+        log("js object created: " + api);
     }
 
     private boolean isDrpyRule(String content) {
