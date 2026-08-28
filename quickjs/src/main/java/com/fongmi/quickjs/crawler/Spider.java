@@ -1,6 +1,7 @@
 package com.fongmi.quickjs.crawler;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.fongmi.quickjs.bean.Res;
 import com.fongmi.quickjs.method.Console;
@@ -25,13 +26,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import dalvik.system.DexClassLoader;
 
 public class Spider extends com.github.catvod.crawler.Spider {
+
+    private static final String TAG = "JsSpider";
+    private static final long TIMEOUT = 20;
 
     private final ExecutorService executor;
     private final DexClassLoader dex;
@@ -51,8 +58,36 @@ public class Spider extends com.github.catvod.crawler.Spider {
         return executor.submit(callable);
     }
 
+    /**
+     * 调用 JS 导出函数并等待结果。
+     * 带超时保护：若 JS 端 Promise 永不 resolve（异步卡死），
+     * 20 秒后降级返回空结果，避免单线程 executor 被永久占用
+     * 导致后续所有调用排队（表现为"init 不执行、站点无数据"）。
+     */
     private Object call(String func, Object... args) throws Exception {
-        return submit(() -> Async.run(jsObject, func, args)).get().get();
+        Future<CompletableFuture<Object>> future = submit(() -> Async.run(jsObject, func, args));
+        try {
+            Object result = future.get(TIMEOUT, TimeUnit.SECONDS).get(TIMEOUT, TimeUnit.SECONDS);
+            Log.i(TAG, "js call '" + func + "' ok: " + (result == null ? "null" : result));
+            return result;
+        } catch (TimeoutException e) {
+            Log.w(TAG, "js call '" + func + "' timeout after " + TIMEOUT + "s, fallback");
+            return fallback(func);
+        } catch (Exception e) {
+            Log.e(TAG, "js call '" + func + "' failed", e);
+            throw e;
+        }
+    }
+
+    private Object fallback(String func) {
+        if ("home".equals(func)) return "{\"class\":[],\"filters\":{}}";
+        if ("homeVod".equals(func)) return "{\"list\":[]}";
+        if ("category".equals(func)) return "{\"list\":[],\"page\":1,\"pagecount\":1}";
+        if ("search".equals(func)) return "{\"list\":[],\"page\":1,\"pagecount\":1}";
+        if ("detail".equals(func)) return "{\"list\":[]}";
+        if ("play".equals(func)) return "{\"parse\":0,\"url\":\"\"}";
+        if ("init".equals(func)) return "";
+        return null;
     }
 
     @Override
@@ -149,9 +184,11 @@ public class Spider extends com.github.catvod.crawler.Spider {
 
     private void initializeJS() throws Exception {
         submit(() -> {
+            long start = System.currentTimeMillis();
             createCtx();
             createFun();
             createObj();
+            Log.i(TAG, "js init ok: " + api + " (" + (System.currentTimeMillis() - start) + "ms)");
             return null;
         }).get();
     }
@@ -196,10 +233,12 @@ public class Spider extends com.github.catvod.crawler.Spider {
         String spider = "__JS_SPIDER__";
         String global = "globalThis." + spider;
         String content = Module.get().fetch(api);
+        Log.i(TAG, "fetch js: " + api + " -> " + (content == null ? "null" : content.length() + " bytes"));
         if (content == null || content.isEmpty()) {
             throw new RuntimeException("JS spider file is empty or failed to load: " + api);
         }
         cat = content.contains("__jsEvalReturn");
+        Log.i(TAG, "js style: " + (cat ? "__jsEvalReturn (module)" : "default/drpy"));
         if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
         ctx.evaluateModule(content.replace(spider, global), api);
         ctx.evaluateModule(String.format(Asset.read("js/lib/spider.js"), api));
@@ -207,6 +246,7 @@ public class Spider extends com.github.catvod.crawler.Spider {
         if (jsObject == null) {
             throw new RuntimeException("Failed to create JS spider object from: " + api);
         }
+        Log.i(TAG, "js object created: " + api);
     }
 
     private boolean isDrpyRule(String content) {
