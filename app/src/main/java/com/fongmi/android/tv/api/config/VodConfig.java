@@ -9,6 +9,7 @@ import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Depot;
 import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Rule;
+import com.github.catvod.utils.DebugLog;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
@@ -124,8 +125,10 @@ public class VodConfig extends BaseConfig {
         // This prevents the race condition where async clear destroys
         // newly created spiders after config reload
         BaseLoader.get().clear();
+        DebugLog.i(TAG, "load config: " + config.getUrl());
         String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
         checkJson(config, Json.parse(json).getAsJsonObject());
+        DebugLog.i(TAG, "load done: " + getSites().size() + " sites, " + getParses().size() + " parses");
     }
 
     @Override
@@ -216,6 +219,7 @@ public class VodConfig extends BaseConfig {
             }
         }
         getSites().addAll(localXbpqSites);
+        DebugLog.i(TAG, "sites loaded: " + getSites().size() + " (nas=" + localNasSites.size() + ", xbpq=" + localXbpqSites.size() + ")");
         setHome(config, getSites().isEmpty() ? new Site() : getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().get(0)), false);
     }
 

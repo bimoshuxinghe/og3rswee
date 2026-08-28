@@ -1,14 +1,12 @@
 package com.fongmi.android.tv.server;
 
-import com.fongmi.chaquo.DbgLog;
-
 import java.io.IOException;
 
 import fi.iki.elonen.NanoHTTPD;
 
 /**
  * 本地调试日志服务：监听 127.0.0.1:12138（实际绑定所有网卡，局域网也可访问）。
- * 浏览器打开 http://127.0.0.1:12138 查看 Python 解密日志（n-sig 诊断）。
+ * 浏览器打开 http://127.0.0.1:12138 查看全局调试日志（JS 源、配置、网络、加密切点）。
  * 路由：
  *   GET /      调试页（HTML，自动轮询 /api）
  *   GET /api   返回全部日志（纯文本）
@@ -28,6 +26,7 @@ public class DebugServer extends NanoHTTPD {
         instance = new DebugServer();
         try {
             instance.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+            com.github.catvod.utils.DebugLog.i("DebugServer", "debug page started at port " + PORT);
         } catch (IOException e) {
             instance = null;
             e.printStackTrace();
@@ -51,10 +50,10 @@ public class DebugServer extends NanoHTTPD {
         if (uri == null) uri = "/";
         try {
             if ("/api".equals(uri)) {
-                return newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", DbgLog.dump());
+                return newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", com.github.catvod.utils.DebugLog.dump());
             }
             if ("/clear".equals(uri)) {
-                DbgLog.clear();
+                com.github.catvod.utils.DebugLog.clear();
                 return newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", "cleared");
             }
             return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", page());
@@ -70,7 +69,7 @@ public class DebugServer extends NanoHTTPD {
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=0">
-                    <title>调试日志</title>
+                    <title>全局调试日志</title>
                     <style>
                         :root{color-scheme:light dark}*{box-sizing:border-box}body{margin:0;font-family:ui-monospace,Menlo,Consolas,'Courier New',monospace;background:#0d1117;color:#c9d1d9;font-size:13px}
                         header{position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:10px 14px;background:#161b22;border-bottom:1px solid #30363d;z-index:10;flex-wrap:wrap}
@@ -84,7 +83,7 @@ public class DebugServer extends NanoHTTPD {
                 </head>
                 <body>
                     <header>
-                        <h1>调试日志</h1>
+                        <h1>全局调试日志</h1>
                         <button class="btn" onclick="refresh()">刷新</button>
                         <button class="btn" onclick="clearLog()">清空</button>
                         <span class="badge" id="ts"></span>

@@ -84,6 +84,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
     public void onCreate() {
         super.onCreate();
         com.fongmi.chaquo.DbgLog.init(getFilesDir());
+        com.fongmi.android.tv.utils.Task.execute(() -> com.fongmi.android.tv.server.DebugServer.startServer());
         Notify.createChannel();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
@@ -91,6 +92,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
         com.fongmi.android.tv.utils.Task.execute(() ->
                 com.fongmi.android.tv.player.AdCloudSyncManager.get().syncFromCloud(null));
         registerActivityLifecycleCallbacks(this);
+        com.github.catvod.utils.DebugLog.i("App", "onCreate done, version=" + BuildConfig.VERSION_NAME);
     }
 
     @Override

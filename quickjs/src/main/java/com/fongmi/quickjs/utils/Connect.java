@@ -2,6 +2,7 @@ package com.fongmi.quickjs.utils;
 
 import com.fongmi.quickjs.bean.Req;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.DebugLog;
 import com.github.catvod.utils.Json;
 import com.github.catvod.utils.Util;
 import com.google.common.net.HttpHeaders;
@@ -31,6 +32,7 @@ public class Connect {
 
     public static JSObject success(QuickJSContext ctx, Req req, Response res) {
         try (res) {
+            DebugLog.i("Http", req.getMethod() + " " + res.request().url() + " -> " + res.code());
             JSObject jsObject = ctx.createNewJSObject();
             JSObject jsHeader = ctx.createNewJSObject();
             setHeader(ctx, res, jsHeader);
@@ -42,6 +44,7 @@ public class Connect {
             if (req.getBuffer() == 3) jsObject.setProperty("content", res.body().bytes());
             return jsObject;
         } catch (Exception e) {
+            DebugLog.e("Http", "response read failed: " + e);
             return error(ctx);
         }
     }

@@ -772,6 +772,7 @@ public class PlayerManager implements ParseCallback {
 
         @Override
         public void onPlayerError(@NonNull PlaybackException e) {
+            com.github.catvod.utils.DebugLog.e("Player", "play error url=" + spec.getUrl() + " code=" + e.errorCode + " msg=" + e.getMessage());
             PlayerEngine.ErrorAction action = engine.handleError(e);
             if (action == PlayerEngine.ErrorAction.RECOVERED) {
                 setDanmakus(spec.getDanmakus());

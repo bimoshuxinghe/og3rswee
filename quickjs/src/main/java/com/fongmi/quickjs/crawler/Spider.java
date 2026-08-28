@@ -1,7 +1,6 @@
 package com.fongmi.quickjs.crawler;
 
 import android.content.Context;
-import android.util.Log;
 
 import com.fongmi.quickjs.bean.Res;
 import com.fongmi.quickjs.method.Console;
@@ -11,6 +10,7 @@ import com.fongmi.quickjs.utils.Async;
 import com.fongmi.quickjs.utils.JSUtil;
 import com.fongmi.quickjs.utils.Module;
 import com.github.catvod.utils.Asset;
+import com.github.catvod.utils.DebugLog;
 import com.github.catvod.utils.Json;
 import com.github.catvod.utils.UriUtil;
 import com.github.catvod.utils.Util;
@@ -26,19 +26,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import dalvik.system.DexClassLoader;
 
 public class Spider extends com.github.catvod.crawler.Spider {
 
-    private static final String TAG = "JsSpider";
-    private static final long TIMEOUT = 20;
+    private static final String TAG = "Spider";
 
     private final ExecutorService executor;
     private final DexClassLoader dex;
@@ -59,61 +55,29 @@ public class Spider extends com.github.catvod.crawler.Spider {
         return executor.submit(callable);
     }
 
-    /** 日志双写：Logcat + 本地调试页（DebugServer 12138 /api，通过反射写 DbgLog 缓冲）。 */
-    private static void log(String msg) {
-        Log.i(TAG, msg);
-        try {
-            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
-            cls.getMethod("log", String.class).invoke(null, "[JsSpider] " + msg);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    private static void logw(String msg) {
-        Log.w(TAG, msg);
-        try {
-            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
-            cls.getMethod("log", String.class).invoke(null, "[JsSpider] " + msg);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /**
-     * 调用 JS 导出函数并等待结果。
-     * 带超时保护：若 JS 端 Promise 永不 resolve（异步卡死），
-     * 20 秒后降级返回空结果，避免单线程 executor 被永久占用
-     * 导致后续所有调用排队（表现为"init 不执行、站点无数据"）。
-     */
     private Object call(String func, Object... args) throws Exception {
-        Future<CompletableFuture<Object>> future = submit(() -> Async.run(jsObject, func, args));
         try {
-            Object result = future.get(TIMEOUT, TimeUnit.SECONDS).get(TIMEOUT, TimeUnit.SECONDS);
-            log("js call '" + func + "' ok: " + (result == null ? "null" : result));
+            Object result = submit(() -> Async.run(jsObject, func, args)).get().get();
+            DebugLog.i(TAG, api + " call " + func + " ok, result " + sizeOf(result));
             return result;
-        } catch (TimeoutException e) {
-            logw("js call '" + func + "' timeout after " + TIMEOUT + "s, fallback");
-            return fallback(func);
         } catch (Exception e) {
-            Log.e(TAG, "js call '" + func + "' failed", e);
+            DebugLog.e(TAG, api + " call " + func + " failed: " + e);
             throw e;
         }
     }
 
-    private Object fallback(String func) {
-        if ("home".equals(func)) return "{\"class\":[],\"filters\":{}}";
-        if ("homeVod".equals(func)) return "{\"list\":[]}";
-        if ("category".equals(func)) return "{\"list\":[],\"page\":1,\"pagecount\":1}";
-        if ("search".equals(func)) return "{\"list\":[],\"page\":1,\"pagecount\":1}";
-        if ("detail".equals(func)) return "{\"list\":[]}";
-        if ("play".equals(func)) return "{\"parse\":0,\"url\":\"\"}";
-        if ("init".equals(func)) return "";
-        return null;
+    private String sizeOf(Object result) {
+        if (result == null) return "null";
+        if (result instanceof String s) return "len=" + s.length();
+        return result.getClass().getSimpleName();
     }
 
     @Override
     public void init(Context context, String extend) throws Exception {
+        DebugLog.i(TAG, api + " init start");
         initializeJS();
         call("init", submit(() -> getExt(extend)).get());
+        DebugLog.i(TAG, api + " init done");
     }
 
     @Override
@@ -190,36 +154,27 @@ public class Spider extends com.github.catvod.crawler.Spider {
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
-            if (global != null) global.destroy();
             executor.shutdownNow();
+            DebugLog.i(TAG, api + " destroyed");
         }
     }
 
     private void releaseJS() throws Exception {
         submit(() -> {
-            jsObject.release();
-            ctx.destroy();
+            if (global != null) global.destroy();
+            if (jsObject != null) jsObject.release();
+            if (ctx != null) ctx.destroy();
             return null;
         }).get();
     }
 
     private void initializeJS() throws Exception {
-        try {
-            submit(() -> {
-                long start = System.currentTimeMillis();
-                createCtx();
-                createFun();
-                createObj();
-                log("js init ok: " + api + " (" + (System.currentTimeMillis() - start) + "ms)");
-                return null;
-            }).get(TIMEOUT, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            logw("js init TIMEOUT after " + TIMEOUT + "s: " + api);
-            throw new RuntimeException("JS init timeout: " + api);
-        } catch (Exception e) {
-            logw("js init FAILED: " + e);
-            throw e;
-        }
+        submit(() -> {
+            createCtx();
+            createFun();
+            createObj();
+            return null;
+        }).get();
     }
 
     private void createCtx() {
@@ -262,34 +217,30 @@ public class Spider extends com.github.catvod.crawler.Spider {
         String spider = "__JS_SPIDER__";
         String global = "globalThis." + spider;
         String content = Module.get().fetch(api);
-        log("fetch js: " + api + " -> " + (content == null ? "null" : content.length() + " bytes"));
         if (content == null || content.isEmpty()) {
+            DebugLog.e(TAG, api + " js file is empty or failed to load");
             throw new RuntimeException("JS spider file is empty or failed to load: " + api);
         }
         cat = content.contains("__jsEvalReturn");
-        log("js style: " + (cat ? "__jsEvalReturn (module)" : "default/drpy"));
+        DebugLog.i(TAG, api + " js loaded len=" + content.length() + " style=" + (cat ? "catvod" : "default/drpy"));
         if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
         try {
             ctx.evaluateModule(content.replace(spider, global), api);
-            log("js eval user module OK");
         } catch (Throwable e) {
-            logw("js eval user module FAILED: " + e);
+            DebugLog.e(TAG, api + " eval user module failed: " + e);
             throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
         }
         try {
-            String template = Asset.read("js/lib/spider.js");
-            ctx.evaluateModule(String.format(template, api));
-            log("js eval spider template OK");
+            ctx.evaluateModule(String.format(Asset.read("js/lib/spider.js"), api));
         } catch (Throwable e) {
-            logw("js eval spider template FAILED: " + e);
+            DebugLog.e(TAG, api + " eval spider template failed: " + e);
             throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
         }
         jsObject = (JSObject) ctx.getProperty(ctx.getGlobalObject(), spider);
         if (jsObject == null) {
-            logw("js object is NULL (template did not set globalThis.__JS_SPIDER__): " + api);
+            DebugLog.e(TAG, api + " js spider object is null");
             throw new RuntimeException("Failed to create JS spider object from: " + api);
         }
-        log("js object created: " + api);
     }
 
     private boolean isDrpyRule(String content) {

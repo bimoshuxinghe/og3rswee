@@ -1,5 +1,7 @@
 package com.fongmi.quickjs.method;
 
+import android.net.Uri;
+
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
@@ -7,9 +9,9 @@ import com.fongmi.quickjs.bean.Req;
 import com.fongmi.quickjs.utils.Connect;
 import com.fongmi.quickjs.utils.Crypto;
 import com.github.catvod.Proxy;
+import com.github.catvod.utils.DebugLog;
 import com.github.catvod.utils.Trans;
 import com.github.catvod.utils.UriUtil;
-import com.orhanobut.logger.Logger;
 import com.whl.quickjs.wrapper.JSFunction;
 import com.whl.quickjs.wrapper.JSMethod;
 import com.whl.quickjs.wrapper.JSObject;
@@ -17,7 +19,6 @@ import com.whl.quickjs.wrapper.QuickJSContext;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.URLEncoder;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -109,7 +110,7 @@ public class Global {
     @Keep
     @JSMethod
     public String js2Proxy(Boolean dynamic, Integer siteType, String siteKey, String url, JSObject headers) {
-        return getProxy(!dynamic) + String.format("&from=catvod&siteType=%s&siteKey=%s&header=%s&url=%s", siteType, siteKey, URLEncoder.encode(headers.stringify()), URLEncoder.encode(url));
+        return getProxy(!dynamic) + String.format("&from=catvod&siteType=%s&siteKey=%s&header=%s&url=%s", siteType, siteKey, Uri.encode(headers.stringify()), Uri.encode(url));
     }
 
     @Keep
@@ -144,6 +145,7 @@ public class Global {
             Response res = Connect.to(url, req).execute();
             return Connect.success(ctx, req, res);
         } catch (Exception e) {
+            DebugLog.e("Global", "req " + url + " failed: " + e);
             return Connect.error(ctx);
         }
     }
@@ -158,7 +160,37 @@ public class Global {
     @JSMethod
     public String md5X(String text) {
         String result = Crypto.md5(text);
-        Logger.t("md5X").d("text:%s\nresult:\n%s", text, result);
+        DebugLog.i("Crypto", "md5X len=" + (text == null ? 0 : text.length()) + " result=" + result);
+        return result;
+    }
+
+    @Keep
+    @JSMethod
+    public String cdnDefendX(String code) {
+        return Crypto.cdnDefend(code);
+    }
+
+    @Keep
+    @JSMethod
+    public String desX(String mode, boolean encrypt, String input, boolean inBase64, String key, String iv, boolean outBase64) {
+        String result = Crypto.des(mode, encrypt, input, inBase64, key, iv, outBase64);
+        DebugLog.i("Crypto", "desX mode=" + mode + " encrypt=" + encrypt + " inLen=" + (input == null ? 0 : input.length()) + " outLen=" + (result == null ? 0 : result.length()));
+        return result;
+    }
+
+    @Keep
+    @JSMethod
+    public String aesX(String mode, boolean encrypt, String input, boolean inBase64, String key, String iv, boolean outBase64) {
+        String result = Crypto.aes(mode, encrypt, input, inBase64, key, iv, outBase64);
+        DebugLog.i("Crypto", "aesX mode=" + mode + " encrypt=" + encrypt + " inLen=" + (input == null ? 0 : input.length()) + " outLen=" + (result == null ? 0 : result.length()));
+        return result;
+    }
+
+    @Keep
+    @JSMethod
+    public String rsaX(String mode, String pub, boolean encrypt, String input, boolean inBase64, String key, boolean outBase64) {
+        String result = Crypto.rsa(mode, pub, encrypt, input, inBase64, key, outBase64);
+        DebugLog.i("Crypto", "rsaX mode=" + mode + " pub=" + pub + " encrypt=" + encrypt + " inLen=" + (input == null ? 0 : input.length()) + " outLen=" + (result == null ? 0 : result.length()));
         return result;
     }
 
