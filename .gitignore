@@ -77,6 +77,7 @@
 *.jar
 *.war
 *.ear
+!gradle/wrapper/gradle-wrapper.jar
 **/.gradle/
 
 # C/C++/Go/Rust

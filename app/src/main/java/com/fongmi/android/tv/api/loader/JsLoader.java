@@ -22,16 +22,12 @@ public class JsLoader {
 
     public void clear() {
         spiders.values().forEach(Spider::destroy);
+        // Clear the JS module cache so updated JS sources are re-fetched
+        // after a config refresh. getSpider() does not cache SpiderNull,
+        // so a failed re-fetch will simply retry on the next call.
+        Module.get().clear();
         spiders.clear();
         recent = null;
-        // Do NOT call Module.get().clear() here.
-        // Clearing the JS module cache forces every JS file to be re-fetched
-        // from the network on the next spider creation. If the re-fetch fails
-        // (network issue, server down, etc.), the spider cannot initialize,
-        // resulting in a blank screen after config refresh.
-        // The module cache uses URL as key, so different config URLs will
-        // naturally miss the cache. Same URLs pointing to updated content
-        // will be refreshed on app restart.
     }
 
     public void setRecent(String recent) {
