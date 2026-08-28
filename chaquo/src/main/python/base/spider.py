@@ -93,14 +93,24 @@ class Spider(metaclass=ABCMeta):
         return clean
 
     def fetch(self, url, params=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects = True):
-        rsp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
-        rsp.encoding = 'utf-8'
-        return rsp
+        try:
+            rsp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
+            rsp.encoding = 'utf-8'
+            self.log('[fetch] %s -> HTTP %s' % (url[:120], rsp.status_code))
+            return rsp
+        except Exception as e:
+            self.log('[fetch] FAIL %s -> %s' % (url[:120], e))
+            raise
 
     def post(self, url, params=None, data=None, json=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects = True):
-        rsp = requests.post(url, params=params, data=data, json=json, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
-        rsp.encoding = 'utf-8'
-        return rsp
+        try:
+            rsp = requests.post(url, params=params, data=data, json=json, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
+            rsp.encoding = 'utf-8'
+            self.log('[post] %s -> HTTP %s' % (url[:120], rsp.status_code))
+            return rsp
+        except Exception as e:
+            self.log('[post] FAIL %s -> %s' % (url[:120], e))
+            raise
 
     def html(self, content):
         return etree.HTML(content)
@@ -127,10 +137,17 @@ class Spider(metaclass=ABCMeta):
         return f'{Proxy.getUrl(local)}?do=py'
 
     def log(self, msg):
+        # 双写：print（chaquopy stdout -> Logcat）+ DbgLog（本地调试页 127.0.0.1:12138 可见）
         if isinstance(msg, dict) or isinstance(msg, list):
-            print(json.dumps(msg, ensure_ascii=False))
+            msg = json.dumps(msg, ensure_ascii=False)
         else:
-            print(f'{msg}')
+            msg = f'{msg}'
+        print(msg)
+        try:
+            from java import jclass
+            jclass('com.fongmi.chaquo.DbgLog').log(msg)
+        except Exception:
+            pass
 
     def getCache(self, key):
         value = self.fetch(f'http://127.0.0.1:{Proxy.getPort()}/cache?do=get&key={key}', timeout=5).text
