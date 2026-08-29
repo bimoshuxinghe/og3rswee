@@ -1,0 +1,25 @@
+apply plugin: 'com.android.library'
+
+android {
+    // 注意：源码仍放在 androidx/media3/common/ 目录下，编译出的类包名保持 androidx.media3.common.MediaTitle；
+    // namespace 用独立值以避免与官方 media3-common 构件（同名包）在 AGP 中冲突。
+    namespace 'androidx.media3.common.fongmi'
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 28
+        consumerProguardFiles 'proguard-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // FongMi 自定义类（MediaTitle）编译在 androidx.media3.common 包下，
+    // 依赖官方 Media3 1.11.0 的 common 库（运行时由 app 提供的 media3-common 满足）。
+    api libs.media3.common
+}

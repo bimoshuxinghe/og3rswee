@@ -134,7 +134,27 @@ dependencies {
     implementation libs.appcompat
     implementation libs.lifecycle.service
     implementation libs.media
-    implementation libs.bundles.media3
+    // B 方案：直接使用官方 Maven androidx.media3:*:1.11.0（不再经 vendored fork 替换）
+    implementation libs.media3.common
+    implementation libs.media3.container
+    implementation libs.media3.database
+    implementation libs.media3.datasource
+    implementation libs.media3.datasource.okhttp
+    implementation libs.media3.datasource.rtmp
+    implementation libs.media3.decoder
+    implementation libs.media3.effect
+    implementation libs.media3.exoplayer
+    implementation libs.media3.exoplayer.dash
+    implementation libs.media3.exoplayer.hls
+    implementation libs.media3.exoplayer.rtsp
+    implementation libs.media3.exoplayer.smoothstreaming
+    implementation libs.media3.extractor
+    implementation libs.media3.session
+    implementation libs.media3.ui
+    implementation libs.media3.decoder.ffmpeg
+    // FongMi 自定义扩展（编译在官方 1.11.0 之上）
+    implementation project(':media3-extras')
+    implementation project(':media3-danmaku')
     implementation libs.palette
     implementation libs.recyclerview
     implementation libs.room.runtime

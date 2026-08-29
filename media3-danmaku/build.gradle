@@ -1,0 +1,27 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'androidx.media3.ui.danmaku'
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 28
+        consumerProguardFiles 'proguard-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // FongMi 自定义弹幕模块：依赖官方 Media3 1.11.0 标准库（不再依赖 vendored fork）
+    api libs.media3.common
+    api libs.media3.datasource
+    api libs.media3.datasource.okhttp
+    implementation libs.okhttp
+    implementation libs.brotli
+    implementation libs.annotation
+}

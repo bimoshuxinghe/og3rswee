@@ -26,35 +26,10 @@ dependencyResolutionManagement {
     }
 }
 
-// Include FongMi's custom Media3 fork as a composite build.
-// This substitutes all androidx.media3:* Maven coordinates with the local source modules,
-// enabling the custom MediaTitle / Danmaku extensions to be compiled in.
-def mediaDir = new File(rootDir, 'media')
-if (mediaDir.exists()) {
-    includeBuild(mediaDir) {
-        dependencySubstitution {
-            substitute module('androidx.media3:media3-common') using project(':lib-common')
-            // substitute module('androidx.media3:media3-common-ktx') using project(':lib-common-ktx')
-            substitute module('androidx.media3:media3-container') using project(':lib-container')
-            substitute module('androidx.media3:media3-session') using project(':lib-session')
-            substitute module('androidx.media3:media3-exoplayer') using project(':lib-exoplayer')
-            substitute module('androidx.media3:media3-exoplayer-dash') using project(':lib-exoplayer-dash')
-            substitute module('androidx.media3:media3-exoplayer-hls') using project(':lib-exoplayer-hls')
-            substitute module('androidx.media3:media3-exoplayer-rtsp') using project(':lib-exoplayer-rtsp')
-            substitute module('androidx.media3:media3-exoplayer-smoothstreaming') using project(':lib-exoplayer-smoothstreaming')
-            substitute module('androidx.media3:media3-ui') using project(':lib-ui')
-            substitute module('androidx.media3:media3-ui-danmaku') using project(':lib-ui-danmaku')
-            substitute module('androidx.media3:media3-database') using project(':lib-database')
-            substitute module('androidx.media3:media3-datasource') using project(':lib-datasource')
-            substitute module('androidx.media3:media3-datasource-okhttp') using project(':lib-datasource-okhttp')
-            substitute module('androidx.media3:media3-datasource-rtmp') using project(':lib-datasource-rtmp')
-            substitute module('androidx.media3:media3-decoder') using project(':lib-decoder')
-            substitute module('androidx.media3:media3-decoder-ffmpeg') using project(':lib-decoder-ffmpeg')
-            substitute module('androidx.media3:media3-extractor') using project(':lib-extractor')
-            substitute module('androidx.media3:media3-effect') using project(':lib-effect')
-        }
-    }
-}
+// B 方案：弃用 vendored Media3 fork（/media 复合构建），改用官方 Maven androidx.media3:*:1.11.0。
+// FongMi 的自定义扩展（MediaTitle / 弹幕）提取为独立本地模块，编译在官方 1.11.0 之上。
+include ':media3-extras'   // androidx.media3.common.MediaTitle
+include ':media3-danmaku'  // androidx.media3.ui.danmaku.*
 
 include ':app'
 include ':catvod'
