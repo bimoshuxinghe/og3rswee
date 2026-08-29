@@ -249,6 +249,8 @@ public class AutoSiteHelper {
                         }
                     }
                 }
+                // 合并配置前：再做一轮基于 HTML 的 CTA 兜底清洗（不依赖 AI 判断，防止 AI 不听话）
+                preSanitizeStep3(step3, detailHtml);
                 // 合并配置
                 postStatus(listener, "正在生成配置...");
                 // 后置CTA清洗：程序层面检测并移除假线路/假选集（不依赖AI判断）
@@ -715,18 +717,70 @@ public class AutoSiteHelper {
         return n;
     }
 
-    /** 判断 AI 给出的线路字段是否【可信的真线路】，三重校验：
-     *  ① 线路数组非空；② 线路数组/线路标题都不含 CTA 动作词；③ 选择器在页面里能匹配到 ≥2 个元素（数量否决）。
-     *  三者全过才认为"详情页自己就有真线路"，不必清空、也不必强依赖播放页结果。 */
+    /** 判断 AI 给出的线路字段是否【可信的真线路】，多重校验：
+     *  ① 线路数组非空；② 线路数组/线路标题都不含 CTA 动作词；③ 选择器不是明显的 CTA 按钮选择器；
+     *  ④ 选择器在页面里能匹配到 ≥2 个元素，或至少是真线路容器特征（数量否决 + 特征兜底）。
+     *  只有全过才认为"详情页自己就有真线路"，不必清空、也不必强依赖播放页结果。 */
     private boolean hasRealLines(JsonObject step3, String html) {
         String arr = getString(step3, "线路数组");
         if (TextUtils.isEmpty(arr)) arr = getString(step3, "线路");
         if (TextUtils.isEmpty(arr)) return false;
         if (isCtaText(arr)) return false;                                   // 值里含"全部播放"等动作词 → 假线路
+        if (isLineSelectorLikelyCta(arr)) return false;                      // 选择器明显指向 CTA 按钮 → 假线路
         String title = getString(step3, "线路标题");
         if (isCtaText(title)) return false;
         int hits = countSelectorHits(html, arr);
-        return hits < 0 || hits >= 2;   // 数不出来(-1)时放行，避免误杀，交给 XBPQ 运行时处理
+        if (hits == 1) return false;                                         // 只匹配到1个元素 → 100%不是线路
+        if (hits >= 2) return true;                                          // 能选出 ≥2 个，大概率是真线路
+        // hits == -1（选择器复杂/解析不了）时，只有选择器带明显真线路特征才放行
+        return isLineSelectorLikelyReal(arr);
+    }
+
+    /** 在 mergeConfig 之前对 step3 做一次基于 HTML 的兜底清洗。
+     *  与 sanitizeCtaLines 互补：sanitizeCtaLines 只有最终 JSON，没有原始 HTML；
+     *  这里用 countSelectorHits + 选择器特征分析，强行把 AI 不听话塞进来的 CTA 按钮/假选集清掉。
+     *  ⚠️ 处理完直接修改传入的 step3。 */
+    private void preSanitizeStep3(JsonObject step3, String html) {
+        if (step3 == null) return;
+        String lineArr = getString(step3, "线路数组");
+        if (!TextUtils.isEmpty(lineArr)) {
+            // 线路选择器明显指向 CTA 按钮 → 清掉所有播放字段
+            if (isLineSelectorLikelyCta(lineArr)) {
+                removePlayFields(step3);
+                return;
+            }
+            int hits = countSelectorHits(html, lineArr);
+            if (hits == 1) {                                                   // 只匹配1个元素，不可能是线路
+                removePlayFields(step3);
+                return;
+            }
+            if (hits == -1 && !isLineSelectorLikelyReal(lineArr)) {            // 解析不了且不像真线路 → 按假线路处理
+                removePlayFields(step3);
+                return;
+            }
+        }
+        // 线路标题值本身是 CTA 文字（AI 把按钮文本当线路名）
+        if (isCtaText(getString(step3, "线路标题"))) {
+            removePlayFields(step3);
+            return;
+        }
+        // 播放列表只匹配到1个元素，且播放标题是片名 → 清掉选集（避免把片名当集数显示）
+        String epList = getString(step3, "播放列表");
+        if (!TextUtils.isEmpty(epList) && !isSelectorLike(epList)) {
+            int epHits = countSelectorHits(html, epList);
+            if (epHits == 1) {
+                String epTitle = getString(step3, "播放标题");
+                if (!isSelectorLike(epTitle) && epTitle.length() > 2) {
+                    java.util.regex.Pattern realEp = java.util.regex.Pattern.compile(
+                            "第\\d+集|第\\d+话|EP\\d+|^\\d+$|正片|HD|预告|番外|上$|下$|全集");
+                    if (!realEp.matcher(epTitle).find()) {
+                        step3.remove("播放列表");
+                        step3.remove("播放标题");
+                        step3.remove("播放链接");
+                    }
+                }
+            }
+        }
     }
 
     /** 区分「真线路」与「CTA按钮」的核心判定说明，buildPrompt3 与 buildPrompt4 共用。 */
@@ -989,8 +1043,10 @@ public class AutoSiteHelper {
                 + "  · \"解析\": 解析接口URL（页面里若有形如 xxx.php?url= 的解析接口则填，否则留空）\n\n"
                 + "===== 输出前自检（必做）=====\n"
                 + "  1. 我的「线路数组」能选出 ≥2 个元素吗？只有1个 → 废弃，改走分支B/C！\n"
+                + "     我的「线路数组」选择器含 btn / play-now / btn-primary 这种动作按钮 class 吗？含 → 废弃，这是CTA！\n"
                 + "  2. 我的「线路标题」取出来的文字，念\"这个视频\"通顺吗？通顺 → 是CTA，废弃！\n"
-                + "  3. 我的「播放列表」取出来的是「第X集」这种吗？是「全部播放/影片名」→ 错了！\n\n"
+                + "  3. 我的「播放列表」能选出 ≥2 个元素吗？只有1个且不是单集电影 → 废弃！\n"
+                + "  4. 我的「播放标题」取出来的是「第X集/正片/HD/EP1」吗？是「影片名/全部播放」→ 错了！\n\n"
                 + "页面: " + url + "\n\n"
                 + "详情页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
@@ -1038,8 +1094,10 @@ public class AutoSiteHelper {
                 + "  · 有些站的线路 tab 是 <button> 且【没有 href】（用 JS 切换面板），这完全正常，照常输出\n\n"
                 + "===== 输出前自检 =====\n"
                 + "  1. 线路数组能选出 ≥2 个元素吗？只有1个 → 不是线路，废弃！\n"
+                + "     线路数组选择器含 btn / play-now / btn-primary 这种动作按钮 class 吗？含 → 废弃！\n"
                 + "  2. 线路标题取出来的文字，念\"这个视频\"通顺吗？通顺 → 是 CTA，废弃！\n"
-                + "  3. 播放列表取出来的是「第X集/正片/HD」吗？是「全部播放/影片名」→ 错了！\n\n"
+                + "  3. 播放列表能选出 ≥2 个元素吗？只有1个且不是单集电影 → 废弃！\n"
+                + "  4. 播放标题取出来的是「第X集/正片/HD/EP1」吗？是「影片名/全部播放」→ 错了！\n\n"
                 + "页面: " + url + "\n\n"
                 + "播放页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
@@ -1105,6 +1163,7 @@ public class AutoSiteHelper {
      *  1. 线路数组/线路标题 的值含CTA关键词 → 删掉所有播放相关字段
      *  1.5 线路选择器匹配CTA按钮典型class模式(btn/play-now/cloud-play等) → 删掉
      *  1.6 线路标题值含CTA文字（AI把按钮文本当线路名）→ 删掉
+     *  1.7 线路选择器经 isLineSelectorLikelyCta 判定为 CTA 按钮选择器 → 删掉
      *  2. 播放列表/播放标题 的值不含"第X集/EP/集"格式且看起来像片名 → 删掉选集字段 */
     private String sanitizeCtaLines(String configJson) {
         try {
@@ -1136,6 +1195,16 @@ public class AutoSiteHelper {
                                 + "|play-now|play-btn|btn-play|cloud-play|now-play|video-play",
                         java.util.regex.Pattern.CASE_INSENSITIVE);
                 if (ctaSelPat.matcher(sel).find()) {
+                    for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
+                        ext.remove(rk);
+                    }
+                    dirty = true;
+                }
+            }
+            // 规则1.7：用更全面的特征分析判断线路选择器是否指向 CTA 按钮
+            if (!dirty && ext.has("线路数组")) {
+                String sel = ext.get("线路数组").getAsString();
+                if (isLineSelectorLikelyCta(sel)) {
                     for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
                         ext.remove(rk);
                     }
@@ -1189,6 +1258,43 @@ public class AutoSiteHelper {
         String s = v.trim();
         return s.startsWith("p:") || s.startsWith("j:") || s.contains("&&")
                 || s.contains("分割(") || s.contains("->") || s.startsWith("/");
+    }
+
+    /** 清空 step3/ext 中所有与播放/线路相关的字段 */
+    private void removePlayFields(JsonObject obj) {
+        if (obj == null) return;
+        for (String k : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "播放页URL"}) {
+            obj.remove(k);
+        }
+    }
+
+    /** 判断一个【线路数组】选择器是否明显指向 CTA 动作按钮（而不是真线路 tab）。
+     *  典型错误：p:a.btn-play / p:button.play-now / p:a[href="#"]。
+     *  同时带真线路特征和 CTA 特征时，以真线路特征优先（不误判）。 */
+    private boolean isLineSelectorLikelyCta(String selector) {
+        if (TextUtils.isEmpty(selector)) return false;
+        if (!isSelectorLike(selector)) return false;   // 不是选择器就不判
+        String s = selector.toLowerCase();
+        // 真线路特征class/属性，只要沾边就优先认为是真线路容器
+        String[] realMarks = {"source", "tab", "tabs", "chip", "chips", "line", "from", "play-from", "playlist-from",
+                "play-source", "source-tab", "source-id", "nav-item", "panel", "episode", "ep-list", "play-list"};
+        for (String m : realMarks) if (s.contains(m)) return false;
+        // CTA 按钮特征class/属性
+        String[] ctaMarks = {"btn", "play-now", "play-btn", "btn-play", "cloud-play", "now-play", "video-play",
+                "btn-primary", "btn-danger", "btn-accent", "btn-important", "btn-large", "btn-block"};
+        for (String m : ctaMarks) if (s.contains(m)) return true;
+        return false;
+    }
+
+    /** 判断一个【线路数组】选择器是否带有明显的真线路容器特征（class/属性）。 */
+    private boolean isLineSelectorLikelyReal(String selector) {
+        if (TextUtils.isEmpty(selector)) return false;
+        if (!isSelectorLike(selector)) return false;
+        String s = selector.toLowerCase();
+        String[] realMarks = {"source", "tab", "tabs", "chip", "chips", "line", "from", "play-from", "playlist-from",
+                "play-source", "source-tab", "source-id", "nav-item", "panel", "episode", "ep-list", "play-list"};
+        for (String m : realMarks) if (s.contains(m)) return true;
+        return false;
     }
 
     /** 取 url 的 scheme+host，用于给相对链接补全绝对路径 */
