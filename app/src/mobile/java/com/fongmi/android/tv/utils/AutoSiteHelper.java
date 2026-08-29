@@ -102,11 +102,15 @@ public class AutoSiteHelper {
                 // 兜底：若首页导航抓不到任何真实分类链接，则让 XBPQ 自动从首页解析（参考悟空/冠峰：仅分类url=首页）
                 if (TextUtils.isEmpty(cateUrlTpl)) cateUrlTpl = schemeHost(url);
                 // 用分类url模板 + 第一个分类ID 拼出真实分类页 URL，供 Step2 分析影片列表规则
+                // 【分类多路径】若AI识别出"首页特例"（第一页URL与后续页结构不同），
+                //  优先用首页特例拼样本页，否则可能抓到 404 或空列表
+                String firstPageTpl = getString(step1, "首页特例");
                 String sampleCateUrl = url;
                 if (!TextUtils.isEmpty(cateUrlTpl) && !TextUtils.isEmpty(cate)) {
                     String[] parts = cate.split("#")[0].split("\\$");
                     if (parts.length >= 2) {
-                        sampleCateUrl = buildSampleCateUrl(cateUrlTpl, parts[1]);
+                        String tpl = TextUtils.isEmpty(firstPageTpl) ? cateUrlTpl : firstPageTpl;
+                        sampleCateUrl = buildSampleCateUrl(tpl, parts[1]);
                     }
                 }
                 if (TextUtils.isEmpty(sampleCateUrl)) sampleCateUrl = url;
@@ -115,7 +119,7 @@ public class AutoSiteHelper {
                 String cateHtml = fetchHtml(sampleCateUrl, 24000);
                 // 兜底：若分类页是验证码/风控页或链接不对（内容里没有真实影片详情链接），
                 // 退回用首页 HTML 给 Step2 分析。枫叶4K(cd-zj.com)等站分类页有验证码，但首页推荐列表正常，必须用首页训练列表规则。
-                if (!containsVodLink(cateHtml)) {
+                if (!containsVodLink(cateHtml) && !looksLikeListPage(cateHtml)) {
                     postStatus(listener, "分类页无数据/被风控，使用首页分析...");
                     cateHtml = homeHtml;
                     sampleCateUrl = url;
@@ -138,12 +142,17 @@ public class AutoSiteHelper {
                 //    Lv2: 程序在HTML里扫到CTA关键词 → 正则提取href（不依赖AI判断）
                 //    Lv3: 【新增】模糊匹配——HTML含"播放"且AI给的线路选择器看起来像CTA → 强制覆盖
                 String playPageUrl = getString(step3, "播放页URL");
-                // 精确CTA词表（用于判定+提取）
-                boolean hasCtaInHtml = detailHtml.contains("立即播放") || detailHtml.contains("立刻播放")
-                        || detailHtml.contains("立即观看") || detailHtml.contains("开始播放")
-                        || detailHtml.contains("在线播放") || detailHtml.contains("直接播放")
-                        || detailHtml.contains("免费观看") || detailHtml.contains("点击播放")
-                        || detailHtml.contains("网盘播放") || detailHtml.contains("播放全集");
+                // CTA 判定【双通道】任一命中即算：
+                //   ① 形状匹配（主）：页面里有形如「XX播放/XX观看」文字的 <a>/<button>
+                //      —— 按【元素级】统计去重文字种类，比整页文本匹配精确得多，
+                //         不会把 "播放列表" 这类区块标题或 SEO 外链算进来
+                //   ② 词表匹配（兜底）：CTA_WORDS 里已枚举的明确动作词（与 AI 文案共用同一份）
+                //  ⚠️ 判为 CTA 只意味着【值得跟进播放页】，【不会】因此清空真线路——
+                //     清空与否由 hasReal 单独把关（大量站点 CTA 与真线路本来就是共存的）
+                int ctaShapeKinds = countCtaShapeHits(detailHtml);
+                boolean hasCtaInHtml = ctaShapeKinds >= 1 || CTA_PATTERN.matcher(detailHtml).find();
+                // 【关键】详情页自己是否已经给出了【可信的真线路】（三重校验：非空+无动作词+匹配数≥2）
+                boolean hasReal = hasRealLines(step3, detailHtml);
                 // 模糊CTA检测：页面中任何位置出现含"播放"二字的独立按钮/链接文字
                 // 匹配模式：<a...>xxx播放xxx</a> 或 <button...>xxx播放xxx</button> 或 <span class="btn...">xxx播放</span>
                 boolean hasFuzzyCta = false;
@@ -168,48 +177,50 @@ public class AutoSiteHelper {
                     playPageUrl = schemeHost(url) + (playPageUrl.startsWith("/") ? "" : "/") + playPageUrl;
                 }
                 if (!TextUtils.isEmpty(playPageUrl)) {
-                    postStatus(listener, "正在跟进播放页获取真实线路...");
+                    postStatus(listener, "正在跟进播放页校验线路...");
                     String playPageHtml = fetchHtml(playPageUrl, 40000);
                     if (playPageHtml.length() > 200 && (containsVodLink(playPageHtml) || playPageHtml.contains("第") || playPageHtml.contains("集") || playPageHtml.contains("episode"))) {
                         postStatus(listener, "AI 分析播放页真实线路与选集...");
                         JsonObject step4 = callAi(buildPrompt4(playPageHtml, playPageUrl));
-                        // 用播放页的线路/集数覆盖掉详情页可能残留的CTA假结果
-                        String[] playKeys = {"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
-                        for (String k : playKeys) {
-                            String v = getString(step4, k);
-                            if (!TextUtils.isEmpty(v)) step3.addProperty(k, v);
+                        // ⚠️ 播放页结果【同样要过可信校验】——播放页里也可能残留「全部播放」这类动作按钮。
+                        //   只有播放页给出了可信真线路（step4Real），才用它覆盖详情页结果；
+                        //   否则若详情页已有真线路就保留，避免"越覆盖越差"。
+                        boolean step4Real = hasRealLines(step4, playPageHtml);
+                        if (step4Real || !hasReal) {
+                            String[] playKeys = {"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接", "解析"};
+                            for (String k : playKeys) {
+                                String v = getString(step4, k);
+                                if (!TextUtils.isEmpty(v)) step3.addProperty(k, v);
+                            }
                         }
                     }
-                } else if (hasCtaInHtml || hasFuzzyCta) {
-                    // 详情页有CTA但始终拿不到真实播放页链接：清掉step3里残留的假线路/集数，
-                    // 避免把"立即播放/开始播放"按钮当成一条线路显示在详情页
+                } else if ((hasCtaInHtml || hasFuzzyCta) && !hasReal) {
+                    // 详情页有CTA、自己又没有真线路、且拿不到播放页链接 → 清掉假线路/假集数，
+                    // 避免把「立即播放/全部播放」这种动作按钮当成一条线路显示出来。
+                    // ⚠️ hasReal 为 true 时不清——很多站 CTA 与真线路本来就是共存的。
                     for (String bad : new String[]{"线路数组", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
                         step3.remove(bad);
                     }
-                    postStatus(listener, "检测到CTA按钮但无真实播放页链接，已跳过假线路");
+                    postStatus(listener, "检测到CTA按钮但无真实线路，已清除假线路");
                 }
                 // 【Lv3 强制CTA覆盖】AI可能给了播放页URL但也给了假线路选择器，
                 // 或者AI完全忽略了CTA直接输出了假线路。只要检测到CTA且step3的线路字段看起来像单元素CTA，
                 // 且还没被播放页结果覆盖过 → 再次尝试提取+跟进（防御性兜底）
-                if ((hasCtaInHtml || hasFuzzyCta) && TextUtils.isEmpty(playPageUrl)) {
+                // ⚠️ 已存在可信真线路时不再走强制覆盖（CTA 与真线路可以共存，覆盖反而可能变差）
+                if ((hasCtaInHtml || hasFuzzyCta) && TextUtils.isEmpty(playPageUrl) && !hasReal) {
                     String lineVal = getString(step3, "线路数组");
                     String lineTitle = getString(step3, "线路标题");
-                    // 如果AI给的线路值看起来像单个CTA按钮的选择器（短、含btn/play/now等关键词）
+                    // 如果AI给的线路值看起来像单个CTA按钮的选择器（短、含典型CTA class）
                     boolean looksLikeCtaSelector = false;
                     if (!TextUtils.isEmpty(lineVal) && lineVal.length() < 60) {
                         java.util.regex.Pattern ctaSelPat = java.util.regex.Pattern.compile(
-                                "btn|play.*now|cloud.*play|now.*play|video.*play|important",
+                                "btn-important|btn-large|btn-primary|btn-danger|btn-block"
+                                        + "|play-now|play-btn|btn-play|cloud-play|now-play|video-play",
                                 java.util.regex.Pattern.CASE_INSENSITIVE);
                         looksLikeCtaSelector = ctaSelPat.matcher(lineVal).find();
                     }
                     // 或者线路标题的值含CTA词（AI把按钮文字当成了线路名）
-                    boolean titleIsCta = false;
-                    if (!TextUtils.isEmpty(lineTitle)) {
-                        java.util.regex.Pattern ctaTxtPat = java.util.regex.Pattern.compile(
-                                "直接播放|立即播放|立刻播放|立即观看|开始播放|在线播放|免费观看|点击播放",
-                                java.util.regex.Pattern.CASE_INSENSITIVE);
-                        titleIsCta = ctaTxtPat.matcher(lineTitle).find();
-                    }
+                    boolean titleIsCta = !TextUtils.isEmpty(lineTitle) && CTA_PATTERN.matcher(lineTitle).find();
                     if (looksLikeCtaSelector || titleIsCta) {
                         // 尝试最后一次提取CTA href并跟进
                         String fallbackUrl = extractPlayButtonHref(detailHtml);
@@ -241,7 +252,7 @@ public class AutoSiteHelper {
                 // 合并配置
                 postStatus(listener, "正在生成配置...");
                 // 后置CTA清洗：程序层面检测并移除假线路/假选集（不依赖AI判断）
-                String config = sanitizeCtaLines(mergeConfig(url, siteName, cate, cateUrlTpl, step2, step3));
+                String config = sanitizeCtaLines(mergeConfig(url, siteName, cate, cateUrlTpl, step1, step2, step3));
                 HANDLER.post(() -> callback.onSuccess(config));
             } catch (Exception e) {
                 postError(callback, e.getMessage());
@@ -291,11 +302,9 @@ public class AutoSiteHelper {
         java.util.regex.Pattern aPat = java.util.regex.Pattern.compile(
                 "<a\\b([^>]*)href=[\"']([^\"']+)[\"']([^>]*)>(.*?)</a>",
                 java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL);
-        java.util.regex.Pattern ctaPat = java.util.regex.Pattern.compile(
-                "直接播放|立即播放|立即观看|开始播放|在线播放|免费观看|点击播放|网盘播放|播放全集",
-                java.util.regex.Pattern.CASE_INSENSITIVE);
         java.util.regex.Pattern btnClass = java.util.regex.Pattern.compile(
-                "class=[\"'][^\"]*(?:play-btn|btn-play|play-now|cloud-play|video-play|btn-important|btn-large)[^\"]*[\"']",
+                "class=[\"'][^\"]*(?:play-btn|btn-play|play-now|cloud-play|video-play|btn-important|btn-large"
+                        + "|btn-primary|btn-danger|btn-accent)[^\"]*[\"']",
                 java.util.regex.Pattern.CASE_INSENSITIVE);
         java.util.regex.Matcher m = aPat.matcher(html);
         String bestHref = "";
@@ -304,7 +313,8 @@ public class AutoSiteHelper {
             String attrs = m.group(1) + " " + m.group(3);
             String href = m.group(2).trim();
             String inner = m.group(4).replaceAll("<[^>]+>", "").trim();
-            if (!ctaPat.matcher(inner).find()) continue;
+            // 形状匹配(XX播放) 或 词表命中，任一即认为是 CTA 按钮
+            if (!isCtaText(inner)) continue;
             if (href.equals("#") || href.isEmpty()) continue;
             int score = 0;
             if (btnClass.matcher(attrs).find()) score += 10;
@@ -319,6 +329,36 @@ public class AutoSiteHelper {
     private boolean containsVodLink(String html) {
         if (TextUtils.isEmpty(html)) return false;
         return html.contains("/detail/") || html.contains("/play/") || html.contains("/vod/") || html.contains("/show/");
+    }
+
+    /** 【通用列表页判定】原 containsVodLink 只认 /detail/ /play/ /vod/ /show/ 四种路径，
+     *  对自研站（如 soujunet.com 的详情链接形如 /souju/18bnsah.html）会全部 miss，
+     *  导致程序误判"分类页无数据"而回退去分析首页，影片列表规则因此学错。
+     *  补充一条与框架无关的判定：统计"同一目录下形如 /dir/{id}.html 的链接"出现次数，≥3 即认为是列表页。
+     *  （分类目录 category/type/list/show/vod/index/page/tag/search/topic/actor 一律排除，
+     *   那些是目录页不是详情页。） */
+    private boolean looksLikeListPage(String html) {
+        if (TextUtils.isEmpty(html)) return false;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "href=[\"']([^\"'#]+)[\"']", java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.Map<String, Integer> shape = new java.util.HashMap<>();
+        java.util.regex.Matcher m = p.matcher(html);
+        while (m.find()) {
+            String href = m.group(1).trim();
+            if (!href.startsWith("/") && !href.startsWith("http")) continue;
+            int q = href.indexOf('?');
+            if (q >= 0) href = href.substring(0, q);
+            if (!(href.endsWith(".html") || href.endsWith(".htm"))) continue;
+            String[] segs = href.split("/");
+            if (segs.length < 3) continue;                       // 至少 /dir/xxx.html
+            String dir = segs[segs.length - 2];
+            if (dir.isEmpty()) continue;
+            if (dir.matches("(?i).*(category|type|list|show|vod|index|page|tag|search|topic|actor|label).*")) continue;
+            Integer n = shape.get(dir);
+            shape.put(dir, n == null ? 1 : n + 1);
+        }
+        for (int n : shape.values()) if (n >= 3) return true;
+        return false;
     }
 
     /** 框架分类提取结果 */
@@ -524,132 +564,337 @@ public class AutoSiteHelper {
         return obj.get(key).getAsString();
     }
 
+    /** 四步共用的 XBPQ(小暴脾气) 语法速查。
+     *  内容取自 XBPQ 官方说明文档，覆盖四种截取方式、过滤、替换、拼接、变量与常见易错点，
+     *  让 AI 输出的规则【语法合法】，而不是凭印象编造。 */
+    private String commonRules() {
+        return "===== XBPQ(小暴脾气) 语法速查（必须严格遵守）=====\n"
+                + "【四种截取方式】\n"
+                + "(1) p: jsoup选择器 —— 解析 HTML 首选\n"
+                + "    p:div.class / p:li.item / p:ul[class*=\"v_list\"] li（class包含匹配，支持*通配符）\n"
+                + "    p:ul[class*=\"v_list\"],ul[id=\"list\"] li（逗号=多项选择，满足任一项）\n"
+                + "    p:a->text 取文字 / p:a->href 取链接 / p:a->title 取title属性 / p:img->src 取图片\n"
+                + "    ⚠️ 纯路径(不带 ->属性)只用于【容器类】字段：数组/播放数组/播放列表/线路数组；\n"
+                + "       标题/图片/链接/播放标题/播放链接 这类【取值字段】必须带 ->属性！\n"
+                + "       ❌ 错误: 标题=\"p:div.module-item\"（缺->text，页面上会直接显示选择器原文）\n"
+                + "       ✅ 正确: 标题=\"p:a.module-item__name->text\"\n"
+                + "(2) && 正则截取 —— 起始文本&&结束文本（省略前=从头截，省略后=截到尾，末尾加\"整页\"=整页查找）\n"
+                + "    支持数字定位(1&&-1)、单标签通配符*(<a*>&&</a>)、跨标签通配符**\n"
+                + "(3) j: json路径 —— j:data.list[1].name 或 j:/data/list/1/name，下标从1开始，\n"
+                + "    支持范围 j:data.list[1,-1]；子对象全取用 j:urls.*\n"
+                + "(4) 分割(符) —— 效率最高。\"list\"&&</ul>分割(后:</li>)，直接用 split 切成数组\n"
+                + "    分割符可补回原位：分割(前:<a) / 分割(后:</li>)；支持轮询：分割(前:<a或后:</li>)\n\n"
+                + "【过滤】接在截取规则后面，用中括号：\n"
+                + "  [包含:a#b] 含任一词 / [不含:a#b] 不含所有词 / [只含:a#b] 完全等于任一词\n"
+                + "  [含序号:1#4-7#9-] 按位次取（可单个、多个#分隔、连续-连接，可省略首尾）\n"
+                + "【替换】[替换:被替换>>替换内容]，多项用#分隔；替换为空=删除；<序号>可自动从1编号\n"
+                + "【拼接】用 + 连接字符串与截取结果，可无限拼接：/play/+/vod/&&.html+-1-1.html\n"
+                + "【变量】{cateId}=分类ID  {catePg}=页码  {{线路标题}}  {{分类标题}}  {{标题}}  {{播放链接}}\n"
+                + "【指定/轮询】分类名--规则||分类名2--规则2||默认--兜底规则（未指定走第一组）；未指定分类的多个规则用 || 分隔会轮询\n\n"
+                + "【⚠️ 三条血泪铁律】\n"
+                + "  1. class 名【原样抄写】！class=\"title text-overflow\" → 取 title 或 text-overflow，\n"
+                + "     ❌ 绝对禁止删掉空格拼成 titlea-text 这种源码里不存在的词；连字符-下划线_必须保留。\n"
+                + "  2. 图片属性【看真实源码】！可能是 data-original / data-src / data-lazy-src / src / alt，\n"
+                + "     ❌ 不要想当然写 data-original，必须去 <img> 标签里看这个站到底用的哪个。\n"
+                + "  3. 选择器必须能匹配到【多个】元素（数组类字段的起码要求），只匹配到1个的基本都是错的。\n";
+    }
+
+    /** CTA(动作按钮)词表——AI 与程序共用同一份语义，避免两边判定不一致。
+     *  这些词描述的是【动作】（做什么），而不是【来源】（从哪来），命中即不是线路。 */
+    private static final String CTA_WORDS =
+            "全部播放|播放全部|全集播放|播放全集|直接播放|立即播放|立刻播放|马上播放|开始播放"
+                    + "|在线播放|免费观看|免费播放|点击播放|网盘播放|播放正片|正片播放|播放本片|播放该片"
+                    + "|立即观看|马上观看|在线观看|开始观看|立即收看|观看正片|一键播放|极速播放"
+                    + "|高清播放|高清观看|去播放|去观看|点我播放|点击观看|播放影片|播放视频";
+
+    /** 由 CTA_WORDS 编译出的正则，供 detect / extractPlayButtonHref / sanitizeCtaLines 共用，
+     *  保证【AI 文案】与【程序判定】用的是同一份动作词表，不会出现"AI认得、程序不认得"的错位。 */
+    private static final java.util.regex.Pattern CTA_PATTERN =
+            java.util.regex.Pattern.compile(CTA_WORDS, java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** 【形状规则——比枚举词表更通用】任何形如「□□播放」「□□观看」「播放□□」的文字，
+     *  一律视为动作按钮(CTA)，命中就点进去拿真实线路。
+     *  □□ = 0~6 个汉字/字母/数字。这样「全部播放」「立即播放」以及将来任何新造词都能自动覆盖，
+     *  不必再往词表里一个个加。 */
+    private static final java.util.regex.Pattern CTA_SHAPE = java.util.regex.Pattern.compile(
+            "[\\u4e00-\\u9fa5A-Za-z0-9]{0,6}(?:播放|观看)$|^播放[\\u4e00-\\u9fa5]{0,4}$|^观看[\\u4e00-\\u9fa5]{0,4}$");
+
+    /** 形状规则的【例外表】：这些虽然长得像「XX播放」，但其实是栏目/区块标题，不是按钮。
+     *  必须排除，否则「播放列表」「播放线路」这种区域标题会被误判成 CTA。 */
+    private static final java.util.regex.Pattern CTA_SHAPE_EXCLUDE = java.util.regex.Pattern.compile(
+            "播放列表|播放地址|播放页面|播放源|播放线路|播放线路|播放器|播放页|播放记录|播放历史"
+                    + "|播放量|播放次数|播放方式|播放说明|播放平台|播放渠道|播放区域|播放时间|播放设置"
+                    + "|观看记录|观看历史|观看人数|观看次数|观看量|观看列表|在线观看人数");
+
+    /** 判断一段文字是否是【CTA 动作词】。双通道判定，任一命中即算：
+     *  ① 形状匹配（优先）：形如「XX播放」「XX观看」「播放XX」——覆盖任何新造词
+     *  ② 词表匹配（兜底）：CTA_WORDS 里已枚举的明确动作词
+     *  形如「播放列表」「播放线路」这类区块标题会被 CTA_SHAPE_EXCLUDE 排除掉。 */
+    private boolean isCtaText(String text) {
+        if (TextUtils.isEmpty(text)) return false;
+        String t = text.trim();
+        if (t.isEmpty()) return false;
+        if (CTA_SHAPE_EXCLUDE.matcher(t).find()) return false;
+        return CTA_SHAPE.matcher(t).matches() || CTA_PATTERN.matcher(t).find();
+    }
+
+    /** 统计页面里"文字形如 XX播放/XX观看 的 <a>/<button>"有【多少种不同文字】。
+     *  ⚠️ 用【去重后的文字种类数】而非出现次数——同一个按钮可能被多处渲染。
+     *  用途（配合"数量否决"）：
+     *    == 1 种 → 孤零零一个动作按钮 → 100% 是 CTA，应该点进去拿真实线路
+     *    >= 2 种 → 更像一组并排的线路 tab（如「云播放」「快播放」）→ 按真线路处理，不算 CTA
+     *  只取 <a>/<button> 的文字，<h2>/<div> 这类区块标题不参与（避免"播放列表"被算进来）。 */
+    private int countCtaShapeHits(String html) {
+        if (TextUtils.isEmpty(html)) return 0;
+        java.util.Set<String> texts = new java.util.HashSet<>();
+        // 只取【短文字】的 <a>/<button>：CTA 按钮文字一般不超过 10 个字，
+        //   页面底部的 SEO 外链（如"搜剧网在线观看动漫凤仙花"）会因超长被滤掉。
+        // 正则允许 <a> 内嵌 0~3 个行内标签（如 <a><span>立即播放</span></a>），
+        //   否则选集/按钮这类带 <span> 包裹的写法会被漏掉；
+        //   但用 (?!/?a\b) 禁止嵌套 <a>，否则会跨越到【相邻】的下一个 <a>，
+        //   把「首页」+「立即播放」两个不同按钮的文字粘成一个（实测踩过这个坑）。
+        String[] pats = {
+                "<a\\b([^>]*)>([^<]{0,12}(?:<(?!/?a\\b)[^>]+>[^<]{0,12}){0,3})</a>",
+                "<button\\b([^>]*)>([^<]{0,12}(?:<(?!/?a\\b)[^>]+>[^<]{0,12}){0,3})</button>"};
+        for (String pat : pats) {
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile(pat, java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
+                    .matcher(html);
+            while (m.find()) {
+                String attrs = m.group(1);
+                // 新窗口打开的链接（SEO 外链 / 友链 / 广告）不可能是站内播放按钮
+                if (attrs != null && attrs.toLowerCase().contains("target=\"_blank\"")) continue;
+                String t = m.group(2).replaceAll("<[^>]+>", "").trim();
+                if (t.length() > 10) continue;      // 双保险：CTA 按钮文字不会超过 10 个字
+                if (isCtaText(t)) texts.add(t);
+            }
+        }
+        return texts.size();
+    }
+
+    /** 【数量校验】在 HTML 里粗算一个选择器能匹配到几个元素（零依赖实现，不引入 jsoup）。
+     *  只处理最常见的 p: 选择器形态：p:tag.class / p:tag / p:.class / p:tag[attr]。
+     *  用途：线路数组必须能选出 ≥2 个元素，只匹配到 1 个的 100% 不是线路
+     *  （典型误判：把孤零零的「全部播放」按钮当成一条线路）。
+     *  @return 匹配到的元素个数；无法解析选择器时返回 -1（表示"不确定"，调用方应放行而非误杀） */
+    private int countSelectorHits(String html, String selector) {
+        if (TextUtils.isEmpty(html) || TextUtils.isEmpty(selector)) return -1;
+        String sel = selector.trim();
+        if (!sel.startsWith("p:")) return -1;              // 只校验 jsoup 选择器；&& / j: / 分割 不处理
+        sel = sel.substring(2).trim();
+        if (sel.isEmpty()) return -1;
+        // 取选择器【最后一段】作为计数依据（父级链太长时正则难以还原，用最末段近似）
+        int sp = sel.indexOf(' ');
+        String last = sp >= 0 ? sel.substring(sp + 1).trim() : sel;
+        if (last.isEmpty()) return -1;
+        // 提取标签名（开头的连续英文字母），没有则匹配任意标签
+        java.util.regex.Matcher tagM = java.util.regex.Pattern.compile("^[a-zA-Z]+").matcher(last);
+        String tag = tagM.find() ? tagM.group().toLowerCase() : "";
+        // 提取 class（.xxx 形式，取最后一个）
+        String cls = "";
+        java.util.regex.Matcher clsM = java.util.regex.Pattern.compile("\\.([A-Za-z0-9_\\-]+)").matcher(last);
+        while (clsM.find()) cls = clsM.group(1);
+        // 提取属性选择器 [attr] 或 [attr="v"]
+        String attr = "";
+        java.util.regex.Matcher atM = java.util.regex.Pattern.compile("\\[([A-Za-z0-9_\\-]+)").matcher(last);
+        if (atM.find()) attr = atM.group(1);
+        if (cls.isEmpty() && attr.isEmpty() && tag.isEmpty()) return -1;
+        // 还原成开标签正则：<tag ... class="... cls ..." ...>
+        String tagPat = tag.isEmpty() ? "[a-zA-Z][a-zA-Z0-9]*" : java.util.regex.Pattern.quote(tag);
+        String openTag = "<" + tagPat + "\\b[^>]*";
+        if (!cls.isEmpty()) {
+            openTag += "[^>]*class=['\"][^'\"]*\\b" + java.util.regex.Pattern.quote(cls) + "\\b[^'\"]*['\"]";
+        } else if (!attr.isEmpty()) {
+            openTag += "[^>]*\\b" + java.util.regex.Pattern.quote(attr) + "\\b";
+        }
+        openTag += "[^>]*>";
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile(openTag, java.util.regex.Pattern.CASE_INSENSITIVE).matcher(html);
+        int n = 0;
+        while (m.find() && n < 300) n++;
+        return n;
+    }
+
+    /** 判断 AI 给出的线路字段是否【可信的真线路】，三重校验：
+     *  ① 线路数组非空；② 线路数组/线路标题都不含 CTA 动作词；③ 选择器在页面里能匹配到 ≥2 个元素（数量否决）。
+     *  三者全过才认为"详情页自己就有真线路"，不必清空、也不必强依赖播放页结果。 */
+    private boolean hasRealLines(JsonObject step3, String html) {
+        String arr = getString(step3, "线路数组");
+        if (TextUtils.isEmpty(arr)) arr = getString(step3, "线路");
+        if (TextUtils.isEmpty(arr)) return false;
+        if (isCtaText(arr)) return false;                                   // 值里含"全部播放"等动作词 → 假线路
+        String title = getString(step3, "线路标题");
+        if (isCtaText(title)) return false;
+        int hits = countSelectorHits(html, arr);
+        return hits < 0 || hits >= 2;   // 数不出来(-1)时放行，避免误杀，交给 XBPQ 运行时处理
+    }
+
+    /** 区分「真线路」与「CTA按钮」的核心判定说明，buildPrompt3 与 buildPrompt4 共用。 */
+    private String lineVsCtaRules() {
+        return "===== ⚠️ 核心难点：区分「真线路」与「播放按钮(CTA)」=====\n"
+                + "很多站的详情页/播放页会【同时】出现这两类东西，它们长得像但本质完全不同，绝不能混淆：\n\n"
+                + "【✅ 真线路 = 一组同级的兄弟元素，描述「从哪来」】\n"
+                + "  硬门槛一（数量）：同一容器内【≥ 2 个】结构完全相同的兄弟元素（只有 1 个的 100% 不是线路）\n"
+                + "  硬门槛二（结构）：同一标签、同一套 class、同样的属性名，横向排列成一行 tab/胶囊\n"
+                + "  硬门槛三（文字）：互不相同，且是【来源名/资源名】\n"
+                + "           国内无广告 / 海外 / 腾讯 / 爱奇艺 / m3u8 / 蓝光 / 极速线 / 线路1 / 线路2 / 备用\n"
+                + "  外观线索：class 常含 source / tab / chip / line / nav-item / play-from / playlist-from\n"
+                + "           常带数据属性 data-source-id / data-tab / data-line / aria-selected / is-active\n"
+                + "  ⚠️ 真线路 tab 的标签可能是 <a>，也可能是 <button>、<span>、<li>——\n"
+                + "     不要因为「不是 <a>」「没有 href」就把它排除掉！\n\n"
+                + "【❌ CTA 按钮 = 一个孤零零的动作指令，描述「做什么」】\n"
+                + "  本质：点了就跳转去播放，是一个【动作】，不是一组内容\n"
+                + "  特征一（数量）：通常【只有 1 个】——这是它最致命的破绽\n"
+                + "  特征二（文字）：是一句命令，见下方动作词表\n"
+                + "  特征三（外观）：<a> 或 <button>，class 常含 btn / button / primary / accent / danger\n"
+                + "                 / play-now / cloud-play / video-info-play / btn-important / btn-large\n"
+                + "  特征四（位置）：往往单独占一行、居中或靠左，位于线路 tabs 的上方，或海报/简介旁边\n"
+                + "  特征五（链接）：href 可能是 \"#\" 或空（纯 JS 触发器，不是真实页面）\n\n"
+                + "【🔑 判定口诀一：\"这个视频\"朗读测试】\n"
+                + "  把候选文字后面加上「这个视频」读一遍：\n"
+                + "    「全部播放这个视频」「立即播放这个视频」「开始播放这个视频」 → 通顺 = 动作指令 = CTA ❌\n"
+                + "    「国内无广告这个视频」「m3u8这个视频」「蓝光这个视频」       → 不通顺 = 来源名 = 真线路 ✅\n\n"
+                + "【🔑 判定口诀二：数量否决（最有效！一眼识破「全部播放」类误判）】\n"
+                + "  在脑海里执行你准备输出的选择器，数一数它在页面上能匹配到【几个】元素。\n"
+                + "  ⚠️ 只匹配到 1 个 → 它【绝对不可能】是「线路数组」，立刻废弃，不许输出！\n"
+                + "  举例：页面里只有一个孤零零的「全部播放」按钮，它没有兄弟元素，\n"
+                + "        「全部播放」是一个动作（让你去播放全部），不是一条线路（不是某路资源）。\n"
+                + "        把它当线路，等于把「开门」当成一个房间——彻底错了。\n\n"
+                + "【🔑 判定口诀三：\"XX播放\"形状匹配（最通用，优先级最高，不用背词表）】\n"
+                + "  直接看【文字形状】：\n"
+                + "    形如「□□播放」「□□观看」「播放□□」「观看□□」的文字 → 【一律判定为动作按钮(CTA)】！\n"
+                + "    （□□ = 0~6 个任意汉字 / 字母 / 数字）\n"
+                + "  已见过的实例：全部播放、立即播放、在线播放、开始播放、点击播放、免费播放、高清播放、\n"
+                + "                网盘播放、极速播放、播放全集、播放正片、立即观看、免费观看、在线观看……\n"
+                + "  以后碰到没见过的新词（比如「一键播放」「智能播放」），只要长得像「XX播放」，就按 CTA 处理。\n"
+                + "  ✅ 正确处理 CTA = 点进它指向的页面，去那里拿真实线路和真实集数。\n\n"
+                + "  ⚠️ 两个例外，别误伤：\n"
+                + "    (1) 页面里同时存在【≥2 个不同】的「XX播放」文字（如「云播放」「快播放」并排）→\n"
+                + "        它们更可能是一组线路 tab，按【真线路】处理，不要当成 CTA。\n"
+                + "    (2) 「播放列表」「播放线路」「播放地址」「播放源」这类是【栏目/区块标题】，不是按钮，跳过。\n\n"
+                + "【已知 CTA 动作词（与上面的形状规则等价，供你对照检查）】\n"
+                + "  " + CTA_WORDS.replace("|", "、") + "\n\n"
+                + "【⚠️ 不要互相排斥：真线路与 CTA 可以【同时存在】】\n"
+                + "  大量站点（如带 cap-chip-row / data-play-source-tabs 的站）详情页里既有「立即播放」大按钮，\n"
+                + "  又有「国内无广告/海外」等多个真线路 tab。这是【正常的】：\n"
+                + "    · 大按钮 = 快捷入口（点它跳到播放页，默认走第一条线路）\n"
+                + "    · tabs     = 真正的多条线路（每条下面有自己的选集）\n"
+                + "  ✅ 正确做法：线路/选集照常输出，同时把按钮的 href 也填进「播放页URL」（程序会用它做二次校验）。\n"
+                + "  ❌ 错误做法：因为有按钮，就把线路和选集全部清空——这样会白白丢掉已经能用的数据！\n";
+    }
+
     /** Step1: AI 负责识别【站名 + 框架 + 分类(名称$ID) + 分类url模板】。
-     *  分类url 模板由 AI【直接阅读首页HTML里的真实分类链接】推导（前缀与ID都取自真实href），
-     *  程序绝不按框架关键词(vod/list/type等)死拼URL结构，也不编造ID。 */
+     *  分类url 模板由 AI【直接阅读首页HTML里的真实分类链接】推导（前缀与ID都取自真实href）。
+     *  重点增强【分类多路径识别】：
+     *    - 分类ID 可能是数字 / 英文slug / 拼音slug(如 guo-chan-ju、dian-ying-pian)，一律原样提取
+     *    - 同一站内不同分类可能走【不同路径结构】：能归并则用统一模板，不能归并则输出"特殊分类链接"
+     *    - 分类页第一页与后续页 URL 不同时输出"首页特例"（XBPQ 用方括号附加在分类url末尾）
+     *    - 两级分类(大分类→子分类)时优先取【子分类】，因为大分类页常是聚合页，每类只摆几部 */
     private String buildPrompt1(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
-                + "===== XBPQ 框架核心规则（只给格式，不限定具体站点写法）=====\n"
-                + "【截取方式——只允许以下四种】\n"
-                + "(1) p: (jsoup选择器): p:div.class / p:a->text / p:img->src / p:img->data-original\n"
-                + "(2) && (正则): 起始文本&&结束文本\n"
-                + "(3) j: (json路径): j:data.list[0].name\n"
-                + "(4) 分割: 用 # 分割成数组\n\n"
-                + "【分类相关字段格式——必须严格遵守】\n"
-                + "- \"分类\": 格式 分类名$分类ID#分类名$分类ID（$分隔名与ID，#分隔不同分类）\n"
-                + "  示例(仅为格式示意): 电影$1#电视剧$2#动漫$3#综艺$4\n"
-                + "  分类ID = 该分类真实链接路径里【代表分类的那一段标识符】。\n"
-                + "  它可能是纯数字(如1/2，也可能是不连续或很大的随机数字如21/23/99，原样提取不要改)、英文单词(如 movie)、或拼音slug(如 dy/dongman/zongyi)——无论哪种都【原样提取】，不要把拼音改成中文、不要把21改成1。\n"
-                + "  ⚠️ 严禁想当然：电影不一定是1(有的站电影=20)，绝对禁止按“常见框架规律”编造ID，必须从下方HTML真实<a href>里提取。\n"
-                + "- \"分类url\": 分类列表页网址【模板】，【必须】含 {cateId} 占位符(代表分类ID，XBPQ运行时会用“分类”字段里的真实ID替换它)；若该站分类页有翻页，还要含 {catePg} 占位符(代表页码)。\n"
-                + "  必须从下方HTML里【真实的分类链接】推导：把链接中的分类标识符(数字或英文slug)替换成 {cateId}；翻页则观察翻页链接把页码替换成 {catePg}；无翻页则只保留 {cateId}；其他筛选维度(地区/类型/年份等)可保留为占位符或留空。\n"
-                + "  注意：每个站的URL前缀(/vod /vodshow /list /type /id /vshow /cupfox-list 等)和ID所在位置都不一样，【必须】直接读真实href推导，不要套用固定格式去拼！\n"
-                + "  ⚠️ 极其重要——【原样复制】真实链接里的【固定后缀】！某些站的链接形如 /vshow/1-----------.html 或 /cupfox-list/13-----------.html，\n"
-                + "     其中数字(1/13)是分类ID，后面一长串短横线(-----------)是地区/年份等筛选项的【空占位符，属于固定后缀不可省略】，\n"
-                + "     正确模板必须写成 /vshow/{cateId}-----------.html（保留 -----------，只把 1 换成 {cateId}），【绝对不能】丢掉短横线写成 /vshow/{cateId}.html！\n"
-                + "  合法示例(仅示意格式，具体以你看到的真实链接为准): /vodshow/{cateId}.html 、 /type/{cateId}-{catePg}.html 、 /type/{cateId}/（目录式URL末尾带/，如 /type/guoman/ 国产动漫）、 /vshow/{cateId}-----------.html 、 /vodshow/area/{area}/id/{cateId}/page/{catePg}/year/{year}.html\n"
-                + "- \"站名\": 网站真实名称(从<title>/logo提取，不要用域名)\n\n"
-                + "【绝对禁止】\n"
-                + "- 编造源码中不存在的class名、标签或链接\n"
-                + "- 把 首页/搜索/登录/推荐/APP下载 等非内容入口当作分类\n\n"
-                + "===== 任务 =====\n"
-                + "下面是要解析的视频网站首页HTML。请【直接阅读这段HTML】，找到页面导航/菜单区域的 <a> 链接：\n"
-                + "1. \"站名\": 网站真实名称\n"
-                + "2. \"框架\": 网站程序框架(苹果CMS V10/苹果CMS/海洋CMS/其他PHP影视站/未知)\n"
-                + "3. \"分类\": 所有影视内容分类，格式 分类名$分类ID#分类名$分类ID。\n"
-                + "   - 从导航 <a> 的真实链接里提取：链接文字是分类名，链接href里的分类段是ID；\n"
-                + "   - 只取指向真实影视内容列表的链接，忽略 首页/搜索/排行/热门/推荐/登录/注册/APP下载/关于 等；\n"
-                + "   - 若首页导航是JS动态加载、静态源码里看不到分类链接，再根据框架给出常见分类。\n"
-                + "4. \"分类url\": 从上面的真实分类链接推导出的网址【模板】（含 {cateId}，按需含 {catePg}），前缀与ID段必须来自真实href。\n\n"
+                + commonRules()
+                + "===== 任务：从首页 HTML 识别【站名 / 框架 / 分类 / 分类链接模板】=====\n\n"
+                + "【第一步：找到所有真实分类链接】\n"
+                + "  在导航、菜单、分类条、页脚分类等区块里找指向【影视内容列表页】的 <a> 链接。\n"
+                + "  排除：首页、搜索、排行、热门、最新、推荐、专题、片单、演员、登录、注册、APP下载、关于、留言、友链、公告。\n\n"
+                + "【第二步：读懂分类ID（三种形态都可能，一律原样提取，禁止改写）】\n"
+                + "  ① 数字型：/vodshow/1.html、/type/2.html        → ID = 1、2\n"
+                + "     ⚠️ 可能不连续，也可能是 21/23/99 这类大数，照抄，不要改成 1/2/3。\n"
+                + "  ② 英文slug型：/movie/list、/type/dongman       → ID = movie、dongman\n"
+                + "  ③ 拼音slug型：/category/guo-chan-ju、/category/dian-ying-pian → ID = guo-chan-ju、dian-ying-pian\n"
+                + "     ⚠️ 拼音slug 里的连字符【必须保留】，它是ID的一部分，不要截断成 guo，也不要删成 guochanju。\n"
+                + "  ⚠️ 严禁想当然：电影不一定是1（有的站电影=20），绝对禁止按常见框架规律编造ID。\n\n"
+                + "【第三步：⚠️ 分类【多路径】识别（本次重点！）】\n"
+                + "  很多站的分类链接【不是】一个模板能覆盖的，常见四种情况，请逐条比对：\n\n"
+                + "  (1) 路径结构一致，只有ID不同 → 归并成一个模板（最常见）\n"
+                + "      例：/category/guo-chan-ju、/category/ou-mei-ju、/category/dong-zuo-pian\n"
+                + "      → 分类url = https://站点/category/{cateId}\n\n"
+                + "  (2) 同一站存在【多种路径结构】→ 取【覆盖分类最多】的那种做主模板，其余写进「特殊分类链接」\n"
+                + "      例：电影走 /movie/{cateId}.html，电视剧走 /tv/list-{cateId}-{catePg}.html\n"
+                + "      → 分类url         = https://站点/movie/{cateId}.html\n"
+                + "      → 特殊分类链接    = 电视剧$https://站点/tv/list-{cateId}-{catePg}.html\n"
+                + "      （多个分类共用同一个特殊链接时，分类名用顿号或逗号隔开：电影、电视剧$链接）\n\n"
+                + "  (3) 分类是【两级】的（大分类 → 子分类）→ 优先把【子分类】作为最终分类\n"
+                + "      原因：大分类页往往只是个聚合页（每个子分类摆一行、每样几部片），点进去内容不全；\n"
+                + "            子分类页才是完整列表。两级链接通常都能在首页或分类页源码里找到，请优先收集子分类。\n"
+                + "      例：首页有 /category/lian-xu-ju（连续剧，大分类），其页面里又列出\n"
+                + "          /category/guo-chan-ju（国产剧）、/category/ou-mei-ju（欧美剧）、/category/han-guo-ju（韩国剧）…\n"
+                + "      → 应把 国产剧/欧美剧/韩国剧… 这些【子分类】作为「分类」输出，而不是只输出\"连续剧\"一个。\n\n"
+                + "  (4) 第一页与其他页【URL 不同】→ 把第一页链接填进「首页特例」\n"
+                + "      例一：第一页 /category/{cateId}，第二页起 /category/{cateId}?page=2\n"
+                + "            → 分类url = https://站点/category/{cateId}?page={catePg}；首页特例 = https://站点/category/{cateId}\n"
+                + "      例二：第一页 /type/{cateId}.html，第二页起 /type/{cateId}-page-2.html\n"
+                + "            → 分类url = https://站点/type/{cateId}-page-{catePg}.html；首页特例 = https://站点/type/{cateId}.html\n\n"
+                + "【第四步：翻页识别】观察分类页有没有翻页链接（下一页 / 页码 / 加载更多）\n"
+                + "  常见形态：/page/2/、?page=2、-pg-2.html、/2.html、p=2、offset=20\n"
+                + "  把页码那一段替换成 {catePg} 写进分类url。\n"
+                + "  ⚠️ 若站点是【无限滚动 / JS加载更多】、静态源码里根本看不到翻页链接 → 不要写 {catePg}，只保留 {cateId}。\n\n"
+                + "【⚠️ 分类url 铁律】\n"
+                + "  · 必须【原样复制】真实链接里的固定后缀！\n"
+                + "    某些站形如 /vshow/1-----------.html，后面一长串短横线是地区/年份筛选项的【空占位符】，\n"
+                + "    正确模板 = /vshow/{cateId}-----------.html（保留 -----------，只把 1 换成 {cateId}）\n"
+                + "    ❌ 绝对不能丢掉短横线写成 /vshow/{cateId}.html！\n"
+                + "  · 目录式URL末尾的 / 要保留（如 /type/guoman/）\n"
+                + "  · 路径前缀（/vod、/vodshow、/list、/type、/id、/category、/vshow、/cupfox-list …）各站不同，必须从真实 href 抄\n\n"
+                + "【输出字段】\n"
+                + "  1. \"站名\": 网站真实名称（从 <title>/logo 提取，不要用域名）\n"
+                + "  2. \"框架\": 苹果CMS V10 / 苹果CMS / 海洋CMS / 其他PHP影视站 / 未知\n"
+                + "  3. \"分类\": 分类名$分类ID#分类名$分类ID（$ 分隔名与ID，# 分隔不同分类）\n"
+                + "  4. \"分类url\": 主模板，【必须】含 {cateId}，有翻页则含 {catePg}\n"
+                + "  5. \"首页特例\": 第一页URL与后续页不同才填，否则留空 \"\"\n"
+                + "  6. \"特殊分类链接\": 路径结构与主模板不一致的分类才填，\n"
+                + "     格式 分类名$链接模板#分类名2$链接模板2（多个分类共用用顿号分隔），没有则留空 \"\"\n\n"
                 + "网站: " + url + "\n\n"
                 + "首页HTML:\n" + html + "\n\n"
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"站名\":\"示例影视\",\"框架\":\"苹果CMS V10\",\"分类\":\"电影$1#电视剧$2#动漫$3#综艺$4\",\"分类url\":\"https://站点域名/vodshow/{cateId}.html\"}";
+                + "{\"站名\":\"\",\"框架\":\"\",\"分类\":\"\",\"分类url\":\"\",\"首页特例\":\"\",\"特殊分类链接\":\"\"}";
     }
 
     /** Step2: 分析分类页，生成影片列表截取规则并给出详情页链接。
      *  关键改进：强制AI原样抄写class名(保留空格/连字符)，给正确示例参考，
      *  检测JS动态渲染(无列表时回退首页)，禁止编造不存在的选择器。 */
+    /** Step2: 分析分类页，生成影片列表截取规则并给出详情页链接。
+     *  增强点：
+     *   - 【多区块聚合页】识别：一个页面里塞了 N 个子分类区块（区块标题 + 几部片 + "查看全部"），
+     *     此时数组选择器必须能【跨区块】一次匹配所有卡片，否则列表会缺一大半
+     *   - 图片属性 / 片名位置必须看真实源码：可能是 src 而非 data-original，片名可能在 alt 或 title 里 */
     private String buildPrompt2(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
-                + "===== XBPQ 框架核心规则 =====\n"
-                + "【p: jsoup选择器——最常用的截取方式】\n"
-                + "  ✅ p:div.my-class          → 用class定位容器(必须用源码中真实class)\n"
-                + "  ✅ p:li.item               → 列表项\n"
-                + "  ✅ p:a->text               → 取<a>文字内容\n"
-                + "  ✅ p:a->href              → 取<a>链接地址\n"
-                + "  ✅ p:img->src             → 取img的src属性\n"
-                + "  ✅ p:img->data-original    → 懒加载图片真实地址(若源码有此属性)\n"
-                + "  ✅ p:img->data-src         → 另一种懒加载属性名\n"
-                + "  ✅ 起始文本&&结束文本      → 正则截取中间内容\n"
-                + "  ❌ p:lip.xxx / p:namea     → 无效格式！禁止！\n"
-                + "  ❌ 编造源码中不存在的class → 绝对禁止！\n"
-                + "  支持*: p:ul[class*=\"v_list\"] li (class包含v_list的ul下所有li)\n\n"
-                + "【⚠️ 极其重要——class名必须原样抄写】\n"
-                + "HTML中的class属性可能包含多个值(用空格分隔)，例如:\n"
-                + "  class=\"stui-vodlist__thumb lazyload\"   ← 两个class: stui-vodlist__thumb 和 lazyload\n"
-                + "  class=\"title text-overflow\"            ← 两个class: title 和 text-overflow\n"
-                + "  class=\"col-md-6 col-sm-4 col-xs-3\"     ← 三个class\n"
-                + "规则:\n"
-                + "  1. 选择器里只写【最能唯一标识元素的那个class】，不要把所有class都堆上去\n"
-                + "  2. 如果一个class不够唯一，用两个: p:div.class1.class2 (jsoup支持多class选择器)\n"
-                + "  3. 【绝对禁止】把空格去掉后拼接成新词！比如 class=\"title text-overflow\"\n"
-                + "     ✅ 正确写法: h4.title.text-overflow 或 h4.title (取其中一个即可)\n"
-                + "     ❌ 错误写法: h4.titlea-text (这是不存在的class！)\n"
-                + "  4. 连字符(-)和下划线(_)必须保留: stui-vodlist__thumb 不能写成 stuivodlistthumb\n\n"
-                + "【常见CMS模板的正确选择器参考(仅作格式示意，绝不能直接套用！先看真实class)】\n"
-                + "苹果CMS V10 + stui模板(最常见):\n"
-                + "  数组: p:ul.stui-vodlist li\n"
-                + "  标题: p:a.stui-vodlist__thumb->text  (或 p:h4.title a->text)\n"
-                + "  图片: p:a.stui-vodlist__thumb->data-original  (注意是data-original不是src)\n"
-                + "  链接: p:a.stui-vodlist__thumb->href\n"
-                + "苹果CMS V10 + myui模板:\n"
-                + "  数组: p:ul.myui-vodlist li\n"
-                + "  标题: p:a.myui-vodlist__thumb->text\n"
-                + "  图片: p:a.myui-vodlist__thumb->data-original\n"
-                + "  链接: p:a.myui-vodlist__thumb->href\n"
-                + "苹果CMS V10 + mx/mxp模板(飞快TV/电影先生等):\n"
-                + "  数组: p:div.module-item   (最小的影片卡片单元，容器div，看源码真实class)\n"
-                + "  标题: p:a.module-item__name->text  (或 p:a->title，看片名在文字还是title属性)\n"
-                + "  图片: p:img->data-original  (看真实属性名：data-original/data-src/src)\n"
-                + "  链接: p:a.module-item__name->href  (取包裹片名的<a>的href)\n"
-                + "自定义模板(如枫叶4K cd-zj.com 等小众站):\n"
-                + "  数组: p:div.public-list-div  (容器可能是div不是ul！直接用源码里的class)\n"
-                + "  标题: p:a.public-list-exp->title  (标题可能写在<a>的title属性里，不是文字！也可用->text)\n"
-                + "  图片: p:a.public-list-exp img->data-src  (懒加载属性名为data-src，不是data-original！)\n"
-                + "  链接: p:a.public-list-exp->href\n\n"
-                + "【⚠️ 图片属性名——必须看源码实际用哪个】\n"
-                + "  常见懒加载属性: data-original / data-src / data-lazy-src / data-original-src\n"
-                + "  也可能直接用: src\n"
-                + "  ❌ 不要想当然写data-original！必须去<img>标签里看真实属性名(本例枫叶4K用data-src)\n\n"
-                + "【⚠️ 标题位置——可能不在文字里】\n"
-                + "  常见情况: 在<a>的title属性(如 title=\"片名\")、或<img>的alt属性、或在<span>/<p>文字里\n"
-                + "  若卡片内看不到片名文字，优先试 ->title 或 ->alt\n\n"
-                + "【关键字段说明（严格按XBPQ官方文档写法）】\n"
-                + "- \"数组\": 包裹每部影片的最小重复单元。两种写法皆可（推荐②，最稳）：\n"
-                + "    ① jsoup选择器(只用路径): p:ul.xxx li 或 p:div.xxx 或 p:section.xxx .item\n"
-                + "    ② 截取语法: class=\"xxx\"&&</a>  (截取每个影片卡片的完整标签块)\n"
-                + "- \"标题\": 在每个卡片内取片名。写法：p:a->text 或 p:h4->text 或 p:a->title(片名写在<a>的title属性里时)\n"
-                + "- \"图片\": 在每个卡片内取海报。写法：p:img->data-original 或 p:img->data-src 或 p:img->src(必须看源码真实属性名)\n"
-                + "- \"链接\": 在每个卡片内取详情页href。写法：p:a->href\n"
-                + "- 相对路径会自动补全域名前缀\n\n"
-                + "【⚠️ 属性字段必须带 ->属性】\n"
-                + "  标题/图片/链接/播放标题/播放链接 这类字段，必须写成\"p:标签->属性\"或\"属性名=&&\"（带属性），\n"
-                + "  绝不能只写 \"p:div.xxx\"（纯路径）！纯路径只用于数组/播放数组/播放列表。\n"
-                + "  错误示例(会显示选择器原文): 标题: \"p:div.module-item\"  ← 缺少->text\n"
-                + "  正确示例: 标题: \"p:a.module-item__name->text\" 或 标题: \"p:a->title\"\n\n"
-                + "===== 任务 =====\n"
-                + "分析下面分类页HTML，先找到影片列表区域，观察真实标签和class名(原样抄写！)，再输出JSON:\n"
-                + "1. \"数组\": 影片容器选择器(用源码中真实的class，原样抄写！)\n"
-                + "2. \"标题\": 片名选择器\n"
-                + "3. \"图片\": 海报图选择器+属性名\n"
-                + "4. \"链接\": 详情页href选择器\n"
-                + "5. \"详情页链接\": 页面中第一个影片的完整详情URL\n\n"
+                + commonRules()
+                + "===== 任务：分析【分类页/列表页】，提取影片列表规则 =====\n\n"
+                + "【⚠️ 先判断页面类型——这一步直接决定「数组」怎么写】\n"
+                + "  ■ 单区块列表页：一整片连续的影片卡片（最常见）\n"
+                + "      → 数组取【包裹一部影片的最小重复单元】即可\n"
+                + "  ■ 【多区块聚合页】：一个页面里塞了【多个子分类区块】，\n"
+                + "      每个区块 = 区块标题（如 国产剧 / 欧美剧）+ 若干影片卡片 + \"查看全部\"或\"更多\"链接\n"
+                + "      → ⚠️ 数组选择器必须能【一次性跨区块匹配到全部卡片】！\n"
+                + "      ✅ 正确：直接用【卡片自身】的 class，如 p:a.cap-movie-card（不论它落在哪个区块里）\n"
+                + "      ❌ 错误：用某个区块的内部容器，如 p:div.cap-grid a（只会匹配到局部，列表会大量缺片）\n"
+                + "      判断依据：源码里是否出现多个 .cap-section / .module / .box / .vodlist 之类的区块容器，\n"
+                + "               且每个区块内都有标题 + 若干卡片。\n\n"
+                + "【字段写法】\n"
+                + "  · \"数组\": 包裹每部影片的【最小重复单元】。两种写法皆可：\n"
+                + "      ① jsoup 纯路径：p:ul.stui-vodlist li / p:div.module-item / p:a.cap-movie-card\n"
+                + "      ② 截取语法：class=\"xxx\"&&</a>（截取每个卡片的完整标签块）\n"
+                + "  · \"标题\": 卡片内取片名。p:a->text / p:h4->text / p:a->title / p:img->alt\n"
+                + "     ⚠️ 片名不一定在文字里！可能写在 <a title=\"片名\"> 的 title 属性，或 <img alt=\"片名\"> 的 alt。\n"
+                + "        卡片里看不到片名文字时，优先试 ->title 或 ->alt。\n"
+                + "  · \"图片\": 卡片内取海报。⚠️ 必须看 <img> 标签【真实】用的属性名：\n"
+                + "       data-original / data-src / data-lazy-src / data-original-src / src\n"
+                + "       ❌ 不要想当然写 data-original——很多自研站（如 soujunet）直接用的就是 src。\n"
+                + "  · \"链接\": 卡片内取详情页 href，p:a->href（取包裹片名/海报的那个 <a>）\n"
+                + "  · \"详情页链接\": 页面中【第一个】影片的完整详情URL（程序会用它在下一步分析播放规则）\n\n"
+                + "【各框架真实选择器参考（仅示意格式！必须先看源码里的真实 class 再决定）】\n"
+                + "  苹果CMS+stui: 数组 p:ul.stui-vodlist li ／ 标题 p:a.stui-vodlist__thumb->text ／ 图片 p:a.stui-vodlist__thumb->data-original\n"
+                + "  苹果CMS+myui: 数组 p:ul.myui-vodlist li ／ 标题 p:a.myui-vodlist__thumb->text ／ 图片 p:a.myui-vodlist__thumb->data-original\n"
+                + "  苹果CMS+mx:   数组 p:div.module-item     ／ 标题 p:a.module-item__name->text\n"
+                + "  自研模板:     数组 p:div.public-list-div ／ 标题 p:a.public-list-exp->title ／ 图片 p:img->data-src\n"
+                + "  ⚠️ 以上只是【格式示意】，绝不可以直接照抄！必须从下方 HTML 里找这个站真正用的 class。\n\n"
                 + "页面: " + url + "\n\n"
                 + "分类页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"数组\":\"p:ul.stui-vodlist li\",\"标题\":\"p:a.stui-vodlist__thumb->text\",\"图片\":\"p:a.stui-vodlist__thumb->data-original\",\"链接\":\"p:a.stui-vodlist__thumb->href\",\"详情页链接\":\"https://...\"}";
+                + "{\"数组\":\"\",\"标题\":\"\",\"图片\":\"\",\"链接\":\"\",\"详情页链接\":\"\"}";
     }
 
     /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
@@ -657,88 +902,62 @@ public class AutoSiteHelper {
      *  AI 必须用【数量+位置+文字特征】三重标准把它和真正的线路/选集区分开。
      *  【重要】若详情页只有CTA按钮而无真正多线路，AI 必须返回该按钮的href作为"播放页URL"，
      *  程序会自动跟进去抓取播放页获取真实线路/集数。 */
+    /** Step3: 分析详情页，生成播放线路与播放选集截取规则。
+     *  核心：用【三分支决策】取代粗暴的"一票否决"——
+     *    分支A: 有真线路(≥2个来源名兄弟元素) → 输出线路+选集（CTA可共存，其href填播放页URL）
+     *    分支B: 无真线路但有CTA动作按钮   → 只填播放页URL，程序跟进播放页取线路
+     *    分支C: 两者皆无(单线路站)        → 详情页直接输出选集
+     *  这样对 soujunet.com 这类"详情页既有立即播放按钮、又有国内无广告/海外多线路"的站，
+     *  不会因为存在CTA而白白丢掉已经能用的真实线路。 */
     private String buildPrompt3(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
-                + "===== XBPQ 框架核心规则 =====\n"
-                + "【p: jsoup选择器——最常用的截取方式】\n"
-                + "  ✅ p:div.my-class / p:ul.my-class / p:li.my-class → 用真实class定位\n"
-                + "  ✅ p:span->text / p:a->text / p:a->href → 取文字/链接\n"
-                + "  ✅ 起始文本&&结束文本 → 正则截取\n"
-                + "  ❌ p:lip.xxx / 编造class → 禁止！\n\n"
-                + "===== ⚠️⚠️⚠️ 最重要：区分「播放按钮(CTA)」与「真线路/真选集」=====\n"
-                + "视频站详情页播放区域通常混杂着两类【完全不同的东西】，必须严格区分，绝不可混为一谈：\n\n"
-                + "【❌ 播放按钮 / 动作按钮（CTA）——它【不是】线路、【不是】选集、【不是】链接】\n"
-                + "  它是一句话按钮，点了就去播放，本质是一个【动作】，而不是一组内容。\n"
-                + "  特征一（文字）：「直接播放」「立即播放」「立即观看」「开始播放」「在线播放」「免费观看」「点击播放」「网盘播放」「播放全集」之一\n"
-                + "  特征二（数量）：通常只有 1 个（真正的线路是 2~6 个 tab）\n"
-                + "  特征三（位置）：在线路tab容器的上方、单独一行、居中显示\n"
-                + "  特征四（标签）：class 常含 play-now / cloud-play / video-info-play / btn-important / btn-large\n"
-                + "  特征五（链接）：href 常是 \"#\" 或空（因为它只是 JS 触发器，不是真实播放页）\n"
-                + "  → 无论它出现在页面哪个位置（哪怕在 #play-list 容器内部），都【绝对不能】把它当成线路、选集或播放链接！\n"
-                + "  → 它的唯一正确去处：填进「播放页URL」字段（见下方CTA机制），仅此而已。\n\n"
-                + "【✅ 真线路 —— 你要找的内容型多元素】\n"
-                + "  特征一（数量）：有 2 个以上 tab/选项（只有 1 个的 100% 不是真线路）\n"
-                + "  特征二（文字）：每个 tab 名字不同，通常是「XX线路」「XX资源」「XX源」「线路1/2/3」「极速/优速/闪电」等\n"
-                + "  特征三（位置）：在一个 tabs 容器内横向排列（class 常含 source/tab/nav/menu）\n"
-                + "  特征四（标签）：class 常含 play-source-tab / source-tab / playlist-tab / nav-item\n\n"
-                + "【✅ 真选集 —— 你要找的内容型多元素】\n"
-                + "  特征一（数量）：有 2 个以上剧集链接（单集电影可能只有1个）\n"
-                + "  特征二（文字）：格式为「第1集」「第01集」「EP1」「1」「番外篇」等（注意：绝不可能是「直接播放」这种动作词）\n"
-                + "  特征三（位置）：在某个线路 tab 对应的内容区内（class 常含 source-content/list/content/episode）\n"
-                + "  特征四（链接）：href 是真实的播放页 URL（如 /play/xxx-1-1.html），不是 \"#\"\n\n"
-                + "【🔑 CTA按钮跟进机制（最重要！一票否决！）】\n"
-                + "【一票否决规则】只要页面中存在【任何一个】含「播放」二字的【动作按钮】（<a>/<button>/<span>，且它不是剧集链接），\n"
-                + "就【禁止输出任何线路/选集字段】！此时你只能填「播放页URL」= 那个按钮的真实href，其余播放字段全部留空字符串\"\"。\n"
-                + "程序会自动跟进去抓取【播放页】，从播放页获取真实线路tabs和完整集数——所以详情页【不需要、也不允许】你猜线路。\n"
-                + "常见CTA文字：「直接播放」「立即播放」「立刻播放」「开始播放」「在线播放」「免费观看」「点击播放」「网盘播放」「播放全集」「立即观看」「XX播放」\n"
-                + "【判定方法——按顺序执行】\n"
-                + "  Step1: 扫描整个页面HTML，找到所有含「播放」的 <a> 或 <button> 元素\n"
-                + "  Step2: 判断这些元素是不是剧集链接（剧集链接的文字是「第1集/EP01/01/番外篇」，【不含】「播放」二字）\n"
-                + "  Step3: 只要找到 ANY 一个非剧集的「XXX播放」元素 → 它就是CTA → 触发一票否决 → 只填播放页URL\n\n"
-                + "【只有一种情况可以输出线路/选集】你扫描了整个页面，【完全找不到】任何含「播放」的按钮/链接，\n"
-                + "且详情页本身就有 ≥2 个线路tab（如「线路1」「线路2」）和 ≥2 个剧集链接（如「第1集」「第2集」），\n"
-                + "才直接输出线路/集数字段，「播放页URL」留空。\n\n"
-                + "【自检规则 —— 输出前必须检查】\n"
-                + "  1. 我的「线路数组」选出来的元素数量是否 ≥ 2？如果只有1个，或名字是「直接播放/立即播放」→ 100%错了，清空重来！\n"
-                + "  2. 我的「播放列表」选出来的元素文字是否含「第X集」格式？如果选出来的是「直接播放/凡人修仙传」这种 → 100%错了！\n"
-                + "  3. 页面里同时存在「直接播放」按钮和「XX线路」tabs 时：按钮是CTA（填播放页URL），tabs才是真线路（只有无CTA时才输出）。\n\n"
-                + "【播放相关字段说明】\n"
-                + "- \"简介\": 剧情简介文本（从影片信息区提取，不是任何按钮的文字）\n"
-                + "- \"播放页URL\": 【CTA专用字段】若页面存在「直接播放/立即播放」等动作按钮，填该按钮的真实href（不要#或空；若是#就找同区域附近真实URL）；若无CTA则留空\n"
-                + "- \"线路数组\": 仅当【无CTA且】页面有≥2个线路tab时填写；真正的线路容器选择器（找 class 含 source/tab 的容器，排除 play-now/cloud-play）\n"
-                + "- \"线路标题\": 从tab取线路名(如 BF线路/FF线路/线路1)\n"
-                + "- \"播放数组\": 集数列表的【容器】(包裹所有第X集的父容器，如 ul.play-list 或包含<li>的<div>)\n"
-                + "- \"播放列表\": 每个【剧集节点】(通常是<a>标签，文字是 第1集/第2集/番外篇 等纯集数格式；【绝不可是】「直接播放/APP秒播」这种动作按钮)\n"
-                + "- \"播放标题\": 剧集名称(如 第1集/第01集)，相对播放列表节点取\n"
-                + "- \"播放链接\": 【剧集地址】每个<a>的href（通常是/play/xxx.html，不是直链，更不是播放按钮本身）\n"
-                + "- \"解析\": 解析接口URL(有则填无则空)\n\n"
-                + "===== 任务（按顺序严格执行）=====\n"
-                + "Step1: 【CTA一票否决——最重要！】扫描整个页面HTML，找所有含「播放」二字的 <a>/<button>/<span> 元素\n"
-                + "  - 排除剧集链接（「第X集/第X话/EPX/番外篇」不含「播放」二字，不是CTA）\n"
-                + "  - 只要找到 ANY 一个非剧集的「XXX播放」元素 → 触发一票否决 → 跳到 Step2\n"
-                + "  - 如果完全找不到任何含「播放」的按钮/链接 → 跳到 Step3\n"
-                + "Step2: 【有CTA→只填播放页URL，禁止输出线路/选集】\n"
-                + "  - 「播放页URL」= CTA按钮的href（不要#或空，若是JS触发#就找附近的真实URL）\n"
-                + "  - 「线路数组」「线路标题」「播放数组」「播放列表」「播放标题」「播放链接」「解析」全部留空字符串 \"\"\n"
-                + "  - 停止分析，直接输出JSON\n"
-                + "Step3: 【无CTA→在详情页提取线路/集数】\n"
-                + "  - 确认页面有 ≥2 个线路tab 和 ≥2 个剧集链接\n"
-                + "  - 正常输出线路/集数选择器，「播放页URL」留空\n\n"
-                + "输出JSON字段：\n"
-                + "1. \"简介\": 剧情简介\n"
-                + "2. \"播放页URL\": 若有CTA按钮填其href；无CTA则留空\n"
-                + "3. \"线路数组\": 仅无CTA时填写，真正的线路容器选择器（排除 play-now-btn/cloud-play-btn）\n"
-                + "4. \"线路标题\": 线路名选择器\n"
-                + "5. \"播放数组\": 集数列表容器选择器（包裹所有集数的父容器）\n"
-                + "6. \"播放列表\": 单个剧集节点选择器（通常是 <a> 或 <li>，文字为纯集数格式）\n"
-                + "7. \"播放标题\": 剧集名选择器\n"
-                + "8. \"播放链接\": 剧集地址选择器（不是播放按钮）\n"
-                + "9. \"解析\": 解析接口URL\n\n"
+                + commonRules()
+                + lineVsCtaRules()
+                + "===== 决策流程（严格按 分支A → 分支B → 分支C 顺序判断，命中即停止）=====\n\n"
+                + "【第一步：找真线路】扫描整个页面，找【≥2 个同级兄弟元素】且文字是来源名的容器。\n"
+                + "  → 找到了 → 进入【分支A】\n"
+                + "  → 找不到 → 进入第二步\n\n"
+                + "【第二步：找 CTA 动作按钮】扫描页面，找文字命中动作词表的 <a>/<button>/<span>。\n"
+                + "  → 找到了 → 进入【分支B】\n"
+                + "  → 找不到 → 进入【分支C】\n\n"
+                + "──────────────────────────────\n"
+                + "【分支A：有真线路 —— 最常见，优先走这条】\n"
+                + "  · 线路数组   = 线路 tab 的【容器】选择器（纯路径，必须能选出 ≥2 个 tab）\n"
+                + "  · 线路标题   = 从单个 tab 取线路名（p:button->text / p:a->text / p:span->text / p:li->text）\n"
+                + "  · 播放数组   = 单条线路对应的【集数面板容器】（每个线路一个面板，取面板这一层）\n"
+                + "  · 播放列表   = 单个【剧集节点】（通常是 <a>，纯路径）\n"
+                + "  · 播放标题   = 剧集名（如 p:a->text，取出的文字是「第1集」「正片」「HD」这种）\n"
+                + "  · 播放链接   = 剧集地址 p:a->href\n"
+                + "  · 播放页URL  = 页面【若同时】有CTA按钮，顺手把它的 href 填这里；没有就留空 \"\"\n"
+                + "  ⚠️ 播放数组与播放列表的层级关系：\n"
+                + "     线路容器 > 每线路面板(播放数组) > 集数格子 > <a>(播放列表)\n"
+                + "     播放数组千万别选到把所有面板都装起来的最外层，否则各线路的集数会混在一起。\n\n"
+                + "【分支B：无真线路，但有 CTA 按钮】\n"
+                + "  说明线路和选集藏在【播放页】里——必须点了那个按钮进去才看得见真实线路和集数。\n"
+                + "  · 播放页URL = CTA 按钮的 href（真实URL，不要 # 或空）\n"
+                + "  · 线路数组 / 线路标题 / 播放数组 / 播放列表 / 播放标题 / 播放链接 全部留空字符串 \"\"\n"
+                + "  · ⚠️ 若 href 是 \"#\" 或 javascript:（纯JS触发），就在按钮附近找含 play/player/bofang/vod 的真实链接\n"
+                + "  · 程序会自动跟进这个播放页取线路，所以这里【不需要也不允许】你猜线路。\n\n"
+                + "【分支C：既无真线路，也无 CTA（单线路站）】\n"
+                + "  说明集数直接铺在详情页，没有多线路概念。\n"
+                + "  · 输出 播放数组 / 播放列表 / 播放标题 / 播放链接\n"
+                + "  · 线路数组 / 线路标题 / 播放页URL 留空 \"\"\n\n"
+                + "===== 选集长什么样（分支A/C 用于校验）=====\n"
+                + "  真选集文字：第1集 / 第01集 / EP1 / 01 / 正片 / HD / 预告 / 番外 / 上 / 下\n"
+                + "  不是选集：影片名、演员名、查看全部、热门推荐、相关推荐、站点导航词\n"
+                + "  每个 <a> 的 href 必须是真实播放页/播放地址，不是 \"#\"，也不是分类页链接\n\n"
+                + "===== 其他字段 =====\n"
+                + "  · \"简介\": 剧情简介文本（从影片信息区/描述段落提取，【不是】任何按钮的文字）\n"
+                + "  · \"解析\": 解析接口URL（页面里若有形如 xxx.php?url= 的解析接口则填，否则留空）\n\n"
+                + "===== 输出前自检（必做）=====\n"
+                + "  1. 我的「线路数组」能选出 ≥2 个元素吗？只有1个 → 废弃，改走分支B/C！\n"
+                + "  2. 我的「线路标题」取出来的文字，念\"这个视频\"通顺吗？通顺 → 是CTA，废弃！\n"
+                + "  3. 我的「播放列表」取出来的是「第X集」这种吗？是「全部播放/影片名」→ 错了！\n\n"
                 + "页面: " + url + "\n\n"
                 + "详情页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"简介\":\"...\",\"播放页URL\":\"\",\"线路数组\":\"p:div.play-source\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:ul.play-list\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+                + "{\"简介\":\"\",\"播放页URL\":\"\",\"线路数组\":\"\",\"线路标题\":\"\",\"播放数组\":\"\",\"播放列表\":\"\",\"播放标题\":\"\",\"播放链接\":\"\",\"解析\":\"\"}";
     }
 
 
@@ -746,57 +965,70 @@ public class AutoSiteHelper {
      *  播放页和详情页不同——它通常直接包含真正的多线路tabs和剧集列表，
      *  不再有"立即播放"CTA按钮。这是获取真实线路/集数的最佳来源。
      *  此 prompt 只输出线路/集数相关字段，不重复输出简介等详情页已有字段。 */
+    /** Step4: 分析【播放页】（从详情页 CTA 按钮跳转过来的页面）。
+     *  播放页通常直接包含真正的多线路 tabs 与完整剧集列表，是提取真实播放规则的最佳来源。
+     *  ⚠️ 但播放页里【依然可能】残留动作按钮（如选集区上方的「全部播放」、播放器下方的「立即播放」），
+     *     所以这里要跑一遍与详情页完全相同的【真线路 vs CTA】判定，靠数量否决 + 动作词表区分。 */
     private String buildPrompt4(String html, String url) {
         return "你是视频网站解析专家，必须严格按照【XBPQ(小暴脾气)爬虫框架】规则输出。\n\n"
                 + "===== 背景 =====\n"
-                + "这是一个视频站的【播放页】（用户在详情页点击「立即播放/直接播放」后跳转到的页面）。\n"
-                + "与详情页不同，这个页面通常直接包含：\n"
-                + "  - 真正的播放线路 tabs（如「线路1」「线路2」「极速线」「优速线」等，通常 ≥ 2 个）\n"
-                + "  - 真正的剧集选集列表（如「第1集」「第2集」…或单集电影的片名）\n"
-                + "  - 可能还有 m3u8/mp4 直链\n"
-                + "你的任务：从这个页面提取真实的线路和选集选择器。\n\n"
-                + "===== XBPQ 选择器规则 =====\n"
-                + "【p: jsoup选择器】\n"
-                + "  ✅ p:div.class / p:ul.class / p:li.class / p:a / p:span → 用源码中真实class\n"
-                + "  ✅ p:a->text 取文字 / p:a->href 取链接 / p:img->src 取图片\n"
-                + "  ❌ 编造不存在的class → 绝对禁止！\n"
-                + "  ⚠️ class名必须原样抄写：class=\"title text-overflow\" → 用 title 或 text-overflow 或 title.text-overflow，绝对不能写成 titlea-text\n\n"
-                + "【你要找的内容】\n"
-                + "1. **线路区域**：找包含多个 tab 的容器（横向排列的选项卡），每个 tab 名字不同\n"
-                + "   - 常见位置：页面上半部分，标题/播放器下方\n"
-                + "   - 常见 class 含：source / tab / nav / menu / playlist / play-from\n"
-                + "   - 线路名通常是：「XX线路」「XX资源」「XX源」「线路1/2/3」「极速/优速/闪电」\n"
-                + "   - ⚠️ 如果只有一个叫「直接播放/立即播放」的元素且没有其他tab，说明【这不是线路区】——它是详情页的播放按钮(CTA)，本页不会出现，继续往下找真正的 tabs。\n"
-                + "   - ⚠️ 真线路必须是【≥2 个】名字不同的 tab；凡只有 1 个、或名字是「直接播放/立即播放/免费观看」的，一律不是线路，不要输出。\n\n"
-                + "2. **选集区域**：在某条线路下方，包含多个剧集链接的区域\n"
-                + "   - 常见位置：线路 tabs 下方的内容区\n"
-                + "   - 常见 class 含：content / list / episode / play-list / source-content\n"
-                + "   - 集名格式：「第1集」「第01集」「EP1」「1」「番外篇」（电影可能只有1个=片名）\n"
-                + "   - 每个 <a> 的 href 是该集的播放地址（注意：这是【剧集链接】，绝不能是「直接播放」这种按钮）\n\n"
-                + "3. **解析接口**：如果页面里有 m3u8/mp4 直链可直接用；否则留空\n\n"
-                + "===== 输出JSON字段 =====\n"
-                + "- \"线路数组\": 线路tabs容器选择器（如 p:div.play-source 或 p:ul.source-tabs）\n"
-                + "- \"线路标题\": 从单个tab取线路名的选择器（如 p:a->text）\n"
-                + "- \"播放数组\": 集数列表容器选择器（包裹所有集数的父容器，在线路内容区内）\n"
-                + "- \"播放列表\": 单个【剧集节点】选择器（通常是 <a> 标签，文字必须是 第1集/第2集/番外篇 等纯集数格式；【绝不可是】「直接播放/APP秒播」这种动作按钮）\n"
-                + "- \"播放标题\": 剧集名称选择器（如 p:a->text，取出的文字是「第1集」这种）\n"
-                + "- \"播放链接\": 剧集地址选择器（如 p:a->href）\n"
-                + "- \"解析\": 解析接口URL（有m3u8/mp4直链则留空）\n\n"
+                + "这是视频站的【播放页】——用户在详情页点击「立即播放 / 全部播放 / 直接播放」这类按钮后跳转到的页面。\n"
+                + "与详情页相比，这个页面的线路和集数通常更完整、结构更干净，是提取真实播放规则的最佳来源。\n"
+                + "⚠️ 但别掉以轻心：播放页里依然可能残留动作按钮（选集区上方的「全部播放」、播放器下方的「立即播放」等），\n"
+                + "   所以本页同样要严格区分真线路与 CTA，判定规则与详情页完全一致。\n\n"
+                + commonRules()
+                + lineVsCtaRules()
+                + "===== 决策流程（分支A → 分支B → 分支C，命中即停止）=====\n\n"
+                + "【分支A：有真线路（≥2 个来源名兄弟元素）】→ 输出全部播放字段\n"
+                + "  · 线路数组 = 线路 tab 的【容器】（必须能选出 ≥2 个 tab）\n"
+                + "  · 线路标题 = 单个 tab 的线路名（p:button->text / p:a->text / p:span->text / p:li->text）\n"
+                + "  · 播放数组 = 单条线路对应的【集数面板容器】\n"
+                + "      ⚠️ 若集数是【按线路分面板】展示（每个线路一个 div，里面才是该剧路的集），\n"
+                + "         播放数组要选【面板】这一层（如 p:div.cap-play-source、p:div[data-source-id]），\n"
+                + "         ❌ 不要选把所有面板都装起来的最外层，否则各线路的集数会混成一大团。\n"
+                + "  · 播放列表 = 单个剧集节点（通常是 <a>，纯路径）\n"
+                + "  · 播放标题 = 剧集名 p:a->text（取出来是「第1集」「正片」「HD」这种）\n"
+                + "  · 播放链接 = 剧集地址 p:a->href\n\n"
+                + "【分支B：无真线路，但有动作按钮】→ 说明还得再跳一层才能看到线路\n"
+                + "  · 7 个字段全部留空字符串 \"\"，程序会放弃本页结果（不要硬凑一个假线路出来）\n\n"
+                + "【分支C：无真线路也无 CTA，但页面直接铺着集数】→ 单线路站\n"
+                + "  · 只输出 播放数组 / 播放列表 / 播放标题 / 播放链接\n"
+                + "  · 线路数组 / 线路标题 留空 \"\"\n\n"
+                + "【播放页特有提示】\n"
+                + "  · 若页面里能直接看到 m3u8 / mp4 直链，可填进「解析」，或直接作为播放链接\n"
+                + "  · 集名可能是「第1集」「EP01」「01」「HD」「正片」「预告」，这些都算合法选集\n"
+                + "  · 有些站的线路 tab 是 <button> 且【没有 href】（用 JS 切换面板），这完全正常，照常输出\n\n"
+                + "===== 输出前自检 =====\n"
+                + "  1. 线路数组能选出 ≥2 个元素吗？只有1个 → 不是线路，废弃！\n"
+                + "  2. 线路标题取出来的文字，念\"这个视频\"通顺吗？通顺 → 是 CTA，废弃！\n"
+                + "  3. 播放列表取出来的是「第X集/正片/HD」吗？是「全部播放/影片名」→ 错了！\n\n"
                 + "页面: " + url + "\n\n"
                 + "播放页HTML:\n" + html + "\n\n"
                 + (html.isEmpty() ? "HTML为空，所有字段返回空字符串。\n" : "")
                 + "只返回JSON不要解释不要markdown:\n"
-                + "{\"线路数组\":\"p:真实\",\"线路标题\":\"p:a->text\",\"播放数组\":\"p:真实容器\",\"播放列表\":\"p:a\",\"播放标题\":\"p:a->text\",\"播放链接\":\"p:a->href\",\"解析\":\"\"}";
+                + "{\"线路数组\":\"\",\"线路标题\":\"\",\"播放数组\":\"\",\"播放列表\":\"\",\"播放标题\":\"\",\"播放链接\":\"\",\"解析\":\"\"}";
     }
 
     /** 合并结果生成最终配置。
      *  ext 的“分类url”为含{cateId}的模板，“分类”为 名称$ID#...，两者配合供 XBPQ 拼出各分类页
      *  （参考小暴脾气官方写法：茄子/小友/冰河等 ext 既有"分类url"模板又有"分类"字段）。
      *  影片列表规则来自 Step2（数组/标题/图片/链接），播放规则来自 Step3。 */
-    private String mergeConfig(String url, String siteName, String cate, String cateUrlTpl, JsonObject step2, JsonObject step3) {
+    private String mergeConfig(String url, String siteName, String cate, String cateUrlTpl, JsonObject step1, JsonObject step2, JsonObject step3) {
         JsonObject ext = new JsonObject();
         if (!TextUtils.isEmpty(cateUrlTpl)) ext.addProperty("分类url", cateUrlTpl);
         if (!TextUtils.isEmpty(cate)) ext.addProperty("分类", cate);
+        // 【分类多路径】第一页URL与其他页不同 → 按 XBPQ 写法用英文中括号附加在分类url末尾：
+        //   分类url = 主模板[首页链接]，如 https://x/category/{cateId}?page={catePg}[https://x/category/{cateId}]
+        //   （XBPQ 文档："第一页与其他页不一样的，直接用英文中括号加在分类url末尾"）
+        String firstPage = step1 == null ? "" : getString(step1, "首页特例");
+        if (!TextUtils.isEmpty(firstPage) && !TextUtils.isEmpty(cateUrlTpl)
+                && !firstPage.equals(cateUrlTpl) && !cateUrlTpl.contains("[")) {
+            ext.addProperty("分类url", cateUrlTpl + "[" + firstPage + "]");
+        }
+        // 【分类多路径】部分分类的链接结构与主模板不一致 → 用"特殊分类链接"单独指定
+        //   格式：分类名$链接模板#分类名2$链接模板2（多个分类共用同一链接用顿号/逗号隔开）
+        String special = step1 == null ? "" : getString(step1, "特殊分类链接");
+        if (!TextUtils.isEmpty(special)) ext.addProperty("特殊分类链接", special);
         String[] keys2 = {"数组", "标题", "图片", "链接"};
         for (String k : keys2) {
             String v = getString(step2, k);
@@ -844,13 +1076,11 @@ public class AutoSiteHelper {
             boolean dirty = false;
             // 规则1：检测假线路——线路值含CTA关键词
             String[] lineKeys = {"线路数组", "线路"};
-            java.util.regex.Pattern ctaPat = java.util.regex.Pattern.compile(
-                    "直接播放|立即播放|立刻播放|立即观看|开始播放|在线播放|免费观看|点击播放|网盘播放|播放全集",
-                    java.util.regex.Pattern.CASE_INSENSITIVE);
             for (String lk : lineKeys) {
                 if (ext.has(lk)) {
                     String lv = ext.get(lk).getAsString();
-                    if (ctaPat.matcher(lv).find()) {
+                    // 形状匹配(XX播放) + 词表匹配，任一命中即为假线路
+                    if (isCtaText(lv)) {
                         for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
                             ext.remove(rk);
                         }
@@ -862,8 +1092,10 @@ public class AutoSiteHelper {
             // 规则1.5：检测CTA选择器模式——线路选择器含btn/play-now/cloud-play等典型CTA class
             if (!dirty && ext.has("线路数组")) {
                 String sel = ext.get("线路数组").getAsString();
+                // ⚠️ 只匹配【典型CTA按钮class】，不再用裸 "btn"（会误伤 cap-btn / tab-btn 等真线路容器）
                 java.util.regex.Pattern ctaSelPat = java.util.regex.Pattern.compile(
-                        "btn.*play|play.*now|play.*btn|cloud.*play|now.*play|video.*play|btn-important|btn-large",
+                        "btn-important|btn-large|btn-primary|btn-danger|btn-block"
+                                + "|play-now|play-btn|btn-play|cloud-play|now-play|video-play",
                         java.util.regex.Pattern.CASE_INSENSITIVE);
                 if (ctaSelPat.matcher(sel).find()) {
                     for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
@@ -875,14 +1107,17 @@ public class AutoSiteHelper {
             // 规则1.6：检测线路标题值含CTA文字（AI把按钮文本当线路名）
             if (!dirty && ext.has("线路标题")) {
                 String lt = ext.get("线路标题").getAsString();
-                if (ctaPat.matcher(lt).find()) {
+                if (isCtaText(lt)) {
                     for (String rk : new String[]{"线路数组", "线路", "线路标题", "播放数组", "播放列表", "播放标题", "播放链接"}) {
                         ext.remove(rk);
                     }
                     dirty = true;
                 }
             }
-            // 规则2：检测假选集（片名被当剧集，如"九门[全集]"）
+            // 规则2：检测假选集（AI把片名当成剧集名填进了"播放列表/播放标题"，如"九门[全集]"）
+            //  ⚠️ 关键修正：只在值【不是选择器】时才按文本值判定！
+            //  旧实现未做此区分，把 "p:a.cap-episode" 这类【合法选择器】当成"不含第X集的片名"误删，
+            //  导致绝大多数站点的播放列表/播放标题/播放链接被无差别清空。
             if (!dirty) {
                 String[] epKeys = {"播放列表", "播放标题"};
                 java.util.regex.Pattern epPat = java.util.regex.Pattern.compile(
@@ -890,7 +1125,8 @@ public class AutoSiteHelper {
                 for (String ek : epKeys) {
                     if (ext.has(ek)) {
                         String ev = ext.get(ek).getAsString();
-                        // 值不含剧集格式特征，且长度>2（不是单个数字）→ 可能是片名
+                        if (isSelectorLike(ev)) continue;   // 是选择器/截取规则 → 放行，不按文本值判
+                        // 走到这里说明填的是【文本值】：不含剧集格式且长度>2 → 大概率是片名而非集数
                         if (ev.length() > 2 && !epPat.matcher(ev).find() && !ev.contains("集") && !ev.contains("话")) {
                             ext.remove("播放列表");
                             ext.remove("播放标题");
@@ -905,6 +1141,16 @@ public class AutoSiteHelper {
         } catch (Exception e) {
             return configJson; // 解析失败则原样返回
         }
+    }
+
+    /** 判断一个配置值是否像【选择器/截取规则】而非【文本值】。
+     *  XBPQ 的规则形态：p:(jsoup选择器) / j:(json路径) / a&&b(正则) / xxx分割(符) / 含 ->属性。
+     *  用于 sanitizeCtaLines 里区分"AI填的是规则"还是"AI填的是取出来的字面值"，避免误杀合法规则。 */
+    private boolean isSelectorLike(String v) {
+        if (TextUtils.isEmpty(v)) return false;
+        String s = v.trim();
+        return s.startsWith("p:") || s.startsWith("j:") || s.contains("&&")
+                || s.contains("分割(") || s.contains("->") || s.startsWith("/");
     }
 
     /** 取 url 的 scheme+host，用于给相对链接补全绝对路径 */
