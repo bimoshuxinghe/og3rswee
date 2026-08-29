@@ -749,6 +749,11 @@ public class AutoSiteHelper {
                 removePlayFields(step3);
                 return;
             }
+            // 过泛选择器（如 p:a / p:button 没有任何 class/属性限定）很容易抓到 CTA/推荐/导航
+            if (isSelectorOverBroad(lineArr)) {
+                removePlayFields(step3);
+                return;
+            }
             int hits = countSelectorHits(html, lineArr);
             if (hits == 1) {                                                   // 只匹配1个元素，不可能是线路
                 removePlayFields(step3);
@@ -764,11 +769,12 @@ public class AutoSiteHelper {
             removePlayFields(step3);
             return;
         }
-        // 播放列表只匹配到1个元素，且播放标题是片名 → 清掉选集（避免把片名当集数显示）
+        // 播放列表清洗：防止选中「相关推荐/热门影片」里的片名链接
         String epList = getString(step3, "播放列表");
         if (!TextUtils.isEmpty(epList) && !isSelectorLike(epList)) {
             int epHits = countSelectorHits(html, epList);
             if (epHits == 1) {
+                // 单元素：只有单集电影（正片/HD）才保留
                 String epTitle = getString(step3, "播放标题");
                 if (!isSelectorLike(epTitle) && epTitle.length() > 2) {
                     java.util.regex.Pattern realEp = java.util.regex.Pattern.compile(
@@ -779,8 +785,87 @@ public class AutoSiteHelper {
                         step3.remove("播放链接");
                     }
                 }
+            } else if (epHits >= 2) {
+                // 多元素：必须至少有一个像真选集（第X集/正片/HD/EP），否则是推荐列表
+                // 简单采样：用选择器在 HTML 里匹配到的第一个元素文字做判断
+                String firstText = extractFirstSelectorText(html, epList);
+                if (!TextUtils.isEmpty(firstText)) {
+                    java.util.regex.Pattern realEp = java.util.regex.Pattern.compile(
+                            "第\\d+集|第\\d+话|EP\\d+|^\\d+$|正片|HD|预告|番外|上$|下$|全集");
+                    if (!realEp.matcher(firstText).find()) {
+                        step3.remove("播放列表");
+                        step3.remove("播放标题");
+                        step3.remove("播放链接");
+                    }
+                }
             }
         }
+    }
+
+    /** 判断选择器是否过泛（如 p:a / p:button / p:a->text 等没有任何 class/属性限定）。
+     *  这类选择器会抓到全站所有 <a>/<button>，100% 不是可用规则。 */
+    private boolean isSelectorOverBroad(String selector) {
+        if (TextUtils.isEmpty(selector)) return false;
+        if (!selector.trim().startsWith("p:")) return false;
+        String s = selector.substring(2).trim();
+        // 去掉末尾的 ->text / ->href / ->src 等属性提取
+        s = s.replaceAll("->[a-zA-Z\\-]+$", "").trim();
+        if (s.isEmpty()) return true;
+        // 只有 tag 名（a / button / span / div / li），没有 .class 或 [attr]
+        if (s.matches("^[a-zA-Z]+$")) return true;
+        // 形如 div a / ul li 多级纯标签，没有任何限定
+        if (s.matches("^[a-zA-Z]+(?:\\s+[a-zA-Z]+)+$")) return true;
+        return false;
+    }
+
+    /** 零依赖地从 HTML 里提取某 p: 选择器匹配到的第一个元素文字（仅支持简单选择器）。
+     *  用于 preSanitizeStep3 判断播放列表是否抓到推荐片名。 */
+    private String extractFirstSelectorText(String html, String selector) {
+        if (TextUtils.isEmpty(html) || TextUtils.isEmpty(selector)) return "";
+        if (!selector.trim().startsWith("p:")) return "";
+        String s = selector.substring(2).trim();
+        // 只处理最后一层简单选择器：tag.class 或 tag[attr]
+        int sp = s.lastIndexOf(' ');
+        if (sp >= 0) s = s.substring(sp + 1).trim();
+        // 去掉 ->text
+        String attr = "";
+        int arr = s.indexOf("->");
+        if (arr >= 0) {
+            attr = s.substring(arr + 2).trim();
+            s = s.substring(0, arr).trim();
+        }
+        java.util.regex.Matcher tagM = java.util.regex.Pattern.compile("^[a-zA-Z]+").matcher(s);
+        String tag = tagM.find() ? tagM.group().toLowerCase() : "";
+        String cls = "";
+        java.util.regex.Matcher clsM = java.util.regex.Pattern.compile("\\.([A-Za-z0-9_\\-]+)").matcher(s);
+        while (clsM.find()) cls = clsM.group(1);
+        String attrName = "";
+        java.util.regex.Matcher atM = java.util.regex.Pattern.compile("\\[([A-Za-z0-9_\\-]+)").matcher(s);
+        if (atM.find()) attrName = atM.group(1);
+        String tagPat = tag.isEmpty() ? "[a-zA-Z][a-zA-Z0-9]*" : java.util.regex.Pattern.quote(tag);
+        String openTag = "<" + tagPat + "\\b[^>]*";
+        if (!cls.isEmpty()) {
+            openTag += "[^>]*class=['\"][^'\"]*\\b" + java.util.regex.Pattern.quote(cls) + "\\b[^'\"]*['\"]";
+        } else if (!attrName.isEmpty()) {
+            openTag += "[^>]*\\b" + java.util.regex.Pattern.quote(attrName) + "\\b";
+        }
+        openTag += "[^>]*>";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(openTag, java.util.regex.Pattern.CASE_INSENSITIVE).matcher(html);
+        if (!m.find()) return "";
+        int start = m.end();
+        // 找对应闭标签（简单处理：下一个同类闭标签）
+        java.util.regex.Matcher closeM = java.util.regex.Pattern.compile("</" + tagPat + "\\s*>", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(html);
+        closeM.region(start, html.length());
+        if (!closeM.find()) return "";
+        int end = closeM.start();
+        String inner = html.substring(start, end);
+        // 如果指定了 ->href/src 等属性，简单从 open tag 属性里取
+        if (!attr.isEmpty()) {
+            java.util.regex.Matcher am = java.util.regex.Pattern.compile(attr + "=['\"]([^'\"]+)['\"]")
+                    .matcher(html.substring(m.start(), m.end()));
+            if (am.find()) return am.group(1);
+        }
+        return inner.replaceAll("<[^>]+>", "").trim();
     }
 
     /** 区分「真线路」与「CTA按钮」的核心判定说明，buildPrompt3 与 buildPrompt4 共用。 */
