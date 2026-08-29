@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "io.github.fongmi.adaudio.probe.adapter.media3.v1_9"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 23

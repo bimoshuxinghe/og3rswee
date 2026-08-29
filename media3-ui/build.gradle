@@ -1,0 +1,37 @@
+// Media3 ui 模块（本地构建）
+//
+// 基底为 FongMi/TV fork 的 media/libraries/ui（Media3 1.10.0），其中含 FongMi 的
+// PlayerView / SubtitleView 补丁（弹幕集成、setRender、setBottomPosition 等）。
+// 现在编译在官方 1.11.0 common 之上，并通过根工程的 dependencySubstitution
+// 顶替官方 androidx.media3:media3-ui。
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'androidx.media3.ui'
+    compileSdk libs.versions.compileSdk.get().toInteger()
+
+    defaultConfig {
+        minSdk libs.versions.minSdk.get().toInteger()
+        targetSdk libs.versions.targetSdk.get().toInteger()
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    lint {
+        disable 'UnsafeOptInUsageError'
+    }
+}
+
+dependencies {
+    api project(':media3-common')
+    api project(':media3-danmaku')
+    implementation libs.appcompat
+    implementation libs.recyclerview
+    implementation libs.annotation
+    implementation libs.guava
+    implementation libs.okhttp
+    compileOnly 'org.checkerframework:checker-qual:3.42.0'
+}

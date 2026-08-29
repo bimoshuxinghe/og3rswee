@@ -153,8 +153,8 @@ dependencies {
     implementation libs.media3.ui
     // 注：media3-decoder-ffmpeg（FFmpeg 原生软解）随 vendored fork 一同移除；
     // 上游 FongMi/TV 现亦不再依赖该模块，改由 media3-decoder 内置软解兜底。
-    // FongMi 自定义扩展（编译在官方 1.11.0 之上）
-    implementation project(':media3-extras')
+    // FongMi 自定义扩展：media3-common / media3-ui 为本地模块
+    // （官方 1.11.0 源码 + FongMi 补丁，已在根工程 dependencySubstitution 顶替同名官方构件）
     implementation project(':media3-danmaku')
     implementation libs.palette
     implementation libs.recyclerview

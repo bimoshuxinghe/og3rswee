@@ -4,6 +4,23 @@ plugins {
     alias libs.plugins.chaquo.python apply false
 }
 
+// 将官方 Media3 的 common / ui 构件替换为本地模块。
+// 本地模块 = 官方 1.11.0 源码 + FongMi/TV 自定义扩展，
+// 这样 app 依赖的 exoplayer / session 等官方模块也会统一链接到本地 common / ui，
+// 避免 androidx.media3.common.* / androidx.media3.ui.* 出现 duplicate class。
+allprojects {
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute module('androidx.media3:media3-common')
+                    .using(project(':media3-common'))
+                    .because('本地构建：官方 1.11.0 common + FongMi 自定义补丁')
+            substitute module('androidx.media3:media3-ui')
+                    .using(project(':media3-ui'))
+                    .because('本地构建：fork ui，含 FongMi PlayerView/SubtitleView 扩展')
+        }
+    }
+}
+
 tasks.register('clean', Delete) {
     delete rootProject.layout.buildDirectory
 }

@@ -1,0 +1,38 @@
+// Media3 common 模块（本地构建）
+//
+// 基底为官方 androidx/media tag 1.11.0 的 libraries/common 源码，
+// 在此之上重新打回 FongMi/TV 的自定义补丁：
+//   - MediaTitle（多标题容器：DVD / Blu-ray ISO 选片）
+//   - Player.getCurrentMediaTitles() / Listener.onMediaTitlesChanged()
+//   - MediaItem.Builder#setDecode / #setAdblock
+//   - MimeTypes / FileTypes 扩展（WMV、RM、ISO、DSF/DFF、DTS、M2TS 等）
+//   - Util#inferContentType 扩展（data: scheme、=m3u8 / =mpd 参数、.php 后缀）
+//
+// 该模块通过根工程的 dependencySubstitution 顶替官方 androidx.media3:media3-common，
+// 因此整个构建（含官方 exoplayer / session 等模块）统一使用本模块。
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'androidx.media3.common'
+    compileSdk libs.versions.compileSdk.get().toInteger()
+
+    defaultConfig {
+        minSdk libs.versions.minSdk.get().toInteger()
+        targetSdk libs.versions.targetSdk.get().toInteger()
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    lint {
+        disable 'UnsafeOptInUsageError'
+    }
+}
+
+dependencies {
+    api libs.guava
+    implementation libs.annotation
+    compileOnly 'org.checkerframework:checker-qual:3.42.0'
+}

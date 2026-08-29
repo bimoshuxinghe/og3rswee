@@ -1,0 +1,460 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package androidx.media3.ui;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import android.content.res.Resources;
+import android.text.TextUtils;
+import androidx.annotation.Nullable;
+import androidx.media3.common.C;
+import androidx.media3.common.ColorInfo;
+import androidx.media3.common.Format;
+import androidx.media3.common.MimeTypes;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.Util;
+import java.util.Locale;
+
+/** A default {@link TrackNameProvider}. */
+@UnstableApi
+public class DefaultTrackNameProvider implements TrackNameProvider {
+
+  private final Resources resources;
+
+  /**
+   * @param resources Resources from which to obtain strings.
+   */
+  public DefaultTrackNameProvider(Resources resources) {
+    this.resources = checkNotNull(resources);
+  }
+
+  @Override
+  public String getTrackName(Format format) {
+    String trackName;
+    int trackType = inferPrimaryTrackType(format);
+    if (trackType == C.TRACK_TYPE_VIDEO) {
+      trackName =
+          joinWithSeparator(
+              buildRoleString(format), buildResolutionString(format), buildFrameRateString(format), buildBitrateString(format));
+    } else if (trackType == C.TRACK_TYPE_AUDIO) {
+      trackName =
+          joinWithSeparator(
+              buildLanguageOrLabelString(format),
+              buildAudioChannelString(format),
+              buildBitrateString(format));
+    } else {
+      trackName = joinWithSeparator(buildLanguageString(format), buildLabelString(format));
+    }
+    return joinWithSeparator(trackName, buildMimeTypeString(format));
+  }
+
+  private String buildResolutionString(Format format) {
+    int width = format.width;
+    int height = format.height;
+    return width == Format.NO_VALUE || height == Format.NO_VALUE
+        ? ""
+        : resources.getString(R.string.exo_track_resolution, width, height);
+  }
+
+  private String buildFrameRateString(Format format) {
+    float frameRate = format.frameRate;
+    return frameRate == Format.NO_VALUE ? "" : (int) Math.floor(frameRate) + "FPS";
+  }
+
+  private String buildBitrateString(Format format) {
+    int bitrate = format.bitrate;
+    return bitrate == Format.NO_VALUE
+        ? ""
+        : resources.getString(R.string.exo_track_bitrate, bitrate / 1000000f);
+  }
+
+  private String buildAudioChannelString(Format format) {
+    int channelCount = format.channelCount;
+    if (channelCount == Format.NO_VALUE || channelCount < 1) {
+      return "";
+    }
+    switch (channelCount) {
+      case 1:
+        return resources.getString(R.string.exo_track_mono);
+      case 2:
+        return resources.getString(R.string.exo_track_stereo);
+      case 6:
+      case 7:
+        return resources.getString(R.string.exo_track_surround_5_point_1);
+      case 8:
+        return resources.getString(R.string.exo_track_surround_7_point_1);
+      default:
+        return resources.getString(R.string.exo_track_surround);
+    }
+  }
+
+  private String buildLanguageOrLabelString(Format format) {
+    String languageAndRole =
+        joinWithSeparator(buildLanguageString(format), buildRoleString(format));
+    return TextUtils.isEmpty(languageAndRole) ? buildLabelString(format) : languageAndRole;
+  }
+
+  private String buildLabelString(Format format) {
+    return TextUtils.isEmpty(format.label) ? "" : format.label;
+  }
+
+  private String buildLanguageString(Format format) {
+    @Nullable String language = format.language;
+    if (TextUtils.isEmpty(language) || C.LANGUAGE_UNDETERMINED.equals(language)) {
+      return "";
+    }
+    if ("awr".equals(language) || "zh-cmn".equals(language)) {
+      language = "zh";
+    }
+    if ("awq".equals(language) || "qph".equals(language)) {
+      language = "yue";
+    }
+    if ("chs".equals(language)) {
+      language = "zh-Hans";
+    }
+    if ("cht".equals(language)) {
+      language = "zh-Hant";
+    }
+    Locale languageLocale = Locale.forLanguageTag(language);
+    Locale displayLocale = Util.getDefaultDisplayLocale();
+    String languageName = languageLocale.getDisplayName(displayLocale);
+    if (TextUtils.isEmpty(languageName)) {
+      return "";
+    }
+    try {
+      // Capitalize the first letter. See: https://github.com/google/ExoPlayer/issues/9452.
+      int firstCodePointLength = languageName.offsetByCodePoints(0, 1);
+      return languageName.substring(0, firstCodePointLength).toUpperCase(displayLocale)
+          + languageName.substring(firstCodePointLength);
+    } catch (IndexOutOfBoundsException e) {
+      // Should never happen, but return the unmodified language name if it does.
+      return languageName;
+    }
+  }
+
+  private String buildRoleString(Format format) {
+    String roles = "";
+    if ((format.roleFlags & C.ROLE_FLAG_ALTERNATE) != 0) {
+      roles = resources.getString(R.string.exo_track_role_alternate);
+    }
+    if ((format.roleFlags & C.ROLE_FLAG_SUPPLEMENTARY) != 0) {
+      roles = joinWithSeparator(roles, resources.getString(R.string.exo_track_role_supplementary));
+    }
+    if ((format.roleFlags & C.ROLE_FLAG_COMMENTARY) != 0) {
+      roles = joinWithSeparator(roles, resources.getString(R.string.exo_track_role_commentary));
+    }
+    if ((format.roleFlags & (C.ROLE_FLAG_CAPTION | C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND)) != 0) {
+      roles =
+          joinWithSeparator(roles, resources.getString(R.string.exo_track_role_closed_captions));
+    }
+    return roles;
+  }
+
+  private String joinWithSeparator(String... items) {
+    String itemList = "";
+    for (String item : items) {
+      if (!item.isEmpty()) {
+        if (TextUtils.isEmpty(itemList)) {
+          itemList = item;
+        } else {
+          itemList = resources.getString(R.string.exo_item_list, itemList, item);
+        }
+      }
+    }
+    return itemList;
+  }
+
+  private static int inferPrimaryTrackType(Format format) {
+    int trackType = MimeTypes.getTrackType(format.sampleMimeType);
+    if (trackType != C.TRACK_TYPE_UNKNOWN) {
+      return trackType;
+    }
+    if (MimeTypes.getVideoMediaMimeType(format.codecs) != null) {
+      return C.TRACK_TYPE_VIDEO;
+    }
+    if (MimeTypes.getAudioMediaMimeType(format.codecs) != null) {
+      return C.TRACK_TYPE_AUDIO;
+    }
+    if (format.width != Format.NO_VALUE || format.height != Format.NO_VALUE) {
+      return C.TRACK_TYPE_VIDEO;
+    }
+    if (format.channelCount != Format.NO_VALUE || format.sampleRate != Format.NO_VALUE) {
+      return C.TRACK_TYPE_AUDIO;
+    }
+    return C.TRACK_TYPE_UNKNOWN;
+  }
+
+  private String buildMimeTypeString(Format format) {
+    String mimeType = format.sampleMimeType;
+    if (TextUtils.isEmpty(mimeType)) {
+      return "";
+    }
+    switch (mimeType) {
+      case MimeTypes.AUDIO_AAC:
+        return buildAacName(format);
+      case MimeTypes.AUDIO_AC3:
+        return "AC-3";
+      case MimeTypes.AUDIO_AC4:
+        return "AC-4";
+      case MimeTypes.AUDIO_ALAC:
+        return "ALAC";
+      case MimeTypes.AUDIO_ALAW:
+        return "ALAW";
+      case MimeTypes.AUDIO_AMR:
+        return "AMR";
+      case MimeTypes.AUDIO_AMR_NB:
+        return "AMR-NB";
+      case MimeTypes.AUDIO_AMR_WB:
+        return "AMR-WB";
+      case MimeTypes.AUDIO_ATRAC3:
+        return "ATRAC3";
+      case MimeTypes.AUDIO_ATRAC3P:
+        return "ATRAC3+";
+      case MimeTypes.AUDIO_AV3A:
+        return "AV3A";
+      case MimeTypes.AUDIO_COOK:
+        return "COOK";
+      case MimeTypes.AUDIO_DSD:
+      case MimeTypes.AUDIO_DSD_LSBF_PLANAR:
+      case MimeTypes.AUDIO_DSD_MSBF_PLANAR:
+        return "DSD";
+      case MimeTypes.AUDIO_DST:
+        return "DST";
+      case MimeTypes.AUDIO_DTS:
+        return "DTS";
+      case MimeTypes.AUDIO_DTS_X:
+        return "DTS:X";
+      case MimeTypes.AUDIO_DTS_HD:
+        return "DTS-HD";
+      case MimeTypes.AUDIO_DTS_MA:
+        return "DTS-HD MA";
+      case MimeTypes.AUDIO_DTS_EXPRESS:
+        return "DTS-Express";
+      case MimeTypes.AUDIO_DTS_UHD_P2:
+        return "DTS-UHD";
+      case MimeTypes.AUDIO_E_AC3:
+        return "E-AC-3";
+      case MimeTypes.AUDIO_E_AC3_JOC:
+        return "E-AC-3 JOC";
+      case MimeTypes.AUDIO_FLAC:
+        return "FLAC";
+      case MimeTypes.AUDIO_IAMF:
+        return "IAMF";
+      case MimeTypes.AUDIO_MIDI:
+        return "MIDI";
+      case MimeTypes.AUDIO_MLAW:
+        return "MLAW";
+      case MimeTypes.AUDIO_MPEG_L1:
+        return "MP1";
+      case MimeTypes.AUDIO_MPEG_L2:
+        return "MP2";
+      case MimeTypes.AUDIO_MPEG:
+        return "MP3";
+      case MimeTypes.AUDIO_MPEGH_MHA1:
+      case MimeTypes.AUDIO_MPEGH_MHM1:
+        return "MPEG-H";
+      case MimeTypes.AUDIO_MSGSM:
+        return "GSM";
+      case MimeTypes.AUDIO_OGG:
+        return "OGG";
+      case MimeTypes.AUDIO_OPUS:
+        return "Opus";
+      case MimeTypes.AUDIO_RAW:
+        return buildPcmName(format);
+      case MimeTypes.AUDIO_RALF:
+        return "RALF";
+      case MimeTypes.AUDIO_SIPR:
+        return "SIPR";
+      case MimeTypes.AUDIO_TRUEHD:
+        return buildTrueHdName(format);
+      case MimeTypes.AUDIO_VORBIS:
+        return "Vorbis";
+      case MimeTypes.AUDIO_WAV:
+        return "WAV";
+      case MimeTypes.AUDIO_WMA:
+        return "WMA";
+      case MimeTypes.AUDIO_WMA1:
+        return "WMA1";
+      case MimeTypes.AUDIO_WMA2:
+        return "WMA2";
+      case MimeTypes.AUDIO_WMA_LOSSLESS:
+        return "WMA Lossless";
+      case MimeTypes.AUDIO_WMA_PRO:
+        return "WMA Pro";
+      case MimeTypes.AUDIO_WMA_VOICE:
+        return "WMA Voice";
+      case MimeTypes.VIDEO_APV:
+        return "APV";
+      case MimeTypes.VIDEO_AV1:
+        return joinWithSeparator("AV1", buildHdrTypeString(format));
+      case MimeTypes.VIDEO_AVI:
+        return "AVI";
+      case MimeTypes.VIDEO_DIVX:
+        return "DIVX";
+      case MimeTypes.VIDEO_DOLBY_VISION:
+        return buildDolbyVisionName(format);
+      case MimeTypes.VIDEO_FLV:
+        return "FLV";
+      case MimeTypes.VIDEO_H263:
+        return "H.263";
+      case MimeTypes.VIDEO_H264:
+        return joinWithSeparator("H.264", buildHdrTypeString(format));
+      case MimeTypes.VIDEO_H265:
+        return joinWithSeparator("H.265", buildHdrTypeString(format));
+      case MimeTypes.VIDEO_H266:
+        return "H.266";
+      case MimeTypes.VIDEO_MJPEG:
+        return "MJPEG";
+      case MimeTypes.VIDEO_MP4:
+        return "MP4";
+      case MimeTypes.VIDEO_MP4V:
+        return "MPEG-4";
+      case MimeTypes.VIDEO_MP42:
+        return "MP42";
+      case MimeTypes.VIDEO_MP43:
+        return "MP43";
+      case MimeTypes.VIDEO_MPEG:
+        return "MPEG";
+      case MimeTypes.VIDEO_MPEG2:
+        return "MPEG-2";
+      case MimeTypes.VIDEO_PS:
+        return "MPEG-2 PS";
+      case MimeTypes.VIDEO_RV10:
+        return "RV10";
+      case MimeTypes.VIDEO_RV20:
+        return "RV20";
+      case MimeTypes.VIDEO_RV30:
+        return "RV30";
+      case MimeTypes.VIDEO_RV40:
+        return "RV40";
+      case MimeTypes.VIDEO_VC1:
+        return "VC-1";
+      case MimeTypes.VIDEO_VP8:
+        return "VP8";
+      case MimeTypes.VIDEO_VP9:
+        return joinWithSeparator("VP9", buildHdrTypeString(format));
+      case MimeTypes.VIDEO_WMV:
+        return "WMV";
+      case MimeTypes.VIDEO_WMV1:
+        return "WMV1";
+      case MimeTypes.VIDEO_WMV2:
+        return "WMV2";
+      case MimeTypes.VIDEO_QUICK_TIME:
+        return "MOV";
+      case MimeTypes.TEXT_SSA:
+        return "SSA";
+      case MimeTypes.TEXT_VTT:
+        return "VTT";
+      case MimeTypes.APPLICATION_DVBSUBS:
+        return "DVB";
+      case MimeTypes.APPLICATION_CEA608:
+      case MimeTypes.APPLICATION_MP4CEA608:
+        return "CEA-608";
+      case MimeTypes.APPLICATION_CEA708:
+        return "CEA-708";
+      case MimeTypes.APPLICATION_MP4VTT:
+        return "VTT";
+      case MimeTypes.APPLICATION_PGS:
+        return "PGS";
+      case MimeTypes.APPLICATION_SUBRIP:
+        return "SRT";
+      case MimeTypes.APPLICATION_TTML:
+        return "TTML";
+      case MimeTypes.APPLICATION_TX3G:
+        return "TX3G";
+      case MimeTypes.APPLICATION_VOBSUB:
+        return "VobSub";
+      default:
+        return mimeType;
+    }
+  }
+
+  private static String buildAacName(Format format) {
+    if (format.codecs != null) {
+      String[] parts = format.codecs.split("\\.");
+      if (parts.length >= 3 && "mp4a".equals(parts[0]) && "40".equals(parts[1])) {
+        switch (parts[2]) {
+          case "2":
+            return "AAC-LC";
+          case "5":
+            return "HE-AAC";
+          case "29":
+            return "HE-AAC v2";
+          case "42":
+            return "xHE-AAC";
+          default:
+            break;
+        }
+      }
+    }
+    return "AAC";
+  }
+
+  private static String buildPcmName(Format format) {
+    switch (format.pcmEncoding) {
+      case C.ENCODING_PCM_8BIT:
+        return "LPCM 8-bit";
+      case C.ENCODING_PCM_16BIT:
+      case C.ENCODING_PCM_16BIT_BIG_ENDIAN:
+        return "LPCM 16-bit";
+      case C.ENCODING_PCM_24BIT:
+      case C.ENCODING_PCM_24BIT_BIG_ENDIAN:
+        return "LPCM 24-bit";
+      case C.ENCODING_PCM_32BIT:
+      case C.ENCODING_PCM_32BIT_BIG_ENDIAN:
+        return "LPCM 32-bit";
+      case C.ENCODING_PCM_FLOAT:
+        return "PCM Float";
+      case C.ENCODING_PCM_DOUBLE:
+        return "PCM Double";
+      default:
+        return "PCM";
+    }
+  }
+
+  private static String buildTrueHdName(Format format) {
+    return "atmos".equals(format.codecs) ? "TrueHD + Atmos" : "TrueHD";
+  }
+
+  private static String buildDolbyVisionName(Format format) {
+    if (format.codecs != null) {
+      String[] parts = format.codecs.split("\\.");
+      if (parts.length >= 2) {
+        try {
+          int profile = Integer.parseInt(parts[1]);
+          return "Dolby Vision Profile " + profile;
+        } catch (NumberFormatException e) {
+          // fall through
+        }
+      }
+    }
+    return "Dolby Vision";
+  }
+
+  private static String buildHdrTypeString(Format format) {
+    @Nullable ColorInfo colorInfo = format.colorInfo;
+    if (colorInfo == null) {
+      return "";
+    }
+    if (colorInfo.colorTransfer == C.COLOR_TRANSFER_HLG) {
+      return "HLG";
+    }
+    if (colorInfo.colorTransfer == C.COLOR_TRANSFER_ST2084) {
+      return "HDR10";
+    }
+    return "";
+  }
+}

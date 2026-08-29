@@ -26,9 +26,12 @@ dependencyResolutionManagement {
     }
 }
 
-// B 方案：弃用 vendored Media3 fork（/media 复合构建），改用官方 Maven androidx.media3:*:1.11.0。
-// FongMi 的自定义扩展（MediaTitle / 弹幕）提取为独立本地模块，编译在官方 1.11.0 之上。
-include ':media3-extras'   // androidx.media3.common.MediaTitle
+// Media3 升级策略（"精确局部 rebase"）：
+//   官方 androidx/media 1.11.0 源码作基底（common），
+//   FongMi/TV 的自定义扩展（Player/MediaItem 补丁 + ui 层弹幕/渲染补丁）编译在其之上，
+//   通过根工程的 dependencySubstitution 顶替官方 media3-common / media3-ui 构件。
+include ':media3-common'   // androidx.media3.common.*（官方 1.11.0 + FongMi 补丁）
+include ':media3-ui'       // androidx.media3.ui.*（fork ui，含 PlayerView/SubtitleView 补丁）
 include ':media3-danmaku'  // androidx.media3.ui.danmaku.*
 
 include ':app'

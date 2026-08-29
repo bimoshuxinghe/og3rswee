@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "io.github.fongmi.adaudio.probe.tools"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 23
