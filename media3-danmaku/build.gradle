@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 
 android {
     namespace 'androidx.media3.ui.danmaku'
-    compileSdk 35
+    compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
         minSdk 24

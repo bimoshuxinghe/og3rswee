@@ -4,7 +4,7 @@ android {
     // 注意：源码仍放在 androidx/media3/common/ 目录下，编译出的类包名保持 androidx.media3.common.MediaTitle；
     // namespace 用独立值以避免与官方 media3-common 构件（同名包）在 AGP 中冲突。
     namespace 'androidx.media3.common.fongmi'
-    compileSdk 35
+    compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
         minSdk 24
