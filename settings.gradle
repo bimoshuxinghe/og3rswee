@@ -33,6 +33,7 @@ dependencyResolutionManagement {
 include ':media3-common'   // androidx.media3.common.*（官方 1.11.0 + FongMi 补丁）
 include ':media3-ui'       // androidx.media3.ui.*（fork ui，含 PlayerView/SubtitleView 补丁）
 include ':media3-danmaku'  // androidx.media3.ui.danmaku.*
+include ':media3-decoder-ffmpeg' // androidx.media3.decoder.ffmpeg.*（FFmpeg 软解 Java 层，native .so 在 app/jniLibs）
 
 include ':app'
 include ':catvod'

@@ -1,0 +1,40 @@
+// Media3 FFmpeg 软解扩展（Java 包装层）
+//
+// 重要：本模块只提供 Java 包装类（FfmpegAudioRenderer / FfmpegLibrary / FfmpegAudioDecoder ...），
+// 不含 NDK 构建。FFmpeg 的原生库（libffmpegJNI.so + libavcodec/libavformat/libavutil 等）
+// 是预编译产物，直接放在 app/src/main/jniLibs/arm64-v8a/ 下随 APK 打包。
+//
+// 原实现依赖 vendored fork 的 media/libraries/decoder_ffmpeg 模块；
+// 该模块的 build.gradle 只有在 src/main/jni/ffmpeg 存在时才启用 CMake，
+// 而仓库中并不存在该目录，因此原本也不会触发 NDK 编译 —— 原生库一直来自 jniLibs。
+//
+// 升级到 1.11.0 后，本模块编译在本地 media3-common + 官方 media3-exoplayer/decoder 之上。
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'androidx.media3.decoder.ffmpeg'
+    compileSdk libs.versions.compileSdk.get().toInteger()
+
+    defaultConfig {
+        minSdk libs.versions.minSdk.get().toInteger()
+        targetSdk libs.versions.targetSdk.get().toInteger()
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    lint {
+        disable 'UnsafeOptInUsageError'
+    }
+}
+
+dependencies {
+    api project(':media3-common')
+    api libs.media3.decoder
+    implementation libs.media3.exoplayer
+    implementation libs.annotation
+    implementation libs.guava
+    compileOnly 'org.checkerframework:checker-qual:3.42.0'
+}
