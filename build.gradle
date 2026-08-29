@@ -11,10 +11,11 @@ plugins {
 allprojects {
     configurations.configureEach {
         resolutionStrategy.dependencySubstitution {
-            substitute module('androidx.media3:media3-common')
+            // 注意：必须显式加括号，否则 Groovy 会把整个链式调用当作 substitute 的入参。
+            substitute(module('androidx.media3:media3-common'))
                     .using(project(':media3-common'))
                     .because('本地构建：官方 1.11.0 common + FongMi 自定义补丁')
-            substitute module('androidx.media3:media3-ui')
+            substitute(module('androidx.media3:media3-ui'))
                     .using(project(':media3-ui'))
                     .because('本地构建：fork ui，含 FongMi PlayerView/SubtitleView 扩展')
         }
