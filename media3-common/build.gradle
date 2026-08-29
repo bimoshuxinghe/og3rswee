@@ -34,5 +34,9 @@ android {
 dependencies {
     api libs.guava
     implementation libs.annotation
+    // 官方 media3-common 源码需要的注解依赖（@UnstableApi / @NullableType / Kotlin 迁移注解）
+    api 'androidx.annotation:annotation-experimental:1.5.0'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+    compileOnly 'org.jetbrains.kotlin:kotlin-annotations-jvm:1.9.24'
     compileOnly 'org.checkerframework:checker-qual:3.42.0'
 }
