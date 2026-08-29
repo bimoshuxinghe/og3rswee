@@ -20,7 +20,7 @@ splashscreen = "1.2.0"
 startup = "1.2.0"
 swiperefreshlayout = "1.2.0"
 viewpager2 = "1.1.0"
-media3 = "1.10.0"
+media3 = "1.11.0"
 nextlib = "1.10.0-0.12.1"
 
 androidGifDrawable = "1.2.31"
