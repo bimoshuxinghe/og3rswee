@@ -808,7 +808,7 @@ public class AutoSiteHelper {
                 + "  <div class=\"play-box\">\n"
                 + "    <a href=\"/play/abc-1-1.html\" class=\"btn-primary\">全部播放</a>\n"
                 + "  </div>\n"
-                + "  这里【只有 1 个】元素，没有兄弟，不构成"数组"——它是动作，不是线路。\n"
+                + "  这里【只有 1 个】元素，没有兄弟，不构成「数组」——它是动作，不是线路。\n"
                 + "  ✅ 正确答案（走【分支B】）：播放页URL = /play/abc-1-1.html，其余 6 个播放字段全部留空 \"\"。\n\n"
                 + "【已知 CTA 动作词（与上面的形状规则等价，供你对照检查）】\n"
                 + "  " + CTA_WORDS.replace("|", "、") + "\n\n"
