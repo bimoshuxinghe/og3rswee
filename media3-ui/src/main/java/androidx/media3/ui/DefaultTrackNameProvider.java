@@ -235,8 +235,8 @@ public class DefaultTrackNameProvider implements TrackNameProvider {
         return "DST";
       case MimeTypes.AUDIO_DTS:
         return "DTS";
-      case MimeTypes.AUDIO_DTS_X:
-        return "DTS:X";
+      // 注：官方 1.11.0 起 AUDIO_DTS_X 已 @Deprecated 并作为 AUDIO_DTS_UHD_P2 的别名，
+      // 两者值相同，同时列出会导致 duplicate case label，故此处只保留 AUDIO_DTS_UHD_P2。
       case MimeTypes.AUDIO_DTS_HD:
         return "DTS-HD";
       case MimeTypes.AUDIO_DTS_MA:
