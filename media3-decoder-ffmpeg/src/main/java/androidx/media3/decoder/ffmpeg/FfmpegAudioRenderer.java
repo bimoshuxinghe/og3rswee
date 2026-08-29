@@ -19,6 +19,7 @@ import static androidx.media3.exoplayer.audio.AudioSink.SINK_FORMAT_SUPPORTED_DI
 import static androidx.media3.exoplayer.audio.AudioSink.SINK_FORMAT_SUPPORTED_WITH_TRANSCODING;
 import static androidx.media3.exoplayer.audio.AudioSink.SINK_FORMAT_UNSUPPORTED;
 import static com.google.common.base.Preconditions.checkNotNull;
+import com.google.common.primitives.ImmutableIntArray;
 
 import android.os.Handler;
 import androidx.annotation.Nullable;
@@ -173,7 +174,7 @@ public final class FfmpegAudioRenderer extends DecoderAudioRenderer<FfmpegAudioD
 
   @Override
   @Nullable
-  protected int[] getChannelMapping(FfmpegAudioDecoder decoder) {
+  protected ImmutableIntArray getChannelMapping(FfmpegAudioDecoder decoder) {
     int channelCount = decoder.getChannelCount();
     Format nativePcm =
         Util.getPcmFormat(
@@ -191,7 +192,7 @@ public final class FfmpegAudioRenderer extends DecoderAudioRenderer<FfmpegAudioD
       Format pcm7point1 = Util.getPcmFormat(decoder.getEncoding(), 8, decoder.getSampleRate());
       if (getSinkFormatSupport(pcm7point1) == AudioSink.SINK_FORMAT_SUPPORTED_DIRECTLY) {
         androidx.media3.common.util.Log.i(TAG, "FFmpeg PCM output: hardware supports 7.1. Mapping " + channelCount + " -> 8 channels.");
-        return new int[]{0, 1, 2, 3, 4, 5, 6, 7};
+        return ImmutableIntArray.copyOf(new int[]{0, 1, 2, 3, 4, 5, 6, 7});
       }
     }
 
@@ -199,13 +200,13 @@ public final class FfmpegAudioRenderer extends DecoderAudioRenderer<FfmpegAudioD
       Format pcm5point1 = Util.getPcmFormat(decoder.getEncoding(), 6, decoder.getSampleRate());
       if (getSinkFormatSupport(pcm5point1) == AudioSink.SINK_FORMAT_SUPPORTED_DIRECTLY) {
         androidx.media3.common.util.Log.i(TAG, "FFmpeg PCM output: hardware falls back to 5.1. Mapping " + channelCount + " -> 6 channels.");
-        return BED_5_1_MAPPING;
+        return ImmutableIntArray.copyOf(BED_5_1_MAPPING);
       }
     }
 
     if (channelCount >= 2) {
       androidx.media3.common.util.Log.i(TAG, "FFmpeg PCM output: hardware only supports stereo. Mapping " + channelCount + " -> 2 channels.");
-      return STEREO_MAPPING;
+      return ImmutableIntArray.copyOf(STEREO_MAPPING);
     }
 
     return null;
