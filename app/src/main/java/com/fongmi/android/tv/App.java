@@ -85,6 +85,12 @@ public class App extends Application implements Application.ActivityLifecycleCal
         super.onCreate();
         com.fongmi.chaquo.DbgLog.init(getFilesDir());
         Notify.createChannel();
+        // 全局异常兜底：至少把崩溃栈落日志，避免静默闪退回桌面且无从排查
+        final Thread.UncaughtExceptionHandler def = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
+            android.util.Log.e("App", "Uncaught exception in " + thread.getName(), e);
+            if (def != null) def.uncaughtException(thread, e);
+        });
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
         // 异步拉取云端广告规则合并到本地 RULES.JSON（幂等），保证音纹跳广告无需手动放置规则文件

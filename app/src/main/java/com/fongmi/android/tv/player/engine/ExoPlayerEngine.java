@@ -312,6 +312,8 @@ public class ExoPlayerEngine implements PlayerEngine {
     private ErrorAction retryDolbyVisionOrDecode() {
         if (PlayerSetting.isExoDolbyVisionPassthrough() && ExoUtil.hasSelectedDolbyVision(player)) {
             long position = player.getCurrentPosition();
+            // 直播：按独立直播开关关闭 DV 透传，避免影响点播总开关
+            PlayerSetting.putExoDolbyVisionPassthroughLive(false);
             PlayerSetting.putExoDolbyVisionPassthrough(false);
             startInternal(position);
             return ErrorAction.RECOVERED;

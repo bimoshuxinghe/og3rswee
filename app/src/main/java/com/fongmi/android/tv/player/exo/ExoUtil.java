@@ -76,6 +76,7 @@ public class ExoUtil {
 
     public static void applyDolbyVisionPolicy(Player player) {
         if (allowDolbyVision()) return;
+        if (isLiveStream(player)) return; // 直播：不强制 DV，走普通解码，规避闪退
         Tracks tracks = player.getCurrentTracks();
         TrackGroup bestGroup = null;
         int bestIndex = -1;
@@ -159,10 +160,12 @@ public class ExoUtil {
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(App.get());
         DefaultTrackSelector.Parameters.Builder builder = trackSelector.buildUponParameters();
         if (PlayerSetting.isPreferAAC()) builder.setPreferredAudioMimeType(MimeTypes.AUDIO_AAC);
-        if (!allowDolbyVision()) builder.setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_H264, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_VP9, MimeTypes.VIDEO_VP8);
+        // 直播默认不走 DV 透传通道（由独立直播开关控制），避免直播闪退
+        boolean dvAllowed = PlayerSetting.isExoDolbyVisionPassthroughLive();
+        if (!dvAllowed) builder.setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_H264, MimeTypes.VIDEO_AV1, MimeTypes.VIDEO_VP9, MimeTypes.VIDEO_VP8);
         builder.setPreferredTextLanguage(Locale.getDefault().getISO3Language());
         builder.setTunnelingEnabled(PlayerSetting.isTunnel());
-        builder.setForceHighestSupportedBitrate(allowDolbyVision());
+        builder.setForceHighestSupportedBitrate(dvAllowed);
         trackSelector.setParameters(builder.build());
         return trackSelector;
     }
@@ -189,6 +192,14 @@ public class ExoUtil {
         // DV on devices with DV decoders but non-DV-certified displays. The renderer's
         // fallback mechanism handles decoder failures gracefully.
         return PlayerSetting.isExoDolbyVisionPassthrough() && hasDolbyVisionDecoder();
+    }
+
+    private static boolean isLiveStream(Player player) {
+        try {
+            return player.isCurrentMediaItemLive();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static boolean hasDolbyVisionDecoder() {

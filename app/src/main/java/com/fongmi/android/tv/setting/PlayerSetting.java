@@ -166,6 +166,15 @@ public class PlayerSetting {
         Prefers.put("exo_dolby_vision_passthrough", passthrough);
     }
 
+    // ===== 直播杜比视界透传开关（默认关闭，避免直播闪退回桌面）=====
+    public static boolean isExoDolbyVisionPassthroughLive() {
+        return Prefers.getBoolean("exo_dolby_vision_passthrough_live", false);
+    }
+
+    public static void putExoDolbyVisionPassthroughLive(boolean passthrough) {
+        Prefers.put("exo_dolby_vision_passthrough_live", passthrough);
+    }
+
     public static int getRender() {
         return Prefers.getInt("render", 0);
     }

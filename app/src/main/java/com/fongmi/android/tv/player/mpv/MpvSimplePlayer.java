@@ -860,6 +860,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         applyOffsets();
         restoreVideoOutput();
         applyMediaOptions(url);
+        applyAudioOptions(); // 媒体就绪后再判定直播/HLS，决定是否启用直通
         String playableUrl = MpvMedia.getPlayableUrl(url);
         String options = getLoadOptions(positionMs, useStartOption, mediaItem, url);
         if (TextUtils.isEmpty(options)) command("loadfile", playableUrl, "replace");
@@ -1148,7 +1149,12 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void applyAudioOptions() {
         setMpvOption("ao", "audiotrack,opensles");
-        String formats = MpvAudioPassthrough.getSupportedFormats(context, PlayerSetting.isMpvAudioPassthrough(), PlayerSetting.isMpvDolbyPassthrough());
+        // 直播（HLS / PHP 代理）默认不启用 Dolby/音频直通，规避直播闪退
+        boolean isLive = mediaItem != null && mediaItem.localConfiguration != null
+                && isHls(mediaItem, mediaItem.localConfiguration.uri.toString());
+        boolean audio = PlayerSetting.isMpvAudioPassthrough() && !isLive;
+        boolean dolby = PlayerSetting.isMpvDolbyPassthrough() && !isLive;
+        String formats = MpvAudioPassthrough.getSupportedFormats(context, audio, dolby);
         passthroughEnabled = !TextUtils.isEmpty(formats);
         if (passthroughEnabled) {
             setMpvOption("audio-spdif", formats);
