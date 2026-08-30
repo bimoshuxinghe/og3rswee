@@ -106,8 +106,17 @@ final class ProbeAudioSink implements AudioSink {
             throw new ConfigurationException("探针收到空的播放配置",
                     audioSinkConfig == null ? null : audioSinkConfig.format);
         }
-        int[] outputChannels = audioSinkConfig.outputChannelMapping == null
-                ? null : audioSinkConfig.outputChannelMapping.toArray();
+        int[] outputChannels;
+        try {
+            // outputChannelMapping 的类型是 Guava 的 ImmutableIntArray；探针本身不依赖
+            // Guava，只在编译期用它读字段。若运行期该类因裁剪/混淆缺失，这里会抛
+            // NoClassDefFoundError —— 此时降级为「不指定声道映射」仍然可以正常分析，
+            // 绝不能让整个探针因此失效。
+            outputChannels = audioSinkConfig.outputChannelMapping == null
+                    ? null : audioSinkConfig.outputChannelMapping.toArray();
+        } catch (LinkageError e) {
+            outputChannels = null;
+        }
         configure(audioSinkConfig.format,
                 audioSinkConfig.preferredBufferSizeOverride, outputChannels);
     }

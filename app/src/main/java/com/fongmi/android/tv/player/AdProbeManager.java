@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.player;
 
 import android.content.Context;
+import android.util.Log;
 import androidx.media3.common.C;
 import androidx.media3.common.Player;
 import com.fongmi.android.tv.R;
@@ -39,6 +40,9 @@ import io.github.fongmi.adaudio.probe.SkipRequest;
  */
 public final class AdProbeManager {
 
+    /** 诊断日志 TAG；探针是 fail-open 设计，出问题时只有这里能看到原因。 */
+    private static final String TAG = "AdProbe";
+
     /** SDK 适配器仅放行不会向重定向目标泄露凭据的安全请求头白名单。 */
     private static final Set<String> ALLOWED_HEADER_NAMES = Collections.unmodifiableSet(
             new java.util.HashSet<>(java.util.Arrays.asList(
@@ -73,10 +77,13 @@ public final class AdProbeManager {
                 return;
             }
             if (target < 0L) return;
+            Log.i(TAG, "命中广告，请求跳转 " + target + "ms（当前 " + p.getCurrentPosition()
+                    + "ms，模式 " + mode + "）");
             try {
                 p.seekTo(target);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // 宿主 seek 失败不应影响后续检测
+                Log.w(TAG, "跳转失败", e);
             }
             if (mode == Setting.AD_SKIP_MODE_NOTICE_AND_SKIP) {
                 Notify.show(ResUtil.getString(R.string.ad_skipped));
@@ -85,15 +92,20 @@ public final class AdProbeManager {
 
         @Override
         public void onError(ProbeError error) {
-            // fail-open：探针错误只记录，绝不打断宿主播放
-            if (error != null && error.isFatal()) {
-                // 当前媒体分析已停止，等待下一次 open 或规则刷新
-            }
+            // fail-open：探针错误只记录，绝不打断宿主播放。
+            // 这里必须打日志——否则 Media3 大版本升级导致探针内部崩溃时，
+            // 用户只会看到「音纹去广告不工作」，而拿不到任何线索。
+            if (error == null) return;
+            Log.w(TAG, "探针错误 code=" + error.getCode()
+                    + " fatal=" + error.isFatal()
+                    + " retryable=" + error.isRetryable()
+                    + " msg=" + error.getMessage(), error.getCause());
         }
 
         @Override
         public void onRulesReplaced(RuleReplacementResult result) {
             // 规则替换终态回调（本地文件加载成功/失败均可在此处理）
+            Log.i(TAG, "规则已替换 result=" + result);
         }
     };
 
@@ -135,8 +147,12 @@ public final class AdProbeManager {
                     .build();
             probe.setEnabled(Setting.isAiAdblock());
             loadRulesFromFile();  // 初始化后立即尝试加载本地规则
+            Log.i(TAG, "探针已就绪 enabled=" + Setting.isAiAdblock()
+                    + " rulesPath=" + rulesPath);
         } catch (RuntimeException | LinkageError e) {
-            e.printStackTrace();
+            // fail-open：探针创建失败绝不打断宿主播放，但必须留下可诊断的日志，
+            // 否则音纹去广告会「静默失效」，宿主与用户都察觉不到原因。
+            Log.e(TAG, "探针初始化失败，音纹去广告不可用", e);
             probe = null;
         }
     }
@@ -145,7 +161,10 @@ public final class AdProbeManager {
     private void loadRulesFromFile() {
         if (probe == null || rulesPath == null || rulesPath.trim().isEmpty()) return;
         File file = new File(rulesPath.trim());
-        if (!file.exists() || !file.isFile() || !file.canRead()) return;
+        if (!file.exists() || !file.isFile() || !file.canRead()) {
+            Log.w(TAG, "规则文件不可用，音纹去广告无规则可匹配 path=" + rulesPath);
+            return;
+        }
         StringBuilder sb = new StringBuilder((int) Math.min(file.length(), 4 * 1024 * 1024));
         try (BufferedReader reader = new BufferedReader(new FileReader(file), 8192)) {
             char[] buf = new char[8192];
@@ -156,23 +175,34 @@ public final class AdProbeManager {
             String json = sb.toString().trim();
             if (!json.isEmpty()) {
                 probe.replaceRulesJson(sanitizeForProbe(json));
+                Log.i(TAG, "已加载规则文件 size=" + json.length() + " path=" + rulesPath);
             }
-        } catch (Exception ignored) {
-            // 规则文件读取失败不影响宿主播放
+        } catch (Exception e) {
+            // 规则文件读取失败不影响宿主播放，但要留下线索
+            Log.e(TAG, "规则文件读取失败", e);
         }
     }
 
     /** 开始分析新媒体；同一 URL 不会重复开（避免 subtitle/format 切换误触发）。 */
     public void open(String url, Map<String, String> headers) {
-        if (url == null || probe == null || !probe.isEnabled()) return;
+        if (url == null) return;
+        if (probe == null) {
+            Log.w(TAG, "open 跳过：探针实例为空（初始化阶段曾失败）");
+            return;
+        }
+        if (!probe.isEnabled()) {
+            Log.w(TAG, "open 跳过：音纹去广告开关未启用");
+            return;
+        }
         if (url.equals(lastUrl)) return;
         lastUrl = url;
         lastHeaders = headers;
         try {
             ProbeMedia media = ProbeMedia.builder(url).setHeaders(filterHeaders(headers)).build();
             probe.open(media);
+            Log.d(TAG, "已开启分析 " + url);
         } catch (RuntimeException | LinkageError e) {
-            e.printStackTrace();
+            Log.e(TAG, "开启分析失败", e);
         }
         // 内置采集器：后台扫描 HLS 广告候选并生成指纹规则（开关开启时）
         AdRuleCollector.get().maybeCollect(url, headers, appContext);
