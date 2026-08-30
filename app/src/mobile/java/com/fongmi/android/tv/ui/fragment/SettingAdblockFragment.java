@@ -48,6 +48,23 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.aiAdblock.setOnClickListener(this::setAiAdblock);
         mBinding.adAutoCollect.setOnClickListener(this::setAutoCollect);
         mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
+        mBinding.adProbeCheck.setOnClickListener(this::showProbeCheck);
+    }
+
+    /**
+     * 音纹去广告自检。探针是 fail-open 设计，出错时完全静默，
+     * 用户只能看到「没反应」。这里把开关、探针实例、规则库、最近错误
+     * 一次性摊开，不用 adb 也能定位问题。
+     */
+    private void showProbeCheck(View view) {
+        // 每次点开都重新加载一次规则文件，用户手动换文件后立刻能看到条数变化
+        AdProbeManager.get().reloadRulesForCheck();
+        String report = AdProbeManager.get().getDiagnosticReport();
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.ad_probe_check_title)
+                .setMessage(report)
+                .setPositiveButton(R.string.dialog_positive, null)
+                .show();
     }
 
     private void updateSkipModeText() {

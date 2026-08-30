@@ -243,6 +243,8 @@
     <string name="ad_rule_collected">已生成广告规则：%1$s</string>
     <string name="ad_rule_collect_failed">广告规则采集失败</string>
     <string name="ad_skipped">广告已跳过</string>
+    <string name="ad_probe_check">去广告自检</string>
+    <string name="ad_probe_check_title">音频去广状态自检</string>
     <string name="ad_rules_path">广告规则文件</string>
     <string name="ad_rules_path_title">设置规则文件路径</string>
     <string name="ad_rules_path_hint">采集器 APK 生成的 RULES.JSON 路径（默认：/storage/emulated/0/Download/m3u8-ad-audio/RULES.JSON）</string>

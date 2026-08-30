@@ -237,6 +237,8 @@
     <string name="player_adblock">Remove ads</string>
     <string name="ai_adblock">Audio adblock</string>
     <string name="ad_skipped">Ad skipped</string>
+    <string name="ad_probe_check">Adblock self-check</string>
+    <string name="ad_probe_check_title">Audio adblock status</string>
     <string name="ad_skip_mode">Skip mode</string>
     <string name="ad_skip_mode_notice">Notice only</string>
     <string name="ad_skip_mode_notice_and_skip">Notice + skip</string>
