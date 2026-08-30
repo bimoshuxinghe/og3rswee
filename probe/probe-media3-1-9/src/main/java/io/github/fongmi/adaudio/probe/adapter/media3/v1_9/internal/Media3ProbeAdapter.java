@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.OptIn;
+import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
@@ -122,9 +123,17 @@ public final class Media3ProbeAdapter implements ProbeAdapter {
                 .setBufferDurationsMs(1000, 5000, 250, 500)
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
+        // 探针是无声分析器：sink 不创建 AudioTrack，因此绝不能参与音频焦点竞争。
+        // 否则宿主播放已占用焦点时，探针的 ExoPlayer 会被 AudioFocusManager 自动暂停，
+        // 解码随之停止、永远收不到 PCM，声纹去广告就会表现为「完全不工作」。
         player = new ExoPlayer.Builder(context, renderers)
                 .setLooper(handler.getLooper())
                 .setLoadControl(loadControl)
+                .setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                        .build(), /* handleAudioFocus= */ false)
+                .setHandleAudioBecomingNoisy(false)
                 .build();
         player.addListener(new SessionPlayerListener(expectedSessionId, currentAttemptId));
         try {
