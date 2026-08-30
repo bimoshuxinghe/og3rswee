@@ -7,6 +7,8 @@ import androidx.media3.common.C;
 import androidx.media3.common.Format;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.audio.AudioCapabilities;
+import androidx.media3.exoplayer.audio.AudioOutputProvider;
 import androidx.media3.exoplayer.audio.AudioSink;
 
 import io.github.fongmi.adaudio.probe.adapter.ProbePcmFrame;
@@ -85,6 +87,29 @@ final class ProbeAudioSink implements AudioSink {
     @Override
     public long getCurrentPositionUs(boolean sourceEnded) {
         return currentPositionUs;
+    }
+
+    /**
+     * Media3 1.11.0 起 {@code MediaCodecAudioRenderer} 只调用本重载，
+     * 旧的 3 参 {@link #configure(Format, int, int[])} 已被标记为 {@code @Deprecated}，
+     * 接口的默认实现会把 {@code AudioSinkConfig} 拆开再回调 3 参版本。
+     *
+     * <p>这里【显式覆写】而不是依赖默认委派链，原因：
+     * 默认委派链的方法体会触碰 Guava 的 {@code ImmutableIntArray}，
+     * 一旦 R8 判定该类型未被直接引用而裁剪，就会在运行期抛 {@code NoClassDefFoundError}，
+     * 探针会 fail-open 静默失效（宿主完全无感）。显式接管可彻底断开这条隐式依赖。
+     */
+    @Override
+    public void configure(AudioSink.AudioSinkConfig audioSinkConfig)
+            throws ConfigurationException {
+        if (audioSinkConfig == null || audioSinkConfig.format == null) {
+            throw new ConfigurationException("探针收到空的播放配置",
+                    audioSinkConfig == null ? null : audioSinkConfig.format);
+        }
+        int[] outputChannels = audioSinkConfig.outputChannelMapping == null
+                ? null : audioSinkConfig.outputChannelMapping.toArray();
+        configure(audioSinkConfig.format,
+                audioSinkConfig.preferredBufferSizeOverride, outputChannels);
     }
 
     @Override
@@ -239,6 +264,20 @@ final class ProbeAudioSink implements AudioSink {
     @Override public void disableTunneling() { }
     @Override public void setVolume(float volume) { }
     @Override public void pause() { }
+
+    /**
+     * 接口的默认实现会直接抛 {@code UnsupportedOperationException}，
+     * 而 MediaCodecAudioRenderer 在收到 MSG_SET_AUDIO_OUTPUT_PROVIDER 时会无条件调用。
+     * 探针是无声 sink（不创建 AudioTrack），不需要音频输出通道，这里吞掉以保证兼容。
+     */
+    @Override
+    public void setAudioOutputProvider(AudioOutputProvider audioOutputProvider) { }
+
+    /** 显式声明不使用 AudioCapabilities（与接口默认行为一致，避免歧义）。 */
+    @Override
+    public AudioCapabilities getAudioCapabilities() {
+        return null;
+    }
 
     @Override
     public void setOutputStreamOffsetUs(long outputStreamOffsetUs) {

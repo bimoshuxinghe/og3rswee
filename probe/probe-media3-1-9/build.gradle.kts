@@ -32,6 +32,10 @@ dependencies {
     implementation(libs.media3.decoder)
     implementation(libs.media3.extractor)
     implementation(libs.media3.database)
+    // Media3 1.11.0 起 AudioSink.AudioSinkConfig#outputChannelMapping 使用 Guava 的
+    // ImmutableIntArray；探针需要读取该字段以适配新的 configure(AudioSinkConfig) 路径。
+    // 运行时由 media3-common 的 api(libs.guava) 提供，此处仅编译期可见。
+    compileOnly(libs.guava)
     // 对齐 media3 fork 解析出的 annotation 版本(1.6.0)，避免 compile/runtime consistent resolution 冲突
     compileOnly("androidx.annotation:annotation:1.6.0")
 }
