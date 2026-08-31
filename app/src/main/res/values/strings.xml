@@ -258,6 +258,7 @@
     <string name="ad_cloud_loaded_msg">Cloud ad rules loaded: %1$d audio rules (new %3$d).</string>
     <string name="ad_cloud_no_url">Cloud rules URL not configured, using local rules only.</string>
     <string name="ad_cloud_sync_failed">Cloud rules sync failed: %1$s</string>
+    <string name="ad_cloud_storage_perm_required">需要“所有文件访问权限”才能写入规则。请在弹出的设置中授予，否则广告规则将无法保存。</string>
     <string name="ad_auto_collect">Auto collect rules</string>
     <string name="ad_auto_collect_summary">Scan HLS ad candidates in background and auto-generate audio fingerprint rules while playing</string>
     <string name="ad_rule_collected">Ad rule generated: %1$s</string>

@@ -2,6 +2,7 @@ package com.fongmi.android.tv.player;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -18,6 +19,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,6 +42,7 @@ public final class AdCloudSyncManager {
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static final String TAG = "AdCloudSync";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -48,6 +51,8 @@ public final class AdCloudSyncManager {
     private volatile String lastStatus = "尚未同步过";
     private volatile long lastStatusAtMs;
     private volatile int lastAudioCount;
+    /** 实际成功落盘的规则文件路径（外部失败会降级私有目录，用于自检面板展示）。 */
+    private volatile String lastWrittenPath;
     /** 同步进行中标记，供 AdProbeManager 兜底逻辑防重入。 */
     private volatile boolean syncing;
 
@@ -229,7 +234,8 @@ public final class AdCloudSyncManager {
 
     /** 把云端文档合并进本地 RULES.JSON，原子写回并注入探针。 */
     private Result mergeIntoLocal(JSONObject cloud) throws Exception {
-        File file = new File(Setting.getAdRulesPath());
+        List<String> candidates = Setting.getRulesPathCandidates();
+        File file = firstExistingOrPrimary(candidates);
         JSONObject local = readOrCreate(file);
         long localRev = local.optLong("revision", 0L);
         long cloudRev = cloud.optLong("revision", 0L);
@@ -288,7 +294,10 @@ public final class AdCloudSyncManager {
         // 但探针 SDK 的 rules-v1 解析器是严格白名单模式，遇到未知字段会整份拒绝规则
         // （RULE_PARSE_FAILED），导致声纹去广告完全失效。文本规则仅保留在内存/统计中，
         // 不再写入本地 RULES.JSON。
-        writeAtomic(file, out.toString(2));
+        // 写盘优先外部目录（与旧版/采集器兼容）；Android 11+ 未授予“所有文件访问权限”
+        // 会 EACCES 时，自动降级到应用私有目录，保证规则一定能落盘。
+        File written = writeToCandidates(candidates, out.toString(2));
+        lastWrittenPath = written.getAbsolutePath();
 
         // 注入探针：只给探针纯音频指纹规则。
         // textRules 为历史遗留字段，探针 SDK 严格解析器
@@ -346,5 +355,35 @@ public final class AdCloudSyncManager {
         if (!tmp.renameTo(file)) {
             throw new Exception("cannot write rules file");
         }
+    }
+
+    /** 按优先级尝试写盘：外部目录优先，全部失败则降级到下一个候选（私有目录）。 */
+    private File writeToCandidates(List<String> candidates, String content) throws Exception {
+        Exception last = null;
+        for (String path : candidates) {
+            try {
+                File file = new File(path);
+                writeAtomic(file, content);
+                return file;
+            } catch (Exception e) {
+                last = e;
+                Log.w(TAG, "规则写盘失败 path=" + path + " msg=" + e.getMessage());
+            }
+        }
+        throw last != null ? last : new Exception("cannot write rules file");
+    }
+
+    /** 在候选路径中挑一个已存在的文件；都没有则返回第一个（主路径），供读取/合并使用。 */
+    private File firstExistingOrPrimary(List<String> candidates) {
+        for (String path : candidates) {
+            File f = new File(path);
+            if (f.exists() && f.isFile()) return f;
+        }
+        return new File(candidates.get(0));
+    }
+
+    /** 自检面板用：最近一次成功落盘的规则文件绝对路径。 */
+    public String getLastWrittenPath() {
+        return lastWrittenPath;
     }
 }

@@ -205,14 +205,19 @@ public final class AdProbeManager {
         AdCloudSyncManager.get().syncFromCloud(null);
     }
 
-    /** 从当前 rulesPath 读取 RULES.JSON 并注入探针。文件不存在或读取失败时静默忽略。 */
+    /** 从候选路径依次读取 RULES.JSON 并注入探针；找到第一个可读文件即停。 */
     private void loadRulesFromFile() {
-        if (probe == null || rulesPath == null || rulesPath.trim().isEmpty()) return;
-        File file = new File(rulesPath.trim());
-        if (!file.exists() || !file.isFile() || !file.canRead()) {
-            Log.w(TAG, "规则文件不可用，音纹去广告无规则可匹配 path=" + rulesPath);
-            return;
+        if (probe == null) return;
+        for (String path : Setting.getRulesPathCandidates()) {
+            File file = new File(path);
+            if (!file.exists() || !file.isFile() || !file.canRead()) continue;
+            if (loadRulesFrom(file)) return;
         }
+        Log.w(TAG, "规则文件不可用，音纹去广告无规则可匹配（已尝试外部与私有目录）");
+    }
+
+    /** 读取单个规则文件并注入探针。成功返回 true。 */
+    private boolean loadRulesFrom(File file) {
         StringBuilder sb = new StringBuilder((int) Math.min(file.length(), 4 * 1024 * 1024));
         try (BufferedReader reader = new BufferedReader(new FileReader(file), 8192)) {
             char[] buf = new char[8192];
@@ -225,13 +230,16 @@ public final class AdProbeManager {
                 String sanitized = sanitizeForProbe(json);
                 probe.replaceRulesJson(sanitized);
                 ruleCount = countRules(sanitized);
+                rulesPath = file.getAbsolutePath();
                 Log.i(TAG, "已加载规则文件 size=" + json.length()
                         + " rules=" + ruleCount + " path=" + rulesPath);
+                return true;
             }
         } catch (Exception e) {
             // 规则文件读取失败不影响宿主播放，但要留下线索
-            Log.e(TAG, "规则文件读取失败", e);
+            Log.e(TAG, "规则文件读取失败 path=" + file.getAbsolutePath(), e);
         }
+        return false;
     }
 
     /** 开始分析新媒体；同一 URL 不会重复开（避免 subtitle/format 切换误触发）。 */
@@ -426,7 +434,7 @@ public final class AdProbeManager {
      */
     public void setRulesPath(String path) {
         String normalized = (path == null || path.trim().isEmpty())
-                ? Setting.DEFAULT_RULES_PATH : path.trim();
+                ? Setting.getDefaultRulesPath() : path.trim();
         if (normalized.equals(rulesPath)) return;
         rulesPath = normalized;
         Setting.putAdRulesPath(normalized);
@@ -478,7 +486,7 @@ public final class AdProbeManager {
 
         sb.append("③ 规则库：").append(ruleCount).append(" 条\n");
         String path = rulesPath == null || rulesPath.trim().isEmpty()
-                ? Setting.DEFAULT_RULES_PATH : rulesPath.trim();
+                ? Setting.getAdRulesPath() : rulesPath.trim();
         sb.append("   路径：").append(path).append("\n");
         File file = new File(path);
         if (!file.exists()) {
@@ -497,7 +505,14 @@ public final class AdProbeManager {
         sb.append("④b 云端同步：").append(AdCloudSyncManager.get().getStatusText()).append("\n");
         String cloudUrl = Setting.getAdCloudUrl();
         sb.append("    地址：").append(cloudUrl == null || cloudUrl.trim().isEmpty()
-                ? "未配置" : cloudUrl.trim()).append("\n\n");
+                ? "未配置" : cloudUrl.trim()).append("\n");
+        String writtenPath = AdCloudSyncManager.get().getLastWrittenPath();
+        sb.append("    落盘：").append(writtenPath == null ? "尚未成功写入" : writtenPath).append("\n");
+        if (Setting.needsAllFilesAccess()) {
+            sb.append("    ⚠ 未授予「所有文件访问权限」，外部目录写不进；规则已降级到应用私有目录。\n");
+            sb.append("      可在设置页关闭再打开「音频去广告」开关，按提示授权以恢复外部目录。\n");
+        }
+        sb.append("\n");
 
         sb.append("④c 自动采集：").append(Setting.isAutoCollect() ? "已开启" : "未开启").append("\n");
         sb.append("    ").append(AdRuleCollector.get().getStatusText()).append("\n\n");

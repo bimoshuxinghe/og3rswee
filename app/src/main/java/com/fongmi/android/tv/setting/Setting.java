@@ -3,10 +3,16 @@ package com.fongmi.android.tv.setting;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.Settings;
 
 import com.fongmi.android.tv.App;
+import com.github.catvod.Init;
 import com.github.catvod.utils.Prefers;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Setting {
 
@@ -161,15 +167,73 @@ public class Setting {
         Prefers.put("ad_skip_mode", mode);
     }
 
-    /** 智能趣广告的规则文件路径（采集器 APK 生成的 RULES.JSON）。为空时使用默认路径。 */
+    /** 智能趣广告的规则文件路径（采集器 APK 生成的 RULES.JSON）。默认在外部 Download 目录（与旧版一致）。 */
     public static final String DEFAULT_RULES_PATH = "/storage/emulated/0/Download/m3u8-ad-audio/RULES.JSON";
 
+    /** 返回默认（外部）规则路径，与旧版行为一致。 */
+    public static String getDefaultRulesPath() {
+        return DEFAULT_RULES_PATH;
+    }
+
+    /** 解析保存的路径；为空或占位符时返回默认外部路径。 */
     public static String getAdRulesPath() {
-        return Prefers.getString("ad_rules_path", DEFAULT_RULES_PATH);
+        String saved = Prefers.getString("ad_rules_path", "");
+        if (saved == null || saved.trim().isEmpty() || DEFAULT_RULES_PATH.equals(saved.trim())) {
+            return DEFAULT_RULES_PATH;
+        }
+        return saved.trim();
     }
 
     public static void putAdRulesPath(String path) {
-        Prefers.put("ad_rules_path", (path == null || path.trim().isEmpty()) ? DEFAULT_RULES_PATH : path.trim());
+        String normalized = (path == null || path.trim().isEmpty()) ? DEFAULT_RULES_PATH : path.trim();
+        Prefers.put("ad_rules_path", normalized);
+    }
+
+    /**
+     * 应用私有目录兜底路径。Android 11+ 上外部目录可能因未授予“所有文件访问权限”
+     * 而 EACCES 写入失败，此时降级到这里，零权限依赖，保证规则一定能落盘，
+     * 声纹去广告不会因写不进外部目录而静默失效。
+     */
+    public static String getPrivateRulesPath() {
+        return new File(Init.context().getFilesDir(), "m3u8-ad-audio/RULES.JSON").getAbsolutePath();
+    }
+
+    /**
+     * 读写规则时按优先级尝试的路径列表：首选外部默认路径（与旧版/采集器兼容），
+     * 其次应用私有目录兜底。外部路径在 Android 11+ 未授予“所有文件访问权限”时会 EACCES，
+     * 自动落到私有目录。
+     */
+    public static List<String> getRulesPathCandidates() {
+        List<String> list = new ArrayList<>();
+        String primary = getAdRulesPath();
+        list.add(primary);
+        String priv = getPrivateRulesPath();
+        if (!priv.equals(primary)) list.add(priv);
+        return list;
+    }
+
+    /** 外部（默认）规则目录是否可写，用于自检面板提示是否需授予“所有文件访问权限”。 */
+    public static boolean isPrimaryRulesPathWritable() {
+        try {
+            File dir = new File(getAdRulesPath()).getParentFile();
+            return dir != null && (dir.exists() ? dir.canWrite() : dir.mkdirs());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 是否需要请求“所有文件访问权限”（MANAGE_EXTERNAL_STORAGE）。
+     * Android 11+ 上写外部 Download 目录必须授权该特殊权限，否则 EACCES；
+     * API < 30 用 WRITE_EXTERNAL_STORAGE 即可，无需此授权。
+     */
+    public static boolean needsAllFilesAccess() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false;
+        try {
+            return !Environment.isExternalStorageManager();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** 云端广告规则共享服务器地址（rules.php），为空则不启用云端同步。 */

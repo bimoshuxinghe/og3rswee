@@ -6,6 +6,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
@@ -15,6 +16,7 @@ import com.fongmi.android.tv.player.AdProbeManager;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.utils.Notify;
+import com.fongmi.android.tv.utils.PermissionUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class SettingAdblockFragment extends BaseFragment {
@@ -103,28 +105,46 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.aiAdblockText.setText(getSwitch(enabled));
         AdProbeManager.get().setEnabled(enabled, requireContext());
         if (enabled) {
-            // 用户手动开启：同步云端广告规则并弹窗告知云端已载入
-            AdCloudSyncManager.get().syncFromCloud(new AdCloudSyncManager.SyncCallback() {
-                @Override
-                public void onLoaded(int audioCount, int textRuleCount, int added) {
-                    new MaterialAlertDialogBuilder(requireActivity())
-                            .setTitle(R.string.ad_cloud_loaded_title)
-                            .setMessage(getString(R.string.ad_cloud_loaded_msg, audioCount, textRuleCount, added))
-                            .setPositiveButton(R.string.dialog_positive, null)
-                            .show();
-                }
-
-                @Override
-                public void onNoUrl() {
-                    Notify.show(R.string.ad_cloud_no_url);
-                }
-
-                @Override
-                public void onError(@NonNull String message) {
-                    Notify.show(getString(R.string.ad_cloud_sync_failed, message));
-                }
-            });
+            // 开启音纹去广告：外部 Download 目录在 Android 11+ 必须授予“所有文件访问权限”
+            // 才能写入，否则云端规则落盘会因 EACCES 失败（声纹去广告静默失效）。
+            // 未授权时先引导授权，授权成功后再同步云端规则。
+            FragmentActivity activity = requireActivity();
+            if (Setting.needsAllFilesAccess()) {
+                PermissionUtil.requestFile(activity, granted -> {
+                    if (granted) {
+                        syncCloudRules(activity);
+                    } else {
+                        Notify.show(R.string.ad_cloud_storage_perm_required);
+                    }
+                });
+            } else {
+                syncCloudRules(activity);
+            }
         }
+    }
+
+    /** 同步云端广告规则并弹窗告知结果。 */
+    private void syncCloudRules(FragmentActivity activity) {
+        AdCloudSyncManager.get().syncFromCloud(new AdCloudSyncManager.SyncCallback() {
+            @Override
+            public void onLoaded(int audioCount, int textRuleCount, int added) {
+                new MaterialAlertDialogBuilder(activity)
+                        .setTitle(R.string.ad_cloud_loaded_title)
+                        .setMessage(getString(R.string.ad_cloud_loaded_msg, audioCount, textRuleCount, added))
+                        .setPositiveButton(R.string.dialog_positive, null)
+                        .show();
+            }
+
+            @Override
+            public void onNoUrl() {
+                Notify.show(R.string.ad_cloud_no_url);
+            }
+
+            @Override
+            public void onError(@NonNull String message) {
+                Notify.show(getString(R.string.ad_cloud_sync_failed, message));
+            }
+        });
     }
 
     private void setAutoCollect(View view) {
