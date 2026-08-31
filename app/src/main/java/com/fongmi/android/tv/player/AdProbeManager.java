@@ -172,6 +172,9 @@ public final class AdProbeManager {
                 pendingRulesJson = null;
                 applyCollectedRules(pending);
             }
+            // 探针就绪后兜底：若本地仍无规则（典型为冷启动预热同步因网络未就绪失败），
+            // 此刻代理/VPN 通常已就绪，主动拉一次云端规则，免去手动关开开关。
+            ensureCloudRulesOnce();
             Log.i(TAG, "探针已就绪 enabled=" + Setting.isAiAdblock()
                     + " rulesPath=" + rulesPath);
         } catch (RuntimeException | LinkageError e) {
@@ -180,6 +183,26 @@ public final class AdProbeManager {
             Log.e(TAG, "探针初始化失败，音纹去广告不可用", e);
             probe = null;
         }
+    }
+
+    /**
+     * 兜底同步：探针就绪但本地还没有可用规则时，主动向云端拉取一次。
+     * <p>
+     * 为什么需要：{@code App.onCreate} 里的预热同步跑在进程创建极早期，此时代理/VPN 往往
+     * 还没 {@code applySaved()} 就绪，HTTP 请求会静默失败；而 {@link #ensureProbe(Context)}
+     * 只在 probe 首次创建时跑一次、之后 probe 常驻不再 reload，也没有重试机制——结果就是
+     * 冷启动后永远没有规则，必须手动关开开关触发一次重新初始化才偶然拉到。
+     * <p>
+     * 这里把兜底挂在「探针真正就绪、即将分析媒体」的时机：本地无规则则立即拉取；
+     * {@link AdCloudSyncManager#isSyncing()} 负责防重入，拉到规则后（ruleCount>0）自动停止重试。
+     */
+    private void ensureCloudRulesOnce() {
+        String url = Setting.getAdCloudUrl();
+        if (url == null || url.trim().isEmpty()) return;
+        if (ruleCount > 0) return;                          // 本地已有规则，无需联网
+        if (AdCloudSyncManager.get().isSyncing()) return;   // 已有同步在跑，防并发重复
+        Log.i(TAG, "探针就绪但本地无规则(ruleCount=" + ruleCount + ")，兜底向云端同步一次");
+        AdCloudSyncManager.get().syncFromCloud(null);
     }
 
     /** 从当前 rulesPath 读取 RULES.JSON 并注入探针。文件不存在或读取失败时静默忽略。 */
@@ -218,6 +241,9 @@ public final class AdProbeManager {
             Log.w(TAG, "open 跳过：探针实例为空（初始化阶段曾失败）");
             return;
         }
+        // 即将分析媒体：若本地仍无规则（典型为冷启动预热同步因网络未就绪失败），
+        // 此刻代理/VPN 通常已就绪，兜底拉一次云端规则，免去手动关开开关。
+        ensureCloudRulesOnce();
         if (!probe.isEnabled()) {
             Log.w(TAG, "open 跳过：音纹去广告开关未启用");
             return;
@@ -381,7 +407,11 @@ public final class AdProbeManager {
 
     /** 开关变化时调用：开启会（按需）创建探针并重开当前媒体，关闭会停用。 */
     public void setEnabled(boolean enabled, Context context) {
-        if (enabled) ensureProbe(context);
+        if (enabled) {
+            ensureProbe(context);
+            // 用户主动开启开关时，若本地仍无规则则立即兜底同步，不必等下次播放
+            ensureCloudRulesOnce();
+        }
         if (probe == null) return;
         try {
             probe.setEnabled(enabled);

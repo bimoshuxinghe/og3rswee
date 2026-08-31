@@ -48,6 +48,8 @@ public final class AdCloudSyncManager {
     private volatile String lastStatus = "尚未同步过";
     private volatile long lastStatusAtMs;
     private volatile int lastAudioCount;
+    /** 同步进行中标记，供 AdProbeManager 兜底逻辑防重入。 */
+    private volatile boolean syncing;
 
     private AdCloudSyncManager() {
     }
@@ -67,6 +69,11 @@ public final class AdCloudSyncManager {
     /** 自检面板用：最近一次同步后的规则条数。 */
     public int getLastAudioCount() {
         return lastAudioCount;
+    }
+
+    /** 是否正在同步中（供 AdProbeManager 兜底逻辑防重入）。 */
+    public boolean isSyncing() {
+        return syncing;
     }
 
     private static class Holder {
@@ -98,6 +105,7 @@ public final class AdCloudSyncManager {
             return;
         }
         setStatus("正在拉取云端规则…");
+        syncing = true;
         executor.execute(() -> {
             try {
                 Response resp = OkHttp.client().newCall(new Request.Builder()
@@ -131,6 +139,8 @@ public final class AdCloudSyncManager {
                 String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
                 setStatus("拉取异常：" + msg);
                 postError(callback, msg);
+            } finally {
+                syncing = false;
             }
         });
     }
