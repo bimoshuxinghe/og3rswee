@@ -266,7 +266,11 @@ public final class AdProbeManager {
             if (root.has("rules")) out.put("rules", root.optJSONArray("rules"));
             return out.toString();
         } catch (Exception e) {
-            return json;
+            // 解析失败绝不能把可能含 textRules 的原始串直传给严格解析器，
+            // 否则会复现 RULE_PARSE_FAILED 让整份规则被拒。降级为最小空规则集
+            // （fail-open）：探针不崩、不被整份拒绝，缺规则只是暂时不去广告。
+            return "{\"format\":\"ad-audio-probe-rules\",\"schemaVersion\":1,"
+                    + "\"algorithm\":\"spectral-sequence-v1\",\"revision\":0,\"rules\":[]}";
         }
     }
 

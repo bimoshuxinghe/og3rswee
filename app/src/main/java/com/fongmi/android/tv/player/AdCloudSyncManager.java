@@ -273,8 +273,11 @@ public final class AdCloudSyncManager {
         out.put("algorithm", "spectral-sequence-v1");
         out.put("revision", Math.max(localRev, cloudRev));
         out.put("rules", merged);
-        out.put("textRules", mergedText);
 
+        // 注意：落盘文件【不能】含 textRules。该字段是历史遗留、运行无依赖，
+        // 但探针 SDK 的 rules-v1 解析器是严格白名单模式，遇到未知字段会整份拒绝规则
+        // （RULE_PARSE_FAILED），导致声纹去广告完全失效。文本规则仅保留在内存/统计中，
+        // 不再写入本地 RULES.JSON。
         writeAtomic(file, out.toString(2));
 
         // 注入探针：只给探针纯音频指纹规则。
@@ -317,7 +320,6 @@ public final class AdCloudSyncManager {
         if (!root.has("algorithm")) root.put("algorithm", "spectral-sequence-v1");
         if (!root.has("revision")) root.put("revision", 0L);
         if (!root.has("rules")) root.put("rules", new JSONArray());
-        if (!root.has("textRules")) root.put("textRules", new JSONArray());
         return root;
     }
 
