@@ -31,6 +31,7 @@ import io.github.fongmi.adaudio.probe.adapter.ProbeAdapter;
 import io.github.fongmi.adaudio.probe.adapter.ProbeAdapterRequest;
 import io.github.fongmi.adaudio.probe.adapter.ProbeAdapterState;
 import io.github.fongmi.adaudio.probe.adapter.ProbePcmFrame;
+import io.github.fongmi.adaudio.probe.adapter.media3.v1_9.ProbeAudioStats;
 
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -442,15 +443,20 @@ public final class Media3ProbeAdapter implements ProbeAdapter {
         if (windowIndex < 0 || windowIndex >= timeline.getWindowCount()) return false;
         Timeline.Window window = timeline.getWindow(windowIndex, timelineWindow);
         Media3VodTimelineGate.Decision decision = timelineGate.update(
-                window.isPlaceholder, window.isLive(), window.isDynamic);
+                window.isPlaceholder, window.isLive(), window.isDynamic, window.getDurationMs());
         if (decision == Media3VodTimelineGate.Decision.PENDING
                 && player.getPlaybackState() == Player.STATE_READY) {
             decision = timelineGate.markReady();
         }
         if (decision == Media3VodTimelineGate.Decision.PENDING
-                || decision == Media3VodTimelineGate.Decision.IGNORED) return false;
+                || decision == Media3VodTimelineGate.Decision.IGNORED) {
+            ProbeAudioStats.lastTimelineDecision = "等待更多时间线信息(" + decision + ")";
+            return false;
+        }
         if (decision == Media3VodTimelineGate.Decision.REJECT_LIVE
                 || decision == Media3VodTimelineGate.Decision.REJECT_DYNAMIC) {
+            ProbeAudioStats.timelineRejectedLive++;
+            ProbeAudioStats.lastTimelineDecision = "被判为直播/动态→拒绝(" + decision + ")";
             fail(expectedSessionId, ProbeErrorCode.LIVE_STREAM_NOT_SUPPORTED,
                     true, false, "首版仅支持有限时长的普通点播", null);
             return false;
@@ -459,6 +465,8 @@ public final class Media3ProbeAdapter implements ProbeAdapter {
         listener.onTimeline(expectedSessionId, durationMs, false, false);
         if (!isAttemptCurrent(expectedSessionId, expectedAttemptId)) return false;
         vodTimelineConfirmed = true;
+        ProbeAudioStats.vodConfirmed++;
+        ProbeAudioStats.lastTimelineDecision = "确认VOD，闸门打开";
         if (audioSink != null) audioSink.confirmVodTimeline();
         return true;
     }

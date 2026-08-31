@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.audio.AudioOutputProvider;
 import androidx.media3.exoplayer.audio.AudioSink;
 
 import io.github.fongmi.adaudio.probe.adapter.ProbePcmFrame;
+import io.github.fongmi.adaudio.probe.adapter.media3.v1_9.ProbeAudioStats;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -102,7 +103,9 @@ final class ProbeAudioSink implements AudioSink {
     @Override
     public void configure(AudioSink.AudioSinkConfig audioSinkConfig)
             throws ConfigurationException {
+        ProbeAudioStats.configureCalls++;
         if (audioSinkConfig == null || audioSinkConfig.format == null) {
+            ProbeAudioStats.lastConfigureResult = "收到空配置";
             throw new ConfigurationException("探针收到空的播放配置",
                     audioSinkConfig == null ? null : audioSinkConfig.format);
         }
@@ -124,10 +127,20 @@ final class ProbeAudioSink implements AudioSink {
     @Override
     public void configure(Format inputFormat, int specifiedBufferSize,
                           int[] outputChannels) throws ConfigurationException {
+        ProbeAudioStats.configureCalls++;
         if (!supportsFormat(inputFormat) || inputFormat.sampleRate <= 0
                 || inputFormat.channelCount <= 0) {
+            ProbeAudioStats.lastConfigureResult = "格式不支持：mime="
+                    + (inputFormat == null ? "null" : inputFormat.sampleMimeType)
+                    + " pcm=" + (inputFormat == null ? "?" : inputFormat.pcmEncoding);
             throw new ConfigurationException("探针只接受 PCM16 或 PCM float 解码输出", inputFormat);
         }
+        ProbeAudioStats.configureOk++;
+        ProbeAudioStats.sampleRate = inputFormat.sampleRate;
+        ProbeAudioStats.channelCount = inputFormat.channelCount;
+        ProbeAudioStats.lastConfigureResult = "成功 sr=" + inputFormat.sampleRate
+                + " ch=" + inputFormat.channelCount
+                + " pcm=" + inputFormat.pcmEncoding;
         sampleRate = inputFormat.sampleRate;
         inputChannelCount = inputFormat.channelCount;
         channelMap = validateChannelMap(outputChannels, inputChannelCount, inputFormat);
@@ -157,6 +170,7 @@ final class ProbeAudioSink implements AudioSink {
     @Override
     public boolean handleBuffer(ByteBuffer buffer, long presentationTimeUs,
                                 int encodedAccessUnitCount) {
+        ProbeAudioStats.bufferCalls++;
         if (sampleRate <= 0 || inputChannelCount <= 0 || !acceptingData.get()
                 || !vodTimelineConfirmed.get()) return false;
         long epoch = timelineEpoch.get();
@@ -211,6 +225,9 @@ final class ProbeAudioSink implements AudioSink {
             } catch (RuntimeException error) {
                 consumer.onFailure(error);
             }
+            if (ProbeAudioStats.pcmFrames == 0L) ProbeAudioStats.firstPcmAtMs = System.currentTimeMillis();
+            ProbeAudioStats.pcmFrames += frames;
+            ProbeAudioStats.pcmBytes += (long) frames * channelCount * bytesPerSample;
             lastOutputSamples = lastFrameSamples(samples, channelCount);
             currentPositionUs = endUs;
             expectedPresentationTimeUs = endUs;

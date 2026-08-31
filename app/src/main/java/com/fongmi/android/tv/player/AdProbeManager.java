@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 import io.github.fongmi.adaudio.probe.AdAudioProbe;
+import io.github.fongmi.adaudio.probe.adapter.media3.v1_9.ProbeAudioStats;
 import io.github.fongmi.adaudio.probe.PlaybackClock;
 import io.github.fongmi.adaudio.probe.ProbeError;
 import io.github.fongmi.adaudio.probe.ProbeListener;
@@ -384,6 +385,8 @@ public final class AdProbeManager {
         } else {
             sb.append("⑥ 最近命中：从未命中过");
         }
+
+        sb.append("\n\n⑦ 音频链路：\n   ").append(ProbeAudioStats.summary().replace("\n", "\n   "));
 
         sb.append("\n\n—— 结论 ——\n")
                 .append(buildVerdict(on, probe != null, file, ruleCount, Setting.isAutoCollect()));
