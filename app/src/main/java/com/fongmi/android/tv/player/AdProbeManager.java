@@ -346,6 +346,9 @@ public final class AdProbeManager {
 
         sb.append("④ 当前分析：").append(lastUrl == null ? "尚未播放" : "已接入\n   " + lastUrl).append("\n\n");
 
+        sb.append("④b 自动采集：").append(Setting.isAutoCollect() ? "已开启" : "未开启").append("\n");
+        sb.append("    ").append(AdRuleCollector.get().getStatusText()).append("\n\n");
+
         long now = System.currentTimeMillis();
         if (lastErrorAtMs > 0L) {
             sb.append("⑤ 最近错误：").append((now - lastErrorAtMs) / 1000L).append(" 秒前\n   ")
@@ -360,12 +363,13 @@ public final class AdProbeManager {
             sb.append("⑥ 最近命中：从未命中过");
         }
 
-        sb.append("\n\n—— 结论 ——\n").append(buildVerdict(on, probe != null, file, ruleCount));
+        sb.append("\n\n—— 结论 ——\n")
+                .append(buildVerdict(on, probe != null, file, ruleCount, Setting.isAutoCollect()));
         return sb.toString();
     }
 
     /** 根据自检结果给出下一步该做什么，避免用户看到一堆状态却不知道怎么修。 */
-    private String buildVerdict(boolean on, boolean ready, File file, int rules) {
+    private String buildVerdict(boolean on, boolean ready, File file, int rules, boolean autoCollect) {
         if (!on) {
             return "开关没开。请打开本页的「音频去广」开关——它默认是关闭的。";
         }
@@ -373,9 +377,15 @@ public final class AdProbeManager {
             return "探针没起来。通常是初始化阶段抛异常导致，需要看 adb logcat -s AdProbe:V 的堆栈。";
         }
         if (!file.exists() || rules <= 0) {
-            return "规则库是空的，这是「什么都不提示」最常见的原因。\n"
-                    + "App 不内置广告指纹，需要用采集器 APK 采集，或在去广告设置里配置云端规则地址。"
-                    + "没有规则，探针跑得再正常也匹配不出任何东西。";
+            if (!autoCollect) {
+                return "规则库是空的，而且自动采集也没开。\n"
+                        + "App 不内置广告指纹，得先有规则才能跳过。请打开本页的「自动采集」，"
+                        + "然后播一个 m3u8 源——采集成功后，下次播放才会跳过。";
+            }
+            return "规则库还是空的。\n"
+                    + "采集只对 HLS/m3u8 源有效（MP4 不行），且广告片段要长于 5 秒。"
+                    + "请播一个 m3u8 源，看上面④b 的采集状态；"
+                    + "注意第一次播放只是采集，第二次才会跳过。";
         }
         if (lastErrorAtMs > 0L && lastSkipAtMs == 0L) {
             return "规则和探针都在，但分析过程报错了。把上面⑤的错误码发我，"

@@ -63,6 +63,11 @@ public final class AdRuleCollector {
     private Context appContext;
     private volatile String currentUrl;
 
+    // 采集状态（供自检面板展示）。采集也是 fail-open，没有记录就无法判断
+    // 到底是「没扫到广告」还是「采集失败」。
+    private volatile String lastStatus = "尚未采集过";
+    private volatile long lastStatusAtMs;
+
     public static AdRuleCollector get() {
         if (instance == null) {
             synchronized (AdRuleCollector.class) {
@@ -95,6 +100,7 @@ public final class AdRuleCollector {
 
     private void startScan(final String url, final Map<String, String> headers) {
         if (!busy.compareAndSet(false, true)) return;
+        setStatus("正在扫描广告候选…");
         try {
             if (scanner == null) {
                 scanner = new HlsCandidateScanner.Builder()
@@ -114,17 +120,20 @@ public final class AdRuleCollector {
                 }
 
                 @Override public void onError(ProbeToolError error) {
+                    setStatus("扫描失败：" + (error == null ? "未知" : error.getMessage()));
                     finishBusy();
                 }
             });
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
+            setStatus("扫描异常：" + e.getClass().getSimpleName());
             finishBusy();
         }
     }
 
     private void handleScanResult(HlsScanResult result) {
         if (result == null || result.getCandidates().isEmpty()) {
+            setStatus("未发现广告候选（仅支持 HLS/m3u8；MP4 源无法自动采集）");
             finishBusy();
             return;
         }
@@ -137,6 +146,7 @@ public final class AdRuleCollector {
             }
         }
         if (candidate == null) {
+            setStatus("发现候选但都短于 5 秒，无法采集指纹");
             finishBusy();
             return;
         }
@@ -163,17 +173,32 @@ public final class AdRuleCollector {
                 }
 
                 @Override public void onCancelled(long sessionId) {
+                    setStatus("采集已取消");
                     finishBusy();
                 }
 
                 @Override public void onError(ProbeToolError error) {
+                    setStatus("指纹采集失败：" + (error == null ? "未知" : error.getMessage()));
                     finishBusy();
                 }
             });
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
+            setStatus("采集异常：" + e.getClass().getSimpleName());
             finishBusy();
         }
+    }
+
+    private void setStatus(String status) {
+        lastStatus = status;
+        lastStatusAtMs = System.currentTimeMillis();
+    }
+
+    /** 自检面板用：返回最近一次采集状态。 */
+    public String getStatusText() {
+        if (lastStatusAtMs == 0L) return lastStatus;
+        long sec = (System.currentTimeMillis() - lastStatusAtMs) / 1000L;
+        return lastStatus + "（" + sec + " 秒前）";
     }
 
     /** 把新规则合并进本地 RULES.JSON（按 id 去重、revision+1），再注入探针。 */
@@ -202,10 +227,14 @@ public final class AdRuleCollector {
                 AdProbeManager.get().applyCollectedRules(json);
                 // 本地新规则默认自动上传到云端（增量、幂等）
                 AdCloudSyncManager.get().uploadNewRules();
+                setStatus("已生成规则 " + draft.getId() + "，下次播放该源即可跳过");
                 Notify.show(ResUtil.getString(R.string.ad_rule_collected, draft.getId()));
+            } else {
+                setStatus("规则 " + draft.getId() + " 已存在，无需重复采集");
             }
         } catch (Exception e) {
             e.printStackTrace();
+            setStatus("写入规则文件失败：" + e.getClass().getSimpleName());
         } finally {
             finishBusy();
         }
