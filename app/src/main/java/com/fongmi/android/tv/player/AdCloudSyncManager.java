@@ -43,7 +43,30 @@ public final class AdCloudSyncManager {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    // 云端同步状态（供自检面板展示）。整条链路原为静默执行，
+    // 一旦拉不到规则，用户只能看到「什么都不提示」而无从判断。
+    private volatile String lastStatus = "尚未同步过";
+    private volatile long lastStatusAtMs;
+    private volatile int lastAudioCount;
+
     private AdCloudSyncManager() {
+    }
+
+    private void setStatus(String status) {
+        lastStatus = status;
+        lastStatusAtMs = System.currentTimeMillis();
+    }
+
+    /** 自检面板用：返回最近一次云端同步状态。 */
+    public String getStatusText() {
+        if (lastStatusAtMs == 0L) return lastStatus;
+        long sec = (System.currentTimeMillis() - lastStatusAtMs) / 1000L;
+        return lastStatus + "（" + sec + " 秒前）";
+    }
+
+    /** 自检面板用：最近一次同步后的规则条数。 */
+    public int getLastAudioCount() {
+        return lastAudioCount;
     }
 
     private static class Holder {
@@ -70,9 +93,11 @@ public final class AdCloudSyncManager {
     public void syncFromCloud(SyncCallback callback) {
         String url = Setting.getAdCloudUrl();
         if (url == null || url.trim().isEmpty()) {
+            setStatus("未配置云端地址，规则只能来自本地文件");
             if (callback != null) callback.onNoUrl();
             return;
         }
+        setStatus("正在拉取云端规则…");
         executor.execute(() -> {
             try {
                 Response resp = OkHttp.client().newCall(new Request.Builder()
@@ -83,6 +108,7 @@ public final class AdCloudSyncManager {
                     if (!resp.isSuccessful()) {
                         String err = "HTTP " + resp.code();
                         resp.close();
+                        setStatus("拉取失败：" + err);
                         postError(callback, err);
                         return;
                     }
@@ -91,14 +117,20 @@ public final class AdCloudSyncManager {
                     resp.close();
                 }
                 if (body == null || body.trim().isEmpty()) {
+                    setStatus("服务器返回空内容");
                     postError(callback, "empty response");
                     return;
                 }
                 JSONObject cloud = new JSONObject(body.trim());
                 Result result = mergeIntoLocal(cloud);
+                lastAudioCount = result.audioCount;
+                setStatus("已拉取，音频规则 " + result.audioCount
+                        + " 条，文本规则 " + result.textRuleCount + " 条，新增 " + result.added + " 条");
                 postLoaded(callback, result);
             } catch (Exception e) {
-                postError(callback, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+                String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                setStatus("拉取异常：" + msg);
+                postError(callback, msg);
             }
         });
     }

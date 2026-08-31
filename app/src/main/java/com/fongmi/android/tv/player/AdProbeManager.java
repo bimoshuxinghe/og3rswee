@@ -62,6 +62,8 @@ public final class AdProbeManager {
     private volatile long lastSkipAtMs;
     private volatile long lastErrorAtMs;
     private volatile String lastErrorText;
+    /** 探针尚未创建时到达的规则，暂存待注入（避免云端规则被静默丢弃）。 */
+    private volatile String pendingRulesJson;
 
     private final PlaybackClock clock = () -> {
         Player p = player;
@@ -158,6 +160,13 @@ public final class AdProbeManager {
                     .build();
             probe.setEnabled(Setting.isAiAdblock());
             loadRulesFromFile();  // 初始化后立即尝试加载本地规则
+            // 探针创建前到达的规则（典型场景：App 启动即异步拉取云端规则，
+            // 而此时用户还没播放、probe 仍为 null）此前会被静默丢弃。
+            String pending = pendingRulesJson;
+            if (pending != null) {
+                pendingRulesJson = null;
+                applyCollectedRules(pending);
+            }
             Log.i(TAG, "探针已就绪 enabled=" + Setting.isAiAdblock()
                     + " rulesPath=" + rulesPath);
         } catch (RuntimeException | LinkageError e) {
@@ -221,13 +230,21 @@ public final class AdProbeManager {
         AdRuleCollector.get().maybeCollect(url, headers, appContext);
     }
 
-    /** 采集器生成新规则后注入探针（原子替换，fail-open）。 */
+    /** 采集器或云端生成新规则后注入探针（原子替换，fail-open）。 */
     public void applyCollectedRules(String json) {
-        if (probe == null || json == null || json.trim().isEmpty()) return;
+        if (json == null || json.trim().isEmpty()) return;
+        if (probe == null) {
+            // 暂存，等探针创建后补发，绝不丢弃
+            pendingRulesJson = json;
+            Log.i(TAG, "规则已暂存，待探针创建后注入 size=" + json.length());
+            return;
+        }
         try {
             probe.replaceRulesJson(sanitizeForProbe(json));
+            ruleCount = countRules(json);
+            Log.i(TAG, "规则已注入探针 rules=" + ruleCount);
         } catch (RuntimeException | LinkageError e) {
-            e.printStackTrace();
+            Log.e(TAG, "规则注入失败", e);
         }
     }
 
@@ -346,7 +363,12 @@ public final class AdProbeManager {
 
         sb.append("④ 当前分析：").append(lastUrl == null ? "尚未播放" : "已接入\n   " + lastUrl).append("\n\n");
 
-        sb.append("④b 自动采集：").append(Setting.isAutoCollect() ? "已开启" : "未开启").append("\n");
+        sb.append("④b 云端同步：").append(AdCloudSyncManager.get().getStatusText()).append("\n");
+        String cloudUrl = Setting.getAdCloudUrl();
+        sb.append("    地址：").append(cloudUrl == null || cloudUrl.trim().isEmpty()
+                ? "未配置" : cloudUrl.trim()).append("\n\n");
+
+        sb.append("④c 自动采集：").append(Setting.isAutoCollect() ? "已开启" : "未开启").append("\n");
         sb.append("    ").append(AdRuleCollector.get().getStatusText()).append("\n\n");
 
         long now = System.currentTimeMillis();
