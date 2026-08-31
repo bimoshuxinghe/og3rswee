@@ -9,14 +9,18 @@ import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -195,8 +199,9 @@ public final class AdProbeManager {
             }
             String json = sb.toString().trim();
             if (!json.isEmpty()) {
-                probe.replaceRulesJson(sanitizeForProbe(json));
-                ruleCount = countRules(json);
+                String sanitized = sanitizeForProbe(json);
+                probe.replaceRulesJson(sanitized);
+                ruleCount = countRules(sanitized);
                 Log.i(TAG, "已加载规则文件 size=" + json.length()
                         + " rules=" + ruleCount + " path=" + rulesPath);
             }
@@ -241,8 +246,9 @@ public final class AdProbeManager {
             return;
         }
         try {
-            probe.replaceRulesJson(sanitizeForProbe(json));
-            ruleCount = countRules(json);
+            String sanitized = sanitizeForProbe(json);
+            probe.replaceRulesJson(sanitized);
+            ruleCount = countRules(sanitized);
             Log.i(TAG, "规则已注入探针 rules=" + ruleCount);
         } catch (RuntimeException | LinkageError e) {
             Log.e(TAG, "规则注入失败", e);
@@ -250,9 +256,10 @@ public final class AdProbeManager {
     }
 
     /**
-     * 探针 SDK 使用严格 rules-v1 解析器，遇到未知字段（如历史遗留的
-     * {@code textRules} 数组）会整体拒绝规则。这里在注入前剥离非音纹字段，
-     * 只保留探针必需的 format/schemaVersion/algorithm/revision/rules，
+     * 探针 SDK 使用严格 rules-v1 解析器，且运行期还会校验主指纹前缀冲突。
+     * 这里在注入前做两件事：
+     * 1. 剥离非音纹字段（如历史遗留的 {@code textRules}），只保留白名单字段；
+     * 2. 过滤掉会导致 SDK 整体拒绝的前缀冲突规则（同一广告开头相同但结束位置不同）。
      * 保证音纹跳广告稳定生效。
      */
     private static String sanitizeForProbe(String json) {
@@ -263,15 +270,104 @@ public final class AdProbeManager {
             if (root.has("schemaVersion")) out.put("schemaVersion", root.optInt("schemaVersion", 1));
             if (root.has("algorithm")) out.put("algorithm", root.optString("algorithm"));
             if (root.has("revision")) out.put("revision", root.optLong("revision", 0L));
-            if (root.has("rules")) out.put("rules", root.optJSONArray("rules"));
+            if (root.has("rules")) out.put("rules", filterConflictingRules(root.optJSONArray("rules")));
             return out.toString();
         } catch (Exception e) {
-            // 解析失败绝不能把可能含 textRules 的原始串直传给严格解析器，
+            // 解析失败绝不能把可能含 textRules 或冲突规则的原始串直传给严格解析器，
             // 否则会复现 RULE_PARSE_FAILED 让整份规则被拒。降级为最小空规则集
-            // （fail-open）：探针不崩、不被整份拒绝，缺规则只是暂时不去广告。
+            // （fail-open），保证探针不崩、不被整份拒绝。
             return "{\"format\":\"ad-audio-probe-rules\",\"schemaVersion\":1,"
                     + "\"algorithm\":\"spectral-sequence-v1\",\"revision\":0,\"rules\":[]}";
         }
+    }
+
+    /**
+     * 按 SDK {@code AdRuleSet.validatePrimaryPrefix} 预检：如果两条规则主指纹
+     * （phaseMs=0）前 8 帧相同但结束位置（durationMs - anchorOffsetMs）不同，
+     * SDK 会整体拒绝整份规则。这里按顺序保留不冲突的子集，避免一两条坏规则毒死全部。
+     */
+    private static JSONArray filterConflictingRules(JSONArray rules) {
+        if (rules == null || rules.length() == 0) return new JSONArray();
+        PrefixTrie root = new PrefixTrie();
+        JSONArray out = new JSONArray();
+        int dropped = 0;
+        for (int i = 0; i < rules.length(); i++) {
+            JSONObject rule = rules.optJSONObject(i);
+            if (rule == null) continue;
+            String id = rule.optString("id", "rule-" + i);
+            long durationMs = rule.optLong("durationMs", 0L);
+            long anchorOffsetMs = rule.optLong("anchorOffsetMs", 0L);
+            long endpoint = durationMs - anchorOffsetMs;
+            JSONArray hashes = null;
+            JSONArray variants = rule.optJSONArray("fingerprints");
+            if (variants != null) {
+                for (int j = 0; j < variants.length(); j++) {
+                    JSONObject v = variants.optJSONObject(j);
+                    if (v != null && v.optInt("phaseMs", -1) == 0) {
+                        hashes = v.optJSONArray("hashes");
+                        break;
+                    }
+                }
+            }
+            if (hashes == null || hashes.length() == 0) {
+                out.put(rule);
+                continue;
+            }
+            int limit = Math.min(8, hashes.length());
+            PrefixTrie node = root;
+            List<PrefixTrie> path = new ArrayList<>(limit);
+            boolean conflict = false;
+            for (int k = 0; k < limit; k++) {
+                if (node.terminalEndpoint != null && node.terminalEndpoint != endpoint) {
+                    conflict = true;
+                    break;
+                }
+                String hash = hashes.optString(k);
+                PrefixTrie child = node.children.get(hash);
+                if (child == null) {
+                    child = new PrefixTrie();
+                    node.children.put(hash, child);
+                }
+                node = child;
+                path.add(node);
+            }
+            if (!conflict && node.subtreeEndpoint != null
+                    && (node.subtreeMixed || node.subtreeEndpoint != endpoint)) {
+                conflict = true;
+            }
+            if (conflict) {
+                dropped++;
+                Log.w(TAG, "规则前缀冲突，已过滤避免整份规则被拒: " + id);
+                continue;
+            }
+            node.terminalEndpoint = endpoint;
+            node.terminalRuleId = id;
+            for (PrefixTrie item : path) {
+                if (item.subtreeEndpoint == null) {
+                    item.subtreeEndpoint = endpoint;
+                    item.subtreeRuleId = id;
+                } else if (item.subtreeEndpoint != endpoint) {
+                    item.subtreeMixed = true;
+                    if (item.mixedRuleId == null) item.mixedRuleId = id;
+                }
+            }
+            out.put(rule);
+        }
+        if (dropped > 0) {
+            Log.i(TAG, "规则预过滤完成：原始 " + rules.length() + " 条，保留 "
+                    + out.length() + " 条，过滤冲突 " + dropped + " 条");
+        }
+        return out;
+    }
+
+    private static final class PrefixTrie {
+        final Map<String, PrefixTrie> children = new HashMap<>();
+        Long terminalEndpoint;
+        String terminalRuleId;
+        Long subtreeEndpoint;
+        String subtreeRuleId;
+        String mixedRuleId;
+        boolean subtreeMixed;
     }
 
     /** 宿主主动 seek 后调用，让探针把内部分析位置同步到新时间轴。 */
@@ -321,7 +417,7 @@ public final class AdProbeManager {
     /** 统计规则 JSON 里的规则条数，用于自检面板（解析失败返回 -1）。 */
     private static int countRules(String json) {
         try {
-            org.json.JSONArray rules = new JSONObject(json).optJSONArray("rules");
+            JSONArray rules = new JSONObject(json).optJSONArray("rules");
             return rules == null ? 0 : rules.length();
         } catch (Exception e) {
             return -1;
