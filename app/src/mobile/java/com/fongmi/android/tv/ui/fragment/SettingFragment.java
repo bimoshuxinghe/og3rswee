@@ -104,7 +104,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     }
 
     private void setVersionText() {
-        mBinding.versionText.setText(showAuthor ? "by困困兔" : BuildConfig.VERSION_NAME);
+        mBinding.versionText.setText(showAuthor ? "BY:困困兔" : BuildConfig.VERSION_NAME);
     }
 
     private void setOtherText() {
