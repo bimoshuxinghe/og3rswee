@@ -68,18 +68,6 @@ public final class AdProbeManager {
     private static final Pattern SDK_HASH_PATTERN = Pattern.compile("^[0-9a-f]{8}$");
     private static final Set<Integer> SDK_REQUIRED_PHASES = Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList(0, 64, 128, 192)));
-    private static final int SDK_MAX_RULES = 1024;
-    private static final int SDK_MIN_DURATION_MS = 1000;
-    private static final int SDK_MAX_DURATION_MS = 10 * 60 * 1000;
-    private static final int SDK_MIN_ANCHOR_DURATION_MS = 2000;
-    private static final int SDK_MAX_ANCHOR_DURATION_MS = 5000;
-    private static final int SDK_MAX_ID_LENGTH = 64;
-    /** 与 SDK AdRule.ID_PATTERN / RuleSetJsonParser.HASH_PATTERN 一致。 */
-    private static final Pattern SDK_ID_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,63}$");
-    private static final Pattern SDK_HASH_PATTERN = Pattern.compile("^[0-9a-f]{8}$");
-    /** SDK 要求规则必须恰好包含这四个固定相位（RuleSetJsonParser.REQUIRED_PHASES_MS）。 */
-    private static final Set<Integer> SDK_REQUIRED_PHASES = Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList(0, 64, 128, 192)));
 
     /** SDK 适配器仅放行不会向重定向目标泄露凭据的安全请求头白名单。 */
     private static final Set<String> ALLOWED_HEADER_NAMES = Collections.unmodifiableSet(
