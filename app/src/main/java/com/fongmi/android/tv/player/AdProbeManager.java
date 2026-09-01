@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import io.github.fongmi.adaudio.probe.AdAudioProbe;
 import io.github.fongmi.adaudio.probe.adapter.media3.v1_9.ProbeAudioStats;
@@ -56,6 +58,28 @@ public final class AdProbeManager {
     private static final int SDK_MIN_CONFIRMATION_FRAMES = 4;
     private static final int SDK_MAX_CONFIRMATION_FRAMES = 8;
     private static final int SDK_MAX_TOTAL_HASHES = 65536;
+    private static final int SDK_MAX_RULES = 1024;
+    private static final int SDK_MIN_DURATION_MS = 1000;
+    private static final int SDK_MAX_DURATION_MS = 10 * 60 * 1000;
+    private static final int SDK_MIN_ANCHOR_DURATION_MS = 2000;
+    private static final int SDK_MAX_ANCHOR_DURATION_MS = 5000;
+    private static final int SDK_MAX_ID_LENGTH = 64;
+    private static final Pattern SDK_ID_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,63}$");
+    private static final Pattern SDK_HASH_PATTERN = Pattern.compile("^[0-9a-f]{8}$");
+    private static final Set<Integer> SDK_REQUIRED_PHASES = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList(0, 64, 128, 192)));
+    private static final int SDK_MAX_RULES = 1024;
+    private static final int SDK_MIN_DURATION_MS = 1000;
+    private static final int SDK_MAX_DURATION_MS = 10 * 60 * 1000;
+    private static final int SDK_MIN_ANCHOR_DURATION_MS = 2000;
+    private static final int SDK_MAX_ANCHOR_DURATION_MS = 5000;
+    private static final int SDK_MAX_ID_LENGTH = 64;
+    /** 与 SDK AdRule.ID_PATTERN / RuleSetJsonParser.HASH_PATTERN 一致。 */
+    private static final Pattern SDK_ID_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,63}$");
+    private static final Pattern SDK_HASH_PATTERN = Pattern.compile("^[0-9a-f]{8}$");
+    /** SDK 要求规则必须恰好包含这四个固定相位（RuleSetJsonParser.REQUIRED_PHASES_MS）。 */
+    private static final Set<Integer> SDK_REQUIRED_PHASES = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList(0, 64, 128, 192)));
 
     /** SDK 适配器仅放行不会向重定向目标泄露凭据的安全请求头白名单。 */
     private static final Set<String> ALLOWED_HEADER_NAMES = Collections.unmodifiableSet(
@@ -355,7 +379,13 @@ public final class AdProbeManager {
                         + "（" + reason + "）");
                 continue;
             }
-            out.put(rule);
+            if (out.length() >= SDK_MAX_RULES) {
+                Log.w(TAG, "规则数量达到 SDK 上限，其余已截断");
+                break;
+            }
+            // 重建为 SDK 只会接受的规范化形态：字段类型收敛为整数、
+            // 剥离 test 等非注入必需字段，杜绝格式漂移触发严格解析器。
+            out.put(normalizeRule(rule));
         }
         if (dropped > 0) {
             Log.i(TAG, "规则预过滤完成：原始 " + rules.length() + " 条，保留 "
@@ -364,13 +394,57 @@ public final class AdProbeManager {
         return out;
     }
 
-    /** 对齐 SDK AdRuleSet.validate 的结构校验；返回 null 表示通过，否则返回拒绝原因。 */
+    /**
+     * 按探针 rules-v1 只读字段的白名单重建单条规则：数字统一转成 long/int，
+     * 字符串原样，{@code test} 元数据（仅供规则工具使用、不进入运行时匹配）
+     * 直接剥离。这样无论云端 JSON 里数字写成字符串、浮点还是科学计数，
+     * 输出都是严格解析器必然接受的普通十进制整数。
+     */
+    private static JSONObject normalizeRule(JSONObject rule) {
+        JSONObject out = new JSONObject();
+        out.put("id", rule.optString("id"));
+        out.put("durationMs", rule.optLong("durationMs", 0L));
+        out.put("anchorOffsetMs", rule.optLong("anchorOffsetMs", 0L));
+        out.put("anchorDurationMs", rule.optLong("anchorDurationMs", 0L));
+        JSONArray fps = new JSONArray();
+        JSONArray variants = rule.optJSONArray("fingerprints");
+        for (int j = 0; variants != null && j < variants.length(); j++) {
+            JSONObject v = variants.optJSONObject(j);
+            if (v == null) continue;
+            JSONObject nv = new JSONObject();
+            nv.put("phaseMs", v.optInt("phaseMs", -1));
+            JSONArray srcHashes = v.optJSONArray("hashes");
+            JSONArray hashes = new JSONArray();
+            for (int k = 0; srcHashes != null && k < srcHashes.length(); k++) {
+                hashes.put(srcHashes.optString(k));
+            }
+            nv.put("hashes", hashes);
+            fps.put(nv);
+        }
+        out.put("fingerprints", fps);
+        return out;
+    }
+
+    /** 对齐 SDK AdRule 构造器 + RuleSetJsonParser.readRule + AdRuleSet.validate 的结构校验；返回 null 表示通过，否则返回拒绝原因。 */
     private static String validateRuleStructure(JSONObject rule, Set<String> ids) {
         if (rule == null) return "规则不是 JSON 对象";
         String id = rule.optString("id", "");
         if (id.isEmpty()) return "缺少 id";
+        if (id.length() > SDK_MAX_ID_LENGTH || !SDK_ID_PATTERN.matcher(id).matches()) {
+            return "id 无效（须匹配 [a-z0-9][a-z0-9._-]{0,63}）";
+        }
         if (!ids.add(id)) return "id 重复";
+        long durationMs = rule.optLong("durationMs", 0L);
+        if (durationMs < SDK_MIN_DURATION_MS || durationMs > SDK_MAX_DURATION_MS) {
+            return "广告时长超出允许范围";
+        }
+        long anchorOffsetMs = rule.optLong("anchorOffsetMs", 0L);
         long anchorDurationMs = rule.optLong("anchorDurationMs", 0L);
+        if (anchorDurationMs < SDK_MIN_ANCHOR_DURATION_MS
+                || anchorDurationMs > SDK_MAX_ANCHOR_DURATION_MS
+                || anchorOffsetMs < 0 || anchorOffsetMs > durationMs - anchorDurationMs) {
+            return "广告锚点范围无效";
+        }
         JSONArray variants = rule.optJSONArray("fingerprints");
         if (variants == null || variants.length() == 0) return "缺少 fingerprints";
         long totalHashes = 0L;
@@ -386,6 +460,13 @@ public final class AdProbeManager {
             if (phaseMs == 0) hasPrimary = true;
             JSONArray hashes = v.optJSONArray("hashes");
             if (hashes == null) return "缺少 hashes";
+            if (hashes.length() < 4 || hashes.length() > 64) return "指纹序列长度无效";
+            for (int k = 0; k < hashes.length(); k++) {
+                String hash = hashes.optString(k);
+                if (!SDK_HASH_PATTERN.matcher(hash).matches()) {
+                    return "频谱哈希格式无效: " + hash;
+                }
+            }
             if (hashes.length() != expectedFrames(anchorDurationMs, phaseMs)) {
                 return "指纹帧数与锚点时长不一致";
             }
@@ -394,6 +475,7 @@ public final class AdProbeManager {
             if (totalHashes > SDK_MAX_TOTAL_HASHES) return "指纹总量超过上限";
         }
         if (!hasPrimary) return "缺少零偏移主指纹";
+        if (!offsets.equals(SDK_REQUIRED_PHASES)) return "必须包含 0/64/128/192 四个固定相位";
         return null;
     }
 
