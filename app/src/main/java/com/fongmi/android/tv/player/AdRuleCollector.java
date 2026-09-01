@@ -19,8 +19,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +55,12 @@ public final class AdRuleCollector {
     private static final Set<String> ALLOWED_HEADER_NAMES = Collections.unmodifiableSet(
             new java.util.HashSet<>(java.util.Arrays.asList(
                     "user-agent", "accept", "accept-language", "cache-control", "pragma")));
+
+    /**
+     * 单次扫描最多采集的广告候选数量。
+     * 长视频可能识别出大量候选，逐个采集会拖慢流程并占用带宽，故只取优先级最高的一批。
+     */
+    private static final int MAX_CAPTURE_PER_SCAN = 6;
 
     private static volatile AdRuleCollector instance;
 
@@ -133,26 +142,64 @@ public final class AdRuleCollector {
 
     private void handleScanResult(HlsScanResult result) {
         if (result == null || result.getCandidates().isEmpty()) {
-            setStatus("未发现广告候选（仅支持 HLS/m3u8；MP4 源无法自动采集）");
+            // 给出可诊断的提示：源里有很多分片边界却仍无候选，说明这些段落缺少可识别的
+            // 结构特征（源组/加密变化、重复出现等），达不到置信度门槛，只能依赖云端规则。
+            int disc = result == null ? 0 : result.getDiscontinuityCount();
+            setStatus(disc > 0
+                    ? "未发现广告候选（" + disc + " 个分片边界但结构特征不足，无法自动采集）"
+                    : "未发现广告候选（仅支持 HLS/m3u8；MP4 源无法自动采集）");
             finishBusy();
             return;
         }
-        HlsAdCandidate candidate = null;
+        // 收集全部合格候选。原实现取到第一个就 break，导致同一视频里靠后的中插广告
+        // 永远采集不到——这是「有些广告采集不到」的直接原因。
+        List<HlsAdCandidate> qualified = new ArrayList<>();
         for (HlsAdCandidate item : result.getCandidates()) {
+            if (item == null) continue;
             // 指纹采集要求广告区间至少 5 秒
-            if (item.getDurationMs() >= FingerprintCaptureRequest.REQUIRED_ANCHOR_DURATION_MS) {
-                candidate = item;
-                break;
-            }
+            if (item.getDurationMs() < FingerprintCaptureRequest.REQUIRED_ANCHOR_DURATION_MS) continue;
+            if (item.getOccurrences() == null || item.getOccurrences().isEmpty()) continue;
+            qualified.add(item);
         }
-        if (candidate == null) {
+        if (qualified.isEmpty()) {
             setStatus("发现候选但都短于 5 秒，无法采集指纹");
             finishBusy();
             return;
         }
-        final HlsAdCandidate target = candidate;
-        final HlsCandidateOccurrence occurrence = target.getOccurrences().get(0);
+        // 优先采集置信度高、重复出现次数多的候选
+        Collections.sort(qualified, new Comparator<HlsAdCandidate>() {
+            @Override public int compare(HlsAdCandidate left, HlsAdCandidate right) {
+                int byConfidence = Integer.compare(right.getConfidence(), left.getConfidence());
+                if (byConfidence != 0) return byConfidence;
+                return Integer.compare(right.getOccurrences().size(),
+                        left.getOccurrences().size());
+            }
+        });
+        if (qualified.size() > MAX_CAPTURE_PER_SCAN) {
+            qualified = new ArrayList<HlsAdCandidate>(
+                    qualified.subList(0, MAX_CAPTURE_PER_SCAN));
+        }
         final String mediaUrl = result.getMediaPlaylistUrl();
+        captureNext(qualified, 0, mediaUrl, new ArrayList<FingerprintRuleDraft>());
+    }
+
+    /**
+     * 串行采集候选队列：单个候选失败不影响其余候选，全部结束后一次性合并落盘，
+     * 避免多次写文件与重复上传云端。
+     */
+    private void captureNext(final List<HlsAdCandidate> queue, final int index,
+                             final String mediaUrl, final List<FingerprintRuleDraft> drafts) {
+        if (index >= queue.size()) {
+            if (drafts.isEmpty()) {
+                setStatus("未采集到可用指纹（共 " + queue.size() + " 个候选）");
+            } else {
+                mergeAndApplyAll(drafts);
+            }
+            finishBusy();
+            return;
+        }
+        final HlsAdCandidate target = queue.get(index);
+        final HlsCandidateOccurrence occurrence = target.getOccurrences().get(0);
         try {
             if (collector == null) {
                 collector = new AudioFingerprintCollector.Builder(appContext)
@@ -163,29 +210,30 @@ public final class AdRuleCollector {
             FingerprintCaptureRequest request = FingerprintCaptureRequest.builder(
                             media, target.getId(), occurrence.getStartMs(), occurrence.getEndMs())
                     .build();
+            setStatus("正在采集广告指纹 " + (index + 1) + "/" + queue.size() + "…");
             collector.capture(request, new FingerprintCaptureListener() {
                 @Override public void onProgress(FingerprintCaptureProgress progress) {
                     // 进度无需打扰用户
                 }
 
                 @Override public void onCompleted(long sessionId, FingerprintRuleDraft draft) {
-                    mergeAndApply(draft);
+                    if (draft != null) drafts.add(draft);
+                    captureNext(queue, index + 1, mediaUrl, drafts);
                 }
 
                 @Override public void onCancelled(long sessionId) {
-                    setStatus("采集已取消");
-                    finishBusy();
+                    // 单个候选被取消不中断，继续采集其余候选
+                    captureNext(queue, index + 1, mediaUrl, drafts);
                 }
 
                 @Override public void onError(ProbeToolError error) {
-                    setStatus("指纹采集失败：" + (error == null ? "未知" : error.getMessage()));
-                    finishBusy();
+                    // 单个候选失败不中断，继续采集其余候选
+                    captureNext(queue, index + 1, mediaUrl, drafts);
                 }
             });
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
-            setStatus("采集异常：" + e.getClass().getSimpleName());
-            finishBusy();
+            captureNext(queue, index + 1, mediaUrl, drafts);
         }
     }
 
@@ -201,8 +249,11 @@ public final class AdRuleCollector {
         return lastStatus + "（" + sec + " 秒前）";
     }
 
-    /** 把新规则合并进本地 RULES.JSON（按 id 去重、revision+1），再注入探针。 */
-    private void mergeAndApply(FingerprintRuleDraft draft) {
+    /**
+     * 把本轮采集到的全部新规则合并进本地 RULES.JSON（按 id 去重、revision+1），再注入探针。
+     * 整批只写一次文件、只上传一次云端。
+     */
+    private void mergeAndApplyAll(List<FingerprintRuleDraft> drafts) {
         try {
             String path = Setting.getAdRulesPath();
             File file = new File(path);
@@ -210,33 +261,40 @@ public final class AdRuleCollector {
             long revision = root.optLong("revision", 0L);
             JSONArray rules = root.optJSONArray("rules");
             if (rules == null) rules = new JSONArray();
-            boolean exists = false;
-            for (int i = 0; i < rules.length(); i++) {
-                JSONObject rule = rules.optJSONObject(i);
-                if (rule != null && draft.getId().equals(rule.optString("id"))) {
-                    exists = true;
-                    break;
+            int added = 0;
+            String lastName = null;
+            for (FingerprintRuleDraft draft : drafts) {
+                if (draft == null) continue;
+                boolean exists = false;
+                for (int i = 0; i < rules.length(); i++) {
+                    JSONObject rule = rules.optJSONObject(i);
+                    if (rule != null && draft.getId().equals(rule.optString("id"))) {
+                        exists = true;
+                        break;
+                    }
                 }
-            }
-            if (!exists) {
+                if (exists) continue;
                 rules.put(new JSONObject(draft.toRuleJson()));
-                root.put("rules", rules);
-                root.put("revision", revision + 1L);
-                writeAtomic(file, root.toString());
-                String json = root.toString();
-                AdProbeManager.get().applyCollectedRules(json);
-                // 本地新规则默认自动上传到云端（增量、幂等）
-                AdCloudSyncManager.get().uploadNewRules();
-                setStatus("已生成规则 " + draft.getId() + "，下次播放该源即可跳过");
-                Notify.show(ResUtil.getString(R.string.ad_rule_collected, draft.getId()));
-            } else {
-                setStatus("规则 " + draft.getId() + " 已存在，无需重复采集");
+                added++;
+                lastName = draft.getId();
             }
+            if (added == 0) {
+                setStatus("规则已存在，无需重复采集");
+                return;
+            }
+            root.put("rules", rules);
+            root.put("revision", revision + 1L);
+            writeAtomic(file, root.toString());
+            String json = root.toString();
+            AdProbeManager.get().applyCollectedRules(json);
+            // 本地新规则默认自动上传到云端（增量、幂等）
+            AdCloudSyncManager.get().uploadNewRules();
+            setStatus("已生成 " + added + " 条规则，下次播放该源即可跳过");
+            Notify.show(ResUtil.getString(R.string.ad_rule_collected,
+                    added > 1 ? lastName + " 等 " + added + " 条" : String.valueOf(lastName)));
         } catch (Exception e) {
             e.printStackTrace();
             setStatus("写入规则文件失败：" + e.getClass().getSimpleName());
-        } finally {
-            finishBusy();
         }
     }
 

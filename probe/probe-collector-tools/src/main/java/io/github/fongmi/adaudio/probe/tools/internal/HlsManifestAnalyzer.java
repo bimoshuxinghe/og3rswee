@@ -28,6 +28,11 @@ public final class HlsManifestAnalyzer {
     private static final long MAX_CANDIDATE_MS = 600_000L;
     private static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
     private static final int MIN_CONFIDENCE = 70;
+    /**
+     * 用「时长序列」判定同一段广告重复出现所需的最少分片数。
+     * 过短的时长序列没有区分度，会被固定分片长度大量误判为重复。
+     */
+    private static final int MIN_REPEAT_SEGMENTS = 3;
     private static final int MAX_MASTER_DEPTH = 3;
     private static final int MAX_VARIANTS = 256;
     private static final int MAX_SEGMENTS = 20_000;
@@ -78,6 +83,7 @@ public final class HlsManifestAnalyzer {
             }
         });
         Map<String, Integer> repetitions = countSequences(runs);
+        Map<String, Integer> durationRepetitions = countDurationSequences(runs);
         Map<String, MutableCandidate> grouped = new LinkedHashMap<>();
         for (SegmentRun run : runs) {
             cancellation.check();
@@ -85,8 +91,11 @@ public final class HlsManifestAnalyzer {
             long durationMs = run.endMs - run.startMs;
             if (durationMs < MIN_CANDIDATE_MS || durationMs > MAX_CANDIDATE_MS) continue;
             Set<HlsCandidateSignal> signals = EnumSet.noneOf(HlsCandidateSignal.class);
-            int confidence = score(run, main,
-                    repetitions.get(run.sequenceKey) > 1, durationMs, signals);
+            // 重复出现是广告的最强信号。同一段广告在不同位置出现时分片 URL 几乎必然不同，
+            // 因此除 URL 级精确重复外，还用时长序列识别「同一段内容换个位置再次出现」。
+            boolean repeated = repetitions.get(run.sequenceKey) > 1
+                    || durationRepetitions.get(run.durationKey) > 1;
+            int confidence = score(run, main, repeated, durationMs, signals);
             if (confidence < MIN_CONFIDENCE) continue;
             MutableCandidate candidate = grouped.get(run.sequenceKey);
             if (candidate == null) {
@@ -293,6 +302,34 @@ public final class HlsManifestAnalyzer {
         return counts;
     }
 
+    /**
+     * 按时长序列统计重复，用于识别同一段广告在不同位置重复出现。
+     * 只统计分片数足够多、且时长序列有变化的片段：全等序列（固定分片长度）没有区分度，
+     * 会把大量普通内容分段误判为重复广告。
+     */
+    private Map<String, Integer> countDurationSequences(List<SegmentRun> runs) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (SegmentRun run : runs) {
+            if (run.segmentCount < MIN_REPEAT_SEGMENTS) continue;
+            if (!hasDurationVariation(run)) continue;
+            Integer count = counts.get(run.durationKey);
+            counts.put(run.durationKey, count == null ? 1 : count + 1);
+        }
+        return counts;
+    }
+
+    private static boolean hasDurationVariation(SegmentRun run) {
+        Long first = null;
+        for (long value : run.durations) {
+            if (first == null) {
+                first = value;
+            } else if (value != first.longValue()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void rejectDrm(String attributes) throws HlsScanException {
         Matcher methodMatcher = METHOD_ATTRIBUTE.matcher(attributes);
         String method = methodMatcher.find() ? methodMatcher.group(1).trim() : "";
@@ -414,7 +451,9 @@ public final class HlsManifestAnalyzer {
         final boolean discontinuityBefore;
         boolean discontinuityAfter;
         final StringBuilder sequenceBuilder;
+        final List<Long> durations = new ArrayList<Long>();
         String sequenceKey;
+        String durationKey;
         SegmentRun(Segment segment, String signature) {
             this.startMs = segment.startMs;
             this.endMs = segment.startMs + segment.durationMs;
@@ -425,14 +464,26 @@ public final class HlsManifestAnalyzer {
             this.signature = signature;
             this.discontinuityBefore = segment.discontinuityBefore;
             this.sequenceBuilder = new StringBuilder(segmentIdentity(segment));
+            this.durations.add(segment.durationMs);
         }
         void append(Segment segment) {
             endMs = segment.startMs + segment.durationMs;
             segmentCount++;
             sequenceBuilder.append('\n').append(segmentIdentity(segment));
+            durations.add(segment.durationMs);
         }
         void seal() {
             sequenceKey = sequenceBuilder.toString();
+            // 时长序列带上分片数，避免长度相同但内容不同的序列被误判为同一段
+            durationKey = segmentCount + "|" + joinDurations();
+        }
+        private String joinDurations() {
+            StringBuilder builder = new StringBuilder();
+            for (long value : durations) {
+                if (builder.length() > 0) builder.append('|');
+                builder.append(value);
+            }
+            return builder.toString();
         }
     }
 
