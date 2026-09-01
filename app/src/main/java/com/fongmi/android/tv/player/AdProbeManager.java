@@ -10,6 +10,7 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -350,7 +351,7 @@ public final class AdProbeManager {
      *   <li>主指纹前缀冲突（前 8 帧相同但结束位置不同）。</li>
      * </ol>
      */
-    private static JSONArray filterInvalidRules(JSONArray rules) {
+    private static JSONArray filterInvalidRules(JSONArray rules) throws JSONException {
         if (rules == null || rules.length() == 0) return new JSONArray();
         PrefixTrie root = new PrefixTrie();
         JSONArray out = new JSONArray();
@@ -373,7 +374,12 @@ public final class AdProbeManager {
             }
             // 重建为 SDK 只会接受的规范化形态：字段类型收敛为整数、
             // 剥离 test 等非注入必需字段，杜绝格式漂移触发严格解析器。
-            out.put(normalizeRule(rule));
+            JSONObject normalized = normalizeRule(rule);
+            if (normalized == null) {
+                Log.w(TAG, "规则规范化失败，已剔除: " + rule.optString("id", "?"));
+                continue;
+            }
+            out.put(normalized);
         }
         if (dropped > 0) {
             Log.i(TAG, "规则预过滤完成：原始 " + rules.length() + " 条，保留 "
@@ -388,29 +394,34 @@ public final class AdProbeManager {
      * 直接剥离。这样无论云端 JSON 里数字写成字符串、浮点还是科学计数，
      * 输出都是严格解析器必然接受的普通十进制整数。
      */
-    private static JSONObject normalizeRule(JSONObject rule) {
-        JSONObject out = new JSONObject();
-        out.put("id", rule.optString("id"));
-        out.put("durationMs", rule.optLong("durationMs", 0L));
-        out.put("anchorOffsetMs", rule.optLong("anchorOffsetMs", 0L));
-        out.put("anchorDurationMs", rule.optLong("anchorDurationMs", 0L));
-        JSONArray fps = new JSONArray();
-        JSONArray variants = rule.optJSONArray("fingerprints");
-        for (int j = 0; variants != null && j < variants.length(); j++) {
-            JSONObject v = variants.optJSONObject(j);
-            if (v == null) continue;
-            JSONObject nv = new JSONObject();
-            nv.put("phaseMs", v.optInt("phaseMs", -1));
-            JSONArray srcHashes = v.optJSONArray("hashes");
-            JSONArray hashes = new JSONArray();
-            for (int k = 0; srcHashes != null && k < srcHashes.length(); k++) {
-                hashes.put(srcHashes.optString(k));
+    private static JSONObject normalizeRule(JSONObject rule) throws JSONException {
+        try {
+            JSONObject out = new JSONObject();
+            out.put("id", rule.optString("id"));
+            out.put("durationMs", rule.optLong("durationMs", 0L));
+            out.put("anchorOffsetMs", rule.optLong("anchorOffsetMs", 0L));
+            out.put("anchorDurationMs", rule.optLong("anchorDurationMs", 0L));
+            JSONArray fps = new JSONArray();
+            JSONArray variants = rule.optJSONArray("fingerprints");
+            for (int j = 0; variants != null && j < variants.length(); j++) {
+                JSONObject v = variants.optJSONObject(j);
+                if (v == null) continue;
+                JSONObject nv = new JSONObject();
+                nv.put("phaseMs", v.optInt("phaseMs", -1));
+                JSONArray srcHashes = v.optJSONArray("hashes");
+                JSONArray hashes = new JSONArray();
+                for (int k = 0; srcHashes != null && k < srcHashes.length(); k++) {
+                    hashes.put(srcHashes.optString(k));
+                }
+                nv.put("hashes", hashes);
+                fps.put(nv);
             }
-            nv.put("hashes", hashes);
-            fps.put(nv);
+            out.put("fingerprints", fps);
+            return out;
+        } catch (JSONException e) {
+            // 结构校验已通过，理论上不会走到这里；兜底让调用方剔除该条。
+            return null;
         }
-        out.put("fingerprints", fps);
-        return out;
     }
 
     /** 对齐 SDK AdRule 构造器 + RuleSetJsonParser.readRule + AdRuleSet.validate 的结构校验；返回 null 表示通过，否则返回拒绝原因。 */
