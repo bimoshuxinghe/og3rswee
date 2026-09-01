@@ -18,6 +18,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,6 +48,14 @@ public final class AdProbeManager {
 
     /** 诊断日志 TAG；探针是 fail-open 设计，出问题时只有这里能看到原因。 */
     private static final String TAG = "AdProbe";
+
+    // 与 probe SDK AdRuleSet（probe-core）的校验常量保持一致。
+    // SDK 对任一规则校验失败都会整体拒绝整份规则，预过滤必须用同一套阈值。
+    private static final int SDK_WINDOW_MS = 512;
+    private static final int SDK_HOP_MS = 256;
+    private static final int SDK_MIN_CONFIRMATION_FRAMES = 4;
+    private static final int SDK_MAX_CONFIRMATION_FRAMES = 8;
+    private static final int SDK_MAX_TOTAL_HASHES = 65536;
 
     /** SDK 适配器仅放行不会向重定向目标泄露凭据的安全请求头白名单。 */
     private static final Set<String> ALLOWED_HEADER_NAMES = Collections.unmodifiableSet(
@@ -304,7 +313,7 @@ public final class AdProbeManager {
             if (root.has("schemaVersion")) out.put("schemaVersion", root.optInt("schemaVersion", 1));
             if (root.has("algorithm")) out.put("algorithm", root.optString("algorithm"));
             if (root.has("revision")) out.put("revision", root.optLong("revision", 0L));
-            if (root.has("rules")) out.put("rules", filterConflictingRules(root.optJSONArray("rules")));
+            if (root.has("rules")) out.put("rules", filterInvalidRules(root.optJSONArray("rules")));
             return out.toString();
         } catch (Exception e) {
             // 解析失败绝不能把可能含 textRules 或冲突规则的原始串直传给严格解析器，
@@ -316,82 +325,142 @@ public final class AdProbeManager {
     }
 
     /**
-     * 按 SDK {@code AdRuleSet.validatePrimaryPrefix} 预检：如果两条规则主指纹
-     * （phaseMs=0）前 8 帧相同但结束位置（durationMs - anchorOffsetMs）不同，
-     * SDK 会整体拒绝整份规则。这里按顺序保留不冲突的子集，避免一两条坏规则毒死全部。
+     * 按 SDK {@code AdRuleSet} 的全部校验逐条预检，剔除不合规规则。
+     * SDK 对任何一条规则校验失败都会整体拒绝整份规则，一条坏规则就能毒死全部，
+     * 因此注入前必须用与 SDK 完全相同的阈值逐条把关。校验项与 SDK 一一对应：
+     * <ol>
+     *   <li>id 缺失或重复；</li>
+     *   <li>相位偏移无效或重复（{@code phaseMs < 0} / {@code >= 256}）；</li>
+     *   <li>指纹帧数与锚点时长不一致；</li>
+     *   <li>指纹开头区分度不足（前 8 帧与首帧汉明距离均 ≤ 5）；</li>
+     *   <li>规则指纹总量超过上限（65536）；</li>
+     *   <li>缺少零偏移主指纹；</li>
+     *   <li>主指纹前缀冲突（前 8 帧相同但结束位置不同）。</li>
+     * </ol>
      */
-    private static JSONArray filterConflictingRules(JSONArray rules) {
+    private static JSONArray filterInvalidRules(JSONArray rules) {
         if (rules == null || rules.length() == 0) return new JSONArray();
         PrefixTrie root = new PrefixTrie();
         JSONArray out = new JSONArray();
+        Set<String> ids = new HashSet<>();
         int dropped = 0;
         for (int i = 0; i < rules.length(); i++) {
             JSONObject rule = rules.optJSONObject(i);
-            if (rule == null) continue;
-            String id = rule.optString("id", "rule-" + i);
-            long durationMs = rule.optLong("durationMs", 0L);
-            long anchorOffsetMs = rule.optLong("anchorOffsetMs", 0L);
-            long endpoint = durationMs - anchorOffsetMs;
-            JSONArray hashes = null;
-            JSONArray variants = rule.optJSONArray("fingerprints");
-            if (variants != null) {
-                for (int j = 0; j < variants.length(); j++) {
-                    JSONObject v = variants.optJSONObject(j);
-                    if (v != null && v.optInt("phaseMs", -1) == 0) {
-                        hashes = v.optJSONArray("hashes");
-                        break;
-                    }
-                }
-            }
-            if (hashes == null || hashes.length() == 0) {
-                out.put(rule);
-                continue;
-            }
-            int limit = Math.min(8, hashes.length());
-            PrefixTrie node = root;
-            List<PrefixTrie> path = new ArrayList<>(limit);
-            boolean conflict = false;
-            for (int k = 0; k < limit; k++) {
-                if (node.terminalEndpoint != null && node.terminalEndpoint != endpoint) {
-                    conflict = true;
-                    break;
-                }
-                String hash = hashes.optString(k);
-                PrefixTrie child = node.children.get(hash);
-                if (child == null) {
-                    child = new PrefixTrie();
-                    node.children.put(hash, child);
-                }
-                node = child;
-                path.add(node);
-            }
-            if (!conflict && node.subtreeEndpoint != null
-                    && (node.subtreeMixed || node.subtreeEndpoint != endpoint)) {
-                conflict = true;
-            }
-            if (conflict) {
+            String reason = validateRuleStructure(rule, ids);
+            if (reason == null) reason = validatePrimaryPrefix(rule, root);
+            if (reason != null) {
                 dropped++;
-                Log.w(TAG, "规则前缀冲突，已过滤避免整份规则被拒: " + id);
+                Log.w(TAG, "规则未通过 SDK 预检，已剔除避免整份被拒: "
+                        + (rule == null ? "null" : rule.optString("id", "?"))
+                        + "（" + reason + "）");
                 continue;
-            }
-            node.terminalEndpoint = endpoint;
-            node.terminalRuleId = id;
-            for (PrefixTrie item : path) {
-                if (item.subtreeEndpoint == null) {
-                    item.subtreeEndpoint = endpoint;
-                    item.subtreeRuleId = id;
-                } else if (item.subtreeEndpoint != endpoint) {
-                    item.subtreeMixed = true;
-                    if (item.mixedRuleId == null) item.mixedRuleId = id;
-                }
             }
             out.put(rule);
         }
         if (dropped > 0) {
             Log.i(TAG, "规则预过滤完成：原始 " + rules.length() + " 条，保留 "
-                    + out.length() + " 条，过滤冲突 " + dropped + " 条");
+                    + out.length() + " 条，剔除 " + dropped + " 条");
         }
         return out;
+    }
+
+    /** 对齐 SDK AdRuleSet.validate 的结构校验；返回 null 表示通过，否则返回拒绝原因。 */
+    private static String validateRuleStructure(JSONObject rule, Set<String> ids) {
+        if (rule == null) return "规则不是 JSON 对象";
+        String id = rule.optString("id", "");
+        if (id.isEmpty()) return "缺少 id";
+        if (!ids.add(id)) return "id 重复";
+        long anchorDurationMs = rule.optLong("anchorDurationMs", 0L);
+        JSONArray variants = rule.optJSONArray("fingerprints");
+        if (variants == null || variants.length() == 0) return "缺少 fingerprints";
+        long totalHashes = 0L;
+        boolean hasPrimary = false;
+        Set<Integer> offsets = new HashSet<>();
+        for (int j = 0; j < variants.length(); j++) {
+            JSONObject v = variants.optJSONObject(j);
+            if (v == null) return "指纹变体不是对象";
+            int phaseMs = v.optInt("phaseMs", -1);
+            if (phaseMs < 0 || phaseMs >= SDK_HOP_MS || !offsets.add(phaseMs)) {
+                return "相位偏移无效或重复";
+            }
+            if (phaseMs == 0) hasPrimary = true;
+            JSONArray hashes = v.optJSONArray("hashes");
+            if (hashes == null) return "缺少 hashes";
+            if (hashes.length() != expectedFrames(anchorDurationMs, phaseMs)) {
+                return "指纹帧数与锚点时长不一致";
+            }
+            if (requiredConfirmationFrames(hashes) < 0) return "指纹开头区分度不足";
+            totalHashes += hashes.length();
+            if (totalHashes > SDK_MAX_TOTAL_HASHES) return "指纹总量超过上限";
+        }
+        if (!hasPrimary) return "缺少零偏移主指纹";
+        return null;
+    }
+
+    /** 对齐 SDK validatePrimaryPrefix 的前缀树校验；返回 null 表示通过，否则返回拒绝原因。 */
+    private static String validatePrimaryPrefix(JSONObject rule, PrefixTrie root) {
+        JSONArray variants = rule.optJSONArray("fingerprints");
+        JSONArray hashes = null;
+        for (int j = 0; j < variants.length(); j++) {
+            JSONObject v = variants.optJSONObject(j);
+            if (v != null && v.optInt("phaseMs", -1) == 0) {
+                hashes = v.optJSONArray("hashes");
+                break;
+            }
+        }
+        String id = rule.optString("id", "?");
+        long endpoint = rule.optLong("durationMs", 0L) - rule.optLong("anchorOffsetMs", 0L);
+        int limit = Math.min(SDK_MAX_CONFIRMATION_FRAMES, hashes.length());
+        PrefixTrie node = root;
+        List<PrefixTrie> path = new ArrayList<>(limit);
+        for (int k = 0; k < limit; k++) {
+            String hash = hashes.optString(k);
+            if (node.terminalEndpoint != null && node.terminalEndpoint != endpoint) {
+                return "前缀冲突（相同开头不同结束）: " + node.terminalRuleId;
+            }
+            PrefixTrie child = node.children.get(hash);
+            if (child == null) {
+                child = new PrefixTrie();
+                node.children.put(hash, child);
+            }
+            node = child;
+            path.add(node);
+        }
+        if (node.subtreeEndpoint != null
+                && (node.subtreeMixed || node.subtreeEndpoint != endpoint)) {
+            return "前缀冲突（子树终点不一致）: "
+                    + (node.subtreeEndpoint != endpoint ? node.subtreeRuleId : node.mixedRuleId);
+        }
+        node.terminalEndpoint = endpoint;
+        node.terminalRuleId = id;
+        for (PrefixTrie item : path) item.record(endpoint, id);
+        return null;
+    }
+
+    /** 对齐 SDK AdRuleSet.expectedFrames。 */
+    private static int expectedFrames(long anchorDurationMs, int phaseMs) {
+        long available = anchorDurationMs - phaseMs - SDK_WINDOW_MS;
+        return available < 0 ? 0 : (int) (available / SDK_HOP_MS) + 1;
+    }
+
+    /**
+     * 对齐 SDK AdRuleSet.requiredConfirmationFrames：在最多 8 帧内寻找与首帧
+     * 汉明距离 > 5 的帧，返回确认所需帧数；找不到（区分度不足）或 hash 非法返回 -1。
+     */
+    private static int requiredConfirmationFrames(JSONArray hashes) {
+        int limit = Math.min(SDK_MAX_CONFIRMATION_FRAMES, hashes.length());
+        try {
+            int first = (int) Long.parseUnsignedLong(hashes.optString(0), 16);
+            for (int i = 1; i < limit; i++) {
+                int current = (int) Long.parseUnsignedLong(hashes.optString(i), 16);
+                if (Integer.bitCount(first ^ current) > 5) {
+                    return Math.max(SDK_MIN_CONFIRMATION_FRAMES, i + 1);
+                }
+            }
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+        return -1;
     }
 
     private static final class PrefixTrie {
@@ -402,6 +471,17 @@ public final class AdProbeManager {
         String subtreeRuleId;
         String mixedRuleId;
         boolean subtreeMixed;
+
+        /** 对齐 SDK PrefixNode.record：沿路径记录子树终点，出现多终点时标记 mixed。 */
+        void record(long endpoint, String ruleId) {
+            if (subtreeEndpoint == null) {
+                subtreeEndpoint = endpoint;
+                subtreeRuleId = ruleId;
+            } else if (subtreeEndpoint != endpoint) {
+                subtreeMixed = true;
+                if (mixedRuleId == null) mixedRuleId = ruleId;
+            }
+        }
     }
 
     /** 宿主主动 seek 后调用，让探针把内部分析位置同步到新时间轴。 */
