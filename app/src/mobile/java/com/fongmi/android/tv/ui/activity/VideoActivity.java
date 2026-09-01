@@ -72,6 +72,7 @@ import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.CustomTarget;
 import com.fongmi.android.tv.model.SiteViewModel;
+import com.fongmi.android.tv.player.AdRuleCollector;
 import com.fongmi.android.tv.player.PlayerHelper;
 import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.player.PreloadManager;
@@ -415,6 +416,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.next.setOnClickListener(view -> checkNext());
         mBinding.control.prev.setOnClickListener(view -> checkPrev());
         mBinding.control.setting.setOnClickListener(view -> onSetting());
+        mBinding.control.adMark.setOnClickListener(view -> onMarkAd());
         mBinding.control.title.setOnLongClickListener(view -> onChange());
         mBinding.control.right.lock.setOnClickListener(view -> onLock());
         mBinding.control.right.rotate.setOnClickListener(view -> onRotate());
@@ -1336,6 +1338,21 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void onSetting() {
         ControlDialog.create().parent(mBinding).history(mHistory).parse(isUseParse()).player(player()).show(this);
+    }
+
+    /**
+     * 播放界面「标记广告」：第一次点记录广告起点，第二次点记录终点并采集这段区间的音频指纹。
+     * 采集到的规则会写入本地并上传云端，其他用户同步后播放同一源也会自动跳过。
+     */
+    private void onMarkAd() {
+        try {
+            AdRuleCollector.get().toggleMarkAd(player().getPosition(), player().getUrl(), player().getHeaders());
+            // 标记进行中时降低图标透明度，提示用户再点一次以结束标记
+            mBinding.control.adMark.setAlpha(AdRuleCollector.get().hasMark() ? 0.5f : 1f);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Notify.show(R.string.ad_mark_no_url);
+        }
     }
 
     private void onLock() {

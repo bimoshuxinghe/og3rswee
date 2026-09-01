@@ -62,6 +62,11 @@ public final class AdRuleCollector {
      */
     private static final int MAX_CAPTURE_PER_SCAN = 6;
 
+    /** 指纹锚点固定 5 秒，是 FingerprintCaptureRequest 的硬性要求。 */
+    private static final long ANCHOR_MS = FingerprintCaptureRequest.REQUIRED_ANCHOR_DURATION_MS;
+    /** 可采集的广告区间上限，与 FingerprintCaptureRequest 的校验保持一致。 */
+    private static final long MAX_CAPTURE_RANGE_MS = 600_000L;
+
     private static volatile AdRuleCollector instance;
 
     private final AtomicBoolean busy = new AtomicBoolean(false);
@@ -71,6 +76,11 @@ public final class AdRuleCollector {
     private AudioFingerprintCollector collector;
     private Context appContext;
     private volatile String currentUrl;
+
+    // 手动标记状态：起点为负数表示当前没有进行中的标记
+    private volatile long manualStartMs = -1L;
+    private volatile String manualUrl;
+    private volatile Map<String, String> manualHeaders;
 
     // 采集状态（供自检面板展示）。采集也是 fail-open，没有记录就无法判断
     // 到底是「没扫到广告」还是「采集失败」。
@@ -87,6 +97,149 @@ public final class AdRuleCollector {
     }
 
     private AdRuleCollector() {
+    }
+
+    /**
+     * 播放界面「标记广告」按钮入口：第一次调用记录广告起点，第二次记录终点并采集这段区间的音频指纹。
+     *
+     * <p>生成规则的路径与自动采集完全一致（写本地 RULES.JSON → 注入探针 → 上传云端），
+     * 因此其他用户同步云端规则后，播放同一源时也能靠音频指纹匹配自动跳过。</p>
+     *
+     * @param positionMs 当前播放位置
+     * @param url 当前播放链接
+     * @param headers 当前播放请求头
+     */
+    public void toggleMarkAd(long positionMs, String url, Map<String, String> headers) {
+        if (!Setting.isAiAdblock()) {
+            Notify.show(R.string.ad_mark_disabled);
+            return;
+        }
+        if (url == null || !(url.startsWith("http://") || url.startsWith("https://"))) {
+            Notify.show(R.string.ad_mark_no_url);
+            return;
+        }
+        // 换了视频：丢弃上一个视频残留的标记
+        if (manualStartMs >= 0 && !url.equals(manualUrl)) manualStartMs = -1L;
+
+        if (manualStartMs < 0) {
+            manualStartMs = positionMs;
+            manualUrl = url;
+            manualHeaders = headers;
+            Notify.show(ResUtil.getString(R.string.ad_mark_start, formatTime(positionMs)));
+            return;
+        }
+
+        long startMs = Math.min(manualStartMs, positionMs);
+        long endMs = Math.max(manualStartMs, positionMs);
+        long durationMs = endMs - startMs;
+        manualStartMs = -1L;
+        String targetUrl = manualUrl != null ? manualUrl : url;
+        Map<String, String> targetHeaders = manualHeaders != null ? manualHeaders : headers;
+        manualUrl = null;
+        manualHeaders = null;
+
+        if (durationMs < ANCHOR_MS) {
+            Notify.show(ResUtil.getString(R.string.ad_mark_too_short, formatTime(durationMs)));
+            return;
+        }
+        if (durationMs > MAX_CAPTURE_RANGE_MS) {
+            Notify.show(R.string.ad_mark_too_long);
+            return;
+        }
+        if (!busy.compareAndSet(false, true)) {
+            Notify.show(R.string.ad_mark_busy);
+            return;
+        }
+        Notify.show(ResUtil.getString(R.string.ad_mark_capturing,
+                formatTime(startMs), formatTime(endMs)));
+        post(new Runnable() {
+            @Override public void run() { captureManual(targetUrl, targetHeaders, startMs, endMs); }
+        });
+    }
+
+    /** 取消进行中的手动标记（切换视频或退出播放时调用）。 */
+    public void clearMark() {
+        manualStartMs = -1L;
+        manualUrl = null;
+        manualHeaders = null;
+    }
+
+    /** 是否存在进行中的手动标记，供 UI 切换按钮外观。 */
+    public boolean hasMark() {
+        return manualStartMs >= 0L;
+    }
+
+    /** 采集用户手动标记区间的音频指纹。 */
+    private void captureManual(String url, Map<String, String> headers, long startMs, long endMs) {
+        final String ruleId = manualRuleId(url, startMs, endMs);
+        try {
+            if (appContext == null) {
+                finishBusy();
+                return;
+            }
+            if (collector == null) {
+                collector = new AudioFingerprintCollector.Builder(appContext)
+                        .setTimeoutMs(45_000L)
+                        .build();
+            }
+            ProbeMedia media = ProbeMedia.builder(url).setHeaders(filterHeaders(headers)).build();
+            // 锚点取区间正中间：用户点按钮时通常带几秒误差（起点偏早、终点偏晚），
+            // 默认情况下锚点是从起点开始的 5 秒，那样很可能采到相邻的正片内容。
+            long anchorOffset = Math.max(0L, (endMs - startMs - ANCHOR_MS) / 2L);
+            FingerprintCaptureRequest request = FingerprintCaptureRequest
+                    .builder(media, ruleId, startMs, endMs)
+                    .setAnchor(anchorOffset, ANCHOR_MS)
+                    .build();
+            setStatus("正在手动采集 " + formatTime(startMs) + " - " + formatTime(endMs));
+            collector.capture(request, new FingerprintCaptureListener() {
+                @Override public void onProgress(FingerprintCaptureProgress progress) {
+                    // 进度无需打扰用户
+                }
+
+                @Override public void onCompleted(long sessionId, FingerprintRuleDraft draft) {
+                    if (draft != null) {
+                        List<FingerprintRuleDraft> drafts = new ArrayList<FingerprintRuleDraft>();
+                        drafts.add(draft);
+                        // 写入本地并上传云端，其他用户同步后即可共享这条规则
+                        mergeAndApplyAll(drafts);
+                    } else {
+                        setStatus("手动采集未产出规则");
+                    }
+                    finishBusy();
+                }
+
+                @Override public void onCancelled(long sessionId) {
+                    setStatus("手动采集已取消");
+                    finishBusy();
+                }
+
+                @Override public void onError(ProbeToolError error) {
+                    setStatus("手动采集失败："
+                            + (error == null ? "未知" : error.getMessage()));
+                    finishBusy();
+                }
+            });
+        } catch (RuntimeException | LinkageError e) {
+            e.printStackTrace();
+            setStatus("手动采集异常：" + e.getClass().getSimpleName());
+            finishBusy();
+        }
+    }
+
+    /**
+     * 手动标记的规则 ID，需匹配 [a-z0-9][a-z0-9._-]{0,63}。
+     * 由链接与区间（秒级）派生，同一段广告重复标记时 ID 一致，便于去重。
+     */
+    private static String manualRuleId(String url, long startMs, long endMs) {
+        String seed = url + "|" + (startMs / 1000L) + "|" + (endMs / 1000L);
+        String id = "manual-" + Integer.toHexString(seed.hashCode());
+        return id.length() > 64 ? id.substring(0, 64) : id;
+    }
+
+    /** 把毫秒格式化为 m:ss，供提示文案使用。 */
+    private static String formatTime(long ms) {
+        long total = Math.max(0L, ms) / 1000L;
+        return (total / 60L) + ":" + String.format(Locale.US, "%02d", total % 60L);
     }
 
     /**

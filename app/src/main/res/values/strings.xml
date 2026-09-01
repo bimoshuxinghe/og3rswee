@@ -263,6 +263,14 @@
     <string name="ad_auto_collect_summary">Scan HLS ad candidates in background and auto-generate audio fingerprint rules while playing</string>
     <string name="ad_rule_collected">Ad rule generated: %1$s</string>
     <string name="ad_rule_collect_failed">Ad rule collection failed</string>
+    <string name="ad_mark_start">已标记起点 %1$s，广告结束后再点一次</string>
+    <string name="ad_mark_capturing">正在采集 %1$s - %2$s 的广告指纹…</string>
+    <string name="ad_mark_too_short">广告区间需≥5 秒（当前 %1$s），请重新标记</string>
+    <string name="ad_mark_too_long">广告区间不能超过 10 分钟，请重新标记</string>
+    <string name="ad_mark_disabled">请先开启「音频去广告」后再标记</string>
+    <string name="ad_mark_no_url">未获取到播放链接，无法采集</string>
+    <string name="ad_mark_busy">正在采集其他广告，请稍后再试</string>
+    <string name="ad_mark_cleared">已取消标记</string>
     <string name="player_always_time">Always display clock</string>
     <string name="player_always_progress">Always display progress</string>
     <string name="always_progress_format">%1$s/%2$s · ETA %3$s</string>
