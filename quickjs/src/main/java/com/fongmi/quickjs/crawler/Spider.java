@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -39,6 +40,14 @@ public class Spider extends com.github.catvod.crawler.Spider {
 
     private static final String TAG = "JsSpider";
     private static final long TIMEOUT = 20;
+
+    /**
+     * 模块顶层（行首无缩进）的 rule 声明，用于识别真正的 drpy 规则文件。
+     * 不能用 contains("const rule") 之类的子串匹配：catjs 常在函数内部声明
+     * 局部 rule（例如 init() 里的 const rule = await ...），子串匹配会误判。
+     */
+    private static final Pattern TOP_LEVEL_RULE =
+            Pattern.compile("(?m)^(?:var|let|const)\\s+rule\\s*=");
 
     private final ExecutorService executor;
     private final DexClassLoader dex;
@@ -268,7 +277,13 @@ public class Spider extends com.github.catvod.crawler.Spider {
         }
         cat = content.contains("__jsEvalReturn");
         log("js style: " + (cat ? "__jsEvalReturn (module)" : "default/drpy"));
-        if (isDrpyRule(content)) content += "\nglobalThis.__DRPY_RULE__ = rule;";
+        // catjs（猫影视）自带 __jsEvalReturn 导出，绝不能追加 drpy 规则钩子：
+        // 追加的 globalThis.__DRPY_RULE__ = rule 会在模块顶层求值，而多数 catjs
+        // 只在函数内部声明局部 rule，顶层访问不到即抛 ReferenceError，
+        // 导致整个模块加载失败（表现为站点加载不出来、内容空白）。
+        if (!cat && isDrpyRule(content)) {
+            content += "\nglobalThis.__DRPY_RULE__ = (typeof rule !== 'undefined') ? rule : null;";
+        }
         try {
             ctx.evaluateModule(content.replace(spider, global), api);
             log("js eval user module OK");
@@ -293,7 +308,7 @@ public class Spider extends com.github.catvod.crawler.Spider {
     }
 
     private boolean isDrpyRule(String content) {
-        return content.contains("var rule") || content.contains("let rule") || content.contains("const rule");
+        return TOP_LEVEL_RULE.matcher(content).find();
     }
 
     private Object getExt(String ext) {
