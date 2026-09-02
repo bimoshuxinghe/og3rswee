@@ -873,7 +873,7 @@ public class PlayerManager implements ParseCallback {
         public void onPlayerError(@NonNull PlaybackException e) {
             // 诊断日志：把原始错误码与位置带进调试页，否则「连接失败」只剩一个
             // 泛化文案，无法区分是网络、分片 404 还是解封装失败。
-            diag("onPlayerError code=" + e.errorCodeName + " pos=" + (player == null ? -1 : player.getCurrentPosition())
+            diag("onPlayerError code=" + e.getErrorCodeName() + " pos=" + (player == null ? -1 : player.getCurrentPosition())
                     + " hls=" + AdSegmentMemory.isHlsThisSession()
                     + " stripped=" + AdSegmentMemory.isStrippedThisSession()
                     + " msg=" + e.getMessage());
