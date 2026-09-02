@@ -54,7 +54,7 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
         mBinding.adProbeCheck.setOnClickListener(this::showProbeCheck);
         mBinding.adRuleLibUrl.setOnClickListener(this::editRuleLibUrl);
-        mBinding.adPullLibrary.setOnClickListener(v -> pullLibrary(requireActivity()));
+        mBinding.adPullLibrary.setOnClickListener(this::pullLibraryClick);
     }
 
     /**
@@ -124,6 +124,22 @@ public class SettingAdblockFragment extends BaseFragment {
             } else {
                 pullLibrary(activity);
             }
+        }
+    }
+
+    /** 手动拉取规则库按钮：先检查存储权限，再执行拉取。 */
+    private void pullLibraryClick(View view) {
+        FragmentActivity activity = requireActivity();
+        if (Setting.needsAllFilesAccess()) {
+            PermissionUtil.requestFile(activity, granted -> {
+                if (granted) {
+                    pullLibrary(activity);
+                } else {
+                    Notify.show(R.string.ad_cloud_storage_perm_required);
+                }
+            });
+        } else {
+            pullLibrary(activity);
         }
     }
 

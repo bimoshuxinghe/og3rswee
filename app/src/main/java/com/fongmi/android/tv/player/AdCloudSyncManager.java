@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.player;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -38,6 +40,7 @@ public final class AdCloudSyncManager {
     private static final String TAG = "AdRuleLib";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler main = new Handler(Looper.getMainLooper());
 
     private AdCloudSyncManager() {
     }
@@ -71,14 +74,14 @@ public final class AdCloudSyncManager {
             try {
                 String url = Setting.getRuleLibraryUrl();
                 if (url == null || url.trim().isEmpty()) {
-                    if (callback != null) callback.onNoUrl();
+                    if (callback != null) main.post(callback::onNoUrl);
                     return;
                 }
                 String body;
                 try (Response resp = OkHttp.newCall(url.trim()).execute();
                      ResponseBody rb = resp.body()) {
                     if (!resp.isSuccessful() || rb == null) {
-                        if (callback != null) callback.onError("HTTP " + resp.code());
+                        if (callback != null) main.post(() -> callback.onError("HTTP " + resp.code()));
                         return;
                     }
                     body = rb.string();
@@ -137,10 +140,10 @@ public final class AdCloudSyncManager {
                 AdProbeManager.get().applyCollectedRules(out.toString());
 
                 int total = merged.length();
-                if (callback != null) callback.onLoaded(total, 0, added);
+                if (callback != null) main.post(() -> callback.onLoaded(total, 0, added));
             } catch (Exception e) {
                 Log.e(TAG, "拉取规则库失败", e);
-                if (callback != null) callback.onError(e.getMessage());
+                if (callback != null) main.post(() -> callback.onError(e.getMessage()));
             }
         });
     }
