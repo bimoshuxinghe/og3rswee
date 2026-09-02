@@ -101,117 +101,27 @@ public final class AdCloudSyncManager {
         void onError(@NonNull String message);
     }
 
-    /** 拉取云端规则并合并到本地。 */
+    /**
+     * 拉取云端规则并合并到本地。
+     *
+     * <p>注意：当前版本按需求<strong>彻底关闭云端同步</strong>（上传/下载全关）。
+     * 规则只来自本地文件与本地自动采集，不再与云端交互，避免云端毒数据污染本地规则库。
+     * 这里直接短路为 no-op，只更新自检面板状态，不发起任何网络请求。</p>
+     */
     public void syncFromCloud(SyncCallback callback) {
-        String url = Setting.getAdCloudUrl();
-        if (url == null || url.trim().isEmpty()) {
-            setStatus("未配置云端地址，规则只能来自本地文件");
-            if (callback != null) callback.onNoUrl();
-            return;
-        }
-        setStatus("正在拉取云端规则…");
-        syncing = true;
-        executor.execute(() -> {
-            try {
-                Response resp = OkHttp.client().newCall(new Request.Builder()
-                        .url(url.trim()).header("Accept", "application/json")
-                        .header("Cache-Control", "no-cache").build()).execute();
-                String body;
-                try {
-                    if (!resp.isSuccessful()) {
-                        String err = "HTTP " + resp.code();
-                        resp.close();
-                        setStatus("拉取失败：" + err);
-                        postError(callback, err);
-                        return;
-                    }
-                    body = resp.body() != null ? resp.body().string() : "";
-                } finally {
-                    resp.close();
-                }
-                if (body == null || body.trim().isEmpty()) {
-                    setStatus("服务器返回空内容");
-                    postError(callback, "empty response");
-                    return;
-                }
-                JSONObject cloud = new JSONObject(body.trim());
-                Result result = mergeIntoLocal(cloud);
-                lastAudioCount = result.audioCount;
-                setStatus("已拉取，音频规则 " + result.audioCount
-                        + " 条，文本规则 " + result.textRuleCount + " 条，新增 " + result.added + " 条");
-                postLoaded(callback, result);
-            } catch (Exception e) {
-                String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-                setStatus("拉取异常：" + msg);
-                postError(callback, msg);
-            } finally {
-                syncing = false;
-            }
-        });
+        setStatus("云端同步已关闭，规则仅来自本地文件与本地采集");
+        if (callback != null) callback.onNoUrl();
     }
 
-    /** 上传本地新增规则到云端（增量、幂等）。 */
+    /**
+     * 上传本地新增规则到云端（增量、幂等）。
+     *
+     * <p>注意：当前版本按需求<strong>彻底关闭云端同步</strong>（上传/下载全关）。
+     * 本地自动采集到的规则只保存到本地 RULES.JSON，不再上传到云端，避免把毒数据回传给其他用户。
+     * 这里直接短路为 no-op，不发起任何网络请求。</p>
+     */
     public void uploadNewRules() {
-        String url = Setting.getAdCloudUrl();
-        String token = Setting.getAdCloudToken();
-        if (url == null || url.trim().isEmpty() || token == null || token.trim().isEmpty()) return;
-        executor.execute(() -> {
-            try {
-                File file = new File(Setting.getAdRulesPath());
-                JSONObject root = readOrCreate(file);
-                JSONArray rules = root.optJSONArray("rules");
-
-                Set<String> uploaded = new HashSet<>();
-                String saved = Setting.getAdCloudUploadedIds();
-                if (saved != null && !saved.isEmpty()) {
-                    for (String id : saved.split(",")) {
-                        if (!id.trim().isEmpty()) uploaded.add(id.trim());
-                    }
-                }
-
-                JSONArray newRules = new JSONArray();
-                int added = 0;
-                if (rules != null) {
-                    for (int i = 0; i < rules.length(); i++) {
-                        JSONObject rule = rules.optJSONObject(i);
-                        if (rule == null) continue;
-                        String id = rule.optString("id");
-                        if (id.isEmpty() || uploaded.contains(id)) continue;
-                        newRules.put(rule);
-                        uploaded.add(id);
-                        added++;
-                    }
-                }
-                if (added == 0) return;
-
-                JSONObject payload = new JSONObject();
-                payload.put("rules", newRules);
-                payload.put("revision", root.optLong("revision", 0L));
-
-                RequestBody body = RequestBody.create(payload.toString(), JSON);
-                Response resp = OkHttp.client().newCall(new Request.Builder()
-                        .url(url.trim())
-                        .header("X-Rules-Token", token)
-                        .header("Content-Type", "application/json")
-                        .post(body).build()).execute();
-                try {
-                    if (!resp.isSuccessful()) return;
-                    String respBody = resp.body() != null ? resp.body().string() : "";
-                    JSONObject out = new JSONObject(respBody.trim());
-                    if (!out.optBoolean("ok", false)) return;
-                } finally {
-                    resp.close();
-                }
-                // 上传成功后再持久化已上传 id（避免失败误记）
-                StringBuilder ids = new StringBuilder();
-                for (String id : uploaded) {
-                    if (ids.length() > 0) ids.append(',');
-                    ids.append(id);
-                }
-                Setting.putAdCloudUploadedIds(ids.toString());
-            } catch (Exception ignored) {
-            }
-        });
+        setStatus("云端同步已关闭，本地采集的规则仅保存到本地");
     }
 
     private void postLoaded(SyncCallback callback, Result r) {
@@ -309,8 +219,6 @@ public final class AdCloudSyncManager {
         probeDoc.put("revision", Math.max(localRev, cloudRev));
         probeDoc.put("rules", merged);
         AdProbeManager.get().applyCollectedRules(probeDoc.toString());
-        // 新规则顺手增量上传，让本地采集的规则也能回流到云端
-        uploadNewRules();
 
         Result r = new Result();
         r.audioCount = merged.length();

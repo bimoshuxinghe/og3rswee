@@ -440,8 +440,7 @@ public final class AdRuleCollector {
             writeAtomic(file, root.toString());
             String json = root.toString();
             AdProbeManager.get().applyCollectedRules(json);
-            // 本地新规则默认自动上传到云端（增量、幂等）
-            AdCloudSyncManager.get().uploadNewRules();
+            // 采集到的规则仅保存到本地 RULES.JSON，不再上传到云端（避免毒数据回流）。
             setStatus("已生成 " + added + " 条规则，下次播放该源即可跳过");
             Notify.show(ResUtil.getString(R.string.ad_rule_collected,
                     added > 1 ? lastName + " 等 " + added + " 条" : String.valueOf(lastName)));
