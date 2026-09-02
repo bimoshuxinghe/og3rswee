@@ -3,6 +3,7 @@ package com.fongmi.android.tv.ui.fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -41,6 +42,7 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
         mBinding.adAutoCollectText.setText(getSwitch(Setting.isAutoCollect()));
+        mBinding.adRuleLibUrlText.setText(Setting.getRuleLibraryUrl());
         updateSkipModeText();
     }
 
@@ -51,6 +53,8 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adAutoCollect.setOnClickListener(this::setAutoCollect);
         mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
         mBinding.adProbeCheck.setOnClickListener(this::showProbeCheck);
+        mBinding.adRuleLibUrl.setOnClickListener(this::editRuleLibUrl);
+        mBinding.adPullLibrary.setOnClickListener(this::pullLibrary);
     }
 
     /**
@@ -106,45 +110,65 @@ public class SettingAdblockFragment extends BaseFragment {
         AdProbeManager.get().setEnabled(enabled, requireContext());
         if (enabled) {
             // 开启音纹去广告：外部 Download 目录在 Android 11+ 必须授予“所有文件访问权限”
-            // 才能写入，否则云端规则落盘会因 EACCES 失败（声纹去广告静默失效）。
-            // 未授权时先引导授权，授权成功后再同步云端规则。
+            // 才能写入，否则规则库落盘会因 EACCES 失败（声纹去广告静默失效）。
+            // 未授权时先引导授权，授权成功后再拉取规则库（仅下载、不上传）。
             FragmentActivity activity = requireActivity();
             if (Setting.needsAllFilesAccess()) {
                 PermissionUtil.requestFile(activity, granted -> {
                     if (granted) {
-                        syncCloudRules(activity);
+                        pullLibrary(activity);
                     } else {
                         Notify.show(R.string.ad_cloud_storage_perm_required);
                     }
                 });
             } else {
-                syncCloudRules(activity);
+                pullLibrary(activity);
             }
         }
     }
 
-    /** 同步云端广告规则并弹窗告知结果。 */
-    private void syncCloudRules(FragmentActivity activity) {
+    /** 拉取广告规则库（仅下载、不上传），弹窗告知结果。 */
+    private void pullLibrary(FragmentActivity activity) {
         AdCloudSyncManager.get().syncFromCloud(new AdCloudSyncManager.SyncCallback() {
             @Override
             public void onLoaded(int audioCount, int textRuleCount, int added) {
                 new MaterialAlertDialogBuilder(activity)
-                        .setTitle(R.string.ad_cloud_loaded_title)
-                        .setMessage(getString(R.string.ad_cloud_loaded_msg, audioCount, textRuleCount, added))
+                        .setTitle(R.string.ad_rule_lib_loaded_title)
+                        .setMessage(getString(R.string.ad_rule_lib_loaded_msg, audioCount, textRuleCount, added))
                         .setPositiveButton(R.string.dialog_positive, null)
                         .show();
             }
 
             @Override
             public void onNoUrl() {
-                Notify.show(R.string.ad_cloud_no_url);
+                Notify.show(R.string.ad_rule_lib_no_url);
             }
 
             @Override
             public void onError(@NonNull String message) {
-                Notify.show(getString(R.string.ad_cloud_sync_failed, message));
+                Notify.show(getString(R.string.ad_rule_lib_sync_failed, message));
             }
         });
+    }
+
+    /** 编辑广告规则库地址（仅用于拉取，不会上传任何数据）。 */
+    private void editRuleLibUrl(View view) {
+        EditText input = new EditText(requireContext());
+        input.setSingleLine(false);
+        input.setMaxLines(3);
+        input.setText(Setting.getRuleLibraryUrl());
+        input.setSelection(input.getText().length());
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.ad_rule_lib_url_title)
+                .setMessage(R.string.ad_rule_lib_url_hint)
+                .setView(input)
+                .setPositiveButton(R.string.dialog_positive, (d, w) -> {
+                    Setting.putRuleLibraryUrl(input.getText().toString().trim());
+                    mBinding.adRuleLibUrlText.setText(Setting.getRuleLibraryUrl());
+                    Notify.show(R.string.ad_rule_lib_saved);
+                })
+                .setNegativeButton(R.string.dialog_negative, null)
+                .show();
     }
 
     private void setAutoCollect(View view) {

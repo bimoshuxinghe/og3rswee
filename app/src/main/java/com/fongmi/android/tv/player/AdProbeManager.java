@@ -89,7 +89,7 @@ public final class AdProbeManager {
     private volatile long lastSkipAtMs;
     private volatile long lastErrorAtMs;
     private volatile String lastErrorText;
-    /** 探针尚未创建时到达的规则，暂存待注入（避免云端规则被静默丢弃）。 */
+    /** 探针尚未创建时到达的规则，暂存待注入（避免规则被暂存丢弃）。 */
     private volatile String pendingRulesJson;
 
     private final PlaybackClock clock = () -> {
@@ -604,7 +604,7 @@ public final class AdProbeManager {
     public String getDiagnosticReport() {
         StringBuilder sb = new StringBuilder();
         boolean on = Setting.isAiAdblock();
-        sb.append("① 开关：").append(on ? "已开启" : "未开启（默认关闭，需手动打开）").append("\n\n");
+        sb.append("① 开关：").append(on ? "已开启（默认开启）" : "未开启").append("\n\n");
 
         sb.append("② 探针实例：").append(probe == null ? "未创建（初始化曾失败）" : "已就绪").append("\n");
         if (probe != null) {
@@ -635,17 +635,8 @@ public final class AdProbeManager {
 
         sb.append("④ 当前分析：").append(lastUrl == null ? "尚未播放" : "已接入\n   " + lastUrl).append("\n\n");
 
-        sb.append("④b 云端同步：").append(AdCloudSyncManager.get().getStatusText()).append("\n");
-        String cloudUrl = Setting.getAdCloudUrl();
-        sb.append("    地址：").append(cloudUrl == null || cloudUrl.trim().isEmpty()
-                ? "未配置" : cloudUrl.trim()).append("\n");
-        String writtenPath = AdCloudSyncManager.get().getLastWrittenPath();
-        sb.append("    落盘：").append(writtenPath == null ? "尚未成功写入" : writtenPath).append("\n");
-        if (Setting.needsAllFilesAccess()) {
-            sb.append("    ⚠ 未授予「所有文件访问权限」，外部目录写不进；规则已降级到应用私有目录。\n");
-            sb.append("      可在设置页关闭再打开「音频去广告」开关，按提示授权以恢复外部目录。\n");
-        }
-        sb.append("\n");
+        sb.append("④b 规则库地址：").append(Setting.getRuleLibraryUrl()).append("\n");
+        sb.append("    拉取：仅下载、不上传（本地采集规则只留本地）\n");
 
         sb.append("④c 自动采集：").append(Setting.isAutoCollect() ? "已开启" : "未开启").append("\n");
         sb.append("    ").append(AdRuleCollector.get().getStatusText()).append("\n\n");
@@ -674,7 +665,7 @@ public final class AdProbeManager {
     /** 根据自检结果给出下一步该做什么，避免用户看到一堆状态却不知道怎么修。 */
     private String buildVerdict(boolean on, boolean ready, File file, int rules, boolean autoCollect) {
         if (!on) {
-            return "开关没开。请打开本页的「音频去广」开关——它默认是关闭的。";
+            return "开关没开。请打开本页的「音频去广」开关——它默认是开启的，若被关掉了请重新打开。";
         }
         if (!ready) {
             return "探针没起来。通常是初始化阶段抛异常导致，需要看 adb logcat -s AdProbe:V 的堆栈。";

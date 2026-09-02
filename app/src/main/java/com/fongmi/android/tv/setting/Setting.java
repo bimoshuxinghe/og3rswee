@@ -121,7 +121,7 @@ public class Setting {
     }
 
     public static boolean isAiAdblock() {
-        return Prefers.getBoolean("ai_adblock");
+        return Prefers.getBoolean("ai_adblock", true);
     }
 
     public static void putAiAdblock(boolean aiAdblock) {
@@ -236,35 +236,19 @@ public class Setting {
         }
     }
 
-    /** 云端广告规则共享服务器地址（rules.php），为空则不启用云端同步。 */
-    public static final String DEFAULT_AD_CLOUD_URL = "http://itv666.cc/gg/rules.php";
+    /**
+     * 广告规则库地址（可拉取的第三方 rules.json）。为空则不启用规则库拉取，仅用本地规则。
+     * 默认指向社区维护的公开规则库；用户可在“去广告设置”里改成自己的地址。
+     * 仅拉取、不回传：本地自动采集到的规则合并进本地 RULES.JSON，但绝不上传。
+     */
+    public static final String DEFAULT_RULE_LIBRARY_URL = "https://m3u8-ad-audio-rules-sync.ccfork.workers.dev/rules.json";
 
-    public static String getAdCloudUrl() {
-        return Prefers.getString("ad_cloud_url", DEFAULT_AD_CLOUD_URL);
+    public static String getRuleLibraryUrl() {
+        return Prefers.getString("ad_rule_library_url", DEFAULT_RULE_LIBRARY_URL);
     }
 
-    public static void putAdCloudUrl(String url) {
-        Prefers.put("ad_cloud_url", (url == null || url.trim().isEmpty()) ? "" : url.trim());
-    }
-
-    /** 云端上传令牌（X-Rules-Token），仅上传时使用；只拉取可留空。 */
-    public static final String DEFAULT_AD_CLOUD_TOKEN = "zhinengquguang-xinghe";
-
-    public static String getAdCloudToken() {
-        return Prefers.getString("ad_cloud_token", DEFAULT_AD_CLOUD_TOKEN);
-    }
-
-    public static void putAdCloudToken(String token) {
-        Prefers.put("ad_cloud_token", token == null ? "" : token.trim());
-    }
-
-    /** 已上传到云端的规则 id 集合（逗号分隔），用于增量上传去重。 */
-    public static String getAdCloudUploadedIds() {
-        return Prefers.getString("ad_cloud_uploaded_ids", "");
-    }
-
-    public static void putAdCloudUploadedIds(String ids) {
-        Prefers.put("ad_cloud_uploaded_ids", ids == null ? "" : ids);
+    public static void putRuleLibraryUrl(String url) {
+        Prefers.put("ad_rule_library_url", (url == null || url.trim().isEmpty()) ? "" : url.trim());
     }
 
     public static boolean isZhuyin() {
