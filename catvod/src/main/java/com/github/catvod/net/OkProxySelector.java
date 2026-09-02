@@ -63,7 +63,7 @@ public class OkProxySelector extends ProxySelector {
     @Override
     public List<java.net.Proxy> select(URI uri) {
         if (proxy.isEmpty() || uri.getHost() == null || "127.0.0.1".equals(uri.getHost())) return fallback(uri);
-        for (Proxy item : proxy) for (String host : item.getHosts()) if ("*".equals(host) || Util.containOrMatch(uri.getHost(), host)) return !item.getProxies().isEmpty() ? item.getProxies() : fallback(uri);
+        for (Proxy item : proxy) for (String host : item.getHosts()) if (Util.containOrMatch(uri.getHost(), host)) return !item.getProxies().isEmpty() ? item.getProxies() : fallback(uri);
         return fallback(uri);
     }
 
