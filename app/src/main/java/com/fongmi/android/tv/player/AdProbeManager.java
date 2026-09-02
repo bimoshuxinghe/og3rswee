@@ -84,6 +84,11 @@ public final class AdProbeManager {
     private Map<String, String> lastHeaders;
     private String rulesPath;
 
+    /** 当前正在分析的视频地址；HLS 删分片时用它在记忆库中查询已知广告区间。 */
+    public String getLastUrl() {
+        return lastUrl;
+    }
+
     // 自检面板用：记录探针实际运行状态。fail-open 设计下没有这些就无法诊断。
     private volatile int ruleCount;
     private volatile long lastSkipAtMs;
@@ -115,6 +120,11 @@ public final class AdProbeManager {
             lastSkipAtMs = System.currentTimeMillis();
             Log.i(TAG, "命中广告，请求跳转 " + target + "ms（当前 " + p.getCurrentPosition()
                     + "ms，模式 " + mode + "）");
+            // 只在真正执行跳转时记忆区间，避免误判污染记忆库：
+            // 下次播放同一视频时开播即知广告位置，HLS 可直接删掉对应分片。
+            String url = lastUrl != null ? lastUrl : AdSegmentMemory.getCurrentUrl();
+            AdSegmentMemory.record(url, request.getAdStartPositionMs(),
+                    request.getAdEndPositionMs());
             try {
                 p.seekTo(target);
             } catch (Exception e) {

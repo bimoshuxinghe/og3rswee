@@ -143,6 +143,19 @@ public class Setting {
         Prefers.put("ad_early_confirm", early);
     }
 
+    /**
+     * 广告区间记忆：把声纹确认过的广告位置按视频持久化，
+     * 同一视频再次播放时开播前就已知广告在哪——HLS 可直接删掉对应分片，
+     * MP4/FLV 则预先计划跳过，做到二次播放零延迟。
+     */
+    public static boolean isAdSegmentMemory() {
+        return Prefers.getBoolean("ad_segment_memory", true);
+    }
+
+    public static void putAdSegmentMemory(boolean memory) {
+        Prefers.put("ad_segment_memory", memory);
+    }
+
     public static String getAiAdblockKeywords() {
         return Prefers.getString("ai_adblock_keywords", "麻将来了,澳门,赌场,娱乐城,荷官,百家乐,老虎机,时时彩,六合彩,彩票,下注,投注,首充,提现,棋牌,捕鱼,斗地主");
     }

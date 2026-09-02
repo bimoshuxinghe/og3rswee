@@ -53,7 +53,17 @@ import java.util.Map;
 public class PlayerManager implements ParseCallback {
 
     private static final String TAG = "PlayerManager";
+    /** 预跳过轮询间隔；广告区间是已知值，250ms 足以在开播瞬间就跳走。 */
+    private static final long PLANNED_AD_SKIP_INTERVAL_MS = 250L;
+    /** 同一跳过目标的重试冷却与次数上限，防止 seek 无法收敛时反复跳转。 */
+    private static final long PLANNED_SKIP_RETRY_INTERVAL_MS = 1500L;
+    private static final int MAX_PLANNED_SKIP_TRIES = 2;
+
     private final Runnable runnable;
+    private final Runnable plannedAdSkip = this::checkPlannedAdSkip;
+    private long lastPlannedSkipTargetMs = C.TIME_UNSET;
+    private long lastPlannedSkipAtMs;
+    private int lastPlannedSkipTries;
     private final Callback callback;
     private DanmakuController danmakuController;
     private PlayerEngine engine;
@@ -86,6 +96,7 @@ public class PlayerManager implements ParseCallback {
     public void release() {
         try { if (player != null) player.removeListener(listener); } catch (Exception e) { e.printStackTrace(); }
         App.removeCallbacks(runnable);
+        stopPlannedAdSkip();
         releaseDanmakuController();
         AdProbeManager.get().release();
         if (engine == null) return;
@@ -551,6 +562,12 @@ public class PlayerManager implements ParseCallback {
         if (spec == null || spec.getUrl() == null) return;
         ensureEngineForSpec();
         setDanmakus(spec.getDanmakus());
+        // 必须在 engine.start() 之前登记：ExoPlayer prepare 会立刻派发播放列表请求，
+        // 晚一步登记就会让首次播放的删分片逻辑取不到地址。
+        AdSegmentMemory.setCurrentUrl(getUrl());
+        stopPlannedAdSkip();
+        lastPlannedSkipTargetMs = C.TIME_UNSET;
+        lastPlannedSkipTries = 0;
         try {
             engine.start(spec.checkUa(), positionMs);
         } catch (Exception e) {
@@ -562,6 +579,75 @@ public class PlayerManager implements ParseCallback {
         callback.onPrepare();
         initTrack = false;
         AdProbeManager.get().open(getUrl(), getHeaders());
+        // 只有存在已知广告区间时才起轮询；无记忆的源不做任何额外开销。
+        if (!AdSegmentMemory.get(getUrl()).isEmpty()) startPlannedAdSkip();
+    }
+
+    /**
+     * 已知广告区间的时间轴预跳过，服务于 MP4/FLV 这类无法剔除片段的封装。
+     *
+     * <p>HLS 走的是起播删分片——广告根本不进播放列表；而 MP4/FLV 没法在容器层
+     * 动刀，只能在播放位置一进入已知区间时立刻 seek 到区间末尾。位置是已知的、
+     * 不依赖实时检测，因此能做到零延迟跳过，不必再等声纹确认。
+     */
+    private void checkPlannedAdSkip() {
+        if (isReleased()) return;
+        // 分片已被删除时时间轴已重排，按位置判断会误跳正片，直接收工。
+        if (AdSegmentMemory.isStrippedThisSession()) return;
+        Player p = player;
+        String url = getUrl();
+        if (p != null && p.isPlaying() && url != null) {
+            long position = p.getCurrentPosition();
+            long duration = p.getDuration();
+            if (position >= 0 && (duration == C.TIME_UNSET || position < duration - 500L)) {
+                maybePlannedSkip(p, url, position);
+            }
+        }
+        App.post(plannedAdSkip, PLANNED_AD_SKIP_INTERVAL_MS);
+    }
+
+    /**
+     * 命中已知区间则 seek 到区间末尾。
+     *
+     * <p>MP4 的 seek 只能落到关键帧，落点可能仍在区间内，所以必须允许重试；
+     * 但同一目标最多重试 {@value #MAX_PLANNED_SKIP_TRIES} 次——遇到「区间末尾附近
+     * 没有关键帧可落」的源时，宁可残留几秒广告，也不能陷入无限 seek。
+     */
+    private void maybePlannedSkip(Player p, String url, long position) {
+        AdSegmentMemory.Range range = AdSegmentMemory.find(url, position);
+        if (range == null || range.end <= position) return;
+        long now = System.currentTimeMillis();
+        if (range.end == lastPlannedSkipTargetMs) {
+            if (lastPlannedSkipTries >= MAX_PLANNED_SKIP_TRIES) return;
+            if (now - lastPlannedSkipAtMs < PLANNED_SKIP_RETRY_INTERVAL_MS) return;
+        } else {
+            lastPlannedSkipTries = 0;
+        }
+        lastPlannedSkipTargetMs = range.end;
+        lastPlannedSkipAtMs = now;
+        lastPlannedSkipTries++;
+        int mode = Setting.getAdSkipMode();
+        if (mode == Setting.AD_SKIP_MODE_NOTICE) {
+            // 仅提示模式不 seek，因此不可能自己走出区间，只提示一次就封顶。
+            lastPlannedSkipTries = MAX_PLANNED_SKIP_TRIES;
+            Notify.show(ResUtil.getString(R.string.ad_skipped));
+            return;
+        }
+        Log.i(TAG, "记忆命中，预跳过 " + position + " → " + range.end
+                + "ms（第 " + lastPlannedSkipTries + " 次）");
+        p.seekTo(range.end);
+        AdProbeManager.get().onHostSeek(range.end);
+        if (mode == Setting.AD_SKIP_MODE_NOTICE_AND_SKIP) {
+            Notify.show(ResUtil.getString(R.string.ad_skipped));
+        }
+    }
+
+    private void startPlannedAdSkip() {
+        App.post(plannedAdSkip, PLANNED_AD_SKIP_INTERVAL_MS);
+    }
+
+    private void stopPlannedAdSkip() {
+        App.removeCallbacks(plannedAdSkip);
     }
 
     private void ensureEngineForSpec() {

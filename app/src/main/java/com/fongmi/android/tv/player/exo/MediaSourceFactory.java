@@ -125,7 +125,13 @@ public class MediaSourceFactory implements MediaSource.Factory {
     }
 
     private DataSource.Factory getDataSourceFactory() {
-        if (dataSourceFactory == null) dataSourceFactory = getCacheDataSource(new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()));
+        if (dataSourceFactory == null) {
+            DataSource.Factory cached = getCacheDataSource(
+                    new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()));
+            // 改写层必须放在缓存层之外：若置于其内，第二次播放会直接命中缓存里
+            // 未经改写的 m3u8，删除逻辑根本不会被触发。
+            dataSourceFactory = new HlsAdStrippingDataSource.Factory(cached);
+        }
         return dataSourceFactory;
     }
 
