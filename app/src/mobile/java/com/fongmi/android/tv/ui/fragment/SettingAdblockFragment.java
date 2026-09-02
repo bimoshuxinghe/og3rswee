@@ -42,7 +42,8 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.aiAdblockText.setText(getSwitch(Setting.isAiAdblock()));
         mBinding.adAutoCollectText.setText(getSwitch(Setting.isAutoCollect()));
-        mBinding.adRuleLibUrlText.setText(Setting.getRuleLibraryUrl());
+        String ruleLibUrl = Setting.getRuleLibraryUrl();
+        mBinding.adRuleLibUrlText.setText(ruleLibUrl.isEmpty() ? getString(R.string.ad_rule_lib_url_empty) : ruleLibUrl);
         updateSkipModeText();
     }
 

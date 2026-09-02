@@ -26,6 +26,8 @@ import java.util.Set;
 public class ProxySubscriptionManager {
 
     public static final String NAME = "subscription";
+    /** 仅用于把 TMDB 系列域名强制路由到当前代理（不污染其他站点）。 */
+    private static final String TMDB_PROXY_NAME = "tmdb_proxy";
     private static final int MAX_THREADS = 20;
     private static final int TCP_TIMEOUT = 2000;
     private static final int DELAY_TIMEOUT = 3000;
@@ -126,19 +128,33 @@ public class ProxySubscriptionManager {
      */
     public void applySaved() {
         ProxyNode node = getSelected();
-        String url = (Setting.isProxySubscriptionEnabled() && node != null && node.isSupported()) ? node.getUrl() : "";
-        if (TextUtils.isEmpty(url)) return;
-        // 若是mihomo代理且mihomo未运行 → 先同步启动
-        if (url.startsWith("http://127.0.0.1:" + MihomoManager.getMixedPort()) && !MihomoManager.get().isRunning()) {
-            String config = getConfig();
+        if (!(Setting.isProxySubscriptionEnabled() && node != null)) return;
+
+        String proxyUrl;
+        if (node.isSupported()) {
+            // http/socks5 直连代理：节点本身就是代理地址
+            proxyUrl = node.getUrl();
+        } else {
+            // vmess/ss/vless 等：需要 mihomo 转发，使用本地混合端口 18890
             String coreName = Setting.getProxySubscriptionCoreName();
-            if (!MihomoManager.get().start(config, coreName)) {
-                android.util.Log.e("ProxySub", "applySaved: mihomo start failed, proxy not applied");
-                return;
+            if (!MihomoManager.get().isRunning()) {
+                String config = getConfig();
+                if (!MihomoManager.get().start(config, coreName)) {
+                    android.util.Log.e("ProxySub", "applySaved: mihomo start failed, proxy not applied");
+                    return;
+                }
             }
+            proxyUrl = ProxyNode.mihomo(TextUtils.isEmpty(coreName) ? node.getName() : coreName).getUrl();
         }
-        // 不添加全局通配符代理，只有站点配置中明确写了proxy的才走代理
-        android.util.Log.d("ProxySub", "applySaved: mihomo started, port " + MihomoManager.getMixedPort() + " available for explicit proxy configs");
+        if (TextUtils.isEmpty(proxyUrl)) return;
+
+        // 仅把 TMDB 系列域名强制走当前代理，国内用户只需填一个代理即可访问 TMDB；
+        // 不影响其他站点（其他站点仍按“站点配置显式写 proxy 才走代理”的规则）。
+        List<String> tmdbHosts = Arrays.asList(
+                "api.themoviedb.org", "image.tmdb.org",
+                "*.themoviedb.org", "*.tmdb.org");
+        OkHttp.selector().addOrReplace(Proxy.create(TMDB_PROXY_NAME, tmdbHosts, Arrays.asList(proxyUrl)));
+        android.util.Log.d("ProxySub", "applySaved: TMDB 已路由至代理 " + proxyUrl);
     }
 
     /**
@@ -174,6 +190,7 @@ public class ProxySubscriptionManager {
 
     public void disable() {
         OkHttp.selector().remove(NAME);
+        OkHttp.selector().remove(TMDB_PROXY_NAME);
         MihomoManager.get().stop();
     }
 

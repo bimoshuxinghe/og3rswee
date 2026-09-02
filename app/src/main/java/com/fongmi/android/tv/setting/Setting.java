@@ -237,11 +237,11 @@ public class Setting {
     }
 
     /**
-     * 广告规则库地址（可拉取的第三方 rules.json）。为空则不启用规则库拉取，仅用本地规则。
-     * 默认指向社区维护的公开规则库；用户可在“去广告设置”里改成自己的地址。
+     * 广告规则库地址（可拉取的第三方 rules.json）。默认为空：不预置任何地址，
+     * 由用户自行在“去广告设置”里填写自己的规则库（避免内置地址不可达时误导用户）。
      * 仅拉取、不回传：本地自动采集到的规则合并进本地 RULES.JSON，但绝不上传。
      */
-    public static final String DEFAULT_RULE_LIBRARY_URL = "https://m3u8-ad-audio-rules-sync.ccfork.workers.dev/rules.json";
+    public static final String DEFAULT_RULE_LIBRARY_URL = "";
 
     public static String getRuleLibraryUrl() {
         return Prefers.getString("ad_rule_library_url", DEFAULT_RULE_LIBRARY_URL);
