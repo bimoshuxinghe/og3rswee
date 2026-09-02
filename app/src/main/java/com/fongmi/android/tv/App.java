@@ -91,6 +91,8 @@ public class App extends Application implements Application.ActivityLifecycleCal
             android.util.Log.e("App", "Uncaught exception in " + thread.getName(), e);
             if (def != null) def.uncaughtException(thread, e);
         });
+        // 一次性迁移：清除旧版持久化的不可达默认规则库地址（如 ccfork 链接），使设置页不再显示该链接
+        com.fongmi.android.tv.setting.Setting.migrateDeprecatedRuleLibraryUrl();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
         // 启动预热：拉取广告规则库（仅下载、不上传）并合并本地采集规则；失败静默降级，不影响播放。

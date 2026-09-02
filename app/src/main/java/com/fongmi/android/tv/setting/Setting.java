@@ -251,6 +251,23 @@ public class Setting {
         Prefers.put("ad_rule_library_url", (url == null || url.trim().isEmpty()) ? "" : url.trim());
     }
 
+    /**
+     * 一次性迁移：清理旧版（5.9.8 早期）持久化到本地偏好的不可达默认规则库地址。
+     * 当时我们把第三方 ccfork 规则库预置为默认值并写入了本地存储；该地址后续被证实不可达，
+     * 已改为默认空串（由用户自行填写）。但已运行过旧版的用户本地已存有该旧地址，单靠改默认值
+     * 无法清除，故在启动时检测并清成空串，使设置页不再显示该链接。
+     * 幂等：仅在当前存储值恰好等于旧默认地址时清空，用户后来手动填的地址不受影响。
+     */
+    public static final String LEGACY_RULE_LIBRARY_URL =
+            "https://m3u8-ad-audio-rules-sync.ccfork.workers.dev/rules.json";
+
+    public static void migrateDeprecatedRuleLibraryUrl() {
+        String cur = getRuleLibraryUrl();
+        if (LEGACY_RULE_LIBRARY_URL.equals(cur)) {
+            putRuleLibraryUrl("");
+        }
+    }
+
     public static boolean isZhuyin() {
         return Prefers.getBoolean("zhuyin");
     }
