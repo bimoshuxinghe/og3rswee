@@ -63,8 +63,26 @@ public class OkProxySelector extends ProxySelector {
     @Override
     public List<java.net.Proxy> select(URI uri) {
         if (proxy.isEmpty() || uri.getHost() == null || "127.0.0.1".equals(uri.getHost())) return fallback(uri);
-        for (Proxy item : proxy) for (String host : item.getHosts()) if (Util.containOrMatch(uri.getHost(), host)) return !item.getProxies().isEmpty() ? item.getProxies() : fallback(uri);
+        for (Proxy item : proxy) for (String host : item.getHosts()) {
+            if (Util.containOrMatch(uri.getHost(), host)) {
+                if (!item.getProxies().isEmpty()) {
+                    log("命中代理[" + item.getName() + "] host=" + uri.getHost() + " 规则=" + host + " → " + item.getProxies());
+                    return item.getProxies();
+                }
+                return fallback(uri);
+            }
+        }
         return fallback(uri);
+    }
+
+    /** 诊断日志：调试页可见，让「配置静默注入代理」这件事有迹可查。 */
+    private static void log(String msg) {
+        android.util.Log.i("OkProxy", msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[OkProxy] " + msg);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override

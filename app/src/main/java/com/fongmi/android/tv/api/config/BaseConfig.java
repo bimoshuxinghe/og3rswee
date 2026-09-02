@@ -75,11 +75,17 @@ abstract class BaseConfig {
         // 清除所有旧代理，代理订阅不再添加全局代理
         OkHttp.selector().clear();
         OkHttp.selector().addAll(proxy);
+        // 代理可由配置订阅的 proxy 字段静默注入（用户在设置里看不到），
+        // 必须打日志留痕，否则「播放慢/连不上」时无从排查。
+        for (Proxy item : proxy) {
+            diag("配置注入代理 name=" + item.getName() + " hosts=" + item.getHosts() + " proxies=" + item.getProxies());
+        }
         // 不在配置加载时同步启动mihomo，避免阻塞配置加载导致启动卡顿
         // mihomo启动由App.onCreate()中的异步调用处理
     }
 
     protected void setHosts(List<String> hosts) {
+        if (!hosts.isEmpty()) diag("配置注入 DNS 映射 " + hosts.size() + " 条: " + hosts);
         OkHttp.dns().addAll(hosts);
     }
 
@@ -136,6 +142,16 @@ abstract class BaseConfig {
             return parsed.isJsonArray() ? parsed.getAsJsonArray() : new JsonArray();
         } catch (Exception e) {
             return new JsonArray();
+        }
+    }
+
+    /** 诊断日志双写：Logcat + 调试页（DbgLog）。 */
+    private static void diag(String msg) {
+        android.util.Log.i("ConfigProxy", msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[ConfigProxy] " + msg);
+        } catch (Throwable ignored) {
         }
     }
 }
