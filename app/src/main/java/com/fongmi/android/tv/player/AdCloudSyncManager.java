@@ -81,7 +81,8 @@ public final class AdCloudSyncManager {
                 try (Response resp = OkHttp.newCall(url.trim()).execute();
                      ResponseBody rb = resp.body()) {
                     if (!resp.isSuccessful() || rb == null) {
-                        if (callback != null) main.post(() -> callback.onError("HTTP " + resp.code()));
+                        final int code = resp.code();
+                        if (callback != null) main.post(() -> callback.onError("HTTP " + code));
                         return;
                     }
                     body = rb.string();
@@ -140,7 +141,8 @@ public final class AdCloudSyncManager {
                 AdProbeManager.get().applyCollectedRules(out.toString());
 
                 int total = merged.length();
-                if (callback != null) main.post(() -> callback.onLoaded(total, 0, added));
+                final int finalAdded = added;
+                if (callback != null) main.post(() -> callback.onLoaded(total, 0, finalAdded));
             } catch (Exception e) {
                 Log.e(TAG, "拉取规则库失败", e);
                 if (callback != null) main.post(() -> callback.onError(e.getMessage()));
