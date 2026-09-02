@@ -67,10 +67,35 @@ public final class AdSegmentMemory {
         return strippedThisSession;
     }
 
+    /**
+     * 本次播放是否为 HLS（m3u8）媒体。
+     *
+     * <p>由播放列表改写层在识别出 {@code #EXTM3U} 后置位。HLS 的广告剔除靠删分片
+     * 完成，起播前时间轴就已重排；按位置预跳过对它不仅多余，还可能在时间轴重排
+     * 前后用错坐标系（seek 后落在错误位置 → 加载失败 → 自动重播回起点 → 再 seek，
+     * 表现为进度条在区间内反复横跳直至报错）。因此 HLS 一律不走预跳过。
+     *
+     * <p>时序保证：预跳过轮询只在 {@code isPlaying()} 为真时动作，而起播必然晚于
+     * 播放列表加载完成，此时本标志一定已置位——不存在「HLS 起播后标志还没打上」
+     * 的窗口。
+     */
+    private static volatile boolean hlsThisSession;
+
+    /** 播放列表改写层确认当前媒体是 HLS 时调用。 */
+    public static void markHls() {
+        hlsThisSession = true;
+    }
+
+    /** 本次播放是否为 HLS。 */
+    public static boolean isHlsThisSession() {
+        return hlsThisSession;
+    }
+
     /** 起播前登记当前视频地址；HLS 删分片与非 HLS 预跳过都以它为准。 */
     public static void setCurrentUrl(String url) {
         currentUrl = url;
         strippedThisSession = false;
+        hlsThisSession = false;
     }
 
     public static String getCurrentUrl() {

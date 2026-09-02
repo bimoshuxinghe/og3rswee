@@ -1,5 +1,7 @@
 package com.fongmi.quickjs.method;
 
+import android.util.Log;
+
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
@@ -144,6 +146,9 @@ public class Global {
             Response res = Connect.to(url, req).execute();
             return Connect.success(ctx, req, res);
         } catch (Exception e) {
+            // 必须留痕：req 失败在 JS 侧通常被 try/catch 吞掉，站点表现为
+            // 「init ok 但内容空白」，没有这条日志就无从定位（DNS/代理/证书等）。
+            Logger.t("req").e("spider request failed: %s\n%s", url, Log.getStackTraceString(e));
             return Connect.error(ctx);
         }
     }

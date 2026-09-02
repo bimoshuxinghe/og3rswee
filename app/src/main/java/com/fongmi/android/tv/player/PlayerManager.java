@@ -593,7 +593,9 @@ public class PlayerManager implements ParseCallback {
     private void checkPlannedAdSkip() {
         if (isReleased()) return;
         // 分片已被删除时时间轴已重排，按位置判断会误跳正片，直接收工。
-        if (AdSegmentMemory.isStrippedThisSession()) return;
+        // HLS 一律禁用：删分片已在起播前完成广告剔除，预跳过对它多余，且在
+        // 时间轴重排前后坐标系有歧义——曾表现为进度条在区间内反复 seek 直至报错。
+        if (AdSegmentMemory.isStrippedThisSession() || AdSegmentMemory.isHlsThisSession()) return;
         Player p = player;
         String url = getUrl();
         if (p != null && p.isPlaying() && url != null) {
@@ -613,6 +615,16 @@ public class PlayerManager implements ParseCallback {
      * 但同一目标最多重试 {@value #MAX_PLANNED_SKIP_TRIES} 次——遇到「区间末尾附近
      * 没有关键帧可落」的源时，宁可残留几秒广告，也不能陷入无限 seek。
      */
+    /** 诊断日志双写：Logcat + 调试页（DbgLog），给「连接失败/反复跳转」类问题留证据链。 */
+    private static void diag(String msg) {
+        Log.i(TAG, msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[" + TAG + "] " + msg);
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void maybePlannedSkip(Player p, String url, long position) {
         AdSegmentMemory.Range range = AdSegmentMemory.find(url, position);
         if (range == null || range.end <= position) return;
@@ -635,6 +647,7 @@ public class PlayerManager implements ParseCallback {
         }
         Log.i(TAG, "记忆命中，预跳过 " + position + " → " + range.end
                 + "ms（第 " + lastPlannedSkipTries + " 次）");
+        diag("预跳过 " + position + " → " + range.end + "ms（第 " + lastPlannedSkipTries + " 次）");
         p.seekTo(range.end);
         AdProbeManager.get().onHostSeek(range.end);
         if (mode == Setting.AD_SKIP_MODE_NOTICE_AND_SKIP) {
@@ -858,6 +871,12 @@ public class PlayerManager implements ParseCallback {
 
         @Override
         public void onPlayerError(@NonNull PlaybackException e) {
+            // 诊断日志：把原始错误码与位置带进调试页，否则「连接失败」只剩一个
+            // 泛化文案，无法区分是网络、分片 404 还是解封装失败。
+            diag("onPlayerError code=" + e.errorCodeName + " pos=" + (player == null ? -1 : player.getCurrentPosition())
+                    + " hls=" + AdSegmentMemory.isHlsThisSession()
+                    + " stripped=" + AdSegmentMemory.isStrippedThisSession()
+                    + " msg=" + e.getMessage());
             PlayerEngine.ErrorAction action = engine.handleError(e);
             if (action == PlayerEngine.ErrorAction.RECOVERED) {
                 setDanmakus(spec.getDanmakus());

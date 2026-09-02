@@ -65,13 +65,22 @@ public final class HlsAdStrippingDataSource implements DataSource {
         String m3u8 = new String(original, StandardCharsets.UTF_8);
         // 以 URL 粗筛、以魔数定案：伪造路径或带参的列表也能识别，
         // 又不会把 .ts 媒体分片误读进来。
-        if (!m3u8.startsWith("#EXTM3U")) return length;
+        if (!m3u8.startsWith("#EXTM3U")) {
+            log("命中候选但非 m3u8 内容，透传：" + dataSpec.uri);
+            return length;
+        }
+        // 无论最终是否删除分片，都让预跳过知道这是 HLS——
+        // 它必须在时间轴重排前后的坐标系里做出正确的取舍（见 AdSegmentMemory）。
+        AdSegmentMemory.markHls();
         String stripped = HlsAdStripper.strip(m3u8, ranges);
-        if (stripped == null || stripped.isEmpty() || stripped.equals(m3u8)) return length;
+        if (stripped == null || stripped.isEmpty() || stripped.equals(m3u8)) {
+            log("m3u8 无命中分片可删（区间 " + ranges.size() + " 段），原样透传");
+            return length;
+        }
         rewritten = stripped.getBytes(StandardCharsets.UTF_8);
         // 时间轴自此整体前移，必须让记忆库停止按位置判断与写入（见 AdSegmentMemory）。
         AdSegmentMemory.markStripped();
-        Log.d(TAG, "已删除广告分片 " + ranges.size() + " 段，"
+        log("已删除广告分片：区间 " + ranges.size() + " 段，"
                 + original.length + " → " + rewritten.length + " 字节");
         return rewritten.length;
     }
@@ -126,6 +135,16 @@ public final class HlsAdStrippingDataSource implements DataSource {
             }
         }
         return out.toByteArray();
+    }
+
+    /** 诊断日志双写：Logcat + 调试页（DbgLog），与 PlayerManager 同一通道。 */
+    private static void log(String msg) {
+        Log.i(TAG, msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[HlsAdStrip] " + msg);
+        } catch (Throwable ignored) {
+        }
     }
 
     /** 当前正在播放的视频的已知广告区间；取不到时返回空列表，等于不介入。 */
