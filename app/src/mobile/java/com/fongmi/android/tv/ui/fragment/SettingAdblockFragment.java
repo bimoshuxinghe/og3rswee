@@ -54,7 +54,7 @@ public class SettingAdblockFragment extends BaseFragment {
         mBinding.adSkipMode.setOnClickListener(this::cycleSkipMode);
         mBinding.adProbeCheck.setOnClickListener(this::showProbeCheck);
         mBinding.adRuleLibUrl.setOnClickListener(this::editRuleLibUrl);
-        mBinding.adPullLibrary.setOnClickListener(this::pullLibrary);
+        mBinding.adPullLibrary.setOnClickListener(v -> pullLibrary(requireActivity()));
     }
 
     /**
