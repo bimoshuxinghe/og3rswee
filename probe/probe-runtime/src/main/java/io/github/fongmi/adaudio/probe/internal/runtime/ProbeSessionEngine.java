@@ -47,6 +47,7 @@ public final class ProbeSessionEngine implements AutoCloseable {
     private final long maxLookaheadMs;
     private final Listener listener;
     private final ProbeAdapter adapter;
+    private final boolean confirmEarly;
 
     private volatile AnalysisContext analysis;
     private volatile long sessionId;
@@ -55,7 +56,8 @@ public final class ProbeSessionEngine implements AutoCloseable {
     private volatile boolean closed;
 
     public ProbeSessionEngine(Context context, Looper controlLooper, long maxLookaheadMs,
-                              ProbeAdapterFactory factory, Listener listener) {
+                              ProbeAdapterFactory factory, Listener listener,
+                              boolean confirmEarly) {
         if (context == null) throw new IllegalArgumentException("Application Context 不能为空");
         if (controlLooper == null) throw new IllegalArgumentException("控制 Looper 不能为空");
         if (listener == null) throw new IllegalArgumentException("会话监听器不能为空");
@@ -64,6 +66,7 @@ public final class ProbeSessionEngine implements AutoCloseable {
         this.controlHandler = new Handler(controlLooper);
         this.maxLookaheadMs = maxLookaheadMs;
         this.listener = listener;
+        this.confirmEarly = confirmEarly;
         ProbeAdapter created;
         try {
             created = factory.create(context.getApplicationContext(), controlLooper,
@@ -89,7 +92,7 @@ public final class ProbeSessionEngine implements AutoCloseable {
             sessionId = newSessionId;
             failedSessionId = 0L;
             durationMs = -1L;
-            analysis = new AnalysisContext(newSessionId, rules, safeStartPositionMs);
+            analysis = new AnalysisContext(newSessionId, rules, safeStartPositionMs, confirmEarly);
         }
         deactivate(previousAnalysis);
         if (previousSessionId > 0L) safeStopAdapter(previousSessionId);
@@ -510,12 +513,18 @@ public final class ProbeSessionEngine implements AutoCloseable {
         boolean active = true;
         long hostPositionMs;
 
-        AnalysisContext(long sessionId, AdRuleSet rules, long startPositionMs) {
+        AnalysisContext(long sessionId, AdRuleSet rules, long startPositionMs,
+                        boolean confirmEarly) {
             this.sessionId = sessionId;
             this.ruleRevision = rules.getRevision();
-            this.matcher = new AdAudioMatcher(rules, MatcherConfig.releaseSafe());
-            this.coordinator = DetectionCoordinator.fullMatchOnly(
-                    maxFingerprintFrames(rules), rules.getHopMs());
+            // 默认参数与 MatcherConfig.releaseSafe() 完全一致，仅叠加提前确认开关。
+            this.matcher = new AdAudioMatcher(rules,
+                    new MatcherConfig.Builder().setConfirmEarly(confirmEarly).build());
+            // 提前确认：START 证据（约 1 秒）即派发跳转；否则维持完整锚点验证（约整条指纹时长）。
+            this.coordinator = confirmEarly
+                    ? DetectionCoordinator.earlyConfirm()
+                    : DetectionCoordinator.fullMatchOnly(
+                            maxFingerprintFrames(rules), rules.getHopMs());
             this.analyzedThroughMs = startPositionMs;
             this.hostPositionMs = startPositionMs;
         }

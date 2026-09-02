@@ -128,6 +128,21 @@ public class Setting {
         Prefers.put("ai_adblock", aiAdblock);
     }
 
+    /**
+     * 声纹去广「提前确认」：START 证据（默认约 1 秒）即派发跳转，
+     * 不必等整条指纹完整校验走完（长规则可达 5 秒以上）。
+     *
+     * <p>开启后广告跳过延迟可从「播了五六秒才跳」降到约 1 秒；
+     * 若遇到误跳正片，关闭即可回到「必须完整锚点验证」的保守行为。
+     */
+    public static boolean isAdEarlyConfirm() {
+        return Prefers.getBoolean("ad_early_confirm", true);
+    }
+
+    public static void putAdEarlyConfirm(boolean early) {
+        Prefers.put("ad_early_confirm", early);
+    }
+
     public static String getAiAdblockKeywords() {
         return Prefers.getString("ai_adblock_keywords", "麻将来了,澳门,赌场,娱乐城,荷官,百家乐,老虎机,时时彩,六合彩,彩票,下注,投注,首充,提现,棋牌,捕鱼,斗地主");
     }

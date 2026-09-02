@@ -184,6 +184,7 @@ public final class AdProbeManager {
             probe = AdAudioProbe.builder(context.getApplicationContext())
                     .setPlaybackClock(clock)
                     .setListener(listener)
+                    .setConfirmEarly(Setting.isAdEarlyConfirm())
                     .build();
             probe.setEnabled(Setting.isAiAdblock());
             loadRulesFromFile();  // 初始化后立即尝试加载本地规则

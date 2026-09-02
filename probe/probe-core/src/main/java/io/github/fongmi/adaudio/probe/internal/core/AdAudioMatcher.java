@@ -112,6 +112,13 @@ public final class AdAudioMatcher {
                         events.add(new MatchEvent(MatchEvent.Type.START_MATCHED,
                                 compiled.rule.getId(), active.startTimeMs, active.endTimeMs,
                                 matchedAtTimeMs, quality.similarity, length));
+                        // 提前确认模式下 START 证据即派发跳转，必须在此同步落冷却：
+                        // 否则同一段广告会被后续帧或其它指纹变体反复匹配成新 occurrence，
+                        // 表现为广告区间内连续触发跳转。
+                        if (config.isConfirmEarly()) {
+                            nextAllowedTime.put(compiled.rule.getId(),
+                                    active.endTimeMs + config.getCooldownMs());
+                        }
                         // 短指纹可能在确认帧处同时完成全量校验，不能等下一帧才发出完成事件。
                         if (length == active.variant.hashes.length
                                 && quality.thresholdRatio >= config.getFullMatchRatio()) {

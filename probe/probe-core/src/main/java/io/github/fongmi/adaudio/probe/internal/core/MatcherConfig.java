@@ -10,6 +10,7 @@ public final class MatcherConfig {
     private final float fullMatchRatio;
     private final long cooldownMs;
     private final long maxTimelineGapMs;
+    private final boolean confirmEarly;
 
     private MatcherConfig(Builder builder) {
         candidateFrames = builder.candidateFrames;
@@ -19,6 +20,7 @@ public final class MatcherConfig {
         fullMatchRatio = builder.fullMatchRatio;
         cooldownMs = builder.cooldownMs;
         maxTimelineGapMs = builder.maxTimelineGapMs;
+        confirmEarly = builder.confirmEarly;
     }
 
     public static MatcherConfig conservative() {
@@ -59,6 +61,15 @@ public final class MatcherConfig {
         return maxTimelineGapMs;
     }
 
+    /**
+     * 是否启用提前确认：START 证据即可作为跳转依据，不必等整条指纹完整校验。
+     * 开启后匹配器会在 START 确认时立即落冷却，避免同一段广告被后续帧或
+     * 其它指纹变体反复匹配成新的 occurrence。
+     */
+    public boolean isConfirmEarly() {
+        return confirmEarly;
+    }
+
     public static final class Builder {
         private int candidateFrames = 2;
         private int confirmationFrames = 4;
@@ -67,6 +78,7 @@ public final class MatcherConfig {
         private float fullMatchRatio = 0.78f;
         private long cooldownMs = 5000L;
         private long maxTimelineGapMs = 2500L;
+        private boolean confirmEarly = false;
 
         public Builder setCandidateFrames(int value) { candidateFrames = Math.max(2, value); return this; }
         public Builder setConfirmationFrames(int value) { confirmationFrames = Math.max(3, value); return this; }
@@ -75,6 +87,9 @@ public final class MatcherConfig {
         public Builder setFullMatchRatio(float value) { fullMatchRatio = clamp(value, 0.5f, 1.0f); return this; }
         public Builder setCooldownMs(long value) { cooldownMs = Math.max(0, value); return this; }
         public Builder setMaxTimelineGapMs(long value) { maxTimelineGapMs = Math.max(500, value); return this; }
+
+        /** 提前确认开关；默认关闭，保持「必须完整锚点验证」的既有行为。 */
+        public Builder setConfirmEarly(boolean value) { confirmEarly = value; return this; }
 
         public MatcherConfig build() {
             if (confirmationFrames <= candidateFrames) confirmationFrames = candidateFrames + 1;

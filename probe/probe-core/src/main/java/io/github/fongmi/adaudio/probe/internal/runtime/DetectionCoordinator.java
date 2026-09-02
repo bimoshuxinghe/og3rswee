@@ -23,7 +23,7 @@ public final class DetectionCoordinator {
     private final List<ConfirmedAd> immediateConflicts = new ArrayList<>();
     private long analyzedThroughMs = -1L;
 
-    /** 保留给核心冲突单测的 START 协调模式。生产跳转应使用 fullMatchOnly。 */
+    /** 保留给核心冲突单测的 START 协调模式。生产跳转使用 fullMatchOnly 或 earlyConfirm。 */
     public DetectionCoordinator() {
         this(MatchEvent.Type.START_MATCHED, 0, 0);
     }
@@ -35,6 +35,21 @@ public final class DetectionCoordinator {
         }
         return new DetectionCoordinator(MatchEvent.Type.FULL_MATCHED,
                 maxFingerprintFrames, hopMs);
+    }
+
+    /**
+     * 提前确认模式：START 证据即可产生跳转区间。
+     *
+     * <p>完整锚点验证（{@link #fullMatchOnly}）必须等整条指纹走完才确认，耗时约
+     * {@code (N-1)×hopMs}；规则指纹覆盖 5 秒音频时就意味着广告要先播约 5 秒才跳。
+     * START 证据在 {@code confirmationFrames×hopMs}（默认 4×256ms，约 1 秒）时即产生，
+     * 且此时广告起止区间已由锚点推导完成，足以派发跳转。
+     *
+     * <p>误跳抑制依赖匹配器已有的严格阈值（前缀全帧命中 + 汉明距离上限），
+     * 而非等待整条指纹；本模式不额外设置 settle 等待，确认即派发。
+     */
+    public static DetectionCoordinator earlyConfirm() {
+        return new DetectionCoordinator(MatchEvent.Type.START_MATCHED, 0, 0);
     }
 
     private DetectionCoordinator(MatchEvent.Type acceptedType,

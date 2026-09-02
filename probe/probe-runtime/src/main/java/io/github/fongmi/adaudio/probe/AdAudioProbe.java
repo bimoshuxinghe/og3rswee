@@ -77,7 +77,8 @@ public final class AdAudioProbe implements Closeable {
             handler = new Handler(thread.getLooper());
             ProbeAdapterFactory factory = ProbeAdapterResolver.resolve(builder.adapterFactory);
             sessionEngine = new ProbeSessionEngine(builder.context.getApplicationContext(),
-                    thread.getLooper(), builder.maxLookaheadMs, factory, new EngineListener());
+                    thread.getLooper(), builder.maxLookaheadMs, factory, new EngineListener(),
+                    builder.confirmEarly);
         } catch (RuntimeException | LinkageError error) {
             repository.close();
             thread.quitSafely();
@@ -913,7 +914,9 @@ public final class AdAudioProbe implements Closeable {
         private Executor callbackExecutor;
         private ProbeAdapterFactory adapterFactory;
         private byte[] initialRules;
-        private long maxLookaheadMs = 15_000L;
+        // 前视越大，探针越能跑在宿主前面：宿主到达广告起点时结论已就绪，可即时跳转。
+        private long maxLookaheadMs = 30_000L;
+        private boolean confirmEarly = true;
 
         private Builder(Context context, String ruleUrl) {
             if (context == null) throw new IllegalArgumentException("Context 不能为空");
@@ -966,12 +969,25 @@ public final class AdAudioProbe implements Closeable {
             return this;
         }
 
-        /** 设置 3 到 60 秒的最大前视窗口，默认 15 秒。 */
+        /** 设置 3 到 60 秒的最大前视窗口，默认 30 秒。 */
         public Builder setMaxLookaheadMs(long value) {
             if (value < MIN_LOOKAHEAD_MS || value > MAX_LOOKAHEAD_MS) {
                 throw new IllegalArgumentException("前视窗口必须在 3 到 60 秒之间");
             }
             maxLookaheadMs = value;
+            return this;
+        }
+
+        /**
+         * 是否启用提前确认：START 证据（默认 4 帧 × 256ms，约 1 秒）即可派发跳转，
+         * 不必等整条指纹完整校验走完（长规则可达 5 秒以上）。
+         *
+         * <p>默认开启，用于消除「广告已经播了五六秒才跳过」的观感。误跳抑制依赖
+         * 匹配器既有的严格阈值（前缀全帧命中 + 汉明距离上限 5），而非等待完整指纹。
+         * 关闭则回到「必须完整锚点验证」的保守行为。
+         */
+        public Builder setConfirmEarly(boolean value) {
+            confirmEarly = value;
             return this;
         }
 

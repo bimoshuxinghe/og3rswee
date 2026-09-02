@@ -120,8 +120,13 @@ public final class Media3ProbeAdapter implements ProbeAdapter {
                 () -> pauseForLookahead(expectedSessionId, currentAttemptId),
                 hostPositionMs, maxLookaheadMs);
         AudioOnlyRenderersFactory renderers = new AudioOnlyRenderersFactory(context, audioSink);
+        // 探针的价值在于「跑在宿主前面」：只有缓冲上限大于前视窗口，ExoPlayer 才会
+        // 持续预取，解码才可能全速冲刺并建立起前视。原配置上限仅 5 秒，解码被网络
+        // 往返拖成接近实时速度，前视永远建不起来，于是广告要先播到指纹积累完才跳。
+        int probeMaxBufferMs = (int) Math.min(60_000L,
+                Math.max(15_000L, maxLookaheadMs + 5_000L));
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-                .setBufferDurationsMs(1000, 5000, 250, 500)
+                .setBufferDurationsMs(5000, probeMaxBufferMs, 250, 500)
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
         // 探针是无声分析器：sink 不创建 AudioTrack，因此绝不能参与音频焦点竞争。
