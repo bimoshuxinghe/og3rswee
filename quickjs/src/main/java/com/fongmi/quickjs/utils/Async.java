@@ -17,6 +17,14 @@ public class Async {
 
     private final JSCallFunction error = args -> {
         String msg = args != null && args.length > 0 && args[0] != null ? args[0].toString() : "";
+        try {
+            // 决定性诊断：Promise reject 时打印当前线程。若线程不是 quickjs-js/144，
+            // 说明 init 的 await 续体在 OkHttp/Timer 等回调线程恢复执行（跨线程），
+            // 从而 Global.xxx 的 ctx 操作触发 "Must be call same thread"。
+            android.util.Log.e("Async", "Promise REJECTED @ thread=" + Thread.currentThread().getName() + "/"
+                    + Thread.currentThread().getId() + " msg=" + msg);
+        } catch (Throwable ignore) {
+        }
         future.completeExceptionally(new Exception(msg));
         return null;
     };
