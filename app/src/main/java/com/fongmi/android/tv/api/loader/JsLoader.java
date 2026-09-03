@@ -48,6 +48,9 @@ public class JsLoader {
             return spider;
         } catch (Throwable e) {
             e.printStackTrace();
+            // 写本地调试页：蜘蛛创建失败（init 抛异常、jar/dex 加载失败等）若只 printStackTrace，
+            // 调试页完全不可见，表现为「站点空白且反复重建」。
+            logToDebugPage("spider create FAILED: key=" + key + " api=" + api + " -> " + describe(e));
             // Do NOT cache SpiderNull — if spider creation fails (e.g. JS file
             // fetch fails, QuickJS context error), returning a cached SpiderNull
             // means all subsequent calls permanently return empty results.
@@ -60,5 +63,25 @@ public class JsLoader {
         if (recent == null) return null;
         Spider spider = spiders.get(recent);
         return spider != null ? spider.proxy(params) : null;
+    }
+
+    private static void logToDebugPage(String msg) {
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[JsLoader] " + msg);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static String describe(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(e.getClass().getSimpleName()).append(": ").append(e.getMessage());
+        Throwable cause = e.getCause();
+        int depth = 0;
+        while (cause != null && depth++ < 3) {
+            sb.append(" | cause: ").append(cause.getClass().getSimpleName()).append(": ").append(cause.getMessage());
+            cause = cause.getCause();
+        }
+        return sb.toString();
     }
 }

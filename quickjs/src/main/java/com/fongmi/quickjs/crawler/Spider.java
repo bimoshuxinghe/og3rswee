@@ -87,6 +87,19 @@ public class Spider extends com.github.catvod.crawler.Spider {
         }
     }
 
+    /** 把异常压成单行可读文本（含最多 3 层 cause），供 DbgLog 输出定位。 */
+    private static String describe(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(e.getClass().getSimpleName()).append(": ").append(e.getMessage());
+        Throwable cause = e.getCause();
+        int depth = 0;
+        while (cause != null && depth++ < 3) {
+            sb.append(" | cause: ").append(cause.getClass().getSimpleName()).append(": ").append(cause.getMessage());
+            cause = cause.getCause();
+        }
+        return sb.toString();
+    }
+
     /**
      * 调用 JS 导出函数并等待结果。
      * 带超时保护：若 JS 端 Promise 永不 resolve（异步卡死），
@@ -103,7 +116,9 @@ public class Spider extends com.github.catvod.crawler.Spider {
             logw("js call '" + func + "' timeout after " + TIMEOUT + "s, fallback");
             return fallback(func);
         } catch (Exception e) {
-            Log.e(TAG, "js call '" + func + "' failed", e);
+            // 必须写 DbgLog：call 失败（如 JS 端 init 抛 ReferenceError）若只走 Logcat，
+            // 调试页完全不可见，表现为「js eval OK 但站点空白」无从定位。
+            logw("js call '" + func + "' failed: " + describe(e));
             throw e;
         }
     }
@@ -122,7 +137,15 @@ public class Spider extends com.github.catvod.crawler.Spider {
     @Override
     public void init(Context context, String extend) throws Exception {
         initializeJS();
-        call("init", submit(() -> getExt(extend)).get());
+        Object ext;
+        try {
+            ext = submit(() -> getExt(extend)).get();
+        } catch (Exception e) {
+            // getExt 在 call 之外求值，失败不会走 call 的日志分支，这里补齐可见性。
+            logw("getExt FAILED: " + describe(e));
+            throw e;
+        }
+        call("init", ext);
     }
 
     @Override
