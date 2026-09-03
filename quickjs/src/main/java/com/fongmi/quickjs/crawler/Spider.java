@@ -134,11 +134,15 @@ public class Spider extends com.github.catvod.crawler.Spider {
         String who = api + "#" + System.identityHashCode(this);
         Future<CompletableFuture<Object>> future = submit(() -> {
             Thread t = Thread.currentThread();
-            // ctx.getCurrentThreadId() 是 wrapper 内部真正参与校验的值，
-            // 与当前线程 id 一并打印，可一锤定音区分「线程真的不同」与「ctx 不是这一个」。
+            // 决定性诊断：崩的是 func.call 内部的 getContext().call()，其真正校验的 ctx 由
+            // jsObject.getContext() 决定，不一定是 this.ctx。若 jsObjectCtx==ctx 为 false，
+            // 说明 jsObject 实际绑定到了另一个 currentThreadId 不同的 ctx —— 这才是根因，
+            // 与 Java 线程是否同一无关（独立池/全局池都同线程仍崩已证明此点）。
             log("js call '" + func + "' [" + who + "] thread=" + t.getName() + "/" + t.getId()
-                    + " ctxThread=" + (ctxThread == null ? "null" : ctxThread.getName() + "/" + ctxThread.getId())
-                    + " ctx.getCurrentThreadId()=" + (ctx == null ? "null" : ctx.getCurrentThreadId()));
+                    + " thisCtx=" + (ctx == null ? "null" : System.identityHashCode(ctx) + "/" + ctx.getCurrentThreadId())
+                    + " jsObject.ctx=" + (jsObject == null ? "null"
+                        : System.identityHashCode(jsObject.getContext()) + "/" + jsObject.getContext().getCurrentThreadId())
+                    + " jsObjectCtx==thisCtx=" + (jsObject != null && ctx != null && jsObject.getContext() == ctx));
             return Async.run(jsObject, func, args);
         });
         try {

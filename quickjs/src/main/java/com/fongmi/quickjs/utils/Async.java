@@ -47,6 +47,13 @@ public class Async {
             if (result instanceof JSObject) then((JSObject) result);
             else future.complete(result);
         } catch (Throwable e) {
+            // 决定性诊断：崩在这里说明 func.getContext() 的 currentThreadId 与当前线程不一致。
+            try {
+                android.util.Log.e("Async", "func.call FAILED @ thread=" + Thread.currentThread().getName() + "/"
+                        + Thread.currentThread().getId() + " funcCtx=" + System.identityHashCode(func.getContext())
+                        + "/" + func.getContext().getCurrentThreadId(), e);
+            } catch (Throwable ignored) {
+            }
             future.completeExceptionally(e);
         } finally {
             func.release();
