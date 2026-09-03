@@ -1,6 +1,7 @@
 package com.fongmi.quickjs.crawler;
 
 import android.content.Context;
+import android.os.Looper;
 import android.util.Log;
 
 import com.fongmi.quickjs.bean.Res;
@@ -52,6 +53,9 @@ public class Spider extends com.github.catvod.crawler.Spider {
     private final ExecutorService executor;
     private final DexClassLoader dex;
     private final String api;
+
+    /** 创建 QuickJSContext 的线程：所有 JS 调用都必须发生在同一个线程上。 */
+    private volatile Thread ctxThread;
 
     private QuickJSContext ctx;
     private JSObject jsObject;
@@ -107,7 +111,12 @@ public class Spider extends com.github.catvod.crawler.Spider {
      * 导致后续所有调用排队（表现为"init 不执行、站点无数据"）。
      */
     private Object call(String func, Object... args) throws Exception {
-        Future<CompletableFuture<Object>> future = submit(() -> Async.run(jsObject, func, args));
+        Future<CompletableFuture<Object>> future = submit(() -> {
+            Thread t = Thread.currentThread();
+            log("js call '" + func + "' on thread '" + t.getName() + "' id=" + t.getId()
+                    + " (ctx thread: " + (ctxThread == null ? "null" : ctxThread.getName() + "/" + ctxThread.getId()) + ")");
+            return Async.run(jsObject, func, args);
+        });
         try {
             Object result = future.get(TIMEOUT, TimeUnit.SECONDS).get(TIMEOUT, TimeUnit.SECONDS);
             log("js call '" + func + "' ok: " + (result == null ? "null" : result));
@@ -256,6 +265,11 @@ public class Spider extends com.github.catvod.crawler.Spider {
 
     private void createCtx() {
         ctx = QuickJSContext.create();
+        ctxThread = Thread.currentThread();
+        Thread main = Looper.getMainLooper().getThread();
+        log("ctx created on thread '" + ctxThread.getName() + "' id=" + ctxThread.getId()
+                + " | main thread: " + main.getName() + "/" + main.getId()
+                + " | same=" + (ctxThread == main));
         ctx.setConsole(new Console());
         ctx.evaluate(Asset.read("js/lib/http.js"));
         ctx.evaluate(Asset.read("js/lib/crypto-js.js"));
