@@ -118,16 +118,8 @@ public final class AdProbeManager {
         public void onSkipRequested(SkipRequest request) {
             Player p = player;
             if (p == null || request == null) return;
-            // 删过分片 / HLS 会话下探针与宿主不在同一时间轴：探针独立下载原始 m3u8
-            // （广告还在列表里），宿主播的是删减版（正片从 0 开始）。此时探针报出的
-            // 「广告区间」是原始坐标，拿它 seek 宿主会把正片开头当广告跳掉；跳完之后
-            // 宿主又落回区间内被再次命中，就成了反复横跳。
-            // 记忆库预跳过已按同样理由禁用这两类会话（见 AdSegmentMemory），
-            // 实时探针必须一视同仁，否则删分片与探针会互相打架。
-            if (AdSegmentMemory.isStrippedThisSession() || AdSegmentMemory.isHlsThisSession()) {
-                Log.d(TAG, "忽略探针跳转：本次播放时间轴已被改写，探针坐标不可信");
-                return;
-            }
+            // 恢复 5.9.0 行为：声纹命中广告即直接 seek 跳过，不做 HLS/删分片护栏
+            // （删 m3u8 分片的方案已移除，详见 5.9.0 的 AdAudioProbe 直接跳过机制）。
             int mode = Setting.getAdSkipMode();
             long target = request.getSeekTargetPositionMs();
             // 0=仅提示，1=提示+自动跳过，2=仅自动跳过

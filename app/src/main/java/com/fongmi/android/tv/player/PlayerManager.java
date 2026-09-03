@@ -592,10 +592,7 @@ public class PlayerManager implements ParseCallback {
      */
     private void checkPlannedAdSkip() {
         if (isReleased()) return;
-        // 分片已被删除时时间轴已重排，按位置判断会误跳正片，直接收工。
-        // HLS 一律禁用：删分片已在起播前完成广告剔除，预跳过对它多余，且在
-        // 时间轴重排前后坐标系有歧义——曾表现为进度条在区间内反复 seek 直至报错。
-        if (AdSegmentMemory.isStrippedThisSession() || AdSegmentMemory.isHlsThisSession()) return;
+        // 已移除删 m3u8 分片方案，恢复 5.9.0 的声纹/记忆库直接跳过行为。
         Player p = player;
         String url = getUrl();
         if (p != null && p.isPlaying() && url != null) {
