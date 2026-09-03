@@ -50,7 +50,27 @@ public class Spider extends com.github.catvod.crawler.Spider {
     private static final Pattern TOP_LEVEL_RULE =
             Pattern.compile("(?m)^(?:var|let|const)\\s+rule\\s*=");
 
-    private final ExecutorService executor;
+    /**
+     * 全局唯一的 JS 执行线程。
+     *
+     * QuickJS 的 Java wrapper 在构造 QuickJSContext 时记下 currentThreadId，
+     * 之后每一次 ctx 操作（evaluate / call / freeValue / destroy）都会先 checkSameThread()，
+     * 不匹配就抛 "Must be call same thread in QuickJSContext.create!"。
+     *
+     * 原先每个 Spider 各建一个单线程池，于是 N 个站点的 ctx 分别绑定在 N 个不同线程上。
+     * 只要任何一次操作（OkHttp 回调、Timer 回调、destroy、上游并发调用）落在了
+     * “另一个 Spider 的线程”上就会跨线程崩溃 —— 且崩溃点表现为「明明同线程 id 也报错」，
+     * 因为报错的那个 ctx 根本不是日志里打印的那一个。
+     *
+     * 统一到全局单线程后，ctx 的归属线程在进程内恒定，从结构上消除这一类问题。
+     */
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "quickjs-js");
+        thread.setDaemon(true);
+        thread.setUncaughtExceptionHandler((t, e) -> Log.e(TAG, "js thread crashed", e));
+        return thread;
+    });
+
     private final DexClassLoader dex;
     private final String api;
 
@@ -63,13 +83,12 @@ public class Spider extends com.github.catvod.crawler.Spider {
     private boolean cat;
 
     public Spider(String api, DexClassLoader dex) {
-        this.executor = Executors.newSingleThreadExecutor();
         this.api = api;
         this.dex = dex;
     }
 
     private <T> Future<T> submit(Callable<T> callable) {
-        return executor.submit(callable);
+        return EXECUTOR.submit(callable);
     }
 
     /** 日志双写：Logcat + 本地调试页（DebugServer 12138 /api，通过反射写 DbgLog 缓冲）。 */
@@ -111,10 +130,15 @@ public class Spider extends com.github.catvod.crawler.Spider {
      * 导致后续所有调用排队（表现为"init 不执行、站点无数据"）。
      */
     private Object call(String func, Object... args) throws Exception {
+        // 快照本实例身份，避免日志里 N 个 Spider 混在一起分不清是谁崩的。
+        String who = api + "#" + System.identityHashCode(this);
         Future<CompletableFuture<Object>> future = submit(() -> {
             Thread t = Thread.currentThread();
-            log("js call '" + func + "' on thread '" + t.getName() + "' id=" + t.getId()
-                    + " (ctx thread: " + (ctxThread == null ? "null" : ctxThread.getName() + "/" + ctxThread.getId()) + ")");
+            // ctx.getCurrentThreadId() 是 wrapper 内部真正参与校验的值，
+            // 与当前线程 id 一并打印，可一锤定音区分「线程真的不同」与「ctx 不是这一个」。
+            log("js call '" + func + "' [" + who + "] thread=" + t.getName() + "/" + t.getId()
+                    + " ctxThread=" + (ctxThread == null ? "null" : ctxThread.getName() + "/" + ctxThread.getId())
+                    + " ctx.getCurrentThreadId()=" + (ctx == null ? "null" : ctx.getCurrentThreadId()));
             return Async.run(jsObject, func, args);
         });
         try {
@@ -229,17 +253,41 @@ public class Spider extends com.github.catvod.crawler.Spider {
         try {
             releaseJS();
         } catch (Throwable e) {
-            e.printStackTrace();
-        } finally {
-            if (global != null) global.destroy();
-            executor.shutdownNow();
+            // 必须留痕：releaseJS 失败会让 ctx/线程资源泄漏，
+            // 表现为之后所有站点都卡在「加载不出来」。
+            logw("releaseJS FAILED: " + describe(e));
         }
     }
 
+    /**
+     * 销毁顺序必须与 5.9.2 一致，且**整个流程都在 JS 线程内**完成：
+     *   1) global.destroy() —— 停 Timer 并 release 挂起的 JSFunction
+     *   2) jsObject.release()
+     *   3) ctx.destroy()
+     * 只要其中任何一步跑到非 ctx 线程，wrapper 的 checkSameThread() 就会抛
+     * "Must be call same thread"，异常还会从这里冒泡出去打断外层的批量清理。
+     */
     private void releaseJS() throws Exception {
         submit(() -> {
-            jsObject.release();
-            ctx.destroy();
+            try {
+                if (global != null) global.destroy();
+            } catch (Throwable e) {
+                logw("global destroy failed: " + describe(e));
+            }
+            try {
+                if (jsObject != null) jsObject.release();
+            } catch (Throwable e) {
+                logw("jsObject release failed: " + describe(e));
+            }
+            try {
+                if (ctx != null) ctx.destroy();
+            } catch (Throwable e) {
+                logw("ctx destroy failed: " + describe(e));
+            }
+            global = null;
+            jsObject = null;
+            ctx = null;
+            ctxThread = null;
             return null;
         }).get();
     }
@@ -270,6 +318,9 @@ public class Spider extends com.github.catvod.crawler.Spider {
         log("ctx created on thread '" + ctxThread.getName() + "' id=" + ctxThread.getId()
                 + " | main thread: " + main.getName() + "/" + main.getId()
                 + " | same=" + (ctxThread == main));
+        log("ctx created [" + api + "#" + System.identityHashCode(this) + "] thread=" + ctxThread.getName()
+                + "/" + ctxThread.getId() + " ctx.getCurrentThreadId()=" + ctx.getCurrentThreadId()
+                + " mainThread=" + main.getName() + "/" + main.getId() + " same=" + (ctxThread == main));
         ctx.setConsole(new Console());
         ctx.evaluate(Asset.read("js/lib/http.js"));
         ctx.evaluate(Asset.read("js/lib/crypto-js.js"));
@@ -297,7 +348,7 @@ public class Spider extends com.github.catvod.crawler.Spider {
 
     private void createFun() {
         try {
-            global = Global.create(ctx, executor);
+            global = Global.create(ctx, EXECUTOR);
             Class<?> clz = dex.loadClass("com.github.catvod.js.Function");
             clz.getDeclaredConstructor(QuickJSContext.class).newInstance(ctx);
         } catch (Throwable ignored) {

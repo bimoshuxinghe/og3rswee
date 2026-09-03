@@ -79,11 +79,27 @@ public class Global {
         }
     }
 
+    /**
+     * 停掉所有挂起的 setTimeout 并释放其 JSFunction。
+     * Timeout.cancelAndRelease() 最终会走到 ctx.freeValue()，属于 ctx 操作，
+     * 因此必须发生在 ctx 线程上 —— 否则 destroy 从任意线程被调用时
+     * 会抛 "Must be call same thread"，异常还会打断外层的批量清理。
+     */
     public void destroy() {
         destroyed = true;
-        for (Timeout timeout : timers.values()) timeout.cancelAndRelease();
-        timers.clear();
-        timer.cancel();
+        try {
+            onCtx(() -> {
+                for (Timeout timeout : timers.values()) timeout.cancelAndRelease();
+                timers.clear();
+                return null;
+            });
+        } catch (Throwable e) {
+            diag("destroy failed: " + e);
+        }
+        try {
+            timer.cancel();
+        } catch (Throwable ignored) {
+        }
     }
 
     private void setProperty() {
@@ -276,8 +292,22 @@ public class Global {
 
     private boolean postCallback(JSFunction callback, Runnable runnable) {
         boolean posted = submit(() -> callAndRelease(callback, runnable));
-        if (!posted) callback.release();
-        return posted;
+        if (posted) return true;
+        // 本方法运行在 OkHttp 的回调线程上。任务没投进去时，
+        // callback.release() 同样是 ctx 操作（内部走 ctx.freeValue），
+        // 直接在这里调用会在 OkHttp 线程上触发跨线程崩溃，必须切回 ctx 线程。
+        try {
+            onCtx(() -> {
+                try {
+                    callback.release();
+                } catch (Throwable ignored) {
+                }
+                return null;
+            });
+        } catch (Throwable e) {
+            diag("fallback release failed: " + e);
+        }
+        return false;
     }
 
     private void callAndRelease(JSFunction callback, Runnable runnable) {
