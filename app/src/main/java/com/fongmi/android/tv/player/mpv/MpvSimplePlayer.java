@@ -1532,6 +1532,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void attachSurface(@Nullable Surface surface, int width, int height) {
+        if (released || !initialized) return;
         if (surface == null || !surface.isValid()) return;
         if (currentSurface == surface) {
             setSurfaceSize(width, height);
@@ -1557,6 +1558,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void detachSurface() {
+        if (!initialized) return;
         if (currentSurface == null) return;
         setMpvProperty("vo", "null");
         setMpvOption("force-window", "no");
@@ -1596,6 +1598,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
     }
 
     private void setSurfaceSize(int width, int height) {
+        if (released || !initialized) return;
         if (width <= 0 || height <= 0) return;
         setMpvProperty("android-surface-size", width + "x" + height);
     }
