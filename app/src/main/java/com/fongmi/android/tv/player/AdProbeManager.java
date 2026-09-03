@@ -75,6 +75,11 @@ public final class AdProbeManager {
             new java.util.HashSet<>(java.util.Arrays.asList(
                     "user-agent", "accept", "accept-language", "cache-control", "pragma")));
 
+    /** 同一跳转目标的重复命中判定窗口；短于此间隔的重复视为无法收敛。 */
+    private static final long PROBE_SKIP_COOLDOWN_MS = 1500L;
+    /** 同一跳转目标最多执行次数，其余直接丢弃。 */
+    private static final int MAX_PROBE_SKIP_TRIES = 2;
+
     private static volatile AdProbeManager instance;
 
     private AdAudioProbe probe;
@@ -96,6 +101,10 @@ public final class AdProbeManager {
     private volatile String lastErrorText;
     /** 探针尚未创建时到达的规则，暂存待注入（避免规则被暂存丢弃）。 */
     private volatile String pendingRulesJson;
+    /** 上一次探针跳转的目标与时刻、重复次数，用于识别不可收敛的反复跳转。 */
+    private volatile long lastProbeSkipTargetMs = -1L;
+    private volatile long lastProbeSkipAtMs;
+    private volatile int probeSkipTries;
 
     private final PlaybackClock clock = () -> {
         Player p = player;
@@ -108,7 +117,17 @@ public final class AdProbeManager {
         @Override
         public void onSkipRequested(SkipRequest request) {
             Player p = player;
-            if (p == null) return;
+            if (p == null || request == null) return;
+            // 删过分片 / HLS 会话下探针与宿主不在同一时间轴：探针独立下载原始 m3u8
+            // （广告还在列表里），宿主播的是删减版（正片从 0 开始）。此时探针报出的
+            // 「广告区间」是原始坐标，拿它 seek 宿主会把正片开头当广告跳掉；跳完之后
+            // 宿主又落回区间内被再次命中，就成了反复横跳。
+            // 记忆库预跳过已按同样理由禁用这两类会话（见 AdSegmentMemory），
+            // 实时探针必须一视同仁，否则删分片与探针会互相打架。
+            if (AdSegmentMemory.isStrippedThisSession() || AdSegmentMemory.isHlsThisSession()) {
+                Log.d(TAG, "忽略探针跳转：本次播放时间轴已被改写，探针坐标不可信");
+                return;
+            }
             int mode = Setting.getAdSkipMode();
             long target = request.getSeekTargetPositionMs();
             // 0=仅提示，1=提示+自动跳过，2=仅自动跳过
@@ -117,7 +136,27 @@ public final class AdProbeManager {
                 return;
             }
             if (target < 0L) return;
-            lastSkipAtMs = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            // 兜底护栏：SDK 的冷却只针对同一条规则，遇到「同一目标反复命中」的源
+            // （seek 落点仍在区间内、或区间互相重叠）时宿主仍会被连续要求跳转。
+            // 这里对「同一目标 + 短时间内重复」直接限次：宁可残留几秒广告，
+            // 也不能让播放位置陷入不可收敛的来回跳。
+            if (target == lastProbeSkipTargetMs) {
+                // 同一目标达到上限即锁定：seek 始终停在区间内、或区间互相重叠的源，
+                // 跳过去还会被再次命中。冷却重置反而给它无限次机会，因此一旦确认
+                // 无法收敛，就在本次媒体会话内彻底放弃该目标。
+                if (probeSkipTries >= MAX_PROBE_SKIP_TRIES) {
+                    Log.w(TAG, "跳转目标无法收敛，本次会话内不再跳转 target=" + target + "ms");
+                    return;
+                }
+                if (now - lastProbeSkipAtMs < PROBE_SKIP_COOLDOWN_MS) return;
+                probeSkipTries++;
+            } else {
+                lastProbeSkipTargetMs = target;
+                probeSkipTries = 0;
+            }
+            lastProbeSkipAtMs = now;
+            lastSkipAtMs = now;
             Log.i(TAG, "命中广告，请求跳转 " + target + "ms（当前 " + p.getCurrentPosition()
                     + "ms，模式 " + mode + "）");
             // 只在真正执行跳转时记忆区间，避免误判污染记忆库：
@@ -266,6 +305,8 @@ public final class AdProbeManager {
         if (url.equals(lastUrl)) return;
         lastUrl = url;
         lastHeaders = headers;
+        // 换了媒体就清空跳转限流状态，否则上一个视频用掉的配额会传染给新起播。
+        resetSkipGuard();
         try {
             ProbeMedia media = ProbeMedia.builder(url).setHeaders(filterHeaders(headers)).build();
             probe.open(media);
@@ -587,6 +628,7 @@ public final class AdProbeManager {
 
     /** 停止当前分析会话（保留实例与规则缓存），用于 PlayerManager 释放时。 */
     public void release() {
+        resetSkipGuard();
         if (probe == null) return;
         try {
             probe.stop();
@@ -594,6 +636,13 @@ public final class AdProbeManager {
         }
         lastUrl = null;
         lastHeaders = null;
+    }
+
+    /** 清空「反复跳转」限流状态；换媒体或释放时调用。 */
+    private void resetSkipGuard() {
+        lastProbeSkipTargetMs = -1L;
+        lastProbeSkipAtMs = 0L;
+        probeSkipTries = 0;
     }
 
     /** 统计规则 JSON 里的规则条数，用于自检面板（解析失败返回 -1）。 */

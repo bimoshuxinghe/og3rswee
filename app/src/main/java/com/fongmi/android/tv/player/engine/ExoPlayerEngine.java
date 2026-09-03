@@ -30,12 +30,25 @@ import java.util.concurrent.TimeUnit;
 
 public class ExoPlayerEngine implements PlayerEngine {
 
+    private static final String TAG = "ExoPlayerEngine";
+    /** format 型恢复的尝试上限；换 MIME 不解决根因，超过即停止重播。 */
+    private static final int MAX_FORMAT_RETRY = 2;
+
     private final ErrorMsgProvider provider;
     private final Handler handler;
     private PlaySpec spec;
     private Player player;
     private int decode;
     private boolean isRtspStream;
+    /**
+     * 同一份 spec 已尝试过的 format 型恢复次数。
+     *
+     * <p>{@code retryFormat} 只是换个 MIME 重新起播，并不改变失败根因：HLS 列表解析
+     * 失败时改成 octet-stream 只会再次失败。而宿主把 RECOVERED 当作「已恢复」，
+     * 既不计数也不上报，于是同一错误可以无限次重播当前位置——用户看到的就是
+     * 进度条在 0 附近反复横跳。这里给出次数上限，超过即判 FATAL，让宿主能报错收场。
+     */
+    private int formatRetry;
     private volatile boolean isoResolving;
     private volatile String isoOriginalUrl;
     private volatile String isoProxyUrl;
@@ -114,6 +127,9 @@ public class ExoPlayerEngine implements PlayerEngine {
     @Override
     public void start(PlaySpec spec, long positionMs) {
         this.spec = spec;
+        // 换源/换集是一次全新尝试，format 型恢复计数必须清零，
+        // 否则上一次播放用掉的配额会让新起播还没重试就被判 FATAL。
+        this.formatRetry = 0;
         // 检测是否为 RTSP 流
         this.isRtspStream = spec.getUrl() != null && spec.getUrl().startsWith("rtsp://");
         // 检测是否为 ISO 镜像，需要先解析文件系统再通过代理播放
@@ -322,6 +338,14 @@ public class ExoPlayerEngine implements PlayerEngine {
     }
 
     private ErrorAction retryFormat(int errorCode) {
+        // 恢复次数用尽后不再重播：换 MIME 无法修复「列表本身有问题」这类失败，
+        // 继续重播只会让播放器在同一个位置反复重启（进度条在 0 附近横跳），
+        // 且宿主永远等不到 FATAL，错误弹不出来、用户只能杀进程。
+        if (formatRetry >= MAX_FORMAT_RETRY) {
+            Log.w(TAG, "format 型恢复已尝试 " + formatRetry + " 次仍失败，停止重试");
+            return ErrorAction.FATAL;
+        }
+        formatRetry++;
         spec.setFormat(ExoUtil.getMimeType(errorCode));
         startInternal(player.getCurrentPosition());
         return ErrorAction.RECOVERED;

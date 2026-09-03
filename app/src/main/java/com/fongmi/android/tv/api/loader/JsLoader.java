@@ -22,16 +22,15 @@ public class JsLoader {
 
     public void clear() {
         spiders.values().forEach(Spider::destroy);
+        // 必须同时清空 QuickJS 的 JS 模块缓存（以 URL 为 key 的 LruCache）。
+        // 否则当用户把修改后的 spider.js 覆盖到同一个 URL 后刷新配置，
+        // Module.get().fetch(url) 会命中旧内容（甚至首次下载失败缓存下来的 ""），
+        // 导致站点“加载不出来”——这正是与“蜂蜜影视能加载、本软件加载不出”的根因差异。
+        // getSpider() 不会缓存 SpiderNull：拉取/初始化失败时仅本次返回 SpiderNull，
+        // 下一次调用会重新创建，因此这里强制 evict 不会造成永久空白。
+        Module.get().clear();
         spiders.clear();
         recent = null;
-        // Do NOT call Module.get().clear() here.
-        // Clearing the JS module cache forces every JS file to be re-fetched
-        // from the network on the next spider creation. If the re-fetch fails
-        // (network issue, server down, etc.), the spider cannot initialize,
-        // resulting in a blank screen after config refresh.
-        // The module cache uses URL as key, so different config URLs will
-        // naturally miss the cache. Same URLs pointing to updated content
-        // will be refreshed on app restart.
     }
 
     public void setRecent(String recent) {
