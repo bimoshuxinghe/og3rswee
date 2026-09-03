@@ -82,6 +82,9 @@ public final class HlsAdStrippingDataSource implements DataSource {
         AdSegmentMemory.markStripped();
         log("已删除广告分片：区间 " + ranges.size() + " 段，"
                 + original.length + " → " + rewritten.length + " 字节");
+        // 诊断：打印改写后的 m3u8 前 2500 字符，真机 Manifest Malformed 时据此定位畸形点
+        // （不影响逻辑；fail-open 已保证最坏情况回退原文）。
+        log("改写后 m3u8(前2500字符):\n" + (stripped.length() <= 2500 ? stripped : stripped.substring(0, 2500)));
         return rewritten.length;
     }
 
