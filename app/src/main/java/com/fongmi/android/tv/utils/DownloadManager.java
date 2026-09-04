@@ -474,15 +474,21 @@ public class DownloadManager {
         } catch (Throwable t) {
             t.printStackTrace();
             if (merged.exists()) merged.delete();
-            // 失败时不影响最终状态，保留分片 + local.m3u8
             return;
         }
+        writeMergedM3u8(downloadDir);
+    }
 
-        // 拼接成功，删除分片与 key（仅非加密源走这里，分片目录不应有 key.key）
-        for (int i = 0; i < total; i++) {
-            File part = new File(downloadDir, i + ".ts");
-            if (part.exists()) part.delete();
-        }
+    private void writeMergedM3u8(File downloadDir) {
+        List<String> lines = new ArrayList<>();
+        lines.add("#EXTM3U");
+        lines.add("#EXT-X-VERSION:3");
+        lines.add("#EXT-X-TARGETDURATION:7200");
+        lines.add("#EXT-X-MEDIA-SEQUENCE:0");
+        lines.add("#EXTINF:7200.0,");
+        lines.add("full.ts");
+        lines.add("#EXT-X-ENDLIST");
+        writeLocalM3u8(lines, new File(downloadDir, "local.m3u8"));
     }
 
     private void updateStatus(Download download) {

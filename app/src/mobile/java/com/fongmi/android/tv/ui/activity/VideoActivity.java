@@ -1196,6 +1196,19 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         });
         titleView.addView(homeDownloadCheck);
 
+        android.widget.CheckBox selectAllCheck = new android.widget.CheckBox(this);
+        selectAllCheck.setText("全选/反选 (未下载项)");
+        selectAllCheck.setChecked(false);
+        selectAllCheck.setOnCheckedChangeListener((button, isChecked) -> {
+            for (int i = 0; i < checked.length; i++) {
+                if (!downloadMap.containsKey(episodes.get(i).getName())) {
+                    checked[i] = isChecked;
+                }
+            }
+            adapter.notifyDataSetChanged();
+        });
+        titleView.addView(selectAllCheck);
+
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setCustomTitle(titleView)
                 .setAdapter(adapter, null)
