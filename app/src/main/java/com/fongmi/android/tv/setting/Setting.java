@@ -515,15 +515,6 @@ public class Setting {
         Prefers.put("home_download", value);
     }
 
-    /** 下载 M3U8 时自动合并 ts 分片为单个 .ts 文件（仅对非加密源有效） */
-    public static boolean isMergeTs() {
-        return Prefers.getBoolean("download_merge_ts", true);
-    }
-
-    public static void putMergeTs(boolean value) {
-        Prefers.put("download_merge_ts", value);
-    }
-
     public static int getHomeStyle() {
         return Prefers.getInt("home_style", 1);
     }

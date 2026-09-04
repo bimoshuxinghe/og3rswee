@@ -192,12 +192,6 @@ public class DownloadManager {
         int downloadedCount = download.getDownloadedTs();
         if (downloadedCount == tsUrls.size()) {
             writeLocalM3u8(localM3u8Lines, new File(downloadDir, "local.m3u8"));
-
-            // 纯 Java 按序拼接：仅对非加密源生效，保留分片+local.m3u8 作为加密源兜底
-            if (Setting.isMergeTs() && !isEncrypted) {
-                mergeTsFiles(download, downloadDir, tsUrls.size());
-            }
-
             download.setStatus(Download.STATUS_COMPLETED);
             download.setProgress(100);
             updateStatus(download);
@@ -451,47 +445,6 @@ public class DownloadManager {
             for (String line : lines) {
                 fos.write((line + "\n").getBytes());
             }
-        }
-    }
-
-    /**
-     * 按序拼接分片 ts 为单个 .ts 文件，写入 downloadDir/full.ts。
-     * 仅对非加密 HLS 源使用；加密源分片无法直接拼接，需要走 local.m3u8 + 解密播放器。
-     * 失败时保留分片与 local.m3u8 兜底，状态置为 ERROR 但不覆盖。
-     */
-    private void mergeTsFiles(Download download, File downloadDir, int total) {
-        File merged = new File(downloadDir, "full.ts");
-        byte[] buffer = new byte[64 * 1024];
-        try (FileOutputStream fos = new FileOutputStream(merged)) {
-            for (int i = 0; i < total; i++) {
-                File part = new File(downloadDir, i + ".ts");
-                if (!part.isFile() || part.length() == 0) throw new IOException("missing or empty part: " + part.getName());
-                try (FileInputStream fis = new FileInputStream(part)) {
-                    int len;
-                    while ((len = fis.read(buffer)) != -1) fos.write(buffer, 0, len);
-                }
-            }
-        } catch (Throwable t) {
-            t.printStackTrace();
-            if (merged.exists()) merged.delete();
-            return;
-        }
-        writeMergedM3u8(downloadDir);
-    }
-
-    private void writeMergedM3u8(File downloadDir) {
-        List<String> lines = new ArrayList<>();
-        lines.add("#EXTM3U");
-        lines.add("#EXT-X-VERSION:3");
-        lines.add("#EXT-X-TARGETDURATION:7200");
-        lines.add("#EXT-X-MEDIA-SEQUENCE:0");
-        lines.add("#EXTINF:7200.0,");
-        lines.add("full.ts");
-        lines.add("#EXT-X-ENDLIST");
-        try {
-            writeLocalM3u8(lines, new File(downloadDir, "local.m3u8"));
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
