@@ -207,59 +207,6 @@ public class DownloadManager {
         }
     }
 
-        // 广告清洗
-        List<String> cleanM3u8Lines = cleanM3u8Ads(m3u8Content);
-
-        List<String> tsUrls = new ArrayList<>();
-        List<String> localM3u8Lines = new ArrayList<>();
-        int tsIndex = 0;
-
-        for (String line : cleanM3u8Lines) {
-            if (line.startsWith("#")) {
-                if (line.startsWith("#EXT-X-KEY")) {
-                    String cleanKeyLine = handleKeyDownload(line, download.getUrl(), download.getHeaders(), downloadDir);
-                    localM3u8Lines.add(cleanKeyLine);
-                } else {
-                    localM3u8Lines.add(line);
-                }
-            } else {
-                String absoluteTsUrl = UrlUtil.resolve(download.getUrl(), line.trim());
-                tsUrls.add(absoluteTsUrl);
-                localM3u8Lines.add(tsIndex + ".ts");
-                tsIndex++;
-            }
-        }
-
-        download.setTotalTs(tsUrls.size());
-        updateStatus(download);
-
-        // 并发且同步阻塞下载 TS 切片
-        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(tsUrls.size());
-        downloadAllTs(download, tsUrls, downloadDir, latch);
-        latch.await();
-
-        if (isPaused(download.getId())) {
-            download.setStatus(Download.STATUS_PAUSE);
-            updateStatus(download);
-            return;
-        }
-
-        if (download.getStatus() == Download.STATUS_ERROR) {
-            return;
-        }
-
-        int downloadedCount = download.getDownloadedTs();
-        if (downloadedCount == tsUrls.size()) {
-            writeLocalM3u8(localM3u8Lines, new File(downloadDir, "local.m3u8"));
-            download.setStatus(Download.STATUS_COMPLETED);
-            download.setProgress(100);
-            updateStatus(download);
-        } else {
-            download.setStatus(Download.STATUS_ERROR);
-            updateStatus(download);
-        }
-    }
-
     // 针对单视频文件（网盘 MP4/MKV）的下载核心
     private void executeSingleFileTask(Download download, File downloadDir) {
         String suffix = ".mp4";
