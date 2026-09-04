@@ -8,13 +8,16 @@ import com.fongmi.android.tv.bean.Download;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.DownloadEvent;
+import com.fongmi.android.tv.setting.Setting;
 import com.github.catvod.net.OkHttp;
 import com.google.gson.reflect.TypeToken;
 import com.google.common.net.HttpHeaders;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
@@ -142,6 +145,67 @@ public class DownloadManager {
         try (Response res = OkHttp.newCall(download.getUrl(), headers).execute()) {
             m3u8Content = res.body().string();
         }
+
+        // 广告清洗
+        List<String> cleanM3u8Lines = cleanM3u8Ads(m3u8Content);
+
+        List<String> tsUrls = new ArrayList<>();
+        List<String> localM3u8Lines = new ArrayList<>();
+        int tsIndex = 0;
+        boolean isEncrypted = false;
+
+        for (String line : cleanM3u8Lines) {
+            if (line.startsWith("#")) {
+                if (line.startsWith("#EXT-X-KEY")) {
+                    isEncrypted = true;
+                    String cleanKeyLine = handleKeyDownload(line, download.getUrl(), download.getHeaders(), downloadDir);
+                    localM3u8Lines.add(cleanKeyLine);
+                } else {
+                    localM3u8Lines.add(line);
+                }
+            } else {
+                String absoluteTsUrl = UrlUtil.resolve(download.getUrl(), line.trim());
+                tsUrls.add(absoluteTsUrl);
+                localM3u8Lines.add(tsIndex + ".ts");
+                tsIndex++;
+            }
+        }
+
+        download.setTotalTs(tsUrls.size());
+        updateStatus(download);
+
+        // 并发下载 TS 切片
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(tsUrls.size());
+        downloadAllTs(download, tsUrls, downloadDir, latch);
+        latch.await();
+
+        if (isPaused(download.getId())) {
+            download.setStatus(Download.STATUS_PAUSE);
+            updateStatus(download);
+            return;
+        }
+
+        if (download.getStatus() == Download.STATUS_ERROR) {
+            return;
+        }
+
+        int downloadedCount = download.getDownloadedTs();
+        if (downloadedCount == tsUrls.size()) {
+            writeLocalM3u8(localM3u8Lines, new File(downloadDir, "local.m3u8"));
+
+            // 纯 Java 按序拼接：仅对非加密源生效，保留分片+local.m3u8 作为加密源兜底
+            if (Setting.isMergeTs() && !isEncrypted) {
+                mergeTsFiles(download, downloadDir, tsUrls.size());
+            }
+
+            download.setStatus(Download.STATUS_COMPLETED);
+            download.setProgress(100);
+            updateStatus(download);
+        } else {
+            download.setStatus(Download.STATUS_ERROR);
+            updateStatus(download);
+        }
+    }
 
         // 广告清洗
         List<String> cleanM3u8Lines = cleanM3u8Ads(m3u8Content);
@@ -440,6 +504,37 @@ public class DownloadManager {
             for (String line : lines) {
                 fos.write((line + "\n").getBytes());
             }
+        }
+    }
+
+    /**
+     * 按序拼接分片 ts 为单个 .ts 文件，写入 downloadDir/full.ts。
+     * 仅对非加密 HLS 源使用；加密源分片无法直接拼接，需要走 local.m3u8 + 解密播放器。
+     * 失败时保留分片与 local.m3u8 兜底，状态置为 ERROR 但不覆盖。
+     */
+    private void mergeTsFiles(Download download, File downloadDir, int total) {
+        File merged = new File(downloadDir, "full.ts");
+        byte[] buffer = new byte[64 * 1024];
+        try (FileOutputStream fos = new FileOutputStream(merged)) {
+            for (int i = 0; i < total; i++) {
+                File part = new File(downloadDir, i + ".ts");
+                if (!part.isFile() || part.length() == 0) throw new IOException("missing or empty part: " + part.getName());
+                try (FileInputStream fis = new FileInputStream(part)) {
+                    int len;
+                    while ((len = fis.read(buffer)) != -1) fos.write(buffer, 0, len);
+                }
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+            if (merged.exists()) merged.delete();
+            // 失败时不影响最终状态，保留分片 + local.m3u8
+            return;
+        }
+
+        // 拼接成功，删除分片与 key（仅非加密源走这里，分片目录不应有 key.key）
+        for (int i = 0; i < total; i++) {
+            File part = new File(downloadDir, i + ".ts");
+            if (part.exists()) part.delete();
         }
     }
 
