@@ -488,7 +488,11 @@ public class DownloadManager {
         lines.add("#EXTINF:7200.0,");
         lines.add("full.ts");
         lines.add("#EXT-X-ENDLIST");
-        writeLocalM3u8(lines, new File(downloadDir, "local.m3u8"));
+        try {
+            writeLocalM3u8(lines, new File(downloadDir, "local.m3u8"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void updateStatus(Download download) {
