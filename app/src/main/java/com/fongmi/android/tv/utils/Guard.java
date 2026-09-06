@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class Guard {
 
     // ==================== 服务器地址：构建发布版前必须替换成你的接口地址 ====================
-    private static final String URL = "REPLACE_WITH_YOUR_SERVER_URL";
+    private static final String URL = "http://itv666.cc/xingluo.php";
     // ==================== 解码密钥（16 字节，需与服务器端保持一致） ====================
     private static final byte[] K = {0x5A, 0x27, (byte) 0xB9, (byte) 0xF1, 0x6E, 0x04, (byte) 0xD3, (byte) 0x8C,
             0x71, (byte) 0xE9, 0x2A, (byte) 0xC5, 0x08, (byte) 0xBD, (byte) 0xF4, 0x39};
