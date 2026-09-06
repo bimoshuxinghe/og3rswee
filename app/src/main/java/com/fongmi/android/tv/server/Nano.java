@@ -51,7 +51,7 @@ public class Nano extends NanoHTTPD {
     }
 
     public static Response ok(String text) {
-        return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, text);
+        return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, safe(text));
     }
 
     public static Response error(String text) {
@@ -59,7 +59,12 @@ public class Nano extends NanoHTTPD {
     }
 
     public static Response error(Response.Status status, String text) {
-        return newFixedLengthResponse(status, MIME_PLAINTEXT, text);
+        return newFixedLengthResponse(status == null ? Response.Status.INTERNAL_ERROR : status, MIME_PLAINTEXT, safe(text));
+    }
+
+    /** 防止 null 文本/状态码在服务线程抛 Error（send() 对 null status 会直接 Error 并终止服务线程） */
+    private static String safe(String text) {
+        return text == null ? "" : text;
     }
 
     @Override

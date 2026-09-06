@@ -44,9 +44,20 @@ public class Proxy implements Process {
     }
 
     private Response createResponse(int status, String mimeType, InputStream input, Map<String, String> headers) {
+        Response.Status code = lookup(status);
         long length = getLength(headers);
-        if (length >= 0) return NanoHTTPD.newFixedLengthResponse(Status.lookup(status), mimeType, input, length);
-        return NanoHTTPD.newChunkedResponse(Status.lookup(status), mimeType, input);
+        if (length >= 0) return NanoHTTPD.newFixedLengthResponse(code, mimeType, input, length);
+        return NanoHTTPD.newChunkedResponse(code, mimeType, input);
+    }
+
+    /** 上游状态码降级映射：NanoHTTPD 枚举外的状态码（如 502/504）lookup 返回 null，会让 send() 抛 Error 炸掉服务线程 */
+    private Response.Status lookup(int status) {
+        Response.Status code = Response.Status.lookup(status);
+        if (code != null) return code;
+        if (status >= 500) return Response.Status.INTERNAL_ERROR;
+        if (status >= 400) return Response.Status.BAD_REQUEST;
+        if (status >= 300) return Response.Status.REDIRECT;
+        return Response.Status.OK;
     }
 
     private long getLength(Map<String, String> headers) {

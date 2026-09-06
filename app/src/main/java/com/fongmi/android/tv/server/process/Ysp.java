@@ -49,6 +49,7 @@ public class Ysp implements Process {
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final Map<String, String> lastGoodM3u8 = new ConcurrentHashMap<>();
     private final Map<String, Long> m3u8FetchTime = new ConcurrentHashMap<>();
+    private final Map<String, Long> placeholderTime = new ConcurrentHashMap<>();
     private String guid = "";
 
     private static class CacheEntry {
@@ -119,17 +120,21 @@ public class Ysp implements Process {
                 for (int attempt = 0; attempt < 2; attempt++) {
                     if (needRefresh) {
                         String fresh = getPlayUrl(cnlid, livepid, defn, null);
+                        if (fresh == null) { // 换台瞬间的偶发抖动：短暂等待立即重试一次
+                            sleepQuiet(300);
+                            fresh = getPlayUrl(cnlid, livepid, defn, null);
+                        }
                         if (fresh != null) {
                             playurl = fresh;
                             cache.put(id, new CacheEntry(playurl));
                         } else if (playurl == null) {
-                            // API 失败且无旧地址：有旧内容先兜底
+                            // API 失败且无旧地址：有旧内容先兜底，否则返回占位列表（绝不 5xx）
                             if (lastGood != null) {
                                 diag("API失败且无缓存地址，返回旧内容兜底 id=" + id);
                                 return m3u8Response(lastGood);
                             }
                             diag("API失败 id=" + id);
-                            return Nano.error("获取播放地址失败");
+                            return placeholder(id);
                         } else {
                             diag("API刷新失败，沿用旧地址重试拉取 id=" + id);
                         }
@@ -152,12 +157,11 @@ public class Ysp implements Process {
                     } else break;
                 }
                 diag("无法获取M3U8 id=" + id);
-                return Nano.error("无法获取 M3U8 内容，请稍后重试");
+                return placeholder(id);
             } catch (Throwable t) {
                 // 直播路径任何意外异常同样不允许 5xx
                 diag("直播处理异常: " + t);
-                if (lastGood != null) return m3u8Response(lastGood);
-                throw t;
+                return placeholder(id);
             }
         } catch (Throwable e) {
             return Nano.error(e.getMessage());
@@ -168,6 +172,28 @@ public class Ysp implements Process {
         Response response = newFixedLengthResponse(Status.OK, "application/vnd.apple.mpegurl", body);
         response.addHeader("Access-Control-Allow-Origin", "*");
         return response;
+    }
+
+    /**
+     * 占位直播列表：播放器视为 3 秒一刷的 EVENT 直播流，本次无新分段，下一轮自动重拉。
+     * 用于首次取址失败/异常等无内容可兜底的场合，替代 5xx（5xx 会让播放器直接停止播放）。
+     */
+    private Response placeholder(String id) {
+        Long last = placeholderTime.get(id);
+        long now = System.currentTimeMillis();
+        if (last == null || now - last >= 1000) placeholderTime.put(id, now); // 简单节流，防异常风暴
+        Response response = newFixedLengthResponse(Status.OK, "application/vnd.apple.mpegurl",
+                "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:EVENT\n");
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        return response;
+    }
+
+    private static void sleepQuiet(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
