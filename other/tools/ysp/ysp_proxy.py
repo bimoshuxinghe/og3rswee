@@ -113,6 +113,32 @@ CHANNELS = {
     'xjws': ['2019927403', '600152138', 'fhd'],         # 新疆卫视
 }
 
+# 频道中文名（与 Java 版 Ysp.Channel.NAMES 一致）
+CHANNEL_NAMES = {
+    'cctv1': 'CCTV-1', 'cctv2': 'CCTV-2', 'cctv3': 'CCTV-3', 'cctv4': 'CCTV-4',
+    'cctv5': 'CCTV-5', 'cctv5p': 'CCTV-5+', 'cctv6': 'CCTV-6', 'cctv7': 'CCTV-7',
+    'cctv8': 'CCTV-8', 'cctv9': 'CCTV-9', 'cctv10': 'CCTV-10', 'cctv11': 'CCTV-11',
+    'cctv12': 'CCTV-12', 'cctv13': 'CCTV-13', 'cctv14': 'CCTV-14', 'cctv15': 'CCTV-15',
+    'cctv16': 'CCTV-16', 'cctv164k': 'CCTV-16(4K)', 'cctv17': 'CCTV-17',
+    'cctv4k': 'CCTV-4K', 'cctv8k': 'CCTV-8K', 'cgtn': 'CGTN',
+    'cgtnfy': 'CGTN法语频道', 'cgtney': 'CGTN俄语频道', 'cgtnalby': 'CGTN阿拉伯语频道',
+    'cgtnxby': 'CGTN西班牙语频道', 'cgtnwyjl': 'CGTN外语纪录频道',
+    'cctvfyjc': 'CCTV风云剧场频道', 'cctvdyjc': 'CCTV第一剧场频道', 'cctvhjjc': 'CCTV怀旧剧场频道',
+    'cctvsjdl': 'CCTV世界地理频道', 'cctvfyyy': 'CCTV风云音乐频道', 'cctvbqkj': 'CCTV兵器科技频道',
+    'cctvfyzq': 'CCTV风云足球频道', 'cctvgeqwq': 'CCTV高尔夫·网球频道', 'cctvnxss': 'CCTV女性时尚频道',
+    'cctvyswhjp': 'CCTV央视文化精品频道', 'cctvystq': 'CCTV央视台球频道', 'cctvdszn': 'CCTV电视指南频道',
+    'cctvwsjk': 'CCTV卫生健康频道',
+    'bjws': '北京卫视', 'jsws': '江苏卫视', 'dfws': '东方卫视', 'zjws': '浙江卫视',
+    'hnws': '湖南卫视', 'hbws': '湖北卫视', 'gdws': '广东卫视', 'gxws': '广西卫视',
+    'hljws': '黑龙江卫视', 'hnws2': '海南卫视', 'cqws': '重庆卫视', 'szws': '深圳卫视',
+    'scws': '四川卫视', 'henanws': '河南卫视', 'fjdnhz': '福建东南卫视', 'gzhws': '贵州卫视',
+    'jxws': '江西卫视', 'lnws': '辽宁卫视', 'ahws': '安徽卫视', 'hbws2': '河北卫视',
+    'sdws': '山东卫视', 'tjws': '天津卫视', 'jlws': '吉林卫视', 'shanxiws': '陕西卫视',
+    'nxws': '宁夏卫视', 'nmgws': '内蒙古卫视', 'ynws': '云南卫视', 'shanxiws2': '山西卫视',
+    'qhws': '青海卫视', 'xzws': '西藏卫视', 'cetv1': '中国教育电视台1频道',
+    'gxpd': '国学频道', 'xjws': '新疆卫视',
+}
+
 
 # ================== CKeyManager ==================
 class CKeyManager:
@@ -625,12 +651,25 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, 'Not Found. Use /ysp?id=cctv1')
             return
 
-        cid = (qs.get('id') or ['cctv1'])[0]
+        cid = (qs.get('id') or [None])[0]
         playseek = (qs.get('playseek') or [None])[0]
         debug = (qs.get('debug') or ['0'])[0] == '1'
 
-        if cid not in CHANNELS:
+        # 动态直播源列表：Host 跟随请求地址（127.0.0.1 / 局域网 IP / 自定义端口均正确）
+        if (qs.get('list') or [''])[0] == 'live':
+            host = self.headers.get('Host', '127.0.0.1:19978')
+            lines = ['央视频,#genre#']
+            for key in CHANNELS:
+                lines.append('%s,http://%s/ysp?id=%s#' % (CHANNEL_NAMES.get(key, key), host, key))
+            self._send(200, '\n'.join(lines) + '\n')
+            return
+
+        if cid is None:
             self._send(200, self._channel_list(), content_type='text/plain; charset=utf-8')
+            return
+
+        if cid not in CHANNELS:
+            self._send(404, '未知频道: %s\n' % cid)
             return
 
         cnlid, livepid, defn = CHANNELS[cid]
@@ -680,17 +719,11 @@ class Handler(BaseHTTPRequestHandler):
 
     @staticmethod
     def _channel_list():
-        lines = ['YSP 直播代理（psy1 PHP 的 Python 版）', '用法：/ysp?id=<频道>&playseek=YYYYMMDDHHMMSS-YYYYMMDDHHMMSS', '', '可用频道：']
-        names = {
-            'cctv1': 'CCTV-1', 'cctv2': 'CCTV-2', 'cctv3': 'CCTV-3', 'cctv4': 'CCTV-4',
-            'cctv5': 'CCTV-5', 'cctv5p': 'CCTV-5+', 'cctv6': 'CCTV-6', 'cctv7': 'CCTV-7',
-            'cctv8': 'CCTV-8', 'cctv9': 'CCTV-9', 'cctv10': 'CCTV-10', 'cctv11': 'CCTV-11',
-            'cctv12': 'CCTV-12', 'cctv13': 'CCTV-13', 'cctv14': 'CCTV-14', 'cctv15': 'CCTV-15',
-            'cctv16': 'CCTV-16', 'cctv164k': 'CCTV-16(4K)', 'cctv17': 'CCTV-17',
-            'cctv4k': 'CCTV-4K', 'cctv8k': 'CCTV-8K', 'cgtn': 'CGTN',
-        }
+        lines = ['YSP 直播代理（psy1 PHP 的 Python 版）',
+                 '用法：/ysp?id=<频道>&playseek=YYYYMMDDHHMMSS-YYYYMMDDHHMMSS',
+                 '直播源列表：/ysp?list=live', '', '可用频道：']
         for cid in CHANNELS:
-            lines.append('  %-12s %s' % (cid, names.get(cid, '')))
+            lines.append('  %-12s %s' % (cid, CHANNEL_NAMES.get(cid, '')))
         return '\n'.join(lines)
 
 
