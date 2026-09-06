@@ -42,10 +42,13 @@ public class Ysp implements Process {
     private static final Pattern TS_PATTERN = Pattern.compile("(.*?\\.ts)", Pattern.CASE_INSENSITIVE);
     private static final String UA = "qqlive";
     private static final String API = "https://bkliveinfo.ysp.cctv.cn";
-    private static final long CACHE_TIMEOUT = 80_000L; // 直播地址缓存 80s
+    private static final long CACHE_TIMEOUT = 80_000L;   // 直播地址缓存 80s
+    private static final long M3U8_TTL = 3_000L;         // m3u8 内容短缓存 3s
 
     private final Random random = new Random();
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final Map<String, String> lastGoodM3u8 = new ConcurrentHashMap<>();
+    private final Map<String, Long> m3u8FetchTime = new ConcurrentHashMap<>();
     private String guid = "";
 
     private static class CacheEntry {
@@ -59,6 +62,16 @@ public class Ysp implements Process {
 
         boolean valid() {
             return System.currentTimeMillis() - time <= CACHE_TIMEOUT;
+        }
+    }
+
+    /** 诊断日志（Logcat + 调试页环形缓冲），任何失败静默 */
+    private static void diag(String msg) {
+        android.util.Log.i("Ysp", msg);
+        try {
+            Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
+            cls.getMethod("log", String.class).invoke(null, "[Ysp] " + msg);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -87,24 +100,65 @@ public class Ysp implements Process {
                 return redirect(playurl);
             }
 
-            // 直播：带 80s 缓存，失败清缓存重试
-            CacheEntry entry = cache.get(id);
-            boolean needRefresh = entry == null || !entry.valid();
-            String playurl = needRefresh ? null : entry.url;
-            for (int attempt = 0; attempt < 2; attempt++) {
-                if (needRefresh) {
-                    playurl = getPlayUrl(cnlid, livepid, defn, null);
-                    if (playurl == null) return Nano.error("获取播放地址失败");
-                    cache.put(id, new CacheEntry(playurl));
+            // 直播：永不向播放器返回 5xx（ExoPlayer 对 500 直接停止播放=断流）。
+            // 策略：playurl 缓存 80s；m3u8 内容短缓存 3s（播放器每 ~7s 刷新一次列表）；
+            //       拉取失败时返回上一份成功内容（stale 兜底），保证播放连续。
+            String lastGood = lastGoodM3u8.get(id);
+            Long lastFetch = m3u8FetchTime.get(id);
+            boolean contentFresh = lastGood != null && lastFetch != null
+                    && System.currentTimeMillis() - lastFetch <= M3U8_TTL;
+
+            // 3s 内刚拉过内容：直接复用（此时 playurl 必然仍在 80s 有效期内），省一次 CDN 往返
+            if (contentFresh) return m3u8Response(lastGood);
+
+            try {
+                CacheEntry entry = cache.get(id);
+                boolean needRefresh = entry == null || !entry.valid();
+                String playurl = needRefresh ? null : entry.url;
+
+                for (int attempt = 0; attempt < 2; attempt++) {
+                    if (needRefresh) {
+                        String fresh = getPlayUrl(cnlid, livepid, defn, null);
+                        if (fresh != null) {
+                            playurl = fresh;
+                            cache.put(id, new CacheEntry(playurl));
+                        } else if (playurl == null) {
+                            // API 失败且无旧地址：有旧内容先兜底
+                            if (lastGood != null) {
+                                diag("API失败且无缓存地址，返回旧内容兜底 id=" + id);
+                                return m3u8Response(lastGood);
+                            }
+                            diag("API失败 id=" + id);
+                            return Nano.error("获取播放地址失败");
+                        } else {
+                            diag("API刷新失败，沿用旧地址重试拉取 id=" + id);
+                        }
+                    }
+                    String m3u8 = fetchM3u8(playurl);
+                    if (m3u8 != null) {
+                        String body = patchTs(m3u8, playurl); // 补全 TS 后再存兜底，保证兜底内容可直接播放
+                        lastGoodM3u8.put(id, body);
+                        m3u8FetchTime.put(id, System.currentTimeMillis());
+                        return m3u8Response(body);
+                    }
+                    // CDN 拉取失败：优先旧内容兜底，绝不让播放器收到 5xx
+                    if (lastGood != null) {
+                        diag("CDN拉取失败，返回旧内容兜底 id=" + id + " attempt=" + attempt);
+                        return m3u8Response(lastGood);
+                    }
+                    if (!needRefresh) { // 上一轮用了缓存地址
+                        cache.remove(id);
+                        needRefresh = true;
+                    } else break;
                 }
-                String m3u8 = fetchM3u8(playurl);
-                if (m3u8 != null) return m3u8Response(patchTs(m3u8, playurl));
-                if (!needRefresh) { // 上一轮用了缓存
-                    cache.remove(id);
-                    needRefresh = true;
-                } else break;
+                diag("无法获取M3U8 id=" + id);
+                return Nano.error("无法获取 M3U8 内容，请稍后重试");
+            } catch (Throwable t) {
+                // 直播路径任何意外异常同样不允许 5xx
+                diag("直播处理异常: " + t);
+                if (lastGood != null) return m3u8Response(lastGood);
+                throw t;
             }
-            return Nano.error("无法获取 M3U8 内容，请稍后重试");
         } catch (Throwable e) {
             return Nano.error(e.getMessage());
         }
