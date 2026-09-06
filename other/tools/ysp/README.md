@@ -50,3 +50,9 @@ python3 ysp_proxy.py --host 127.0.0.1 --port 19978
 
 - Python 版对真实 API 实测通过（`iretcode=0`，直播 m3u8 / TS 片段下载 / 回看 302 均正常）
 - Java 版与 Python 版做过交叉验证：Java 生成 cKey → Python 解密校验通过（含 guard_time）
+
+## 零配置开机即用（Java 版新增）
+
+- `/ysp?list=live` 动态输出 FongMi 直播源 txt（Host 跟随请求地址，127.0.0.1 / 局域网 IP / 端口顺延均正确）
+- `LiveConfig.defaultConfig()` 空直播配置时自动回退到 `http://127.0.0.1:<port>/ysp?list=live`
+- 即：装上新 APK，打开 App → 直播页默认就有央视频 73 个频道，无需手动导入直播源

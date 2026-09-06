@@ -71,6 +71,7 @@ public class Ysp implements Process {
     public Response doResponse(IHTTPSession session, String url, Map<String, String> files) {
         try {
             Map<String, String> parms = session.getParms();
+            if ("live".equals(parms.get("list"))) return Nano.ok(listLive(session));
             String id = TextUtils.isEmpty(parms.get("id")) ? "cctv1" : parms.get("id");
             String playseek = TextUtils.isEmpty(parms.get("playseek")) ? null : parms.get("playseek");
             String[] channel = Channel.find(id);
@@ -113,6 +114,23 @@ public class Ysp implements Process {
         Response response = newFixedLengthResponse(Status.OK, "application/vnd.apple.mpegurl", body);
         response.addHeader("Access-Control-Allow-Origin", "*");
         return response;
+    }
+
+    /**
+     * 动态输出 FongMi 直播源 txt（/ysp?list=live）。
+     * Host 取请求头中的 host（客户端用什么地址访问，列表里就回什么地址），
+     * 因此 127.0.0.1 / 局域网 IP / 端口顺延场景都天然正确。
+     */
+    private String listLive(IHTTPSession session) {
+        String host = session.getHeaders().get("host");
+        if (TextUtils.isEmpty(host)) host = "127.0.0.1:9978";
+        StringBuilder sb = new StringBuilder();
+        sb.append("央视频,#genre#\n");
+        for (Map.Entry<String, String[]> e : Channel.MAP.entrySet()) {
+            sb.append(Channel.NAMES.get(e.getKey())).append(",http://").append(host)
+                    .append("/ysp?id=").append(e.getKey()).append("#\n");
+        }
+        return sb.toString();
     }
 
     private Response redirect(String url) {

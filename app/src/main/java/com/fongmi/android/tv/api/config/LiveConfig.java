@@ -16,6 +16,7 @@ import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.bean.Header;
@@ -103,7 +104,12 @@ public class LiveConfig extends BaseConfig {
 
     @Override
     protected Config defaultConfig() {
-        return Config.live();
+        Config config = Config.live();
+        // 零配置默认直播源：内置央视频代理（/ysp?list=live 动态生成频道列表）
+        if (TextUtils.isEmpty(config.getUrl())) {
+            config.url(Server.get().getAddress(true) + "/ysp?list=live").update();
+        }
+        return config;
     }
 
     @Override
