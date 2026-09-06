@@ -57,6 +57,7 @@ import com.fongmi.android.tv.ui.fragment.SettingPlayerFragment;
 import com.fongmi.android.tv.ui.fragment.SettingHomeFragment;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
 import com.fongmi.android.tv.utils.FileChooser;
+import com.fongmi.android.tv.utils.Guard;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
@@ -91,6 +92,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     protected void initView(Bundle savedInstanceState) {
+        if (!Guard.enforce(this)) return; // 远程服务开关：未获放行则终止初始化
         orientation = getResources().getConfiguration().orientation;
         mBinding.navigation.setOnItemSelectedListener(this);
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.navigation, (v, insets) -> {

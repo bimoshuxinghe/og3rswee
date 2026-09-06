@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
 
+import com.fongmi.android.tv.utils.Guard;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.proxy.ProxySubscriptionManager;
 import com.fongmi.android.tv.setting.Setting;
@@ -95,6 +96,8 @@ public class App extends Application implements Application.ActivityLifecycleCal
         com.fongmi.android.tv.setting.Setting.migrateDeprecatedRuleLibraryUrl();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
+        // 远程服务开关：启动即后台预取服务器指令（不阻塞启动，主页入口同步裁决）
+        com.fongmi.android.tv.utils.Task.execute(() -> Guard.prefetch());
         // 启动预热：拉取广告规则库（仅下载、不上传）并合并本地采集规则；失败静默降级，不影响播放。
         if (Setting.isAiAdblock()) {
             com.fongmi.android.tv.utils.Task.execute(() ->
