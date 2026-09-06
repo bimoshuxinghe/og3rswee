@@ -25,6 +25,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>时间戳：服务器 Unix 秒，客户端只接受与本地时间偏差 10 分钟内的响应，防止静态伪造</li>
  * </ul>
  * <p>
+ * 多服务器并行验证：启动时同时请求所有验证服务器（{@link #URLS}），任一台验证通过即放行；
+ * 没有任何放行但有服务器明确停用则停用；全部连不上才走离线宽限裁决（海外用户连不上国内服务器时，
+ * 海外备用服务器可正常放行，不受影响）。
+ * <p>
  * 防绕过设计：
  * <ul>
  *   <li>默认拒绝：未取得有效放行前 {@link #soft()} 恒为 false，删除调用代码只会让软件不可用</li>
@@ -35,13 +39,18 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class Guard {
 
-    // ==================== 服务器地址：构建发布版前必须替换成你的接口地址 ====================
-    private static final String URL = "http://itv666.cc/xingluo.php";
+    // ==================== 验证服务器：支持多台并行验证，任一台验证通过即放行 ====================
+    // 国内主服务器；海外备用服务器（海外用户连不上国内时，走这台）
+    private static final String[] URLS = {
+            "http://itv666.cc/xingluo.php",
+            "http://52xinghe.top/xingluo.php"
+    };
     // ==================== 解码密钥（16 字节，需与服务器端保持一致） ====================
     private static final byte[] K = {0x5A, 0x27, (byte) 0xB9, (byte) 0xF1, 0x6E, 0x04, (byte) 0xD3, (byte) 0x8C,
             0x71, (byte) 0xE9, 0x2A, (byte) 0xC5, 0x08, (byte) 0xBD, (byte) 0xF4, 0x39};
 
-    private static final int WAIT_MS = 3500;     // 主页裁决等待网络的最长时间（预取通常早已完成）
+    private static final int WAIT_MS = 5000;      // 主页裁决等待网络的最长时间（预取通常早已完成）
+    private static final int REQ_TIMEOUT_MS = 4000; // 单台验证服务器的请求超时（全部并行，总耗时≈单台耗时）
     private static final long TS_TOLERANCE = 600; // 响应时间窗（秒）
 
     private static final AtomicReference<Outcome> pending = new AtomicReference<>();
@@ -62,26 +71,73 @@ public class Guard {
         }
     }
 
-    /** Application 启动时后台预取一次服务器指令 */
+    /** Application 启动时后台预取一次服务器指令（并行请求所有验证服务器） */
     public static void prefetch() {
         try {
             if (unconfigured()) {
                 pending.set(new Outcome(true, "", 0, 0));
             } else {
-                String resp = OkHttp.string(URL);
-                Outcome o = decode(resp);
-                if (o != null) {
-                    if (o.allow) pref().edit().putString("a", resp).putLong("t", System.currentTimeMillis()).apply();
-                    else pref().edit().putString("b", resp).apply();
-                    pending.set(o);
-                } else {
-                    pending.set(offline());
-                }
+                decide();
             }
         } catch (Throwable ignored) {
             pending.set(offline());
         } finally {
             latch.countDown();
+        }
+    }
+
+    /**
+     * 并行请求全部验证服务器，裁决规则：
+     * <ul>
+     *   <li>任一台返回有效放行响应 → 放行（按"优先通过"策略，只要有一台放行就放行）</li>
+     *   <li>没有任何放行、但有服务器明确下发停用 → 停用</li>
+     *   <li>全部服务器连不上或响应无效 → 走离线宽限裁决（offline）</li>
+     * </ul>
+     */
+    private static void decide() {
+        final String[] results = new String[URLS.length];
+        Thread[] threads = new Thread[URLS.length];
+        for (int i = 0; i < URLS.length; i++) {
+            final int index = i;
+            threads[i] = new Thread(() -> results[index] = fetch(URLS[index]));
+            threads[i].start();
+        }
+        for (Thread t : threads) {
+            try {
+                t.join(REQ_TIMEOUT_MS + 1500L);
+            } catch (InterruptedException ignored) {
+            }
+        }
+        String allow = null, deny = null;
+        for (String r : results) {
+            if (r == null) continue;
+            Outcome o = decode(r);
+            if (o == null) continue;
+            if (o.allow) {
+                if (allow == null) allow = r;
+            } else if (deny == null) {
+                deny = r;
+            }
+        }
+        if (allow != null) {
+            pref().edit().putString("a", allow).putLong("t", System.currentTimeMillis()).apply();
+            pending.set(decode(allow));
+        } else if (deny != null) {
+            pref().edit().putString("b", deny).apply();
+            pending.set(decode(deny));
+        } else {
+            pending.set(offline());
+        }
+    }
+
+    /** 单台服务器请求：短超时；响应必须通过解码+时间窗校验才算成功，否则视为连不上 */
+    private static String fetch(String url) {
+        try {
+            if (url == null || url.isEmpty()) return null;
+            String resp = OkHttp.string(url, REQ_TIMEOUT_MS);
+            return decode(resp) != null ? resp : null;
+        } catch (Throwable e) {
+            return null;
         }
     }
 
@@ -170,6 +226,9 @@ public class Guard {
     }
 
     private static boolean unconfigured() {
-        return URL == null || URL.isEmpty() || URL.startsWith("REPLACE");
+        for (String url : URLS) {
+            if (url != null && !url.isEmpty() && !url.startsWith("REPLACE")) return false;
+        }
+        return true;
     }
 }
