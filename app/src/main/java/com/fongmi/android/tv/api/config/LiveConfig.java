@@ -78,7 +78,8 @@ public class LiveConfig extends BaseConfig {
     }
 
     public LiveConfig init() {
-        return config(Config.live());
+        // 走 defaultConfig()：无直播配置时自动回退到内置央视频源（/ysp?list=live）
+        return config(defaultConfig());
     }
 
     public LiveConfig config(Config config) {
@@ -107,7 +108,7 @@ public class LiveConfig extends BaseConfig {
         Config config = Config.live();
         // 零配置默认直播源：内置央视频代理（/ysp?list=live 动态生成频道列表）
         if (TextUtils.isEmpty(config.getUrl())) {
-            config.url(Server.get().getAddress(true) + "/ysp?list=live").update();
+            config.url(Server.get().getAddress(true) + "/ysp?list=live").name("央视频内置").update();
         }
         return config;
     }
@@ -120,6 +121,12 @@ public class LiveConfig extends BaseConfig {
 
     @Override
     protected void load(Config config) throws Throwable {
+        // 内置源端口校正：loadConfig 已先启动服务器，此时端口已确定，
+        // 将 defaultConfig 阶段预估的地址（可能 9978 被占顺延）替换为实际监听地址
+        if (config.getUrl().endsWith("/ysp?list=live")) {
+            String actual = Server.get().getAddress(true) + "/ysp?list=live";
+            if (!actual.equals(config.getUrl())) config.url(actual).update();
+        }
         String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
         if (Json.isObj(json)) checkJson(config, Json.parse(json).getAsJsonObject());
         else parseText(config, json);
