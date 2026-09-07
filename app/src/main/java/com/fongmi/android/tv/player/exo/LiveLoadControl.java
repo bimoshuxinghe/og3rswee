@@ -4,8 +4,8 @@ import androidx.media3.common.C;
 import androidx.media3.common.Timeline;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.LoadControl;
-import androidx.media3.exoplayer.PlayerId;
-import androidx.media3.exoplayer.source.MediaPeriodId;
+import androidx.media3.exoplayer.analytics.PlayerId;
+import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.TrackGroupArray;
 import androidx.media3.exoplayer.trackselection.ExoTrackSelection;
 import androidx.media3.exoplayer.upstream.Allocator;
@@ -92,7 +92,7 @@ public final class LiveLoadControl implements LoadControl {
     }
 
     @Override
-    public boolean shouldContinuePreloading(PlayerId playerId, Timeline timeline, MediaPeriodId mediaPeriodId, long bufferedDurationUs) {
+    public boolean shouldContinuePreloading(PlayerId playerId, Timeline timeline, MediaSource.MediaPeriodId mediaPeriodId, long bufferedDurationUs) {
         return cur().shouldContinuePreloading(playerId, timeline, mediaPeriodId, bufferedDurationUs);
     }
 
