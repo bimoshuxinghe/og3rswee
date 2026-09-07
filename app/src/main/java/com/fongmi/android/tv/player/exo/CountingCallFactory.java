@@ -33,6 +33,9 @@ public class CountingCallFactory {
         @Override
         public Response intercept(Chain chain) throws IOException {
             Response response = chain.proceed(chain.request());
+            // 无论估算是否激活都记录大小/Range 信息（仅读响应头，零副作用）：
+            // 网盘直链常拒绝 HEAD，播放响应本身才是最可靠的大小来源。
+            DurationProbe.noteResponse(response);
             // 仅在估算激活时包装响应体：直播与常规点播链路原样返回，绝不受影响
             if (!DurationProbe.isActive()) return response;
             ResponseBody body = response.body();

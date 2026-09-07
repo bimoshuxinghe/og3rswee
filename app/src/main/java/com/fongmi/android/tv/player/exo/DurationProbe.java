@@ -41,6 +41,8 @@ public class DurationProbe {
     private static volatile long totalLength = -1;
     private static volatile long bitrateBps = -1;
     private static volatile long estimatedMs;
+    private static volatile boolean fromPlayResponse; // 大小是否来自播放响应（而非 HEAD）
+    private static volatile boolean rangeSupported;   // 服务器是否声明支持 Range（决定能否真正 seek）
 
     private static final AtomicLong counter = new AtomicLong(); // 数据源实际读取的字节累计
     private static long lastBytes;
@@ -61,23 +63,31 @@ public class DurationProbe {
      * @param position 当前播放位置供给器（仅用于日志诊断）
      */
     public static void start(String u, Map<String, String> headers, Supplier<Long> buffered, Supplier<Long> position) {
-        clear();
+        // 注意：这里不能用 clear()——它会清掉拦截器刚记录的 totalLength（本次播放响应信息）
+        active = false;
+        handler.removeCallbacks(SAMPLE_RUNNABLE);
         if (u == null || !u.startsWith("http")) return;
         url = u;
         bufferedSupplier = buffered;
         positionSupplier = position;
         active = true;
+        // 只清采样状态，保留拦截器记录的 totalLength/rangeSupported（属于本次播放）
         counter.set(0);
         lastBytes = 0;
         lastBufferedMs = -1;
         bitrateBps = -1;
         estimatedMs = 0;
-        Log.i(TAG, "start probe: " + u);
-        new Thread(() -> {
-            totalLength = probeLength(u, headers);
-            Log.i(TAG, "total length=" + totalLength);
+        Log.i(TAG, "start probe: " + u + " totalFromResponse=" + fromPlayResponse + " length=" + totalLength + " range=" + rangeSupported);
+        // 播放响应已给出大小则无需 HEAD（网盘直链常拒绝 HEAD）
+        if (totalLength > 0) {
             estimate();
-        }, "duration-probe").start();
+        } else {
+            new Thread(() -> {
+                totalLength = probeLength(u, headers);
+                Log.i(TAG, "HEAD probe length=" + totalLength);
+                estimate();
+            }, "duration-probe").start();
+        }
         handler.postDelayed(SAMPLE_RUNNABLE, SAMPLE_INTERVAL_MS);
     }
 
@@ -88,6 +98,8 @@ public class DurationProbe {
         totalLength = -1;
         bitrateBps = -1;
         estimatedMs = 0;
+        fromPlayResponse = false;
+        rangeSupported = false;
         counter.set(0);
         lastBytes = 0;
         lastBufferedMs = -1;
@@ -114,6 +126,43 @@ public class DurationProbe {
     /** 估算是否处于激活状态（拦截器据此决定是否包装响应体） */
     public static boolean isActive() {
         return active;
+    }
+
+    /**
+     * 记录播放响应中的大小与 Range 信息（由拦截器调用）。
+     * 网盘直链常拒绝 HEAD，播放响应的 Content-Length / Content-Range 才是可靠来源。
+     */
+    public static void noteResponse(Object response) {
+        try {
+            if (!(response instanceof okhttp3.Response)) return;
+            okhttp3.Response r = (okhttp3.Response) response;
+            String range = r.header("Content-Range");
+            if (range != null && range.contains("/")) {
+                String total = range.substring(range.lastIndexOf('/') + 1).trim();
+                if (!"*".equals(total) && !total.isEmpty()) {
+                    long parsed = Long.parseLong(total);
+                    if (parsed > 0) {
+                        totalLength = parsed;
+                        fromPlayResponse = true;
+                    }
+                }
+            }
+            if (totalLength <= 0 && r.code() == 200) {
+                okhttp3.ResponseBody body = r.body();
+                if (body != null && body.contentLength() > 0) {
+                    totalLength = body.contentLength();
+                    fromPlayResponse = true;
+                }
+            }
+            String acceptRanges = r.header("Accept-Ranges");
+            if (acceptRanges != null) rangeSupported = "bytes".equalsIgnoreCase(acceptRanges.trim());
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** 服务器是否声明支持 Range 请求；不支持则 EXO 无法真正 seek（只能顺序播放） */
+    public static boolean isRangeSupported() {
+        return rangeSupported;
     }
 
     private static final Runnable SAMPLE_RUNNABLE = new Runnable() {
@@ -149,8 +198,14 @@ public class DurationProbe {
         if (totalLength > 0 && bitrateBps > 0) {
             long est = totalLength * 8000L / bitrateBps;
             // 合理范围校验：5 秒 ~ 24 小时
-            if (est > 5000 && est < 24L * 3600 * 1000) estimatedMs = est;
+            if (est > 5000 && est < 24L * 3600 * 1000) {
+                if (estimatedMs == 0) Log.i(TAG, "估算时长=" + est + "ms length=" + totalLength + " bitrate=" + bitrateBps + " rangeSupported=" + rangeSupported);
+                estimatedMs = est;
+                return;
+            }
         }
+        // 诊断：说明估算为何未产出，便于定位"拖不动"根因
+        if (active) Log.d(TAG, "估算未就绪 length=" + totalLength + " bitrate=" + bitrateBps + " bytes=" + counter.get() + " rangeSupported=" + rangeSupported);
     }
 
     private static long safeGet(Supplier<Long> supplier) {

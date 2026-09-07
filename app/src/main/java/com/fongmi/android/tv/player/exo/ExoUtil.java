@@ -31,6 +31,7 @@ import androidx.media3.exoplayer.mediacodec.MediaCodecUtil;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.exoplayer.trackselection.TrackSelector;
+import androidx.media3.exoplayer.upstream.DefaultAllocator;
 import androidx.media3.exoplayer.util.EventLogger;
 import androidx.media3.ui.CaptionStyleCompat;
 import androidx.media3.ui.PlayerView;
@@ -149,11 +150,26 @@ public class ExoUtil {
         return PlayerSetting.isCaption() ? CaptionStyleCompat.createFromCaptionStyle(((CaptioningManager) App.get().getSystemService(Context.CAPTIONING_SERVICE)).getUserStyle()) : new CaptionStyleCompat(Color.WHITE, Color.TRANSPARENT, Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_OUTLINE, Color.BLACK, null);
     }
 
+    /** 当前进程正在使用的直播感知缓冲策略，供 ExoPlayerEngine 在起播时切换档位 */
+    private static volatile LiveLoadControl liveLoadControl;
+
+    /**
+     * 构建缓冲策略：点播用官方档位 × 用户倍率，直播用 15s/30s 小缓冲，运行时动态切换。
+     * 直播沿用点播的大缓冲会表现为「一直转圈」，见 {@link LiveLoadControl}。
+     */
     private static LoadControl buildLoadControl() {
-        int factor = Math.max(PlayerSetting.getBuffer(), 2);
-        int minBufferMs = DefaultLoadControl.DEFAULT_MIN_BUFFER_MS * factor;
-        int maxBufferMs = DefaultLoadControl.DEFAULT_MAX_BUFFER_MS * factor;
-        return new DefaultLoadControl.Builder().setBufferDurationsMs(minBufferMs, maxBufferMs, 500, 1500).build();
+        DefaultAllocator allocator = LiveLoadControl.newAllocator();
+        liveLoadControl = new LiveLoadControl(
+                LiveLoadControl.buildVod(allocator, PlayerSetting.getBuffer()),
+                LiveLoadControl.buildLive(allocator),
+                allocator);
+        return liveLoadControl;
+    }
+
+    /** 起播时切换直播/点播缓冲档位；播放器尚未创建时为空操作 */
+    public static void setLiveBuffer(boolean live) {
+        LiveLoadControl control = liveLoadControl;
+        if (control != null) control.setLive(live);
     }
 
     private static TrackSelector buildTrackSelector() {

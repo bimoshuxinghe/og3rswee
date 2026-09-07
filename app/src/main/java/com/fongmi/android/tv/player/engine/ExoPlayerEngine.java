@@ -27,6 +27,7 @@ import com.fongmi.android.tv.utils.ResUtil;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -68,7 +69,10 @@ public class ExoPlayerEngine implements PlayerEngine {
 
             @Override
             public void onPlaybackStateChanged(int state) {
-                if (state == Player.STATE_READY) maybeProbeDuration();
+                if (state != Player.STATE_READY) return;
+                // 以 EXO 的真实判定校正缓冲档位：URL 启发式会漏判本地代理直播（如央视频）
+                ExoUtil.setLiveBuffer(player.isCurrentMediaItemLive());
+                maybeProbeDuration();
             }
         });
     }
@@ -97,7 +101,10 @@ public class ExoPlayerEngine implements PlayerEngine {
 
             @Override
             public void onPlaybackStateChanged(int state) {
-                if (state == Player.STATE_READY) maybeProbeDuration();
+                if (state != Player.STATE_READY) return;
+                // 以 EXO 的真实判定校正缓冲档位：URL 启发式会漏判本地代理直播（如央视频）
+                ExoUtil.setLiveBuffer(player.isCurrentMediaItemLive());
+                maybeProbeDuration();
             }
         });
         return player;
@@ -148,6 +155,8 @@ public class ExoPlayerEngine implements PlayerEngine {
         DurationProbe.clear();
         // 检测是否为 RTSP 流
         this.isRtspStream = spec.getUrl() != null && spec.getUrl().startsWith("rtsp://");
+        // 直播用小缓冲档位：点播的 50s×N 预缓冲在实时流上表现为一直转圈
+        ExoUtil.setLiveBuffer(looksLikeLive(spec.getUrl()));
         // 检测是否为 ISO 镜像，需要先解析文件系统再通过代理播放
         String url = spec.getUrl();
         if (url != null && MpvMedia.isBluRayIso(url)) {
@@ -249,6 +258,20 @@ public class ExoPlayerEngine implements PlayerEngine {
             long buffered = player.getBufferedPosition();
             return buffered > 0 ? Long.valueOf(buffered) : null;
         }, () -> player.getCurrentPosition());
+    }
+
+    /**
+     * 起播前根据 URL 特征预判是否直播，用于把缓冲策略切到直播小缓冲档位。
+     * 只认明确特征，宁可漏判——漏判会在 STATE_READY 时由
+     * {@code player.isCurrentMediaItemLive()} 校正；误判会让点播少缓冲、更容易卡顿。
+     */
+    private static boolean looksLikeLive(String url) {
+        if (url == null) return false;
+        String u = url.toLowerCase(Locale.ROOT);
+        if (u.startsWith("rtsp://") || u.startsWith("rtmp://") || u.startsWith("rtp://") || u.startsWith("udp://") || u.startsWith("srt://")) return true;
+        if (u.contains("livemode=1") || u.contains("live=1") || u.contains("/live/") || u.contains("livestream") || u.contains("liveplay")) return true;
+        if (u.endsWith(".m3u8") && (u.contains("live") || u.contains("channel") || u.contains("ystenlive") || u.contains("ott."))) return true;
+        return false;
     }
 
     /** 是否为本地代理地址（127.0.0.1 / localhost / 局域网内网地址） */
