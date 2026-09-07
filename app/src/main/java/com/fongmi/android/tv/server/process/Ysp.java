@@ -758,7 +758,9 @@ public class Ysp implements Process {
     private static String patchTs(String m3u8, String playurl) {
         String baseUrl = playurl.substring(0, playurl.lastIndexOf('/') + 1);
         Matcher m = TS_PATTERN.matcher(m3u8);
-        StringBuilder sb = new StringBuilder();
+        // 必须用 StringBuffer 重载：appendReplacement(StringBuilder,...) 是 Java 9+ API，
+        // 部分老机型 core-oj.jar 没有该方法，会直接 NoSuchMethodError 导致该频道断流
+        StringBuffer sb = new StringBuffer();
         while (m.find()) m.appendReplacement(sb, Matcher.quoteReplacement(baseUrl + m.group(1)));
         m.appendTail(sb);
         return sb.toString();

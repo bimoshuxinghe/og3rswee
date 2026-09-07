@@ -16,6 +16,7 @@ import androidx.media3.common.Tracks;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Track;
+import com.fongmi.android.tv.player.exo.DurationProbe;
 import com.fongmi.android.tv.player.exo.ErrorMsgProvider;
 import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.player.exo.TrackUtil;
@@ -24,6 +25,7 @@ import com.fongmi.android.tv.server.process.IsoStream;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.utils.ResUtil;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +65,11 @@ public class ExoPlayerEngine implements PlayerEngine {
             public void onTracksChanged(Tracks tracks) {
                 ExoUtil.applyDolbyVisionPolicy(player);
             }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == Player.STATE_READY) maybeProbeDuration();
+            }
         });
     }
 
@@ -73,17 +80,24 @@ public class ExoPlayerEngine implements PlayerEngine {
 
     @Override
     public void release() {
+        DurationProbe.clear();
         player.release();
     }
 
     @Override
     public Player rebuild(Player.Listener listener) {
+        DurationProbe.clear();
         player.release();
         player = ExoUtil.buildPlayer(decode, listener);
         player.addListener(new Player.Listener() {
             @Override
             public void onTracksChanged(Tracks tracks) {
                 ExoUtil.applyDolbyVisionPolicy(player);
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == Player.STATE_READY) maybeProbeDuration();
             }
         });
         return player;
@@ -130,6 +144,8 @@ public class ExoPlayerEngine implements PlayerEngine {
         // 换源/换集是一次全新尝试，format 型恢复计数必须清零，
         // 否则上一次播放用掉的配额会让新起播还没重试就被判 FATAL。
         this.formatRetry = 0;
+        // 换源后旧的无时长估算已失效，必须清掉（新源 STATE_READY 后会重新探测）
+        DurationProbe.clear();
         // 检测是否为 RTSP 流
         this.isRtspStream = spec.getUrl() != null && spec.getUrl().startsWith("rtsp://");
         // 检测是否为 ISO 镜像，需要先解析文件系统再通过代理播放
@@ -189,12 +205,37 @@ public class ExoPlayerEngine implements PlayerEngine {
 
     @Override
     public boolean isLive() {
-        return player.getDuration() < TimeUnit.MINUTES.toMillis(1) || player.isCurrentMediaItemLive();
+        return effectiveDuration() < TimeUnit.MINUTES.toMillis(1) || player.isCurrentMediaItemLive();
     }
 
     @Override
     public boolean isVod() {
-        return player.getDuration() > TimeUnit.MINUTES.toMillis(1) && !player.isCurrentMediaItemLive();
+        return effectiveDuration() > TimeUnit.MINUTES.toMillis(1) && !player.isCurrentMediaItemLive();
+    }
+
+    /** 有效时长：EXO 报告的时长；无时长流（TS 直链等）退回 DurationProbe 的估算时长 */
+    private long effectiveDuration() {
+        long d = player.getDuration();
+        if (d == C.TIME_UNSET || d <= 0) d = DurationProbe.getEstimated();
+        return d;
+    }
+
+    /**
+     * 无时长流探测：EXO 对 TS 直链等 progressive 源无法给出时长，进度条被禁用。
+     * 此时启动 DurationProbe（总大小探测 + 码率采样）为进度条提供估算时长。
+     */
+    private void maybeProbeDuration() {
+        if (player.getDuration() != C.TIME_UNSET) {
+            DurationProbe.clear();
+            return;
+        }
+        String url = spec != null ? spec.getUrl() : null;
+        if (url == null || !url.startsWith("http") || DurationProbe.isTracking(url)) return;
+        Map<String, String> headers = spec.getHeaders() != null ? spec.getHeaders() : new HashMap<>();
+        DurationProbe.start(url, headers, () -> {
+            long buffered = player.getBufferedPosition();
+            return buffered > 0 ? Long.valueOf(buffered) : null;
+        }, () -> player.getCurrentPosition());
     }
 
     @Override

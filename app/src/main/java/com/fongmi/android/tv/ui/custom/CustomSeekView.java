@@ -15,6 +15,7 @@ import androidx.media3.ui.DefaultTimeBar;
 import androidx.media3.ui.TimeBar;
 
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.player.exo.DurationProbe;
 
 import java.util.Formatter;
 import java.util.Locale;
@@ -70,6 +71,8 @@ public class CustomSeekView extends FrameLayout implements Player.Listener, Time
     private void updateTimeline() {
         if (!attached || player == null) return;
         long duration = player.getDuration();
+        // 无时长流（TS 直链等）：EXO 报告 TIME_UNSET，退回估算时长，保证进度条可拖动
+        if (duration <= 0) duration = DurationProbe.getEstimated();
         if (duration < 0) duration = 0;
         currentDuration = duration;
         setKeyTimeIncrement(duration);
@@ -84,6 +87,8 @@ public class CustomSeekView extends FrameLayout implements Player.Listener, Time
         long position = player.getCurrentPosition();
         long buffered = player.getBufferedPosition();
         long duration = player.getDuration();
+        // 无时长流（TS 直链等）：退回估算时长；估算随采样逐步收敛，变化时刷新进度条
+        if (duration <= 0) duration = DurationProbe.getEstimated();
         if (duration < 0) duration = 0;
         if (duration != currentDuration) {
             currentDuration = duration;

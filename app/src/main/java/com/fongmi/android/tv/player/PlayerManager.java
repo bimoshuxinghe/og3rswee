@@ -27,6 +27,7 @@ import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.impl.ParseCallback;
+import com.fongmi.android.tv.player.exo.DurationProbe;
 import com.fongmi.android.tv.player.engine.ExoPlayerEngine;
 import com.fongmi.android.tv.player.engine.MpvPlayerEngine;
 import com.fongmi.android.tv.player.engine.PlaySpec;
@@ -231,7 +232,10 @@ public class PlayerManager implements ParseCallback {
     }
 
     public long getDuration() {
-        return player.getDuration();
+        long d = player.getDuration();
+        // 无时长流（TS 直链等）：EXO 报告 TIME_UNSET，退回估算时长，保证进度条可拖动
+        if (d == C.TIME_UNSET || d <= 0) d = DurationProbe.getEstimated();
+        return d;
     }
 
     public String getDurationTime() {
