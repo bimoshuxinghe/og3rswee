@@ -223,19 +223,57 @@ public class ExoPlayerEngine implements PlayerEngine {
     /**
      * 无时长流探测：EXO 对 TS 直链等 progressive 源无法给出时长，进度条被禁用。
      * 此时启动 DurationProbe（总大小探测 + 码率采样）为进度条提供估算时长。
+     * <p>
+     * 重要：直播流与本地代理地址一律不探测——
+     * <ul>
+     *   <li>直播时长本就无限（TIME_UNSET 是其正常状态），不需要估算；</li>
+     *   <li>央视频等本地代理地址为 127.0.0.1:{@code /ysp?id=...}，对其发 HEAD/Range
+     *       探测会穿透到代理内部状态机，干扰直播取址与分片拉取，导致 403/起播失败。</li>
+     * </ul>
      */
     private void maybeProbeDuration() {
         if (player.getDuration() != C.TIME_UNSET) {
             DurationProbe.clear();
             return;
         }
+        // 直播流不探测：时长无限是其正常状态，估算无意义
+        if (player.isCurrentMediaItemLive()) {
+            DurationProbe.clear();
+            return;
+        }
         String url = spec != null ? spec.getUrl() : null;
-        if (url == null || !url.startsWith("http") || DurationProbe.isTracking(url)) return;
+        // 本地代理地址（央视频 /ysp、ISO 代理等）不探测：探测请求会穿透代理状态机
+        if (url == null || !url.startsWith("http") || isLocalProxy(url) || DurationProbe.isTracking(url)) return;
         Map<String, String> headers = spec.getHeaders() != null ? spec.getHeaders() : new HashMap<>();
         DurationProbe.start(url, headers, () -> {
             long buffered = player.getBufferedPosition();
             return buffered > 0 ? Long.valueOf(buffered) : null;
         }, () -> player.getCurrentPosition());
+    }
+
+    /** 是否为本地代理地址（127.0.0.1 / localhost / 局域网内网地址） */
+    private static boolean isLocalProxy(String url) {
+        String lower = url.toLowerCase();
+        if (lower.contains("://127.") || lower.contains("://localhost") || lower.contains("://[::1]")) return true;
+        int schemeEnd = lower.indexOf("://");
+        if (schemeEnd < 0) return false;
+        int hostEnd = lower.indexOf('/', schemeEnd + 3);
+        String host = hostEnd < 0 ? lower.substring(schemeEnd + 3) : lower.substring(schemeEnd + 3, hostEnd);
+        int colon = host.indexOf(':');
+        if (colon >= 0) host = host.substring(0, colon);
+        // 10.x / 192.168.x / 172.16-31.x 均视为本地/内网代理
+        if (host.startsWith("10.") || host.startsWith("192.168.")) return true;
+        if (host.startsWith("172.")) {
+            try {
+                String[] p = host.split("\\.");
+                if (p.length >= 2) {
+                    int second = Integer.parseInt(p[1]);
+                    if (second >= 16 && second <= 31) return true;
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return false;
     }
 
     @Override

@@ -33,6 +33,8 @@ public class CountingCallFactory {
         @Override
         public Response intercept(Chain chain) throws IOException {
             Response response = chain.proceed(chain.request());
+            // 仅在估算激活时包装响应体：直播与常规点播链路原样返回，绝不受影响
+            if (!DurationProbe.isActive()) return response;
             ResponseBody body = response.body();
             if (body != null) response = response.newBuilder().body(new CountingBody(body)).build();
             return response;

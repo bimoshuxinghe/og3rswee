@@ -111,6 +111,11 @@ public class DurationProbe {
         return active && u != null && u.equals(url);
     }
 
+    /** 估算是否处于激活状态（拦截器据此决定是否包装响应体） */
+    public static boolean isActive() {
+        return active;
+    }
+
     private static final Runnable SAMPLE_RUNNABLE = new Runnable() {
         @Override
         public void run() {
