@@ -146,14 +146,17 @@ public class Ysp implements Process {
                         m3u8FetchTime.put(id, System.currentTimeMillis());
                         return m3u8Response(body);
                     }
-                    // CDN 拉取失败：优先旧内容兜底，绝不让播放器收到 5xx
-                    if (lastGood != null) {
-                        diag("CDN拉取失败，返回旧内容兜底 id=" + id + " attempt=" + attempt);
-                        return m3u8Response(lastGood);
-                    }
-                    if (!needRefresh) { // 上一轮用了缓存地址
+                    // CDN 拉取失败：
+                    // - 若刚才是用 80s 缓存地址：多半是地址鉴权已过期，清缓存换新地址重试一轮
+                    // - 新地址也失败：返回旧内容兜底（绝不让播放器收到 5xx），并清掉 playurl
+                    //   缓存，下次请求强制刷新，避免旧分片鉴权过期后在缓存期内循环 403
+                    if (!needRefresh) {
                         cache.remove(id);
                         needRefresh = true;
+                    } else if (lastGood != null) {
+                        diag("CDN拉取失败(新地址)，返回旧内容兜底 id=" + id + " attempt=" + attempt);
+                        cache.remove(id);
+                        return m3u8Response(lastGood);
                     } else break;
                 }
                 diag("无法获取M3U8 id=" + id);

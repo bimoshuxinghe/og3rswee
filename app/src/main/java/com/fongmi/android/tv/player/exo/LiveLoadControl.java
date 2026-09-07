@@ -1,6 +1,5 @@
 package com.fongmi.android.tv.player.exo;
 
-import androidx.media3.common.C;
 import androidx.media3.common.Timeline;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.LoadControl;
@@ -22,19 +21,26 @@ import androidx.media3.exoplayer.upstream.DefaultAllocator;
  * <p>
  * 这里不重建播放器实例（重建会让宿主持有的 Player / PlayerView 引用失效导致黑屏），
  * 而是持两套 DefaultLoadControl，按当前是否在播直播来转发调用。
- * 两套策略共享同一个 {@link Allocator}，切换时不会出现 buffer 归属错乱。
+ * <p>
+ * 实现要点（踩过坑）：
+ * <ul>
+ *   <li>生命周期事件（onPrepared/onStopped/onReleased/onTracksSelected）必须广播给两套实例。
+ *       1.11.0 的 DefaultLoadControl 在 {@code shouldContinueLoading} 里对
+ *       {@code loadingStates.get(playerId)} 做 checkNotNull——若切换后才第一次轮到某套实例，
+ *       它从未收到 onPrepared，会直接 NPE，表现为「Unexpected runtime error」。</li>
+ *   <li>两套实例各用独立的 Allocator（不共享）：DefaultLoadControl 在 onStopped/onReleased
+ *       时会 reset 自己的 allocator，共享的话会把对方正在使用的 buffer 清掉。</li>
+ * </ul>
  */
 public final class LiveLoadControl implements LoadControl {
 
     private final DefaultLoadControl vod;
     private final DefaultLoadControl live;
-    private final Allocator allocator;
     private volatile boolean liveMode;
 
-    public LiveLoadControl(DefaultLoadControl vod, DefaultLoadControl live, Allocator allocator) {
+    public LiveLoadControl(DefaultLoadControl vod, DefaultLoadControl live) {
         this.vod = vod;
         this.live = live;
-        this.allocator = allocator;
     }
 
     /** 切换到直播/点播缓冲档位；起播前后调用都安全，下一次加载判定立即生效 */
@@ -52,22 +58,27 @@ public final class LiveLoadControl implements LoadControl {
 
     @Override
     public Allocator getAllocator(PlayerId playerId) {
-        return allocator;
+        // EXO 在 prepare 时拿到并绑定到 MediaPeriod；READY 后的档位切换不影响已绑定的分配器
+        return cur().getAllocator(playerId);
     }
 
     @Override
     public void onPrepared(PlayerId playerId) {
-        cur().onPrepared(playerId);
+        // 广播：保证两套实例都有该 player 的状态，切换后 checkNotNull 不会炸
+        vod.onPrepared(playerId);
+        live.onPrepared(playerId);
     }
 
     @Override
     public void onTracksSelected(Parameters parameters, TrackGroupArray trackGroups, ExoTrackSelection[] trackSelections) {
-        cur().onTracksSelected(parameters, trackGroups, trackSelections);
+        vod.onTracksSelected(parameters, trackGroups, trackSelections);
+        live.onTracksSelected(parameters, trackGroups, trackSelections);
     }
 
     @Override
     public void onStopped(PlayerId playerId) {
-        cur().onStopped(playerId);
+        vod.onStopped(playerId);
+        live.onStopped(playerId);
     }
 
     @Override
@@ -120,9 +131,5 @@ public final class LiveLoadControl implements LoadControl {
                         500,
                         1500)
                 .build();
-    }
-
-    public static DefaultAllocator newAllocator() {
-        return new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE);
     }
 }

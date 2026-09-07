@@ -158,11 +158,9 @@ public class ExoUtil {
      * 直播沿用点播的大缓冲会表现为「一直转圈」，见 {@link LiveLoadControl}。
      */
     private static LoadControl buildLoadControl() {
-        DefaultAllocator allocator = LiveLoadControl.newAllocator();
         liveLoadControl = new LiveLoadControl(
-                LiveLoadControl.buildVod(allocator, PlayerSetting.getBuffer()),
-                LiveLoadControl.buildLive(allocator),
-                allocator);
+                LiveLoadControl.buildVod(LiveLoadControl.newAllocator(), PlayerSetting.getBuffer()),
+                LiveLoadControl.buildLive(LiveLoadControl.newAllocator()));
         return liveLoadControl;
     }
 
