@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.player.exo;
 
+import androidx.media3.common.C;
 import androidx.media3.common.Timeline;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.LoadControl;
@@ -131,5 +132,9 @@ public final class LiveLoadControl implements LoadControl {
                         500,
                         1500)
                 .build();
+    }
+
+    public static DefaultAllocator newAllocator() {
+        return new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE);
     }
 }
