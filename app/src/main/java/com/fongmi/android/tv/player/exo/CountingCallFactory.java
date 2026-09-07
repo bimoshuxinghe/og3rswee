@@ -1,98 +1,48 @@
 package com.fongmi.android.tv.player.exo;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 
-import okhttp3.Call;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okhttp3.Timeout;
 import okio.Buffer;
 import okio.BufferedSource;
 import okio.ForwardingSource;
 import okio.Okio;
-import okio.Source;
 
 /**
- * 播放器数据源字节统计：包装 OkHttp Call.Factory，对响应体读取计数并上报 DurationProbe。
- * 仅统计"实际从网络读走的字节"，用于无时长流的码率采样（估算总时长）。
+ * 播放器数据源字节统计：给 OkHttpClient 挂载计数拦截器，对响应体实际读取的字节计数并上报 DurationProbe。
+ * 仅统计"真实从网络读走的字节"，用于无时长流（TS 直链等）的码率采样（估算总时长）。
+ * <p>
+ * 用拦截器而非包装 {@link okhttp3.Call.Factory}：okhttp 5.x 的 {@code Call} 接口含
+ * 无法在 Java 中引用返回类型的成员，拦截器方案则对 okhttp 3.x/4.x/5.x 全兼容。
  */
-public class CountingCallFactory implements Call.Factory {
+public class CountingCallFactory {
 
-    private final Call.Factory delegate;
-
-    public CountingCallFactory(Call.Factory delegate) {
-        this.delegate = delegate;
+    private CountingCallFactory() {
     }
 
-    @Override
-    public Call newCall(Request request) {
-        return new CountingCall(delegate.newCall(request));
+    /** 复制播放器 client 并挂载字节计数拦截器（连接池与原 client 共享，无额外开销） */
+    public static OkHttpClient wrap(OkHttpClient client) {
+        return client.newBuilder().addInterceptor(new CountingInterceptor()).build();
     }
 
-    static class CountingCall implements Call {
-
-        private final Call delegate;
-
-        CountingCall(Call delegate) {
-            this.delegate = delegate;
-        }
+    static class CountingInterceptor implements Interceptor {
 
         @Override
-        public Request request() {
-            return delegate.request();
-        }
-
-        @Override
-        public Response execute() throws IOException {
-            Response response = delegate.execute();
+        public Response intercept(Chain chain) throws IOException {
+            Response response = chain.proceed(chain.request());
             ResponseBody body = response.body();
             if (body != null) response = response.newBuilder().body(new CountingBody(body)).build();
             return response;
-        }
-
-        @Override
-        public void enqueue(Callback callback) {
-            delegate.enqueue(callback);
-        }
-
-        @Override
-        public void cancel() {
-            delegate.cancel();
-        }
-
-        @Override
-        public boolean isExecuted() {
-            return delegate.isExecuted();
-        }
-
-        @Override
-        public boolean isCanceled() {
-            return delegate.isCanceled();
-        }
-
-        @Override
-        public Timeout timeout() {
-            return delegate.timeout();
-        }
-
-        @Override
-        public Call clone() {
-            return new CountingCall(delegate.clone());
-        }
-
-        @Override
-        public OkHttpClient client() {
-            return delegate.client();
         }
     }
 
     static class CountingBody extends ResponseBody {
 
         private final ResponseBody delegate;
-        private final AtomicReference<BufferedSource> wrapped = new AtomicReference<>();
+        private BufferedSource wrapped;
 
         CountingBody(ResponseBody delegate) {
             this.delegate = delegate;
@@ -109,15 +59,18 @@ public class CountingCallFactory implements Call.Factory {
         }
 
         @Override
-        public BufferedSource source() {
-            return wrapped.updateAndGet(current -> current != null ? current : Okio.buffer(new ForwardingSource(delegate.source()) {
-                @Override
-                public long read(Buffer sink, long byteCount) throws IOException {
-                    long read = super.read(sink, byteCount);
-                    if (read > 0) DurationProbe.onBytes(read);
-                    return read;
-                }
-            }));
+        public synchronized BufferedSource source() {
+            if (wrapped == null) {
+                wrapped = Okio.buffer(new ForwardingSource(delegate.source()) {
+                    @Override
+                    public long read(Buffer sink, long byteCount) throws IOException {
+                        long read = super.read(sink, byteCount);
+                        if (read > 0) DurationProbe.onBytes(read);
+                        return read;
+                    }
+                });
+            }
+            return wrapped;
         }
     }
 }
