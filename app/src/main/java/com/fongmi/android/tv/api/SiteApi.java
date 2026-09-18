@@ -162,19 +162,12 @@ public class SiteApi {
                     StringBuilder playUrlBuilder = new StringBuilder();
                     for (int i = 0; i < completedList.size(); i++) {
                         com.fongmi.android.tv.bean.Download d = completedList.get(i);
-                        java.io.File m3u8File = new java.io.File(d.getDownloadPath(), "local.m3u8");
+                        java.io.File dFile = findLocalVideo(d.getDownloadPath());
                         String dUrl;
-                        if (m3u8File.exists()) {
-                            dUrl = "http://127.0.0.1:" + com.github.catvod.Proxy.getPort() + "/local_play" + m3u8File.getAbsolutePath();
+                        if (dFile != null) {
+                            dUrl = "http://127.0.0.1:" + com.github.catvod.Proxy.getPort() + "/local_play" + dFile.getAbsolutePath();
                         } else {
-                            java.io.File mp4File = new java.io.File(d.getDownloadPath(), "video.mp4");
-                            java.io.File mkvFile = new java.io.File(d.getDownloadPath(), "video.mkv");
-                            java.io.File target = mp4File.exists() ? mp4File : mkvFile;
-                            if (target.exists()) {
-                                dUrl = "http://127.0.0.1:" + com.github.catvod.Proxy.getPort() + "/local_play" + target.getAbsolutePath();
-                            } else {
-                                continue;
-                            }
+                            continue;
                         }
                         if (playUrlBuilder.length() > 0) {
                             playUrlBuilder.append("#");
@@ -379,5 +372,29 @@ public class SiteApi {
         vod.setRemarks(remark);
         Source.get().parse(vod.setFlags());
         return vod;
+    }
+
+    /**
+     * 查找单集已下载的可播放文件，优先级：合并专属格式 .xhtv > 分片模式 local.m3u8 > 单文件 mp4/mkv。
+     * 找不到返回 null。
+     */
+    public static java.io.File findLocalVideo(String downloadPath) {
+        try {
+            java.io.File dir = new java.io.File(downloadPath);
+            if (!dir.exists() || !dir.isDirectory()) return null;
+            java.io.File[] files = dir.listFiles();
+            if (files == null) return null;
+            java.io.File m3u8 = null, video = null;
+            for (java.io.File f : files) {
+                String name = f.getName().toLowerCase();
+                if (name.endsWith(".xhtv")) return f; // 合并单文件优先
+                if (name.equals("local.m3u8")) m3u8 = f;
+                else if ((name.endsWith(".mp4") || name.endsWith(".mkv")) && !name.endsWith(".tmp")) video = f;
+            }
+            if (m3u8 != null) return m3u8;
+            return video;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 }

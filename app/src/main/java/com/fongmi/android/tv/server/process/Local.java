@@ -56,6 +56,8 @@ public class Local implements Process {
                 mime = "application/vnd.apple.mpegurl";
             } else if (path.endsWith(".ts") || path.endsWith(".TS")) {
                 mime = "video/mp2t";
+            } else if (path.endsWith(".xhtv") || path.endsWith(".XHTV")) {
+                mime = "video/mp2t"; // 专属合并格式，本质为 MPEG-TS
             }
             return getFile(session.getHeaders(), file, mime);
         } catch (Exception e) {

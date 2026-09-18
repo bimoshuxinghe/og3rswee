@@ -97,34 +97,13 @@ public class DownloadActivity extends BaseActivity implements DownloadAdapter.On
     }
 
     private void playDownload(Download item) {
-        File downloadDir = new File(item.getDownloadPath());
-        File m3u8File = new File(downloadDir, "local.m3u8");
-        String playUrl;
-        if (m3u8File.exists()) {
-            playUrl = "http://127.0.0.1:" + com.github.catvod.Proxy.getPort() + "/local_play" + m3u8File.getAbsolutePath();
-        } else {
-            // 查找目录下的视频文件（mp4/mkv），兼容旧命名 video.mp4 和新命名 片名-集数.mp4
-            File videoFile = null;
-            if (downloadDir.exists() && downloadDir.isDirectory()) {
-                File[] files = downloadDir.listFiles();
-                if (files != null) {
-                    for (File f : files) {
-                        String name = f.getName().toLowerCase();
-                        if (name.endsWith(".mp4") || name.endsWith(".mkv")) {
-                            if (!name.endsWith(".tmp")) {
-                                videoFile = f;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            if (videoFile == null || !videoFile.exists()) {
-                Notify.show("文件不存在");
-                return;
-            }
-            playUrl = "http://127.0.0.1:" + com.github.catvod.Proxy.getPort() + "/local_play" + videoFile.getAbsolutePath();
+        // 统一查找：.xhtv 合并单文件 > local.m3u8 分片 > mp4/mkv 单文件
+        File videoFile = com.fongmi.android.tv.api.SiteApi.findLocalVideo(item.getDownloadPath());
+        if (videoFile == null || !videoFile.exists()) {
+            Notify.show("文件不存在");
+            return;
         }
+        String playUrl = "http://127.0.0.1:" + com.github.catvod.Proxy.getPort() + "/local_play" + videoFile.getAbsolutePath();
 
         String compositeId = playUrl;
         try {

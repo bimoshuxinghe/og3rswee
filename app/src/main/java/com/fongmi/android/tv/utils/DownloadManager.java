@@ -191,7 +191,9 @@ public class DownloadManager {
 
         int downloadedCount = download.getDownloadedTs();
         if (downloadedCount == tsUrls.size()) {
-            writeLocalM3u8(localM3u8Lines, new File(downloadDir, "local.m3u8"));
+            // 下载完成：优先合并为专属 .xhtv 单文件（加密流自动解密），合并失败回退分片模式
+            boolean merged = mergeXhtv(download, downloadDir, localM3u8Lines, tsUrls.size());
+            if (!merged) writeLocalM3u8(localM3u8Lines, new File(downloadDir, "local.m3u8"));
             download.setStatus(Download.STATUS_COMPLETED);
             download.setProgress(100);
             updateStatus(download);
@@ -201,11 +203,8 @@ public class DownloadManager {
         }
     }
 
-    // 针对单视频文件（网盘 MP4/MKV）的下载核心
-    private void executeSingleFileTask(Download download, File downloadDir) {
-        String suffix = ".mp4";
-        if (download.getUrl().contains(".mkv") || download.getUrl().contains(".MKV")) suffix = ".mkv";
-        // 使用片名+集数作为文件名
+    /** 单集文件基础名：片名 - 集名（非法字符替换为下划线），无信息时用 video */
+    private String buildBaseName(Download download) {
         String baseName = "";
         if (!TextUtils.isEmpty(download.getVodName()) && !TextUtils.isEmpty(download.getEpisodeName())) {
             baseName = download.getVodName() + " - " + download.getEpisodeName();
@@ -216,7 +215,114 @@ public class DownloadManager {
         } else {
             baseName = "video";
         }
-        baseName = baseName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        return baseName.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
+    /**
+     * 将 TS 分片合并为专属 .xhtv 单文件（MPEG-TS 二进制顺序拼接，AES-128 加密流逐片解密）。
+     * 成功后删除分片/local.m3u8/key.key 等中间文件，使目录仅保留合并文件（不再污染相册）。
+     * 返回 false 时由调用方回退为 local.m3u8 分片模式。
+     */
+    private boolean mergeXhtv(Download download, File downloadDir, List<String> localM3u8Lines, int tsCount) {
+        File merged = new File(downloadDir, buildBaseName(download) + ".xhtv");
+        try {
+            boolean encrypted = false;
+            byte[] key = null;
+            byte[] fixedIv = null;
+            long sequence = 0;
+            for (String line : localM3u8Lines) {
+                String trimmed = line.trim();
+                if (trimmed.startsWith("#EXT-X-KEY") && trimmed.contains("METHOD=AES-128")) {
+                    encrypted = true;
+                    File keyFile = new File(downloadDir, "key.key");
+                    if (!keyFile.exists()) return false; // 密钥缺失无法解密，回退分片模式
+                    key = readAllBytes(keyFile);
+                    int idx = trimmed.indexOf("IV=0x");
+                    if (idx < 0) idx = trimmed.indexOf("IV=0X");
+                    if (idx >= 0) {
+                        String hex = trimmed.substring(idx + 5).split("[,\"]")[0].trim();
+                        fixedIv = hexToBytes(hex);
+                    }
+                } else if (trimmed.startsWith("#EXT-X-MEDIA-SEQUENCE:")) {
+                    try {
+                        sequence = Long.parseLong(trimmed.substring(trimmed.indexOf(':') + 1).trim());
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            javax.crypto.Cipher cipher = null;
+            if (encrypted) {
+                cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding"); // 16 字节分组下 PKCS5 等价 PKCS7
+                javax.crypto.spec.SecretKeySpec keySpec = new javax.crypto.spec.SecretKeySpec(key, "AES");
+                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, keySpec, new javax.crypto.spec.IvParameterSpec(new byte[16]));
+            }
+
+            long mergedBytes = 0;
+            try (java.io.OutputStream os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(merged), 1 << 20)) {
+                for (int i = 0; i < tsCount; i++) {
+                    File seg = new File(downloadDir, i + ".ts");
+                    if (!seg.exists() || seg.length() == 0) throw new IOException("missing segment " + i);
+                    byte[] data = readAllBytes(seg);
+                    if (encrypted) {
+                        byte[] iv = fixedIv != null ? fixedIv : sequenceIv(sequence + i);
+                        cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
+                                new javax.crypto.spec.SecretKeySpec(key, "AES"),
+                                new javax.crypto.spec.IvParameterSpec(iv));
+                        data = cipher.doFinal(data);
+                    }
+                    os.write(data);
+                    mergedBytes += data.length;
+                }
+            }
+            if (mergedBytes == 0) throw new IOException("empty merge");
+
+            // 合并成功：清理分片与临时文件，目录仅保留 .xhtv
+            File[] children = downloadDir.listFiles();
+            if (children != null) {
+                for (File f : children) {
+                    if (f.getAbsolutePath().equals(merged.getAbsolutePath())) continue;
+                    String name = f.getName();
+                    if (name.endsWith(".ts") || name.equals("local.m3u8") || name.equals("key.key")) f.delete();
+                }
+            }
+            return true;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            merged.delete(); // 半成品一并清理，回退分片模式
+            return false;
+        }
+    }
+
+    /** RFC 8216：未显式给出 IV 时，取 8 字节大端 Media Sequence Number 补齐 16 字节 */
+    private byte[] sequenceIv(long seq) {
+        byte[] iv = new byte[16];
+        for (int i = 0; i < 8; i++) iv[15 - i] = (byte) (seq >>> (i * 8));
+        return iv;
+    }
+
+    private byte[] hexToBytes(String hex) {
+        if (hex.length() % 2 != 0) hex = "0" + hex;
+        byte[] out = new byte[hex.length() / 2];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        }
+        return out;
+    }
+
+    private byte[] readAllBytes(File file) throws IOException {
+        byte[] out = new byte[(int) file.length()];
+        try (java.io.InputStream is = new java.io.BufferedInputStream(new FileInputStream(file))) {
+            int read = 0, len;
+            while ((len = is.read(out, read, out.length - read)) > 0) read += len;
+        }
+        return out;
+    }
+
+    // 针对单视频文件（网盘 MP4/MKV）的下载核心
+    private void executeSingleFileTask(Download download, File downloadDir) {
+        String suffix = ".mp4";
+        if (download.getUrl().contains(".mkv") || download.getUrl().contains(".MKV")) suffix = ".mkv";
+        String baseName = buildBaseName(download);
         File targetFile = new File(downloadDir, baseName + suffix);
         File tempFile = new File(downloadDir, baseName + suffix + ".tmp");
 
