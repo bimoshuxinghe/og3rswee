@@ -200,8 +200,11 @@ public class DownloadManager {
         for (String line : cleanM3u8Lines) {
             if (line.startsWith("#")) {
                 if (line.startsWith("#EXT-X-KEY")) {
-                    current = parseKeyLine(line, download, downloadDir);
+                    // 顺序至关重要：必须先下载密钥（handleKeyDownload），再解析上下文（parseKeyLine）。
+                    // 否则首次遇到 KEY 声明时 key.key 尚不存在，parseKeyLine 会退化为明文上下文，
+                    // 导致整片被当作明文直接拼接，合并产物非法、合并失败。
                     localM3u8Lines.add(handleKeyDownload(line, download.getUrl(), download.getHeaders(), downloadDir));
+                    current = parseKeyLine(line, download, downloadDir);
                 } else {
                     localM3u8Lines.add(line);
                 }
@@ -267,11 +270,35 @@ public class DownloadManager {
      * 解析 #EXT-X-KEY 声明为加密上下文。
      * METHOD=NONE 表示其后分片为明文；AES-128 读取密钥（已下载到 key.key）与可选 IV。
      */
+    /** 按密钥 URI 生成稳定的本地文件名（路径 hash 前 12 位），支持密钥轮换时多把密钥共存 */
+    private String keyFileName(String keyUri) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] d = md.digest(keyUri.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder("key_");
+            for (int i = 0; i < 6; i++) sb.append(String.format("%02x", d[i]));
+            return sb.append(".key").toString();
+        } catch (Exception e) {
+            return "key.key";
+        }
+    }
+
+    /**
+     * 解析 #EXT-X-KEY 声明为加密上下文。
+     * METHOD=NONE 表示其后分片为明文；AES-128 读取对应密钥文件与可选 IV。
+     * 注意：调用前必须已经通过 handleKeyDownload 下载好密钥。
+     */
     private SegmentKey parseKeyLine(String keyLine, Download download, File downloadDir) {
         try {
             if (keyLine.contains("METHOD=NONE")) return SegmentKey.none();
             if (!keyLine.contains("METHOD=AES-128")) return SegmentKey.none();
+            // 按声明中的 URI 定位对应密钥文件（支持密钥轮换）
             File keyFile = new File(downloadDir, "key.key");
+            Matcher m = Pattern.compile("URI=\"([^\"]+)\"").matcher(keyLine);
+            if (m.find()) {
+                File candidate = new File(downloadDir, keyFileName(UrlUtil.resolve(download.getUrl(), m.group(1))));
+                if (candidate.exists()) keyFile = candidate;
+            }
             if (!keyFile.exists()) return SegmentKey.none();
             byte[] key = readAllBytes(keyFile);
             if (key.length != 16) return SegmentKey.none();
@@ -388,7 +415,7 @@ public class DownloadManager {
                 for (File f : children) {
                     if (f.getAbsolutePath().equals(merged.getAbsolutePath())) continue;
                     String name = f.getName();
-                    if (name.endsWith(".ts") || name.equals("local.m3u8") || name.equals("key.key")) f.delete();
+                    if (name.endsWith(".ts") || name.equals("local.m3u8") || name.endsWith(".key")) f.delete();
                 }
             }
             return true;
@@ -695,14 +722,17 @@ public class DownloadManager {
         if (matcher.find()) {
             String keyUrl = matcher.group(1);
             String absoluteKeyUrl = UrlUtil.resolve(baseUrl, keyUrl);
-            File keyFile = new File(downloadDir, "key.key");
-            boolean success = downloadSingleFile(absoluteKeyUrl, keyFile, headersJson, 3);
-            if (success) {
-                return keyLine.replace(keyUrl, "key.key");
+            // 密钥轮换支持：按 key URI 生成独立文件名，避免多把密钥互相覆盖
+            File keyFile = new File(downloadDir, keyFileName(absoluteKeyUrl));
+            if (!keyFile.exists() || keyFile.length() != 16) {
+                downloadSingleFile(absoluteKeyUrl, keyFile, headersJson, 3, 0);
             }
+            if (keyFile.exists() && keyFile.length() == 16) return keyLine.replace(keyUrl, keyFile.getName());
         }
         return keyLine;
     }
+
+    /** 按密钥 URI 生成稳定的本地文件名（方法名+路径 hash 前 12 位），兼容密钥轮换 */
 
     private void writeLocalM3u8(List<String> lines, File file) throws Exception {
         try (FileOutputStream fos = new FileOutputStream(file)) {
