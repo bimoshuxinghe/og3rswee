@@ -138,12 +138,52 @@ public class DownloadManager {
         return false;
     }
 
+    /**
+     * 解析播放列表：master playlist（#EXT-X-STREAM-INF）自动跟随最高带宽子列表，最多 3 层。
+     * 返回 {最终列表URL, 列表内容}。普通列表直接原样返回。
+     */
+    private String[] loadPlaylist(String url, Map<String, String> headers, int depth) throws Exception {
+        String content;
+        try (Response res = OkHttp.newCall(url, headers).execute()) {
+            if (!res.isSuccessful()) throw new IOException("HTTP " + res.code() + " " + url);
+            content = res.body().string();
+        }
+        if (depth < 3 && content.contains("#EXT-X-STREAM-INF") && !content.contains("#EXTINF")) {
+            String best = null;
+            long bestBw = -1;
+            String[] lines = content.split("\n");
+            for (int i = 0; i < lines.length; i++) {
+                if (lines[i].trim().startsWith("#EXT-X-STREAM-INF")) {
+                    Matcher m = Pattern.compile("BANDWIDTH=(\\d+)").matcher(lines[i]);
+                    long bw = m.find() ? Long.parseLong(m.group(1)) : 0;
+                    if (bw >= bestBw && i + 1 < lines.length) {
+                        bestBw = bw;
+                        best = lines[i + 1].trim();
+                    }
+                }
+            }
+            if (best == null || best.isEmpty()) return new String[]{url, content}; // 交由上层 #EXTINF 校验报错
+            return loadPlaylist(UrlUtil.resolve(url, best), headers, depth + 1);
+        }
+        return new String[]{url, content};
+    }
+
     // 针对 M3U8 (流媒体) 的下载核心
     private void executeM3u8Task(Download download, File downloadDir) throws Exception {
         Map<String, String> headers = App.gson().fromJson(download.getHeaders(), new TypeToken<Map<String, String>>() {}.getType());
-        String m3u8Content;
-        try (Response res = OkHttp.newCall(download.getUrl(), headers).execute()) {
-            m3u8Content = res.body().string();
+        // master playlist 支持：跟随嵌套列表到最终分片列表，并把 url 固化为二级列表（利于断点续传）
+        String[] playlist = loadPlaylist(download.getUrl(), headers, 0);
+        String playlistUrl = playlist[0];
+        String m3u8Content = playlist[1];
+        if (!playlistUrl.equals(download.getUrl())) {
+            download.setUrl(playlistUrl);
+            AppDatabase.get().getDownloadDao().update(download);
+        }
+        // 源内容校验：不含分片声明的响应多为错误页/验证页，不能当播放列表
+        if (!m3u8Content.contains("#EXTINF")) {
+            download.setStatus(Download.STATUS_ERROR);
+            updateStatus(download);
+            return;
         }
 
         // 广告清洗
@@ -264,17 +304,37 @@ public class DownloadManager {
                     if (!seg.exists() || seg.length() == 0) throw new IOException("missing segment " + i);
                     byte[] data = readAllBytes(seg);
                     if (encrypted) {
-                        byte[] iv = fixedIv != null ? fixedIv : sequenceIv(sequence + i);
-                        cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
-                                new javax.crypto.spec.SecretKeySpec(key, "AES"),
-                                new javax.crypto.spec.IvParameterSpec(iv));
-                        data = cipher.doFinal(data);
+                        // 先解密，解密结果非 TS 或解密失败时回退明文（兼容假加密/混合加密源）
+                        byte[] use = null;
+                        try {
+                            byte[] iv = fixedIv != null ? fixedIv : sequenceIv(sequence + i);
+                            cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
+                                    new javax.crypto.spec.SecretKeySpec(key, "AES"),
+                                    new javax.crypto.spec.IvParameterSpec(iv));
+                            byte[] dec = cipher.doFinal(data);
+                            if (dec.length > 0 && (dec[0] & 0xFF) == 0x47) use = dec; // 解密成功且为合法 TS
+                            else if (data.length > 0 && (data[0] & 0xFF) == 0x47) use = data; // 解出非 TS 但原文明文
+                        } catch (Exception bad) {
+                            if (data.length > 0 && (data[0] & 0xFF) == 0x47) use = data; // 解密失败但原文明文
+                            else throw bad;
+                        }
+                        if (use == null) throw new IOException("segment " + i + " undecryptable and not plain TS");
+                        data = use;
                     }
                     os.write(data);
                     mergedBytes += data.length;
                 }
             }
-            if (mergedBytes == 0) throw new IOException("empty merge");
+            // 最小体校验：合并产物过小说明分片无效（错误页/空壳），回退分片模式
+            if (mergedBytes < 10 * 1024) throw new IOException("merged too small: " + mergedBytes);
+
+            // 时间戳重写：源流分段重置会使播放器时长识别错乱/进度条拖动失效，统一为单调时间轴
+            File fixed = new File(downloadDir, buildBaseName(download) + ".xhtv.tmp");
+            TsRewriter.fix(merged, fixed);
+            if (!fixed.renameTo(merged)) {
+                fixed.delete();
+                throw new IOException("timestamp rewrite rename failed");
+            }
 
             // 合并成功：清理分片与临时文件，目录仅保留 .xhtv
             File[] children = downloadDir.listFiles();
@@ -289,6 +349,7 @@ public class DownloadManager {
         } catch (Throwable t) {
             t.printStackTrace();
             merged.delete(); // 半成品一并清理，回退分片模式
+            new File(downloadDir, buildBaseName(download) + ".xhtv.tmp").delete();
             return false;
         }
     }
@@ -320,6 +381,10 @@ public class DownloadManager {
 
     // 针对单视频文件（网盘 MP4/MKV）的下载核心
     private void executeSingleFileTask(Download download, File downloadDir) {
+        executeSingleFileTask(download, downloadDir, 0);
+    }
+
+    private void executeSingleFileTask(Download download, File downloadDir, int attempt) {
         String suffix = ".mp4";
         if (download.getUrl().contains(".mkv") || download.getUrl().contains(".MKV")) suffix = ".mkv";
         String baseName = buildBaseName(download);
@@ -343,10 +408,17 @@ public class DownloadManager {
             }
 
             try (Response response = OkHttp.newCall(download.getUrl(), headers).execute()) {
-                if (response.code() == 403 || response.code() == 410) {
-                    // 直链过期，触发刷新并重新请求
-                    refreshPlayUrl(download);
-                    executeSingleFileTask(download, downloadDir);
+                String contentType = response.header("Content-Type");
+                boolean badContent = contentType != null && (contentType.contains("text/html") || contentType.contains("application/json") || contentType.contains("text/plain"));
+                if (response.code() == 403 || response.code() == 410 || badContent) {
+                    // 直链过期或源返回错误页：触发刷新并重新请求（限次防循环）
+                    if (attempt < 2) {
+                        refreshPlayUrl(download);
+                        executeSingleFileTask(download, downloadDir, attempt + 1);
+                        return;
+                    }
+                    download.setStatus(Download.STATUS_ERROR);
+                    updateStatus(download);
                     return;
                 }
                 if (!response.isSuccessful()) {
@@ -473,7 +545,8 @@ public class DownloadManager {
                     }
 
                     File target = new File(downloadDir, index + ".ts");
-                    if (target.exists() && target.length() > 0) {
+                    // 已存在分片有效性：过小的残留文件（错误页/空响应）视为无效，重新下载
+                    if (target.exists() && target.length() > 512) {
                         synchronized (successCount) {
                             successCount[0]++;
                             download.setDownloadedTs(successCount[0]);
@@ -507,6 +580,11 @@ public class DownloadManager {
     }
 
     private boolean downloadSingleFile(String fileUrl, File targetFile, String headersJson, int retryCount) {
+        return downloadSingleFile(fileUrl, targetFile, headersJson, retryCount, 512);
+    }
+
+    /** minBodySize：响应体最小字节数（TS 分片 512；AES 密钥合法地只有 16 字节，传 0） */
+    private boolean downloadSingleFile(String fileUrl, File targetFile, String headersJson, int retryCount, int minBodySize) {
         try {
             Map<String, String> headers = App.gson().fromJson(headersJson, new TypeToken<Map<String, String>>() {}.getType());
             try (Response response = OkHttp.newCall(fileUrl, headers).execute()) {
@@ -514,6 +592,11 @@ public class DownloadManager {
                     throw new Exception("Link expired, need refresh");
                 }
                 if (!response.isSuccessful()) return false;
+                // 响应内容校验：源站直链失效时常返回 200 + 错误页（HTML/JSON/纯文本）
+                String contentType = response.header("Content-Type");
+                if (contentType != null && (contentType.contains("text/html") || contentType.contains("application/json") || contentType.contains("text/plain"))) {
+                    throw new Exception("Invalid content-type: " + contentType);
+                }
                 try (InputStream is = response.body().byteStream();
                      FileOutputStream fos = new FileOutputStream(targetFile)) {
                     byte[] buffer = new byte[8192];
@@ -521,12 +604,17 @@ public class DownloadManager {
                     while ((len = is.read(buffer)) != -1) {
                         fos.write(buffer, 0, len);
                     }
-                    return true;
                 }
+                // 过小的响应体视为错误页而非有效内容
+                if (targetFile.length() < minBodySize) {
+                    targetFile.delete();
+                    throw new Exception("Response too small: " + targetFile.length());
+                }
+                return true;
             }
         } catch (Exception e) {
             if (retryCount > 0) {
-                return downloadSingleFile(fileUrl, targetFile, headersJson, retryCount - 1);
+                return downloadSingleFile(fileUrl, targetFile, headersJson, retryCount - 1, minBodySize);
             }
             return false;
         }
