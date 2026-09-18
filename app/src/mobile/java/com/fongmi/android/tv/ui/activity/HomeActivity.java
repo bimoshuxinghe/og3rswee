@@ -7,6 +7,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.graphics.drawable.Drawable;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.view.MenuItem;
 import android.view.View;
@@ -138,7 +139,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         splash.setVisibility(View.VISIBLE);
         splash.animate().alpha(0f).setStartDelay(1600).setDuration(400).withEndAction(() -> {
             splash.setVisibility(View.GONE);
-            splash.setImageDrawable(null); // 释放大图内存
+            ((ImageView) splash).setImageDrawable(null); // 释放大图内存
         }).start();
     }
 
