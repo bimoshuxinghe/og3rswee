@@ -6,9 +6,9 @@
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
-    <style name="Theme.Splash" parent="Theme.SplashScreen">
-        <item name="postSplashScreenTheme">@style/Theme.App</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+    <!-- 启动画面改为星落图全屏 windowBackground，不再显示居中图标 -->
+    <style name="Theme.Splash" parent="Theme.Base">
+        <item name="android:windowBackground">@drawable/splash_full</item>
     </style>
 
     <style name="Theme.App" parent="Theme.Base" />

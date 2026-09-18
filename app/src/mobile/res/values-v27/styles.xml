@@ -4,4 +4,9 @@
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
+    <style name="Theme.Splash" parent="Theme.Base">
+        <item name="android:windowBackground">@drawable/splash_full</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
 </resources>
