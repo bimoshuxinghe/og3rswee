@@ -336,6 +336,16 @@ public class DownloadManager {
                 throw new IOException("timestamp rewrite rename failed");
             }
 
+            // 成品校验：MPEG-TS 流每个 188 字节包均以 0x47 同步字节开头，首包必须命中。
+            // 保证交给播放器的 .xhtv 必为合法明文 TS（播放器按内容嗅探即可播放，无需解密）；
+            // 校验不过视为合并失败，回退分片模式。
+            byte[] firstPacket = new byte[188];
+            int got = 0, read;
+            try (java.io.InputStream is = new java.io.FileInputStream(merged)) {
+                while (got < firstPacket.length && (read = is.read(firstPacket, got, firstPacket.length - got)) >= 0) got += read;
+            }
+            if (got < 188 || (firstPacket[0] & 0xFF) != 0x47) throw new IOException("merged file is not a valid TS stream");
+
             // 合并成功：清理分片与临时文件，目录仅保留 .xhtv
             File[] children = downloadDir.listFiles();
             if (children != null) {
