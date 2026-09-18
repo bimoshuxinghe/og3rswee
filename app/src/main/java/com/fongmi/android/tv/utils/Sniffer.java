@@ -23,7 +23,11 @@ public class Sniffer {
 
     public static final Pattern CLICKER = Pattern.compile("\\[a=cr:(\\{.*?\\})\\/](.*?)\\[\\/a]");
     public static final Pattern AI_PUSH = Pattern.compile("(https?|thunder|magnet|ed2k|video):\\S+");
-    public static final Pattern SNIFFER = Pattern.compile("https?://[^\\s]{12,}\\.(?:m3u8|mp4|mkv|flv|mp3|m4a|aac|mpd)(?:\\?.*)?|https?://.*?video/tos[^\\s]*|rtmp:[^\\s]+");
+    /**
+     * 可直接播放的媒体地址特征。xhtv 为本软件 M3U8 合并下载的专属格式（本质为 MPEG-TS），
+     * 必须列入白名单，否则会被误判为需解析的网页地址，导致本地离线播放一直转圈/报解析失败。
+     */
+    public static final Pattern SNIFFER = Pattern.compile("https?://[^\\s]{12,}\\.(?:m3u8|mp4|mkv|flv|mp3|m4a|aac|mpd|xhtv)(?:\\?.*)?|https?://.*?video/tos[^\\s]*|rtmp:[^\\s]+");
 
     public static String getUrl(String text) {
         if (Json.isObj(text) || text.contains("$")) return text;
@@ -33,6 +37,9 @@ public class Sniffer {
     }
 
     public static boolean isVideoFormat(String url) {
+        if (url == null || url.isEmpty()) return false;
+        // 软件专属合并格式 .xhtv 直接可播，无需任何解析（不受正则长度/规则过滤影响）
+        if (url.toLowerCase().contains(".xhtv")) return true;
         Rule rule = getRule(UrlUtil.uri(url));
         for (String exclude : rule.getExclude()) if (url.contains(exclude)) return false;
         for (String exclude : rule.getExclude()) if (Pattern.compile(exclude).matcher(url).find()) return false;
