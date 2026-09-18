@@ -8,6 +8,7 @@ import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderDebug;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InputStream;
@@ -74,8 +75,13 @@ public class AppDrama extends Spider {
     // ==================== 初始化 ====================
 
     @Override
-    public void init(Context context, String extend) {
-        JSONObject ext = new JSONObject(extend == null || extend.isEmpty() ? "{}" : extend);
+    public void init(Context context, String extend) throws Exception {
+        JSONObject ext;
+        try {
+            ext = new JSONObject(extend == null || extend.isEmpty() ? "{}" : extend);
+        } catch (JSONException e) {
+            ext = new JSONObject();
+        }
         host = ext.optString("host", "");
         publicKey = ext.optString("publicKey", "");
         pkg = ext.optString("pkg", "");
@@ -220,7 +226,7 @@ public class AppDrama extends Spider {
         return wrapList(list);
     }
 
-    private static void parseTags(JSONArray tags, JSONArray list) {
+    private static void parseTags(JSONArray tags, JSONArray list) throws JSONException {
         for (int i = 0; i < tags.length(); i++) {
             JSONArray sections = tags.getJSONObject(i).optJSONArray("sections");
             if (sections == null) continue;
@@ -318,9 +324,9 @@ public class AppDrama extends Spider {
     @Override
     public String playerContent(String flag, String id, List<String> vipFlags) {
         JSONObject result = new JSONObject();
-        result.put("parse", 0);
-        result.put("playUrl", "");
         try {
+            result.put("parse", 0);
+            result.put("playUrl", "");
             String target = id == null ? "" : id;
             if (target.matches(MEDIA_SUFFIX)) {
                 result.put("url", target);
