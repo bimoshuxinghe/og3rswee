@@ -191,21 +191,24 @@ public class DownloadManager {
 
         List<String> tsUrls = new ArrayList<>();
         List<String> localM3u8Lines = new ArrayList<>();
+        // 逐片加密状态（RFC 8216 §4.3.2.4：KEY 声明对其后所有分片生效，直到下一个 KEY 声明）。
+        // 用状态机而非全局布尔量，以支持加密/明文交替、密钥轮换、插播广告等常见源站结构。
+        List<SegmentKey> segmentKeys = new ArrayList<>();
+        SegmentKey current = SegmentKey.none();
         int tsIndex = 0;
-        boolean isEncrypted = false;
 
         for (String line : cleanM3u8Lines) {
             if (line.startsWith("#")) {
                 if (line.startsWith("#EXT-X-KEY")) {
-                    isEncrypted = true;
-                    String cleanKeyLine = handleKeyDownload(line, download.getUrl(), download.getHeaders(), downloadDir);
-                    localM3u8Lines.add(cleanKeyLine);
+                    current = parseKeyLine(line, download, downloadDir);
+                    localM3u8Lines.add(handleKeyDownload(line, download.getUrl(), download.getHeaders(), downloadDir));
                 } else {
                     localM3u8Lines.add(line);
                 }
             } else {
                 String absoluteTsUrl = UrlUtil.resolve(download.getUrl(), line.trim());
                 tsUrls.add(absoluteTsUrl);
+                segmentKeys.add(current);
                 localM3u8Lines.add(tsIndex + ".ts");
                 tsIndex++;
             }
@@ -231,8 +234,8 @@ public class DownloadManager {
 
         int downloadedCount = download.getDownloadedTs();
         if (downloadedCount == tsUrls.size()) {
-            // 下载完成：优先合并为专属 .xhtv 单文件（加密流自动解密），合并失败回退分片模式
-            boolean merged = mergeXhtv(download, downloadDir, localM3u8Lines, tsUrls.size());
+            // 下载完成：优先合并为专属 .xhtv 单文件（按片解密/明文自适应），合并失败回退分片模式
+            boolean merged = mergeXhtv(download, downloadDir, segmentKeys, tsUrls.size());
             if (!merged) writeLocalM3u8(localM3u8Lines, new File(downloadDir, "local.m3u8"));
             download.setStatus(Download.STATUS_COMPLETED);
             download.setProgress(100);
@@ -240,6 +243,48 @@ public class DownloadManager {
         } else {
             download.setStatus(Download.STATUS_ERROR);
             updateStatus(download);
+        }
+    }
+
+    /** 单片加密上下文：是否加密、密钥、固定 IV（null 表示按 media sequence 推导） */
+    private static class SegmentKey {
+        final boolean encrypted;
+        final byte[] key;
+        final byte[] iv;
+
+        SegmentKey(boolean encrypted, byte[] key, byte[] iv) {
+            this.encrypted = encrypted;
+            this.key = key;
+            this.iv = iv;
+        }
+
+        static SegmentKey none() {
+            return new SegmentKey(false, null, null);
+        }
+    }
+
+    /**
+     * 解析 #EXT-X-KEY 声明为加密上下文。
+     * METHOD=NONE 表示其后分片为明文；AES-128 读取密钥（已下载到 key.key）与可选 IV。
+     */
+    private SegmentKey parseKeyLine(String keyLine, Download download, File downloadDir) {
+        try {
+            if (keyLine.contains("METHOD=NONE")) return SegmentKey.none();
+            if (!keyLine.contains("METHOD=AES-128")) return SegmentKey.none();
+            File keyFile = new File(downloadDir, "key.key");
+            if (!keyFile.exists()) return SegmentKey.none();
+            byte[] key = readAllBytes(keyFile);
+            if (key.length != 16) return SegmentKey.none();
+            byte[] iv = null;
+            int idx = keyLine.indexOf("IV=0x");
+            if (idx < 0) idx = keyLine.indexOf("IV=0X");
+            if (idx >= 0) {
+                String hex = keyLine.substring(idx + 5).split("[,\"]")[0].trim();
+                iv = hexToBytes(hex);
+            }
+            return new SegmentKey(true, key, iv);
+        } catch (Throwable t) {
+            return SegmentKey.none();
         }
     }
 
@@ -259,67 +304,58 @@ public class DownloadManager {
     }
 
     /**
-     * 将 TS 分片合并为专属 .xhtv 单文件（MPEG-TS 二进制顺序拼接，AES-128 加密流逐片解密）。
+     * 将 TS 分片合并为专属 .xhtv 单文件。
+     * 统一方案（覆盖各类源站结构）：
+     * 1) 逐片按各自的加密上下文处理——支持加密/明文交替（METHOD=NONE）、密钥轮换、插播广告分片；
+     * 2) 每片三级自适应判定：按声明解密 → 结果首字节 0x47 采用；解密失败/结果非 TS 但原文明文 → 采用原文；
+     *    均不成立视为异常片，整体回退分片模式（安全兜底）；
+     * 3) 合并后做时间戳重写（修复分段重置导致的时长错乱/拖动失效）与成品 TS 同步字节校验。
      * 成功后删除分片/local.m3u8/key.key 等中间文件，使目录仅保留合并文件（不再污染相册）。
      * 返回 false 时由调用方回退为 local.m3u8 分片模式。
      */
-    private boolean mergeXhtv(Download download, File downloadDir, List<String> localM3u8Lines, int tsCount) {
+    private boolean mergeXhtv(Download download, File downloadDir, List<SegmentKey> segmentKeys, int tsCount) {
         File merged = new File(downloadDir, buildBaseName(download) + ".xhtv");
+        File tmp = new File(downloadDir, buildBaseName(download) + ".xhtv.tmp");
         try {
-            boolean encrypted = false;
-            byte[] key = null;
-            byte[] fixedIv = null;
             long sequence = 0;
-            for (String line : localM3u8Lines) {
-                String trimmed = line.trim();
-                if (trimmed.startsWith("#EXT-X-KEY") && trimmed.contains("METHOD=AES-128")) {
-                    encrypted = true;
-                    File keyFile = new File(downloadDir, "key.key");
-                    if (!keyFile.exists()) return false; // 密钥缺失无法解密，回退分片模式
-                    key = readAllBytes(keyFile);
-                    int idx = trimmed.indexOf("IV=0x");
-                    if (idx < 0) idx = trimmed.indexOf("IV=0X");
-                    if (idx >= 0) {
-                        String hex = trimmed.substring(idx + 5).split("[,\"]")[0].trim();
-                        fixedIv = hexToBytes(hex);
-                    }
-                } else if (trimmed.startsWith("#EXT-X-MEDIA-SEQUENCE:")) {
-                    try {
-                        sequence = Long.parseLong(trimmed.substring(trimmed.indexOf(':') + 1).trim());
-                    } catch (Exception ignored) {}
-                }
-            }
-
-            javax.crypto.Cipher cipher = null;
-            if (encrypted) {
-                cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding"); // 16 字节分组下 PKCS5 等价 PKCS7
-                javax.crypto.spec.SecretKeySpec keySpec = new javax.crypto.spec.SecretKeySpec(key, "AES");
-                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, keySpec, new javax.crypto.spec.IvParameterSpec(new byte[16]));
-            }
-
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding"); // 16 字节分组下 PKCS5 等价 PKCS7
             long mergedBytes = 0;
+            int decrypted = 0, plain = 0, fallback = 0;
+
             try (java.io.OutputStream os = new java.io.BufferedOutputStream(new java.io.FileOutputStream(merged), 1 << 20)) {
                 for (int i = 0; i < tsCount; i++) {
                     File seg = new File(downloadDir, i + ".ts");
                     if (!seg.exists() || seg.length() == 0) throw new IOException("missing segment " + i);
                     byte[] data = readAllBytes(seg);
-                    if (encrypted) {
-                        // 先解密，解密结果非 TS 或解密失败时回退明文（兼容假加密/混合加密源）
+                    SegmentKey sk = i < segmentKeys.size() ? segmentKeys.get(i) : SegmentKey.none();
+
+                    if (sk.encrypted && sk.key != null && sk.key.length == 16) {
                         byte[] use = null;
                         try {
-                            byte[] iv = fixedIv != null ? fixedIv : sequenceIv(sequence + i);
+                            byte[] iv = sk.iv != null ? sk.iv : sequenceIv(sequence + i);
                             cipher.init(javax.crypto.Cipher.DECRYPT_MODE,
-                                    new javax.crypto.spec.SecretKeySpec(key, "AES"),
+                                    new javax.crypto.spec.SecretKeySpec(sk.key, "AES"),
                                     new javax.crypto.spec.IvParameterSpec(iv));
                             byte[] dec = cipher.doFinal(data);
-                            if (dec.length > 0 && (dec[0] & 0xFF) == 0x47) use = dec; // 解密成功且为合法 TS
-                            else if (data.length > 0 && (data[0] & 0xFF) == 0x47) use = data; // 解出非 TS 但原文明文
+                            if (dec.length > 0 && (dec[0] & 0xFF) == 0x47) {
+                                use = dec;                       // 正常加密流
+                                decrypted++;
+                            } else if (data.length > 0 && (data[0] & 0xFF) == 0x47) {
+                                use = data;                      // 声明加密实为明文
+                                fallback++;
+                            }
                         } catch (Exception bad) {
-                            if (data.length > 0 && (data[0] & 0xFF) == 0x47) use = data; // 解密失败但原文明文
-                            else throw bad;
+                            if (data.length > 0 && (data[0] & 0xFF) == 0x47) {
+                                use = data;                          // 解密失败但为明文（假加密）
+                                fallback++;
+                            } else {
+                                throw bad;
+                            }
                         }
                         if (use == null) throw new IOException("segment " + i + " undecryptable and not plain TS");
                         data = use;
+                    } else {
+                        plain++;
                     }
                     os.write(data);
                     mergedBytes += data.length;
@@ -329,10 +365,9 @@ public class DownloadManager {
             if (mergedBytes < 10 * 1024) throw new IOException("merged too small: " + mergedBytes);
 
             // 时间戳重写：源流分段重置会使播放器时长识别错乱/进度条拖动失效，统一为单调时间轴
-            File fixed = new File(downloadDir, buildBaseName(download) + ".xhtv.tmp");
-            TsRewriter.fix(merged, fixed);
-            if (!fixed.renameTo(merged)) {
-                fixed.delete();
+            TsRewriter.fix(merged, tmp);
+            if (!tmp.renameTo(merged)) {
+                tmp.delete();
                 throw new IOException("timestamp rewrite rename failed");
             }
 
@@ -345,6 +380,7 @@ public class DownloadManager {
                 while (got < firstPacket.length && (read = is.read(firstPacket, got, firstPacket.length - got)) >= 0) got += read;
             }
             if (got < 188 || (firstPacket[0] & 0xFF) != 0x47) throw new IOException("merged file is not a valid TS stream");
+            System.out.println("xhtv merged: " + (mergedBytes / 1024) + "KB [解密=" + decrypted + " 明文=" + plain + " 回退=" + fallback + "]");
 
             // 合并成功：清理分片与临时文件，目录仅保留 .xhtv
             File[] children = downloadDir.listFiles();
@@ -359,7 +395,7 @@ public class DownloadManager {
         } catch (Throwable t) {
             t.printStackTrace();
             merged.delete(); // 半成品一并清理，回退分片模式
-            new File(downloadDir, buildBaseName(download) + ".xhtv.tmp").delete();
+            tmp.delete();
             return false;
         }
     }
