@@ -155,7 +155,7 @@ public class JarLoader {
             if (clazz == null) {
                 parseJar(jaKey, jar);
                 DexClassLoader loader = loaders.get(jaKey);
-                if (loader == null) return new SpiderNull();
+                if (loader == null) return fallback(key, api, ext);
                 String className = "com.github.catvod.spider." + api.split("csp_")[1];
                 clazz = loader.loadClass(className);
             }
@@ -163,6 +163,23 @@ public class JarLoader {
             spider.siteKey = key;
             spider.init(App.get(), ext);
             spiders.put(spKey, spider);
+            return spider;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            // jar 爬虫实例化/初始化失败（如 AppDrama 类站点在部分环境初始化异常）时，
+            // 回退到 app 内置的等价协议实现，避免整站无数据。
+            return fallback(key, api, ext);
+        }
+    }
+
+    /** jar 爬虫不可用时的内置兜底：目前覆盖 csp_AppDrama（电影天堂/橘汁类短剧源） */
+    private Spider fallback(String key, String api, String ext) {
+        if (!"csp_AppDrama".equals(api)) return new SpiderNull();
+        try {
+            Spider spider = (Spider) Class.forName("com.github.catvod.fallback.AppDrama").newInstance();
+            spider.siteKey = key;
+            spider.init(App.get(), ext);
+            spiders.put(Util.md5("") + key, spider);
             return spider;
         } catch (Throwable e) {
             e.printStackTrace();
