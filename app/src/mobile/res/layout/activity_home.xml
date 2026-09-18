@@ -29,12 +29,4 @@
         app:labelVisibilityMode="unlabeled"
         app:menu="@menu/menu_nav" />
 
-    <!-- 开屏页：全屏星落图置于最上层，启动后由代码延迟淡出 -->
-    <ImageView
-        android:id="@+id/splash_image"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="fitXY"
-        android:src="@drawable/splash_xingluo" />
-
 </RelativeLayout>

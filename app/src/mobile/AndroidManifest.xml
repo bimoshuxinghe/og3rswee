@@ -11,18 +11,27 @@
     <!-- 音轨点击闪退修复：TrackDialog.onItemClick 已加 try-catch 兜底 -->
     <application>
 
+        <!-- 启动页：极轻全屏星落图，冷启动直接显示图片后进入主页 -->
+        <activity
+            android:name=".ui.activity.SplashActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="true"
+            android:screenOrientation="fullUser"
+            android:theme="@style/Theme.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".ui.activity.HomeActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="true"
             android:launchMode="singleTop"
             android:screenOrientation="fullUser"
-            android:theme="@style/Theme.Splash"
+            android:theme="@style/Theme.App"
             android:windowSoftInputMode="adjustPan">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEARCH" />
             </intent-filter>

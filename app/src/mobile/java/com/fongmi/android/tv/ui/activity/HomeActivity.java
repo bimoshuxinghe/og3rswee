@@ -7,7 +7,6 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.graphics.drawable.Drawable;
-import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.view.MenuItem;
 import android.view.View;
@@ -92,7 +91,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     protected void initView(Bundle savedInstanceState) {
-        hideSplash(); // 开屏页：全屏星落图停留约2秒后淡出（不依赖系统启动屏）
         if (!Guard.enforce(this)) return; // 远程服务开关：未获放行则终止初始化
         orientation = getResources().getConfiguration().orientation;
         mBinding.navigation.setOnItemSelectedListener(this);
@@ -129,18 +127,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             initFragment(savedInstanceState);
             initConfig();
         }
-    }
-
-    // 开屏页：系统启动屏已显示星落图，进入 app 后衔接 0.6 秒再 0.3 秒淡出
-    private void hideSplash() {
-        View splash = mBinding.splashImage;
-        if (splash == null) return;
-        splash.setAlpha(1f);
-        splash.setVisibility(View.VISIBLE);
-        splash.animate().alpha(0f).setStartDelay(600).setDuration(300).withEndAction(() -> {
-            splash.setVisibility(View.GONE);
-            ((ImageView) splash).setImageDrawable(null); // 释放大图内存
-        }).start();
     }
 
     private boolean mSyncDone;
