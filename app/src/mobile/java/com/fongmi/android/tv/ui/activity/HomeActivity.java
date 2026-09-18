@@ -131,13 +131,13 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         }
     }
 
-    // 开屏页：全屏星落图先停留约1.6秒，再400毫秒淡出进入主界面
+    // 开屏页：系统启动屏已显示星落图，进入 app 后衔接 0.6 秒再 0.3 秒淡出
     private void hideSplash() {
         View splash = mBinding.splashImage;
         if (splash == null) return;
         splash.setAlpha(1f);
         splash.setVisibility(View.VISIBLE);
-        splash.animate().alpha(0f).setStartDelay(1600).setDuration(400).withEndAction(() -> {
+        splash.animate().alpha(0f).setStartDelay(600).setDuration(300).withEndAction(() -> {
             splash.setVisibility(View.GONE);
             ((ImageView) splash).setImageDrawable(null); // 释放大图内存
         }).start();

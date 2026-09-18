@@ -1,10 +1,10 @@
 <resources>
 
-    <!-- API 31+ 冷启动由系统绘制启动屏：透明图标 + 星落图主色背景，避免出现默认图标页 -->
+    <!-- API 31+ 冷启动由系统绘制启动屏：负 inset 放大图标铺满全屏，直接显示星落图 -->
     <style name="Theme.Splash" parent="Theme.Base">
         <item name="android:windowBackground">@drawable/splash_full</item>
         <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_system_icon</item>
     </style>
 
 </resources>

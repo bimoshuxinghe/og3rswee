@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ 系统启动屏全屏星落图：
+  系统把 windowSplashScreenAnimatedIcon 绘制在屏幕中央 288dp 视口内，
+  通过负 inset 把 drawable bounds 扩大到约 400x900dp，铺满手机竖屏。
+  背景色 #393764 与图片夜色一致，未覆盖边缘无缝衔接。
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_xingluo"
+    android:insetLeft="-56dp"
+    android:insetTop="-306dp"
+    android:insetRight="-56dp"
+    android:insetBottom="-306dp" />
