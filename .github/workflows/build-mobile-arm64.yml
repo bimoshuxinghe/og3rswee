@@ -29,11 +29,11 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+        # GitHub ubuntu runner 已预装 Android SDK（cmdline-tools/platforms/build-tools）。
+        # 不再使用 android-actions/setup-android@v3：其内部 `sdkmanager tools`
+        # 依赖的 'tools' 包已被 Google 移除，导致 CI 环境步骤直接失败。
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
