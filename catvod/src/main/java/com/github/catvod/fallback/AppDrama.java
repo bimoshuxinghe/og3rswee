@@ -318,7 +318,11 @@ public class AppDrama extends Spider {
         } catch (Throwable e) {
             SpiderDebug.log("AppDrama(fallback) detailContent: " + e);
         }
-        return vod.toString();
+        // 与 jar 版一致：详情必须包成 {"list":[vod]}，app 的 Result.fromJson 用 Gson 映射 List<Vod> list，
+        // 裸 vod JSON 解析不出 list 会导致详情页线路/选集空白。
+        JSONArray wrap = new JSONArray();
+        wrap.put(vod);
+        return wrapList(wrap);
     }
 
     @Override
