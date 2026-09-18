@@ -2,11 +2,12 @@ package com.fongmi.android.tv.ui.activity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.ViewBinding;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.databinding.ActivitySplashBinding;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+
+import androidx.viewbinding.ViewBinding;
 
 public class SplashActivity extends BaseActivity {
 
