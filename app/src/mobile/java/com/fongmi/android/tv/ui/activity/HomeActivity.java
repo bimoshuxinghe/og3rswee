@@ -91,6 +91,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     protected void initView(Bundle savedInstanceState) {
+        hideSplash(); // 开屏页：全屏星落图停留约2秒后淡出（不依赖系统启动屏）
         if (!Guard.enforce(this)) return; // 远程服务开关：未获放行则终止初始化
         orientation = getResources().getConfiguration().orientation;
         mBinding.navigation.setOnItemSelectedListener(this);
@@ -127,6 +128,18 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             initFragment(savedInstanceState);
             initConfig();
         }
+    }
+
+    // 开屏页：全屏星落图先停留约1.6秒，再400毫秒淡出进入主界面
+    private void hideSplash() {
+        View splash = mBinding.splashImage;
+        if (splash == null) return;
+        splash.setAlpha(1f);
+        splash.setVisibility(View.VISIBLE);
+        splash.animate().alpha(0f).setStartDelay(1600).setDuration(400).withEndAction(() -> {
+            splash.setVisibility(View.GONE);
+            splash.setImageDrawable(null); // 释放大图内存
+        }).start();
     }
 
     private boolean mSyncDone;
