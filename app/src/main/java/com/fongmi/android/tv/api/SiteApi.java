@@ -376,7 +376,9 @@ public class SiteApi {
 
     /**
      * 查找单集已下载的可播放文件，优先级：合并专属格式 .xhtv > 分片模式 local.m3u8 > 单文件 mp4/mkv。
-     * 找不到返回 null。
+     * .xhtv 必须通过 TS 同步字节校验、local.m3u8 必须是含分片声明的媒体列表，
+     * 防止旧版本遗留的垃圾文件（master 列表被当分片下载）导致播放器一直转圈。
+     * 找不到有效文件返回 null。
      */
     public static java.io.File findLocalVideo(String downloadPath) {
         try {
@@ -387,14 +389,51 @@ public class SiteApi {
             java.io.File m3u8 = null, video = null;
             for (java.io.File f : files) {
                 String name = f.getName().toLowerCase();
-                if (name.endsWith(".xhtv")) return f; // 合并单文件优先
-                if (name.equals("local.m3u8")) m3u8 = f;
-                else if ((name.endsWith(".mp4") || name.endsWith(".mkv")) && !name.endsWith(".tmp")) video = f;
+                if (name.endsWith(".xhtv")) {
+                    if (isValidTs(f)) return f; // 合并单文件优先，但必须是合法 TS
+                } else if (name.equals("local.m3u8") && m3u8 == null) {
+                    m3u8 = f;
+                } else if ((name.endsWith(".mp4") || name.endsWith(".mkv")) && !name.endsWith(".tmp") && video == null) {
+                    video = f;
+                }
             }
-            if (m3u8 != null) return m3u8;
+            if (m3u8 != null && isValidMediaPlaylist(m3u8)) return m3u8;
             return video;
         } catch (Throwable t) {
             return null;
+        }
+    }
+
+    /** TS 流校验：MPEG-TS 每个 188 字节包以 0x47 同步字节开头，校验首包 */
+    private static boolean isValidTs(java.io.File f) {
+        java.io.InputStream is = null;
+        try {
+            byte[] head = new byte[188];
+            is = new java.io.FileInputStream(f);
+            int got = 0, n;
+            while (got < head.length && (n = is.read(head, got, head.length - got)) >= 0) got += n;
+            return got == head.length && head[0] == 0x47;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try {
+                if (is != null) is.close();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    /** local.m3u8 必须是含分片声明的媒体列表（master 嵌套列表在分片模式下无法播放） */
+    private static boolean isValidMediaPlaylist(java.io.File f) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(f), "UTF-8"));
+            String line;
+            while ((line = r.readLine()) != null && sb.length() < 65536) sb.append(line).append('\n');
+            r.close();
+            String s = sb.toString();
+            return s.contains("#EXTINF") && !s.contains("#EXT-X-STREAM-INF");
+        } catch (Exception e) {
+            return false;
         }
     }
 }

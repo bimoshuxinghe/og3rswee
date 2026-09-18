@@ -371,6 +371,30 @@ public class DownloadManager {
         return iv;
     }
 
+    /**
+     * 检测分片文件是否为 m3u8 文本残留（旧版 bug：master 子列表被当分片下载成文本）。
+     * TS 分片为二进制流，头部出现 #EXTM3U/#EXTINF 文本特征的概率可忽略；命中即删除重下。
+     */
+    private boolean isM3u8TextGarbage(File f) {
+        java.io.InputStream is = null;
+        try {
+            byte[] buf = new byte[1024];
+            is = new java.io.FileInputStream(f);
+            int got = 0, n;
+            while (got < buf.length && (n = is.read(buf, got, buf.length - got)) >= 0) got += n;
+            String head = new String(buf, 0, got, java.nio.charset.StandardCharsets.UTF_8);
+            boolean garbage = head.contains("#EXTM3U") || head.contains("#EXTINF");
+            if (garbage) f.delete();
+            return garbage;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try {
+                if (is != null) is.close();
+            } catch (Exception ignored) {}
+        }
+    }
+
     private byte[] hexToBytes(String hex) {
         if (hex.length() % 2 != 0) hex = "0" + hex;
         byte[] out = new byte[hex.length() / 2];
@@ -555,8 +579,8 @@ public class DownloadManager {
                     }
 
                     File target = new File(downloadDir, index + ".ts");
-                    // 已存在分片有效性：过小的残留文件（错误页/空响应）视为无效，重新下载
-                    if (target.exists() && target.length() > 512) {
+                    // 已存在分片有效性：过小的残留文件（错误页/空响应）或 m3u8 文本残留（旧版把子列表当分片下载）视为无效，重新下载
+                    if (target.exists() && target.length() > 512 && !isM3u8TextGarbage(target)) {
                         synchronized (successCount) {
                             successCount[0]++;
                             download.setDownloadedTs(successCount[0]);
