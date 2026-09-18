@@ -529,7 +529,7 @@ public class AppDrama extends Spider {
 
     // ==================== 网络 ====================
 
-    private OkHttpClient client() {
+    private OkHttpClient httpClient() {
         if (client == null) {
             client = new OkHttpClient.Builder()
                     .connectTimeout(15, TimeUnit.SECONDS)
@@ -543,7 +543,7 @@ public class AppDrama extends Spider {
 
     private String getBody(String url) {
         if (url == null || !url.startsWith("http")) return "";
-        try (Response res = client().newCall(new Request.Builder().url(url).header("User-Agent", UA).build()).execute()) {
+        try (Response res = httpClient().newCall(new Request.Builder().url(url).header("User-Agent", UA).build()).execute()) {
             return res.body() == null ? "" : res.body().string();
         } catch (Throwable e) {
             return "";
@@ -554,7 +554,7 @@ public class AppDrama extends Spider {
         if (url == null || !url.startsWith("http")) return "";
         Request.Builder builder = new Request.Builder().url(url);
         for (Map.Entry<String, String> e : headers.entrySet()) builder.header(e.getKey(), e.getValue());
-        try (Response res = client().newCall(builder.build()).execute()) {
+        try (Response res = httpClient().newCall(builder.build()).execute()) {
             return res.body() == null ? "" : res.body().string();
         } catch (Throwable e) {
             SpiderDebug.log("AppDrama(fallback) GET " + url + ": " + e);
@@ -566,7 +566,7 @@ public class AppDrama extends Spider {
         if (url == null || !url.startsWith("http") || body == null) return new byte[0];
         Request.Builder builder = new Request.Builder().url(url).post(RequestBody.create(MediaType.get("application/x-protobuf"), body));
         for (Map.Entry<String, String> e : protoHeaders().entrySet()) builder.header(e.getKey(), e.getValue());
-        try (Response res = client().newCall(builder.build()).execute()) {
+        try (Response res = httpClient().newCall(builder.build()).execute()) {
             if (res.body() == null) return new byte[0];
             InputStream in = res.body().byteStream();
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
