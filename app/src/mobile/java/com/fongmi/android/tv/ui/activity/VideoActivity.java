@@ -143,6 +143,9 @@ import java.util.Objects;
 
 public class VideoActivity extends PlaybackActivity implements Clock.Callback, CustomKeyDown.Listener, TrackDialog.Listener, ControlDialog.Listener, SkipDialog.Listener, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, QualityAdapter.OnClickListener, QuickAdapter.OnClickListener, ParseAdapter.OnClickListener, CastDialog.Listener, InfoDialog.Listener {
 
+    /** 自动换源最多连续尝试的站源数，防止一整列坏源把播放页拖死 */
+    private static final int MAX_JUMP = 8;
+
     private ActivityVideoBinding mBinding;
     private ViewGroup.LayoutParams mFrameParams;
     private Observer<Result> mObserveDetail;
@@ -169,6 +172,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private boolean fullscreen;
     private boolean initAuto;
     private boolean autoMode;
+    /** 自动换源链上已尝试的站源数量，用于给"坏源连跳"设上限 */
+    private int jumpCount;
     private boolean useParse;
     private boolean leavingPlayback;
     private boolean rotate;
@@ -633,8 +638,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void showEmpty() {
         if (isFinishing() || isDestroyed()) return;
-        showError(getString(R.string.error_detail));
         mBinding.swipeLayout.setEnabled(true);
+        // 自动换源链路：某个站的 spider（远程 jar）回调抛异常或十秒未回，详情就永远到不了。
+        // 此时不要把链路断在空态页，把该片源记入黑名单后继续跳下一个站。
+        if (isAutoMode() && !isReaderContent && !getName().isEmpty()
+                && jumpCount < MAX_JUMP && !mQuickAdapter.isEmpty()) {
+            mBroken.add(getId());
+            jumpCount++;
+            nextSite();
+            return;
+        }
+        showError(getString(R.string.error_detail));
         mBinding.progressLayout.showEmpty();
     }
 
@@ -644,6 +658,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.progressLayout.showContent();
         mBinding.name.setText(item.getName());
         mFlagAdapter.addAll(item.getFlags());
+        jumpCount = 0;
         App.removeCallbacks(mR4);
         checkHistory(item);
         checkFlag(item);
