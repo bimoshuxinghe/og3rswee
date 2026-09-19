@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
 
+import com.fongmi.android.tv.utils.CrashGuard;
 import com.fongmi.android.tv.utils.Guard;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.proxy.ProxySubscriptionManager;
@@ -92,6 +93,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
             android.util.Log.e("App", "Uncaught exception in " + thread.getName(), e);
             if (def != null) def.uncaughtException(thread, e);
         });
+        // 主线程崩溃护栏：远程下载的第三方爬虫 jar 会把回调 post 到主线程，
+        // 其内部 NPE 无法被我们的 try/catch 覆盖，直接在 Looper 层兜住，避免整个 App 被带崩。
+        CrashGuard.install();
         // 一次性迁移：清除旧版持久化的不可达默认规则库地址（如 ccfork 链接），使设置页不再显示该链接
         com.fongmi.android.tv.setting.Setting.migrateDeprecatedRuleLibraryUrl();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
