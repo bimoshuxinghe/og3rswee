@@ -113,3 +113,11 @@
 # Vosk ASR (native JNI bindings must not be stripped/obfuscated)
 -keep class org.vosk.** { *; }
 -dontwarn org.vosk.**
+
+# Rust 爬虫引擎（JNI）：保留 native 方法与桥接类
+-keep class com.fongmi.android.tv.api.loader.RustBridge { *; }
+-keep class com.fongmi.android.tv.api.loader.RustSpider { *; }
+-keep class com.fongmi.android.tv.api.loader.RustLoader { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
