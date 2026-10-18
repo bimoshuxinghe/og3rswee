@@ -218,12 +218,13 @@ public class VodConfig extends BaseConfig {
         getSites().addAll(localXbpqSites);
 
         // 内置 Rust 线路：4KVM（Rust 原生 .so 实现，不依赖 jar/py/js 插件）
-        // api 形如 rust://spider_4kvm，由 BaseLoader 分发给 RustLoader → RustSpider → libspider_4kvm.so
+        // api 形如 rust://spider_rust（通用 Rust 引擎），由 BaseLoader 分发给 RustLoader → RustSpider → libspider_rust.so
+        // ext 仅提供 host，Rust 侧按 host 特征自动识别为 4kvm 模块；其他站点可在 ext 中加 "module" 指定
         if (getSites().stream().noneMatch(s -> "rust_4kvm".equals(s.getKey()))) {
             Site rust4kvm = new Site();
             rust4kvm.setKey("rust_4kvm");
             rust4kvm.setName("4K影视[Rust]");
-            rust4kvm.setApi("rust://spider_4kvm");
+            rust4kvm.setApi("rust://spider_rust");
             rust4kvm.setType(1);
             rust4kvm.setGroup("Rust");
             rust4kvm.setSearchable(1);

@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Rust 线路加载器：api 形如 `rust://spider_4kvm`。
+ * Rust 线路加载器：api 形如 `rust://spider_rust`。
  * 与 PyLoader/JsLoader 同构，按 siteKey 缓存 Spider 实例。
  */
 public class RustLoader {

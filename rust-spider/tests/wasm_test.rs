@@ -1,6 +1,6 @@
 //! WASM 引擎单元测试（无需网络）
 
-use spider_4kvm::wasm_engine;
+use spider_rust::wasm_engine;
 
 #[test]
 fn build_play_url_generates_signed_api() {

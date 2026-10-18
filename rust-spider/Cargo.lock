@@ -1492,7 +1492,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "spider_4kvm"
+name = "spider_rust"
 version = "0.1.0"
 dependencies = [
  "jni",

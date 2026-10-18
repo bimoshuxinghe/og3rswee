@@ -1,9 +1,10 @@
 [package]
-name = "spider_4kvm"
+name = "spider_rust"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
+name = "spider_rust"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

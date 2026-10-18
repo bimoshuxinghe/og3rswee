@@ -7,7 +7,10 @@
 //! - 详情页 : `a[data-episode]`（href=播放页, dataid=选集ID）
 //! - 播放   : 站点 WASM `build_play_url(dataid, secret, quality, play_key)`
 //!            → `/video/play?...` → JSON → `quality_urls[].url`（m3u8 直链）
+//!
+//! 本模块经 `super::SiteExt` 配置化：UA / Cookie / 超时 / 备用域名 / 额外头均可由 ext 指定。
 
+use super::SiteExt;
 use crate::types::*;
 use crate::wasm_engine;
 use once_cell::sync::Lazy;
@@ -19,8 +22,14 @@ use std::time::Duration;
 /// 默认清晰度（非 VIP 可用）
 const DEFAULT_QUALITY: &str = "1080";
 
-/// 站点备用 OSS 域名（源自播放页 `window._pdf`，主域名失败时切换）
-const BACKUP_OSS_HOSTS: [&str; 2] = ["oss.douyinbit.com", "myoss.douyinbit.top"];
+/// 默认 User-Agent（ext.user_agent 可覆盖）
+const DEFAULT_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0";
+
+/// 站点备用 OSS 域名（源自播放页 `window._pdf`，主域名失败时切换；ext.backup_hosts 可覆盖）
+const DEFAULT_BACKUP_OSS_HOSTS: [&str; 2] = ["oss.douyinbit.com", "myoss.douyinbit.top"];
+
+/// 初始 Cookie（与 Python 版 init 一致；ext.cookie 可覆盖）
+const DEFAULT_COOKIE: &str = "_ga=GA1.1.1153221558.1775407756; _ga_4GN328S9FG=GS2.1.s1775407755$o1$g1$t1775407774$j41$l0$h0";
 
 /// 全局 Tokio 运行时
 static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
@@ -30,21 +39,38 @@ static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
         .expect("Tokio 运行时创建失败")
 });
 
-/// 4KVM 爬虫
+/// 4KVM 爬虫（经 SiteExt 配置化）
 #[derive(Clone)]
 pub struct Spider4KVM {
     host: String,
     client: reqwest::Client,
+    user_agent: String,
+    backup_hosts: Vec<String>,
 }
 
 impl Spider4KVM {
-    /// 创建爬虫实例。`host` 形如 `https://www.4kvms.org/`（可带尾斜杠）
-    pub fn new(host: &str) -> Self {
-        let host = normalize_host(host);
+    /// 创建爬虫实例。`ext.host` 形如 `https://www.4kvms.org/`（可带尾斜杠）；
+    /// UA/Cookie/超时/备用域名/额外头缺省时用内置默认值。
+    pub fn new(ext: &SiteExt) -> Self {
+        let host = normalize_host(&ext.host);
+        let user_agent = if ext.user_agent.trim().is_empty() {
+            DEFAULT_UA.to_string()
+        } else {
+            ext.user_agent.trim().to_string()
+        };
+        let cookie = if ext.cookie.trim().is_empty() {
+            DEFAULT_COOKIE.to_string()
+        } else {
+            ext.cookie.trim().to_string()
+        };
+        let backup_hosts: Vec<String> = if ext.backup_hosts.is_empty() {
+            DEFAULT_BACKUP_OSS_HOSTS.iter().map(|s| s.to_string()).collect()
+        } else {
+            ext.backup_hosts.clone()
+        };
+
         let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
-        ));
+        headers.insert(USER_AGENT, HeaderValue::from_str(&user_agent).unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_UA)));
         headers.insert("Accept", HeaderValue::from_static(
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         ));
@@ -55,22 +81,32 @@ impl Spider4KVM {
         headers.insert("Sec-Fetch-Site", HeaderValue::from_static("same-origin"));
         headers.insert("Sec-Fetch-User", HeaderValue::from_static("?1"));
         headers.insert("Upgrade-Insecure-Requests", HeaderValue::from_static("1"));
-        // 初始 Cookie（与 Python 版 init 一致）
-        headers.insert(COOKIE, HeaderValue::from_static(
-            "_ga=GA1.1.1153221558.1775407756; _ga_4GN328S9FG=GS2.1.s1775407755$o1$g1$t1775407774$j41$l0$h0",
-        ));
+        // 初始 Cookie
+        headers.insert(COOKIE, HeaderValue::from_str(&cookie).unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_COOKIE)));
+        // ext.headers 额外头（覆盖同名默认头）
+        for (k, v) in &ext.headers {
+            if let (Ok(name), Ok(value)) = (
+                reqwest::header::HeaderName::from_bytes(k.trim().as_bytes()),
+                HeaderValue::from_str(v.trim()),
+            ) {
+                headers.insert(name, value);
+            }
+        }
+
+        let connect_timeout = Duration::from_secs(10);
+        let total_timeout = Duration::from_secs(if ext.timeout > 0 { ext.timeout } else { 15 });
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .cookie_store(true)
             .gzip(true)
             .brotli(true)
-            .connect_timeout(Duration::from_secs(10))
-            .timeout(Duration::from_secs(15))
+            .connect_timeout(connect_timeout)
+            .timeout(total_timeout)
             .build()
             .unwrap_or_default();
 
-        Self { host, client }
+        Self { host, client, user_agent, backup_hosts }
     }
 
     // ---------- 首页 ----------
@@ -348,7 +384,7 @@ impl Spider4KVM {
 
     fn header_map(&self) -> HashMap<String, String> {
         let mut m = HashMap::new();
-        m.insert("User-Agent".into(), "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0".into());
+        m.insert("User-Agent".into(), self.user_agent.clone());
         m.insert("Referer".into(), format!("{}/", self.host));
         m
     }
@@ -357,6 +393,7 @@ impl Spider4KVM {
     fn fallback_oss_url(&self, url: &str) -> String {
         let client = self.client.clone();
         let url = url.to_string();
+        let backup_hosts = self.backup_hosts.clone();
         RUNTIME.block_on(async move {
             let ok = client
                 .head(&url)
@@ -372,8 +409,8 @@ impl Spider4KVM {
                 let rest = &url[idx + 3..];
                 if let Some(slash) = rest.find('/') {
                     let current_host = &rest[..slash];
-                    if BACKUP_OSS_HOSTS.contains(&current_host) {
-                        for host in BACKUP_OSS_HOSTS {
+                    if backup_hosts.iter().any(|h| h == current_host) {
+                        for host in &backup_hosts {
                             if host == current_host {
                                 continue;
                             }
