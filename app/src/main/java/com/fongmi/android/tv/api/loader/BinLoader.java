@@ -68,7 +68,7 @@ public class BinLoader {
 
         // 1) 网络 URL：下载缓存
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            File target = Path.cache("rust", Util.md5(trimmed) + ".bin");
+            File target = new File(Path.cache("rust"), Util.md5(trimmed) + ".bin");
             if (!Path.exists(target)) download(trimmed, target);
             return chmod(target) ? target : null;
         }
@@ -82,7 +82,7 @@ public class BinLoader {
         for (String candidate : assetCandidates(base)) {
             try (InputStream in = Asset.open(candidate)) {
                 if (in != null) {
-                    File target = Path.cache("rust", base + "-" + Util.md5(candidate) + ".bin");
+                    File target = new File(Path.cache("rust"), base + "-" + Util.md5(candidate) + ".bin");
                     copy(in, target);
                     return chmod(target) ? target : null;
                 }
@@ -93,7 +93,7 @@ public class BinLoader {
 
         // 3) 本地路径（绝对路径或相对缓存目录）
         File local = new File(trimmed);
-        if (!Path.exists(local)) local = Path.cache("rust", trimmed);
+        if (!Path.exists(local)) local = new File(Path.cache("rust"), trimmed);
         if (Path.exists(local) && local.canExecute()) return local;
         return null;
     }
