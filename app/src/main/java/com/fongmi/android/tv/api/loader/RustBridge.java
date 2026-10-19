@@ -4,7 +4,7 @@ import android.util.Log;
 
 /**
  * Rust 爬虫引擎 JNI 桥（通用版）。
- * 对应 rust-spider/src/jni_api.rs 导出的 native 方法，
+ * 对应 Rust 引擎 JNI 导出层（jni_api.rs，引擎源码为独立工程）导出的 native 方法，
  * 所有方法返回 Spider 协议 JSON 字符串，异常时返回空串（由上层兜底）。
  *
  * 签名遵循技术文档 5.1：(host, ext) 双参数，ext 为站点配置 JSON

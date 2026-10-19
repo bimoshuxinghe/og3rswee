@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  * 每次请求以子进程调用二进制：
  *   <bin> <action> <ext_json> [args...]
  * stdout 整体读取为结果 JSON（TVBox 协议格式），日志走 stderr。
- * 协议详见 rust-spider/src/main.rs 头部注释。
+ * 协议详见 Rust 引擎源码 src/main.rs 头部注释（引擎源码为独立工程，不随本仓库发布）。
  */
 public class BinSpider extends Spider {
 

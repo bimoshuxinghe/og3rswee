@@ -1,2 +1,0 @@
-# Rust 编译产物（交叉编译在 build-rust.sh 中执行，产物手动部署到 app/src/main/jniLibs/）
-/target

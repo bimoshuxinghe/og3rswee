@@ -219,7 +219,8 @@ public class VodConfig extends BaseConfig {
 
         // 内置 Rust WASM 站点线路：4KVM（"Rust 版 py"——站点为纯逻辑 wasm，运行依赖全在 libspider_rust.so 内）
         // api 形如 ./rust/site_4kvm.wasm，由 BaseLoader 分发给 WasmLoader → RustSpider（wasm 站点运行时）
-        // 其他站点：编译自己的 wasm 放到配置目录或网络地址即可，无需改壳子（模板见 rust-spider/wasm-sites/4kvm/）
+        // 其他站点：编译自己的 wasm 放到配置目录或网络地址即可，无需改壳子
+        // （站点工程模板见随附的 rust-spider 源码包 wasm-sites/4kvm/）
         if (getSites().stream().noneMatch(s -> "rust_4kvm".equals(s.getKey()))) {
             Site rust4kvm = new Site();
             rust4kvm.setKey("rust_4kvm");
