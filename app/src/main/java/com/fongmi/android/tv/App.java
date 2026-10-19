@@ -102,6 +102,8 @@ public class App extends Application implements Application.ActivityLifecycleCal
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
         // 远程服务开关：启动即后台预取服务器指令（不阻塞启动，主页入口同步裁决）
         com.fongmi.android.tv.utils.Task.execute(() -> Guard.prefetch());
+        // 内置直播代理：后台拉起 ysp-live（央视频 64 频道 Python 代理，监听 127.0.0.1:8767）
+        com.fongmi.android.tv.utils.Task.execute(() -> com.fongmi.android.tv.server.YspLive.get().start());
         // 启动预热：拉取广告规则库（仅下载、不上传）并合并本地采集规则；失败静默降级，不影响播放。
         if (Setting.isAiAdblock()) {
             com.fongmi.android.tv.utils.Task.execute(() ->

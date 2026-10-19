@@ -236,7 +236,7 @@ public class ExoPlayerEngine implements PlayerEngine {
      * 重要：直播流与本地代理地址一律不探测——
      * <ul>
      *   <li>直播时长本就无限（TIME_UNSET 是其正常状态），不需要估算；</li>
-     *   <li>央视频等本地代理地址为 127.0.0.1:{@code /ysp?id=...}，对其发 HEAD/Range
+     *   <li>央视频等本地代理地址为 127.0.0.1:{@code :8767/<频道>.m3u8}，对其发 HEAD/Range
      *       探测会穿透到代理内部状态机，干扰直播取址与分片拉取，导致 403/起播失败。</li>
      * </ul>
      */
@@ -251,7 +251,7 @@ public class ExoPlayerEngine implements PlayerEngine {
             return;
         }
         String url = spec != null ? spec.getUrl() : null;
-        // 本地代理地址（央视频 /ysp、ISO 代理等）不探测：探测请求会穿透代理状态机
+        // 本地代理地址（央视频 ysp-live、ISO 代理等）不探测：探测请求会穿透代理状态机
         if (url == null || !url.startsWith("http") || isLocalProxy(url) || DurationProbe.isTracking(url)) return;
         Map<String, String> headers = spec.getHeaders() != null ? spec.getHeaders() : new HashMap<>();
         DurationProbe.start(url, headers, () -> {

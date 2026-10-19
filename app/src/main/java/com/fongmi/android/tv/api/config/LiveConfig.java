@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.api.config;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.fongmi.android.tv.api.Decoder;
 import com.fongmi.android.tv.api.LiveApi;
@@ -16,7 +17,7 @@ import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.impl.Callback;
-import com.fongmi.android.tv.server.Server;
+import com.fongmi.android.tv.server.YspLive;
 import com.fongmi.android.tv.setting.LiveSetting;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.bean.Header;
@@ -78,7 +79,7 @@ public class LiveConfig extends BaseConfig {
     }
 
     public LiveConfig init() {
-        // 走 defaultConfig()：无直播配置时自动回退到内置央视频源（/ysp?list=live）
+        // 走 defaultConfig()：无直播配置时自动回退到内置央视频直播源（ysp-live Python 代理）
         return config(defaultConfig());
     }
 
@@ -106,9 +107,11 @@ public class LiveConfig extends BaseConfig {
     @Override
     protected Config defaultConfig() {
         Config config = Config.live();
-        // 零配置默认直播源：内置央视频代理（/ysp?list=live 动态生成频道列表）
+        // 零配置默认直播源：内置央视频直播（ysp-live v9.5 Python 代理：64 频道 + 7 天时移）
+        // App 启动时已在后台拉起本地代理，此处只登记地址；load() 内等待代理就绪
         if (TextUtils.isEmpty(config.getUrl())) {
-            config.url(Server.get().getAddress(true) + "/ysp?list=live").name("央视频内置").update();
+            YspLive.get().start();
+            config.url(YspLive.URL).name("央视频直播").update();
         }
         return config;
     }
@@ -121,11 +124,12 @@ public class LiveConfig extends BaseConfig {
 
     @Override
     protected void load(Config config) throws Throwable {
-        // 内置源端口校正：loadConfig 已先启动服务器，此时端口已确定，
-        // 将 defaultConfig 阶段预估的地址（可能 9978 被占顺延）替换为实际监听地址
-        if (config.getUrl().endsWith("/ysp?list=live")) {
-            String actual = Server.get().getAddress(true) + "/ysp?list=live";
-            if (!actual.equals(config.getUrl())) config.url(actual).update();
+        // 内置 ysp-live Python 直播源：等待本地代理就绪（App 启动即后台拉起，通常已就绪）
+        if (YspLive.URL.equals(config.getUrl())) {
+            if (!YspLive.get().waitReady(15000)) {
+                Log.w(TAG, "ysp-live 代理未就绪，本次加载失败（端口 8767 可能被占用）");
+                throw new Exception("内置直播代理启动超时");
+            }
         }
         String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
         if (Json.isObj(json)) checkJson(config, Json.parse(json).getAsJsonObject());

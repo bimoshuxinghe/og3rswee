@@ -23,17 +23,11 @@ public class BaseLoader {
     private final JarLoader jarLoader;
     private final PyLoader pyLoader;
     private final JsLoader jsLoader;
-    private final RustLoader rustLoader;
-    private final BinLoader binLoader;
-    private final WasmLoader wasmLoader;
 
     private BaseLoader() {
         jarLoader = new JarLoader();
         pyLoader = new PyLoader();
         jsLoader = new JsLoader();
-        rustLoader = new RustLoader();
-        binLoader = new BinLoader();
-        wasmLoader = new WasmLoader();
     }
 
     public static BaseLoader get() {
@@ -52,32 +46,14 @@ public class BaseLoader {
         return api.startsWith("csp_");
     }
 
-    private static boolean isRust(String api) {
-        return api.startsWith("rust://");
-    }
-
-    private static boolean isBin(String api) {
-        return api.endsWith(".bin");
-    }
-
-    private static boolean isWasm(String api) {
-        return api.endsWith(".wasm");
-    }
-
     public void clear() {
         jarLoader.clear();
         pyLoader.clear();
         jsLoader.clear();
-        rustLoader.clear();
-        binLoader.clear();
-        wasmLoader.clear();
     }
 
     public Spider getSpider(String key, String api, String ext, String jar) {
-        if (isWasm(api)) return wasmLoader.getSpider(key, api, ext);
-        else if (isBin(api)) return binLoader.getSpider(key, api, ext);
-        else if (isRust(api)) return rustLoader.getSpider(key, api, ext);
-        else if (isPy(api)) return pyLoader.getSpider(key, api, ext);
+        if (isPy(api)) return pyLoader.getSpider(key, api, ext);
         else if (isJs(api)) return jsLoader.getSpider(key, api, ext, jar);
         else if (isCsp(api)) return jarLoader.getSpider(key, api, ext, jar);
         else return new SpiderNull();
