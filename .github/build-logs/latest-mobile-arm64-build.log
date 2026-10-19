@@ -509,6 +509,7 @@ See https://github.com/gradle/gradle/issues/2298
 Run with --info for a stacktrace.
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preMobileArm64_v8aReleaseBuild UP-TO-DATE
+> Task :app:mergeMobileArm64_v8aReleaseJniLibFolders
 
 > Task :probe:probe-api:compileJava
 warning: [options] source value 8 is obsolete and will be removed in a future release
@@ -516,7 +517,6 @@ warning: [options] target value 8 is obsolete and will be removed in a future re
 warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
 3 warnings
 
-> Task :app:mergeMobileArm64_v8aReleaseJniLibFolders
 > Task :catvod:preBuild UP-TO-DATE
 > Task :catvod:preReleaseBuild UP-TO-DATE
 > Task :probe:probe-api:processResources NO-SOURCE
@@ -569,55 +569,6 @@ warning: [options] To suppress warnings about obsolete options, use -Xlint:-opti
 > Task :thunder:preReleaseBuild UP-TO-DATE
 > Task :thunder:mergeReleaseJniLibFolders
 > Task :thunder:mergeReleaseNativeLibs
-> Task :thunder:copyReleaseJniLibsProjectOnly
-> Task :tvbus:preBuild UP-TO-DATE
-> Task :tvbus:preReleaseBuild UP-TO-DATE
-> Task :tvbus:mergeReleaseJniLibFolders
-> Task :tvbus:mergeReleaseNativeLibs NO-SOURCE
-> Task :tvbus:copyReleaseJniLibsProjectOnly
-> Task :zlive:preBuild UP-TO-DATE
-> Task :zlive:preReleaseBuild UP-TO-DATE
-> Task :zlive:mergeReleaseJniLibFolders
-> Task :zlive:mergeReleaseNativeLibs
-> Task :zlive:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-adapter-api:preBuild UP-TO-DATE
-> Task :probe:probe-adapter-api:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-adapter-api:mergeReleaseJniLibFolders
-> Task :probe:probe-adapter-api:mergeReleaseNativeLibs NO-SOURCE
-> Task :probe:probe-adapter-api:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-collector-tools:preBuild UP-TO-DATE
-> Task :probe:probe-collector-tools:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-collector-tools:mergeReleaseJniLibFolders
-> Task :probe:probe-collector-tools:mergeReleaseNativeLibs NO-SOURCE
-> Task :probe:probe-collector-tools:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-media3-1-9:preBuild UP-TO-DATE
-> Task :probe:probe-media3-1-9:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-media3-1-9:mergeReleaseJniLibFolders
-> Task :probe:probe-media3-1-9:mergeReleaseNativeLibs NO-SOURCE
-> Task :probe:probe-media3-1-9:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-runtime:preBuild UP-TO-DATE
-> Task :probe:probe-runtime:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-runtime:mergeReleaseJniLibFolders
-> Task :probe:probe-runtime:mergeReleaseNativeLibs NO-SOURCE
-> Task :probe:probe-runtime:copyReleaseJniLibsProjectOnly
-> Task :catvod:prepareReleaseArtProfile
-> Task :forcetech:prepareReleaseArtProfile
-> Task :hook:prepareReleaseArtProfile
-> Task :jianpian:prepareReleaseArtProfile
-> Task :media3-common:prepareReleaseArtProfile
-> Task :media3-danmaku:prepareReleaseArtProfile
-> Task :media3-decoder-ffmpeg:prepareReleaseArtProfile
-> Task :media3-ui:prepareReleaseArtProfile
-> Task :quickjs:prepareReleaseArtProfile
-> Task :thunder:prepareReleaseArtProfile
-> Task :tvbus:prepareReleaseArtProfile
-> Task :zlive:prepareReleaseArtProfile
-> Task :probe:probe-adapter-api:prepareReleaseArtProfile
-> Task :probe:probe-collector-tools:prepareReleaseArtProfile
-> Task :probe:probe-media3-1-9:prepareReleaseArtProfile
-> Task :probe:probe-runtime:prepareReleaseArtProfile
-> Task :catvod:generateReleaseResValues
-> Task :catvod:generateReleaseResources
 
 > Task :probe:probe-core:compileJava
 warning: [options] source value 8 is obsolete and will be removed in a future release
@@ -628,20 +579,69 @@ warning: [options] To suppress warnings about obsolete options, use -Xlint:-opti
 > Task :probe:probe-core:processResources NO-SOURCE
 > Task :probe:probe-core:classes
 > Task :probe:probe-core:jar
-> Task :quickjs:generateReleaseResValues
-> Task :quickjs:generateReleaseResources
-> Task :quickjs:packageReleaseResources
-> Task :catvod:packageReleaseResources
+> Task :thunder:copyReleaseJniLibsProjectOnly
+> Task :tvbus:preBuild UP-TO-DATE
+> Task :tvbus:preReleaseBuild UP-TO-DATE
+> Task :zlive:preBuild UP-TO-DATE
+> Task :zlive:preReleaseBuild UP-TO-DATE
+> Task :tvbus:mergeReleaseJniLibFolders
+> Task :tvbus:mergeReleaseNativeLibs NO-SOURCE
+> Task :tvbus:copyReleaseJniLibsProjectOnly
+> Task :probe:probe-adapter-api:preBuild UP-TO-DATE
+> Task :probe:probe-adapter-api:preReleaseBuild UP-TO-DATE
+> Task :probe:probe-adapter-api:mergeReleaseJniLibFolders
+> Task :probe:probe-adapter-api:mergeReleaseNativeLibs NO-SOURCE
+> Task :probe:probe-adapter-api:copyReleaseJniLibsProjectOnly
+> Task :zlive:mergeReleaseJniLibFolders
+> Task :probe:probe-collector-tools:preBuild UP-TO-DATE
+> Task :probe:probe-collector-tools:preReleaseBuild UP-TO-DATE
+> Task :probe:probe-collector-tools:mergeReleaseJniLibFolders
+> Task :probe:probe-collector-tools:mergeReleaseNativeLibs NO-SOURCE
+> Task :probe:probe-collector-tools:copyReleaseJniLibsProjectOnly
+> Task :probe:probe-media3-1-9:preBuild UP-TO-DATE
+> Task :probe:probe-media3-1-9:preReleaseBuild UP-TO-DATE
+> Task :probe:probe-media3-1-9:mergeReleaseJniLibFolders
+> Task :probe:probe-media3-1-9:mergeReleaseNativeLibs NO-SOURCE
+> Task :zlive:mergeReleaseNativeLibs
+> Task :probe:probe-media3-1-9:copyReleaseJniLibsProjectOnly
+> Task :probe:probe-runtime:preBuild UP-TO-DATE
+> Task :probe:probe-runtime:preReleaseBuild UP-TO-DATE
+> Task :probe:probe-runtime:mergeReleaseJniLibFolders
+> Task :probe:probe-runtime:mergeReleaseNativeLibs NO-SOURCE
+> Task :zlive:copyReleaseJniLibsProjectOnly
+> Task :probe:probe-runtime:copyReleaseJniLibsProjectOnly
+> Task :catvod:prepareReleaseArtProfile
+> Task :forcetech:prepareReleaseArtProfile
+> Task :hook:prepareReleaseArtProfile
+> Task :jianpian:prepareReleaseArtProfile
+> Task :media3-common:prepareReleaseArtProfile
+> Task :media3-danmaku:prepareReleaseArtProfile
+> Task :media3-decoder-ffmpeg:prepareReleaseArtProfile
+> Task :quickjs:prepareReleaseArtProfile
+> Task :thunder:prepareReleaseArtProfile
 > Task :chaquo:generateArm64_v8aReleasePythonJniLibs
 > Task :chaquo:preBuild UP-TO-DATE
 > Task :chaquo:preArm64_v8aReleaseBuild UP-TO-DATE
+> Task :media3-ui:prepareReleaseArtProfile
+> Task :tvbus:prepareReleaseArtProfile
+> Task :probe:probe-adapter-api:prepareReleaseArtProfile
+> Task :zlive:prepareReleaseArtProfile
+> Task :probe:probe-collector-tools:prepareReleaseArtProfile
+> Task :probe:probe-media3-1-9:prepareReleaseArtProfile
+> Task :probe:probe-runtime:prepareReleaseArtProfile
+> Task :quickjs:generateReleaseResValues
+> Task :catvod:generateReleaseResValues
+> Task :quickjs:generateReleaseResources
+> Task :catvod:generateReleaseResources
 > Task :chaquo:mergeArm64_v8aReleaseJniLibFolders
 > Task :chaquo:mergeArm64_v8aReleaseNativeLibs
+> Task :quickjs:packageReleaseResources
+> Task :catvod:packageReleaseResources
 > Task :chaquo:copyArm64_v8aReleaseJniLibsProjectOnly
-> Task :quickjs:parseReleaseLocalResources
 > Task :chaquo:prepareArm64_v8aReleaseArtProfile
-> Task :catvod:parseReleaseLocalResources
+> Task :quickjs:parseReleaseLocalResources
 > Task :catvod:javaPreCompileRelease
+> Task :catvod:parseReleaseLocalResources
 > Task :catvod:generateReleaseRFile
 > Task :chaquo:extractArm64_v8aReleasePythonBuildPackages
 
@@ -650,7 +650,7 @@ Chaquopy: Installing for arm64-v8a
 Looking in indexes: https://pypi.org/simple, https://chaquo.com/pypi-13.1
 Collecting lxml (from -r requirements.txt (line 1))
   Downloading https://chaquo.com/pypi-13.1/lxml/lxml-5.3.0-0-cp310-cp310-android_24_arm64_v8a.whl (1.4 MB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 1.8 MB/s  0:00:01
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 1.5 MB/s  0:00:01
 Collecting ujson (from -r requirements.txt (line 2))
   Downloading https://chaquo.com/pypi-13.1/ujson/ujson-5.11.0-0-cp310-cp310-android_24_arm64_v8a.whl (79 kB)
 Collecting pyquery (from -r requirements.txt (line 3))
@@ -663,14 +663,14 @@ Collecting cachetools (from -r requirements.txt (line 6))
   Downloading cachetools-7.2.3-py3-none-any.whl.metadata (5.5 kB)
 Collecting pycryptodome (from -r requirements.txt (line 7))
   Downloading https://chaquo.com/pypi-13.1/pycryptodome/pycryptodome-3.21.0-0-cp310-cp310-android_24_arm64_v8a.whl (1.6 MB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 3.6 MB/s  0:00:00
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 4.5 MB/s  0:00:00
 Collecting beautifulsoup4 (from -r requirements.txt (line 8))
   Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
 Collecting yt-dlp>=2024.10.22 (from -r requirements.txt (line 9))
   Downloading yt_dlp-2026.8.19-py3-none-any.whl.metadata (183 kB)
 Collecting chaquopy-libxml2>=2.9.8 (from lxml->-r requirements.txt (line 1))
   Downloading https://chaquo.com/pypi-13.1/chaquopy-libxml2/chaquopy_libxml2-2.9.8-2-py3-none-android_21_arm64_v8a.whl (773 kB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 773.4/773.4 kB 59.8 MB/s  0:00:00
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 773.4/773.4 kB 102.5 MB/s  0:00:00
 Collecting chaquopy-libxslt>=1.1.32 (from lxml->-r requirements.txt (line 1))
   Downloading https://chaquo.com/pypi-13.1/chaquopy-libxslt/chaquopy_libxslt-1.1.32-2-py3-none-android_21_arm64_v8a.whl (178 kB)
 Collecting chaquopy-libcxx>=180000 (from ujson->-r requirements.txt (line 2))
@@ -679,13 +679,6 @@ Collecting cssselect>=1.5.0 (from pyquery->-r requirements.txt (line 3))
   Downloading cssselect-1.5.0-py3-none-any.whl.metadata (2.4 kB)
 Collecting charset_normalizer<4,>=2 (from requests->-r requirements.txt (line 4))
   Downloading charset_normalizer-3.5.2-py3-none-any.whl.metadata (46 kB)
-Collecting idna<4,>=2.5 (from requests->-r requirements.txt (line 4))
-  Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
-Collecting urllib3<3,>=1.26 (from requests->-r requirements.txt (line 4))
-  Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
-Collecting certifi>=2023.5.7 (from requests->-r requirements.txt (line 4))
-  Downloading certifi-2026.10.18-py3-none-any.whl.metadata (2.5 kB)
-Collecting soupsieve>=1.6.1 (from beautifulsoup4->-r requirements.txt (line 8))
 
 > Task :app:mergeMobileArm64_v8aReleaseNativeLibs
 
@@ -698,12 +691,16 @@ Unable to strip the following libraries, packaging them as they are: libSennheis
 
 > Task :app:extractMobileArm64_v8aReleaseNativeSymbolTables
 > Task :app:mergeMobileArm64_v8aReleaseNativeDebugMetadata NO-SOURCE
-> Task :catvod:bundleLibCompileToJarRelease
-> Task :quickjs:generateReleaseRFile
-> Task :quickjs:javaPreCompileRelease
 > Task :app:mergeMobileArm64_v8aReleaseArtProfile
 
 > Task :chaquo:installArm64_v8aReleasePythonRequirements
+Collecting idna<4,>=2.5 (from requests->-r requirements.txt (line 4))
+  Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+Collecting urllib3<3,>=1.26 (from requests->-r requirements.txt (line 4))
+  Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+Collecting certifi>=2023.5.7 (from requests->-r requirements.txt (line 4))
+  Downloading certifi-2026.10.18-py3-none-any.whl.metadata (2.5 kB)
+Collecting soupsieve>=1.6.1 (from beautifulsoup4->-r requirements.txt (line 8))
   Downloading soupsieve-2.10-py3-none-any.whl.metadata (4.4 kB)
 Collecting typing-extensions>=4.0.0 (from beautifulsoup4->-r requirements.txt (line 8))
   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
@@ -716,7 +713,7 @@ Downloading PySocks-1.7.1-py3-none-any.whl (16 kB)
 Downloading cachetools-7.2.3-py3-none-any.whl (18 kB)
 Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
 Downloading yt_dlp-2026.8.19-py3-none-any.whl (3.2 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 38.6 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 57.0 MB/s  0:00:00
 Downloading certifi-2026.10.18-py3-none-any.whl (134 kB)
 Downloading cssselect-1.5.0-py3-none-any.whl (20 kB)
 Downloading soupsieve-2.10-py3-none-any.whl (38 kB)
@@ -725,6 +722,9 @@ Installing collected packages: chaquopy-libxml2, chaquopy-libcxx, yt-dlp, urllib
 
 Successfully installed PySocks-1.7.1 beautifulsoup4-4.15.0 cachetools-7.2.3 certifi-2026.10.18 chaquopy-libcxx-180000 chaquopy-libxml2-2.9.8 chaquopy-libxslt-1.1.32 charset_normalizer-3.5.2 cssselect-1.5.0 idna-3.20 lxml-5.3.0 pycryptodome-3.21.0 pyquery-2.1.0 requests-2.34.2 soupsieve-2.10 typing-extensions-4.16.0 ujson-5.11.0 urllib3-2.8.0 yt-dlp-2026.8.19
 
+> Task :catvod:bundleLibCompileToJarRelease
+> Task :quickjs:generateReleaseRFile
+> Task :quickjs:javaPreCompileRelease
 > Task :quickjs:compileReleaseJavaWithJavac
 > Task :quickjs:bundleLibCompileToJarRelease
 > Task :forcetech:generateReleaseResValues
@@ -847,6 +847,8 @@ warning: [options] To suppress warnings about obsolete options, use -Xlint:-opti
 > Task :probe:probe-adapter-api:parseReleaseLocalResources
 > Task :probe:probe-adapter-api:generateReleaseRFile
 > Task :probe:probe-adapter-api:javaPreCompileRelease
+> Task :app:expandMobileArm64_v8aReleaseL8ArtProfileWildcards
+> Task :probe:probe-runtime:generateReleaseResValues
 
 > Task :probe:probe-adapter-api:compileReleaseJavaWithJavac
 Java compiler version 21 has deprecated support for compiling with source/target version 8.
@@ -862,12 +864,17 @@ warning: [options] To suppress warnings about obsolete options, use -Xlint:-opti
 3 warnings
 
 > Task :probe:probe-adapter-api:bundleLibCompileToJarRelease
-> Task :probe:probe-runtime:generateReleaseResValues
+> Task :media3-common:generateReleaseResValues
+> Task :media3-common:generateReleaseResources
+> Task :media3-common:packageReleaseResources
+> Task :media3-common:parseReleaseLocalResources
 > Task :probe:probe-runtime:generateReleaseResources
 > Task :probe:probe-runtime:packageReleaseResources
+> Task :media3-common:generateReleaseRFile
+> Task :media3-common:javaPreCompileRelease
+> Task :probe:probe-runtime:javaPreCompileRelease
 > Task :probe:probe-runtime:parseReleaseLocalResources
 > Task :probe:probe-runtime:generateReleaseRFile
-> Task :probe:probe-runtime:javaPreCompileRelease
 
 > Task :probe:probe-runtime:compileReleaseJavaWithJavac
 Java compiler version 21 has deprecated support for compiling with source/target version 8.
@@ -884,13 +891,6 @@ warning: [options] To suppress warnings about obsolete options, use -Xlint:-opti
 
 > Task :probe:probe-runtime:mergeReleaseGeneratedProguardFiles
 > Task :probe:probe-runtime:exportReleaseConsumerProguardFiles
-> Task :media3-common:generateReleaseResValues
-> Task :media3-common:generateReleaseResources
-> Task :media3-common:packageReleaseResources
-> Task :media3-common:parseReleaseLocalResources
-> Task :media3-common:generateReleaseRFile
-> Task :media3-common:javaPreCompileRelease
-> Task :app:expandMobileArm64_v8aReleaseL8ArtProfileWildcards
 > Task :probe:probe-media3-1-9:generateReleaseResValues
 > Task :probe:probe-media3-1-9:generateReleaseResources
 > Task :probe:probe-media3-1-9:packageReleaseResources
@@ -972,17 +972,10 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :zlive:writeReleaseAarMetadata
 > Task :probe:probe-adapter-api:writeReleaseAarMetadata
 > Task :probe:probe-collector-tools:writeReleaseAarMetadata
-> Task :probe:probe-media3-1-9:writeReleaseAarMetadata
-> Task :probe:probe-runtime:writeReleaseAarMetadata
-> Task :catvod:extractDeepLinksRelease
-> Task :catvod:processReleaseManifest
 > Task :media3-common:mergeReleaseGeneratedProguardFiles
 > Task :media3-common:exportReleaseConsumerProguardFiles
-> Task :media3-common:writeReleaseAarMetadata
 > Task :media3-common:bundleLibCompileToJarRelease
-> Task :chaquo:extractDeepLinksArm64_v8aRelease
-> Task :media3-danmaku:compileReleaseJavaWithJavac
-> Task :media3-danmaku:bundleLibCompileToJarRelease
+> Task :media3-common:writeReleaseAarMetadata
 > Task :app:checkMobileArm64_v8aReleaseDuplicateClasses
 
 > Task :probe:probe-media3-1-9:compileReleaseJavaWithJavac
@@ -1001,6 +994,7 @@ Note: Recompile with -Xlint:deprecation for details.
 3 warnings
 
 > Task :probe:probe-media3-1-9:mergeReleaseGeneratedProguardFiles
+> Task :probe:probe-media3-1-9:exportReleaseConsumerProguardFiles
 
 > Task :media3-decoder-ffmpeg:compileReleaseJavaWithJavac
 warning: unknown enum constant MigrationStatus.STRICT
@@ -1010,25 +1004,29 @@ Note: Recompile with -Xlint:deprecation for details.
 1 warning
 
 > Task :media3-decoder-ffmpeg:mergeReleaseGeneratedProguardFiles
+> Task :media3-danmaku:compileReleaseJavaWithJavac
 > Task :media3-decoder-ffmpeg:exportReleaseConsumerProguardFiles
-> Task :probe:probe-media3-1-9:exportReleaseConsumerProguardFiles
+> Task :media3-danmaku:bundleLibCompileToJarRelease
 > Task :media3-danmaku:mergeReleaseGeneratedProguardFiles
+> Task :probe:probe-media3-1-9:writeReleaseAarMetadata
 > Task :media3-danmaku:exportReleaseConsumerProguardFiles
+> Task :probe:probe-runtime:writeReleaseAarMetadata
+> Task :catvod:extractDeepLinksRelease
+> Task :catvod:processReleaseManifest
+> Task :chaquo:extractDeepLinksArm64_v8aRelease
 > Task :chaquo:processArm64_v8aReleaseManifest
 > Task :forcetech:extractDeepLinksRelease
 > Task :forcetech:processReleaseManifest
-> Task :app:dataBindingMergeDependencyArtifactsMobileArm64_v8aRelease
 > Task :hook:extractDeepLinksRelease
-> Task :app:generateMobileArm64_v8aReleaseResValues
 > Task :hook:processReleaseManifest
 > Task :jianpian:extractDeepLinksRelease
 > Task :jianpian:processReleaseManifest
-> Task :app:generateMobileArm64_v8aReleaseResources
 > Task :media3-common:extractDeepLinksRelease
 > Task :media3-common:processReleaseManifest
 > Task :media3-danmaku:extractDeepLinksRelease
 > Task :media3-danmaku:processReleaseManifest
 > Task :media3-decoder-ffmpeg:extractDeepLinksRelease
+> Task :app:dataBindingMergeDependencyArtifactsMobileArm64_v8aRelease
 
 > Task :media3-decoder-ffmpeg:processReleaseManifest
 package="androidx.media3.decoder.ffmpeg" found in source AndroidManifest.xml: /home/runner/work/og3rswee/og3rswee/media3-decoder-ffmpeg/src/main/AndroidManifest.xml.
@@ -1036,6 +1034,7 @@ Setting the namespace via the package attribute in the source AndroidManifest.xm
 Recommendation: remove package="androidx.media3.decoder.ffmpeg" from the source AndroidManifest.xml: /home/runner/work/og3rswee/og3rswee/media3-decoder-ffmpeg/src/main/AndroidManifest.xml.
 
 > Task :quickjs:extractDeepLinksRelease
+> Task :app:generateMobileArm64_v8aReleaseResValues
 > Task :quickjs:processReleaseManifest
 > Task :thunder:extractDeepLinksRelease
 > Task :thunder:processReleaseManifest
@@ -1044,6 +1043,7 @@ Recommendation: remove package="androidx.media3.decoder.ffmpeg" from the source 
 > Task :zlive:extractDeepLinksRelease
 > Task :zlive:processReleaseManifest
 > Task :probe:probe-adapter-api:extractDeepLinksRelease
+> Task :app:generateMobileArm64_v8aReleaseResources
 > Task :probe:probe-adapter-api:processReleaseManifest
 > Task :probe:probe-collector-tools:extractDeepLinksRelease
 > Task :probe:probe-collector-tools:processReleaseManifest
@@ -1107,11 +1107,78 @@ Recommendation: remove package="androidx.media3.decoder.ffmpeg" from the source 
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
 
+> Task :chaquo:generateArm64_v8aReleasePythonRequirementsAssets
+> Task :chaquo:generateArm64_v8aReleasePythonSourceAssets
+> Task :chaquo:generateArm64_v8aReleasePythonBuildAssets
 > Task :media3-ui:mergeReleaseGeneratedProguardFiles
 > Task :media3-ui:exportReleaseConsumerProguardFiles
 > Task :media3-ui:extractDeepLinksRelease
+
+> Task :app:mergeMobileArm64_v8aReleaseResources
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:52:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:50:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:57:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:328:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values/values.xml:23:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+
 > Task :media3-ui:processReleaseManifest
+> Task :chaquo:mergeArm64_v8aReleaseAssets
+> Task :app:packageMobileArm64_v8aReleaseResources
 > Task :media3-ui:bundleLibCompileToJarRelease
+> Task :app:generateMobileArm64_v8aReleaseBuildConfig
+> Task :app:parseMobileArm64_v8aReleaseLocalResources
+
+> Task :app:mergeMobileArm64_v8aReleaseResources
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:51:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:52:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:57:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:317:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values-zh-rCN/values-zh-rCN.xml:7:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:51:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:16:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:56:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:301:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values-zh-rTW/values-zh-rTW.xml:7:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
+
 > Task :media3-ui:bundleLibRuntimeToJarRelease
 > Task :media3-ui:processReleaseJavaRes NO-SOURCE
 > Task :forcetech:mergeReleaseShaders
@@ -1161,109 +1228,37 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :probe:probe-adapter-api:mergeReleaseShaders
 > Task :probe:probe-adapter-api:compileReleaseShaders NO-SOURCE
 > Task :probe:probe-adapter-api:generateReleaseAssets UP-TO-DATE
-> Task :probe:probe-adapter-api:mergeReleaseAssets
 > Task :probe:probe-collector-tools:mergeReleaseShaders
 > Task :probe:probe-collector-tools:compileReleaseShaders NO-SOURCE
 > Task :probe:probe-collector-tools:generateReleaseAssets UP-TO-DATE
 > Task :probe:probe-collector-tools:mergeReleaseAssets
-> Task :probe:probe-media3-1-9:mergeReleaseShaders
-> Task :probe:probe-media3-1-9:compileReleaseShaders NO-SOURCE
-> Task :probe:probe-media3-1-9:generateReleaseAssets UP-TO-DATE
-> Task :probe:probe-media3-1-9:mergeReleaseAssets
+> Task :probe:probe-adapter-api:mergeReleaseAssets
 > Task :probe:probe-runtime:mergeReleaseShaders
+> Task :probe:probe-media3-1-9:mergeReleaseShaders
 > Task :probe:probe-runtime:compileReleaseShaders NO-SOURCE
 > Task :probe:probe-runtime:generateReleaseAssets UP-TO-DATE
+> Task :probe:probe-media3-1-9:compileReleaseShaders NO-SOURCE
+> Task :probe:probe-media3-1-9:generateReleaseAssets UP-TO-DATE
 > Task :probe:probe-runtime:mergeReleaseAssets
+> Task :probe:probe-media3-1-9:mergeReleaseAssets
+> Task :chaquo:createFullJarArm64_v8aRelease
 > Task :catvod:createFullJarRelease
 > Task :catvod:extractProguardFiles
-> Task :chaquo:generateArm64_v8aReleasePythonRequirementsAssets
-> Task :chaquo:generateArm64_v8aReleasePythonSourceAssets
-> Task :chaquo:generateArm64_v8aReleasePythonBuildAssets
-
-> Task :app:mergeMobileArm64_v8aReleaseResources
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:52:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:50:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:57:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:328:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values/values.xml:23:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-
-> Task :chaquo:mergeArm64_v8aReleaseAssets
-> Task :app:packageMobileArm64_v8aReleaseResources
-
-> Task :app:mergeMobileArm64_v8aReleaseResources
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:51:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:52:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:57:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:317:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values-zh-rCN/values-zh-rCN.xml:7:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:51:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:16:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:56:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:301:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values-zh-rTW/values-zh-rTW.xml:7:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-
-> Task :catvod:generateReleaseLintModel
-> Task :app:generateMobileArm64_v8aReleaseBuildConfig
-> Task :app:parseMobileArm64_v8aReleaseLocalResources
-> Task :catvod:prepareLintJarForPublish
-> Task :chaquo:createFullJarArm64_v8aRelease
 > Task :chaquo:extractProguardFiles
 > Task :quickjs:createFullJarRelease
 > Task :quickjs:extractProguardFiles
-> Task :quickjs:generateReleaseLintModel
 > Task :quickjs:prepareLintJarForPublish
-> Task :chaquo:generateArm64_v8aReleaseLintModel
 > Task :chaquo:prepareLintJarForPublish
 > Task :forcetech:createFullJarRelease
 > Task :forcetech:extractProguardFiles
-> Task :forcetech:generateReleaseLintModel
 > Task :forcetech:prepareLintJarForPublish
 > Task :hook:createFullJarRelease
 > Task :hook:extractProguardFiles
+> Task :app:javaPreCompileMobileArm64_v8aRelease
 > Task :hook:generateReleaseLintModel
 > Task :hook:prepareLintJarForPublish
 > Task :jianpian:createFullJarRelease
 > Task :jianpian:extractProguardFiles
-> Task :jianpian:generateReleaseLintModel
 > Task :jianpian:prepareLintJarForPublish
 > Task :media3-common:createFullJarRelease
 > Task :media3-common:extractProguardFiles
@@ -1271,14 +1266,21 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :media3-common:prepareLintJarForPublish
 > Task :media3-danmaku:createFullJarRelease
 > Task :media3-danmaku:extractProguardFiles
-> Task :media3-decoder-ffmpeg:createFullJarRelease
-> Task :media3-decoder-ffmpeg:extractProguardFiles
 > Task :media3-danmaku:generateReleaseLintModel
 > Task :media3-danmaku:prepareLintJarForPublish
-> Task :media3-ui:createFullJarRelease
-> Task :media3-ui:extractProguardFiles
+> Task :media3-decoder-ffmpeg:createFullJarRelease
+> Task :media3-decoder-ffmpeg:extractProguardFiles
 > Task :media3-decoder-ffmpeg:generateReleaseLintModel
 > Task :media3-decoder-ffmpeg:prepareLintJarForPublish
+> Task :media3-ui:createFullJarRelease
+> Task :media3-ui:extractProguardFiles
+> Task :catvod:generateReleaseLintModel
+> Task :catvod:prepareLintJarForPublish
+> Task :quickjs:generateReleaseLintModel
+> Task :app:dataBindingGenBaseClassesMobileArm64_v8aRelease
+> Task :chaquo:generateArm64_v8aReleaseLintModel
+> Task :forcetech:generateReleaseLintModel
+> Task :jianpian:generateReleaseLintModel
 > Task :thunder:createFullJarRelease
 > Task :thunder:extractProguardFiles
 > Task :thunder:generateReleaseLintModel
@@ -1286,53 +1288,50 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :tvbus:createFullJarRelease
 > Task :tvbus:extractProguardFiles
 > Task :tvbus:generateReleaseLintModel
+> Task :app:mapMobileArm64_v8aReleaseSourceSetPaths
+> Task :app:checkMobileArm64_v8aReleaseAarMetadata
 > Task :tvbus:prepareLintJarForPublish
+> Task :app:createMobileArm64_v8aReleaseCompatibleScreenManifests
 > Task :zlive:createFullJarRelease
+> Task :app:extractDeepLinksMobileArm64_v8aRelease
 > Task :zlive:extractProguardFiles
+> Task :media3-ui:generateReleaseLintModel
 > Task :zlive:generateReleaseLintModel
 > Task :zlive:prepareLintJarForPublish
+> Task :media3-ui:prepareLintJarForPublish
 > Task :probe:probe-adapter-api:createFullJarRelease
 > Task :probe:probe-adapter-api:extractProguardFiles
-> Task :probe:probe-adapter-api:generateReleaseLintModel
-> Task :probe:probe-adapter-api:prepareLintJarForPublish
 > Task :probe:probe-collector-tools:createFullJarRelease
 > Task :probe:probe-collector-tools:extractProguardFiles
-> Task :probe:probe-collector-tools:generateReleaseLintModel
 > Task :probe:probe-collector-tools:prepareLintJarForPublish
 > Task :probe:probe-media3-1-9:createFullJarRelease
 > Task :probe:probe-media3-1-9:extractProguardFiles
-> Task :probe:probe-media3-1-9:generateReleaseLintModel
 > Task :probe:probe-media3-1-9:prepareLintJarForPublish
 > Task :probe:probe-runtime:createFullJarRelease
+> Task :probe:probe-adapter-api:generateReleaseLintModel
 > Task :probe:probe-runtime:extractProguardFiles
-> Task :probe:probe-runtime:generateReleaseLintModel
+> Task :probe:probe-adapter-api:prepareLintJarForPublish
 > Task :probe:probe-runtime:prepareLintJarForPublish
+> Task :probe:probe-media3-1-9:generateReleaseLintModel
+> Task :probe:probe-collector-tools:generateReleaseLintModel
+> Task :probe:probe-runtime:generateReleaseLintModel
 
 > Task :chaquo:stripArm64_v8aReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libchaquopy_java.so, libcrypto_chaquopy.so, libcrypto_python.so, libpython3.10.so, libsqlite3_chaquopy.so, libsqlite3_python.so, libssl_chaquopy.so, libssl_python.so. Run with --info option to learn more.
-
-> Task :chaquo:copyArm64_v8aReleaseJniLibsProjectAndLocalJars
-> Task :media3-ui:generateReleaseLintModel
-> Task :media3-ui:prepareLintJarForPublish
 
 > Task :forcetech:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libmitv.so, libp2p.so, libp3p.so. Run with --info option to learn more.
 
 > Task :forcetech:copyReleaseJniLibsProjectAndLocalJars
 > Task :forcetech:extractDeepLinksForAarRelease
-> Task :app:javaPreCompileMobileArm64_v8aRelease
-> Task :app:dataBindingGenBaseClassesMobileArm64_v8aRelease
-> Task :app:checkMobileArm64_v8aReleaseAarMetadata
-> Task :app:mapMobileArm64_v8aReleaseSourceSetPaths
-> Task :app:createMobileArm64_v8aReleaseCompatibleScreenManifests
-> Task :app:extractDeepLinksMobileArm64_v8aRelease
 > Task :app:processMobileArm64_v8aReleaseMainManifest
 > Task :app:processMobileArm64_v8aReleaseManifest
 > Task :app:processMobileArm64_v8aReleaseManifestForPackage
 > Task :app:processMobileArm64_v8aReleaseResources
 > Task :forcetech:extractReleaseAnnotations
-> Task :forcetech:mergeReleaseConsumerProguardFiles
 > Task :chaquo:extractArm64_v8aReleaseAnnotations
+> Task :forcetech:mergeReleaseConsumerProguardFiles
+> Task :chaquo:copyArm64_v8aReleaseJniLibsProjectAndLocalJars
 > Task :chaquo:extractDeepLinksForAarArm64_v8aRelease
 > Task :chaquo:mergeArm64_v8aReleaseConsumerProguardFiles
 > Task :forcetech:mergeReleaseJavaResource
@@ -1346,11 +1345,11 @@ Unable to strip the following libraries, packaging them as they are: libjpa.so. 
 
 > Task :jianpian:copyReleaseJniLibsProjectAndLocalJars
 > Task :jianpian:extractDeepLinksForAarRelease
+> Task :chaquo:bundleArm64_v8aReleaseLocalLintAar
 > Task :jianpian:extractReleaseAnnotations
 > Task :jianpian:mergeReleaseConsumerProguardFiles
 > Task :jianpian:mergeReleaseJavaResource
 > Task :jianpian:syncReleaseLibJars
-> Task :chaquo:bundleArm64_v8aReleaseLocalLintAar
 > Task :jianpian:bundleReleaseLocalLintAar
 > Task :quickjs:stripReleaseDebugSymbols NO-SOURCE
 > Task :quickjs:copyReleaseJniLibsProjectAndLocalJars
@@ -1364,27 +1363,27 @@ Unable to strip the following libraries, packaging them as they are: libjpa.so. 
 > Task :thunder:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libxl_stat.so, libxl_thunder_sdk.so. Run with --info option to learn more.
 
+> Task :tvbus:stripReleaseDebugSymbols NO-SOURCE
 > Task :thunder:extractDeepLinksForAarRelease
 > Task :thunder:copyReleaseJniLibsProjectAndLocalJars
-> Task :tvbus:stripReleaseDebugSymbols NO-SOURCE
 > Task :tvbus:copyReleaseJniLibsProjectAndLocalJars
 > Task :tvbus:extractDeepLinksForAarRelease
 > Task :thunder:extractReleaseAnnotations
-> Task :thunder:mergeReleaseConsumerProguardFiles
 > Task :tvbus:extractReleaseAnnotations
-> Task :thunder:mergeReleaseJavaResource
+> Task :thunder:mergeReleaseConsumerProguardFiles
 > Task :tvbus:mergeReleaseConsumerProguardFiles
+> Task :thunder:mergeReleaseJavaResource
 > Task :tvbus:mergeReleaseJavaResource
 > Task :tvbus:syncReleaseLibJars
-> Task :thunder:syncReleaseLibJars
 > Task :tvbus:bundleReleaseLocalLintAar
+> Task :thunder:syncReleaseLibJars
 > Task :catvod:stripReleaseDebugSymbols NO-SOURCE
 > Task :catvod:copyReleaseJniLibsProjectAndLocalJars
 > Task :catvod:extractDeepLinksForAarRelease
-> Task :thunder:bundleReleaseLocalLintAar
 > Task :catvod:extractReleaseAnnotations
 > Task :catvod:mergeReleaseConsumerProguardFiles
 > Task :catvod:mergeReleaseJavaResource
+> Task :thunder:bundleReleaseLocalLintAar
 > Task :catvod:syncReleaseLibJars
 > Task :catvod:bundleReleaseLocalLintAar
 > Task :hook:stripReleaseDebugSymbols NO-SOURCE
@@ -1393,48 +1392,52 @@ Unable to strip the following libraries, packaging them as they are: libxl_stat.
 > Task :hook:extractReleaseAnnotations
 > Task :hook:mergeReleaseConsumerProguardFiles
 > Task :hook:mergeReleaseJavaResource
+> Task :hook:syncReleaseLibJars
 
 > Task :zlive:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libcore.so, libjnidispatch.so. Run with --info option to learn more.
 
-> Task :hook:syncReleaseLibJars
 > Task :hook:bundleReleaseLocalLintAar
 > Task :zlive:extractDeepLinksForAarRelease
 > Task :zlive:copyReleaseJniLibsProjectAndLocalJars
 > Task :probe:probe-runtime:stripReleaseDebugSymbols NO-SOURCE
-> Task :probe:probe-runtime:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-runtime:extractDeepLinksForAarRelease
 > Task :zlive:extractReleaseAnnotations
 > Task :zlive:mergeReleaseConsumerProguardFiles
+> Task :probe:probe-runtime:copyReleaseJniLibsProjectAndLocalJars
+> Task :probe:probe-runtime:extractDeepLinksForAarRelease
 > Task :zlive:mergeReleaseJavaResource
+> Task :zlive:syncReleaseLibJars
 > Task :probe:probe-runtime:extractReleaseAnnotations
 > Task :probe:probe-runtime:mergeReleaseConsumerProguardFiles
-> Task :zlive:syncReleaseLibJars
 > Task :probe:probe-runtime:mergeReleaseJavaResource
+
+> Task :app:compileMobileArm64_v8aReleaseJavaWithJavac
+Note: [1] Wrote GeneratedAppGlideModule with: [com.bumptech.glide.integration.okhttp3.OkHttpLibraryGlideModule, com.bumptech.glide.integration.avif.AvifGlideModule]
+
 > Task :zlive:bundleReleaseLocalLintAar
 > Task :probe:probe-runtime:syncReleaseLibJars
 > Task :probe:probe-runtime:bundleReleaseLocalLintAar
 > Task :probe:probe-media3-1-9:stripReleaseDebugSymbols NO-SOURCE
 > Task :probe:probe-media3-1-9:copyReleaseJniLibsProjectAndLocalJars
 > Task :probe:probe-media3-1-9:extractDeepLinksForAarRelease
+> Task :probe:probe-media3-1-9:extractReleaseAnnotations
 > Task :probe:probe-collector-tools:stripReleaseDebugSymbols NO-SOURCE
 > Task :probe:probe-collector-tools:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-collector-tools:extractDeepLinksForAarRelease
-> Task :probe:probe-media3-1-9:extractReleaseAnnotations
 > Task :probe:probe-media3-1-9:mergeReleaseConsumerProguardFiles
+> Task :probe:probe-collector-tools:extractDeepLinksForAarRelease
 > Task :probe:probe-collector-tools:extractReleaseAnnotations
 > Task :probe:probe-collector-tools:mergeReleaseConsumerProguardFiles
 > Task :probe:probe-collector-tools:mergeReleaseJavaResource
 > Task :probe:probe-media3-1-9:mergeReleaseJavaResource
 > Task :probe:probe-collector-tools:syncReleaseLibJars
-> Task :probe:probe-collector-tools:bundleReleaseLocalLintAar
 > Task :probe:probe-media3-1-9:syncReleaseLibJars
+> Task :probe:probe-collector-tools:bundleReleaseLocalLintAar
 > Task :probe:probe-media3-1-9:bundleReleaseLocalLintAar
 > Task :media3-ui:stripReleaseDebugSymbols NO-SOURCE
-> Task :media3-ui:copyReleaseJniLibsProjectAndLocalJars
 > Task :media3-decoder-ffmpeg:stripReleaseDebugSymbols NO-SOURCE
-> Task :media3-ui:extractDeepLinksForAarRelease
+> Task :media3-ui:copyReleaseJniLibsProjectAndLocalJars
 > Task :media3-decoder-ffmpeg:copyReleaseJniLibsProjectAndLocalJars
+> Task :media3-ui:extractDeepLinksForAarRelease
 > Task :media3-decoder-ffmpeg:extractDeepLinksForAarRelease
 > Task :media3-decoder-ffmpeg:extractReleaseAnnotations
 > Task :media3-ui:mergeReleaseConsumerProguardFiles
@@ -1448,7 +1451,27 @@ Unable to strip the following libraries, packaging them as they are: libcore.so,
 > Task :media3-danmaku:extractDeepLinksForAarRelease
 
 > Task :app:compileMobileArm64_v8aReleaseJavaWithJavac
-Note: [1] Wrote GeneratedAppGlideModule with: [com.bumptech.glide.integration.okhttp3.OkHttpLibraryGlideModule, com.bumptech.glide.integration.avif.AvifGlideModule]
+/home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:71: error: no suitable method found for cache(String,String)
+            File target = Path.cache("rust", Util.md5(trimmed) + ".bin");
+                              ^
+    method Path.cache() is not applicable
+      (actual and formal argument lists differ in length)
+    method Path.cache(String) is not applicable
+      (actual and formal argument lists differ in length)
+/home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:85: error: no suitable method found for cache(String,String)
+                    File target = Path.cache("rust", base + "-" + Util.md5(candidate) + ".bin");
+                                      ^
+    method Path.cache() is not applicable
+      (actual and formal argument lists differ in length)
+    method Path.cache(String) is not applicable
+      (actual and formal argument lists differ in length)
+/home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:96: error: no suitable method found for cache(String,String)
+        if (!Path.exists(local)) local = Path.cache("rust", trimmed);
+                                             ^
+    method Path.cache() is not applicable
+      (actual and formal argument lists differ in length)
+    method Path.cache(String) is not applicable
+      (actual and formal argument lists differ in length)
 
 > Task :media3-danmaku:extractReleaseAnnotations
 > Task :media3-danmaku:mergeReleaseConsumerProguardFiles
@@ -1460,109 +1483,253 @@ Note: [1] Wrote GeneratedAppGlideModule with: [com.bumptech.glide.integration.ok
 > Task :media3-common:extractDeepLinksForAarRelease
 > Task :media3-ui:extractReleaseAnnotations
 > Task :media3-ui:syncReleaseLibJars
-> Task :media3-ui:bundleReleaseLocalLintAar
-> Task :media3-common:mergeReleaseConsumerProguardFiles
-> Task :media3-common:mergeReleaseJavaResource
-> Task :probe:probe-adapter-api:stripReleaseDebugSymbols NO-SOURCE
-> Task :probe:probe-adapter-api:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-adapter-api:extractDeepLinksForAarRelease
-> Task :probe:probe-adapter-api:extractReleaseAnnotations
-> Task :probe:probe-adapter-api:mergeReleaseConsumerProguardFiles
-> Task :probe:probe-adapter-api:mergeReleaseJavaResource
-> Task :probe:probe-adapter-api:syncReleaseLibJars
-> Task :probe:probe-adapter-api:bundleReleaseLocalLintAar
-> Task :media3-common:extractReleaseAnnotations
-> Task :media3-common:syncReleaseLibJars
-> Task :media3-common:bundleReleaseLocalLintAar
-> Task :catvod:writeReleaseLintModelMetadata
-> Task :quickjs:writeReleaseLintModelMetadata
 
-> Task :app:compileMobileArm64_v8aReleaseJavaWithJavac
+> Task :app:compileMobileArm64_v8aReleaseJavaWithJavac FAILED
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
 Note: Some input files use unchecked or unsafe operations.
 Note: Recompile with -Xlint:unchecked for details.
+3 errors
 
-> Task :chaquo:lintVitalAnalyzeArm64_v8aRelease
-> Task :chaquo:writeArm64_v8aReleaseLintModelMetadata
-> Task :catvod:lintVitalAnalyzeRelease
-> Task :hook:lintVitalAnalyzeRelease
-> Task :forcetech:lintVitalAnalyzeRelease
-> Task :forcetech:writeReleaseLintModelMetadata
-> Task :hook:writeReleaseLintModelMetadata
-> Task :jianpian:lintVitalAnalyzeRelease
-> Task :jianpian:writeReleaseLintModelMetadata
-> Task :media3-common:writeReleaseLintModelMetadata
-> Task :media3-danmaku:lintVitalAnalyzeRelease
-> Task :app:extractProguardFiles
-> Task :app:mergeMobileArm64_v8aReleaseGeneratedProguardFiles
-> Task :app:processMobileArm64_v8aReleaseJavaRes
-> Task :app:expandMobileArm64_v8aReleaseArtProfileWildcards
-> Task :media3-danmaku:writeReleaseLintModelMetadata
-> Task :media3-decoder-ffmpeg:lintVitalAnalyzeRelease
-> Task :app:mergeMobileArm64_v8aReleaseStartupProfile
-> Task :app:mergeMobileArm64_v8aReleaseShaders
-> Task :app:compileMobileArm64_v8aReleaseShaders NO-SOURCE
-> Task :app:generateMobileArm64_v8aReleaseAssets UP-TO-DATE
-> Task :app:mergeMobileArm64_v8aReleaseAssets
-> Task :app:mergeMobileArm64_v8aReleaseJavaResource
-> Task :app:compressMobileArm64_v8aReleaseAssets
-> Task :media3-decoder-ffmpeg:writeReleaseLintModelMetadata
-> Task :media3-ui:lintVitalAnalyzeRelease
-> Task :app:extractMobileArm64_v8aReleaseVersionControlInfo
-> Task :app:generateMobileArm64_v8aReleaseLintVitalReportModel
-> Task :media3-ui:writeReleaseLintModelMetadata
-> Task :quickjs:lintVitalAnalyzeRelease
-> Task :thunder:lintVitalAnalyzeRelease
-> Task :thunder:writeReleaseLintModelMetadata
-> Task :tvbus:lintVitalAnalyzeRelease
-> Task :tvbus:writeReleaseLintModelMetadata
-> Task :zlive:lintVitalAnalyzeRelease
-> Task :zlive:writeReleaseLintModelMetadata
-> Task :media3-common:lintVitalAnalyzeRelease
-> Task :probe:probe-adapter-api:writeReleaseLintModelMetadata
-> Task :probe:probe-adapter-api:lintVitalAnalyzeRelease
-> Task :probe:probe-collector-tools:writeReleaseLintModelMetadata
-> Task :probe:probe-collector-tools:lintVitalAnalyzeRelease
-> Task :probe:probe-media3-1-9:writeReleaseLintModelMetadata
-> Task :probe:probe-media3-1-9:lintVitalAnalyzeRelease
-> Task :probe:probe-runtime:writeReleaseLintModelMetadata
-> Task :catvod:generateReleaseLintVitalModel
-> Task :chaquo:generateArm64_v8aReleaseLintVitalModel
-> Task :forcetech:generateReleaseLintVitalModel
-> Task :hook:generateReleaseLintVitalModel
-> Task :jianpian:generateReleaseLintVitalModel
-> Task :media3-common:generateReleaseLintVitalModel
-> Task :media3-danmaku:generateReleaseLintVitalModel
-> Task :media3-decoder-ffmpeg:generateReleaseLintVitalModel
-> Task :media3-ui:generateReleaseLintVitalModel
-> Task :quickjs:generateReleaseLintVitalModel
-> Task :thunder:generateReleaseLintVitalModel
-> Task :tvbus:generateReleaseLintVitalModel
-> Task :zlive:generateReleaseLintVitalModel
-> Task :probe:probe-adapter-api:generateReleaseLintVitalModel
-> Task :probe:probe-collector-tools:generateReleaseLintVitalModel
-> Task :probe:probe-media3-1-9:generateReleaseLintVitalModel
-> Task :probe:probe-runtime:generateReleaseLintVitalModel
-> Task :probe:probe-runtime:lintVitalAnalyzeRelease
-> Task :app:collectMobileArm64_v8aReleaseDependencies
-> Task :app:sdkMobileArm64_v8aReleaseDependencyData
-> Task :app:writeMobileArm64_v8aReleaseAppMetadata
-> Task :app:writeMobileArm64_v8aReleaseSigningConfigVersions
-> Task :app:lintVitalAnalyzeMobileArm64_v8aRelease
-> Task :app:lintVitalReportMobileArm64_v8aRelease
-> Task :app:lintVitalMobileArm64_v8aRelease
-> Task :app:minifyMobileArm64_v8aReleaseWithR8
-> Task :app:convertShrunkResourcesToBinaryMobileArm64_v8aRelease
-> Task :app:optimizeMobileArm64_v8aReleaseResources
-> Task :app:l8DexDesugarLibMobileArm64_v8aRelease
-> Task :app:compileMobileArm64_v8aReleaseArtProfile
-> Task :app:packageMobileArm64_v8aRelease
-> Task :app:createMobileArm64_v8aReleaseApkListingFileRedirect
-> Task :app:assembleMobileArm64_v8aRelease
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1792380501322.json
+> Task :media3-ui:bundleReleaseLocalLintAar
+> Task :media3-common:extractReleaseAnnotations
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1792385183131.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/og3rswee/og3rswee/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileMobileArm64_v8aReleaseJavaWithJavac' (registered by plugin 'com.android.internal.application').
+> Compilation failed; see the compiler output below.
+  /home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:71: error: no suitable method found for cache(String,String)
+              File target = Path.cache("rust", Util.md5(trimmed) + ".bin");
+                                ^
+      method Path.cache() is not applicable
+        (actual and formal argument lists differ in length)
+      method Path.cache(String) is not applicable
+        (actual and formal argument lists differ in length)
+  /home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:85: error: no suitable method found for cache(String,String)
+                      File target = Path.cache("rust", base + "-" + Util.md5(candidate) + ".bin");
+                                        ^
+      method Path.cache() is not applicable
+        (actual and formal argument lists differ in length)
+      method Path.cache(String) is not applicable
+        (actual and formal argument lists differ in length)
+  /home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:96: error: no suitable method found for cache(String,String)
+          if (!Path.exists(local)) local = Path.cache("rust", trimmed);
+                                               ^
+      method Path.cache() is not applicable
+        (actual and formal argument lists differ in length)
+      method Path.cache(String) is not applicable
+        (actual and formal argument lists differ in length)
+  Note: Recompile with -Xlint:deprecation for details.
+  Note: Recompile with -Xlint:unchecked for details.
+  Note: Some input files use or override a deprecated API.
+  Note: [1] Wrote GeneratedAppGlideModule with: [com.bumptech.glide.integration.okhttp3.OkHttpLibraryGlideModule, com.bumptech.glide.integration.avif.AvifGlideModule]
+  Note: Some input files use unchecked or unsafe operations.
+  3 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileMobileArm64_v8aReleaseJavaWithJavac' (registered by plugin 'com.android.internal.application').
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:135)
+	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:288)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:133)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:121)
+	at org.gradle.api.internal.tasks.execution.ProblemsTaskPathTrackingTaskExecuter.execute(ProblemsTaskPathTrackingTaskExecuter.java:41)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.DefaultNodeExecutor.executeLocalTaskNode(DefaultNodeExecutor.java:55)
+	at org.gradle.execution.plan.DefaultNodeExecutor.execute(DefaultNodeExecutor.java:34)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:355)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:343)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:339)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:339)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:328)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Compilation failed; see the compiler output below.
+Note: [1] Wrote GeneratedAppGlideModule with: [com.bumptech.glide.integration.okhttp3.OkHttpLibraryGlideModule, com.bumptech.glide.integration.avif.AvifGlideModule]
+/home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:71: error: no suitable method found for cache(String,String)
+            File target = Path.cache("rust", Util.md5(trimmed) + ".bin");
+                              ^
+    method Path.cache() is not applicable
+      (actual and formal argument lists differ in length)
+    method Path.cache(String) is not applicable
+      (actual and formal argument lists differ in length)
+/home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:85: error: no suitable method found for cache(String,String)
+                    File target = Path.cache("rust", base + "-" + Util.md5(candidate) + ".bin");
+                                      ^
+    method Path.cache() is not applicable
+      (actual and formal argument lists differ in length)
+    method Path.cache(String) is not applicable
+      (actual and formal argument lists differ in length)
+/home/runner/work/og3rswee/og3rswee/app/src/main/java/com/fongmi/android/tv/api/loader/BinLoader.java:96: error: no suitable method found for cache(String,String)
+        if (!Path.exists(local)) local = Path.cache("rust", trimmed);
+                                             ^
+    method Path.cache() is not applicable
+      (actual and formal argument lists differ in length)
+    method Path.cache(String) is not applicable
+      (actual and formal argument lists differ in length)
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+3 errors
+	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:89)
+	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:50)
+	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.delegateAndHandleErrors(NormalizingJavaCompiler.java:98)
+	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.execute(NormalizingJavaCompiler.java:52)
+	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.execute(NormalizingJavaCompiler.java:38)
+	at org.gradle.api.internal.tasks.compile.AnnotationProcessorDiscoveringCompiler.execute(AnnotationProcessorDiscoveringCompiler.java:52)
+	at org.gradle.api.internal.tasks.compile.AnnotationProcessorDiscoveringCompiler.execute(AnnotationProcessorDiscoveringCompiler.java:38)
+	at org.gradle.api.internal.tasks.compile.ModuleApplicationNameWritingCompiler.execute(ModuleApplicationNameWritingCompiler.java:46)
+	at org.gradle.api.internal.tasks.compile.ModuleApplicationNameWritingCompiler.execute(ModuleApplicationNameWritingCompiler.java:36)
+	at org.gradle.jvm.toolchain.internal.DefaultToolchainJavaCompiler.execute(DefaultToolchainJavaCompiler.java:57)
+	at org.gradle.api.tasks.compile.JavaCompile.lambda$createToolchainCompiler$3(JavaCompile.java:206)
+	at org.gradle.api.internal.tasks.compile.CleaningJavaCompiler.execute(CleaningJavaCompiler.java:53)
+	at org.gradle.api.internal.tasks.compile.incremental.IncrementalCompilerFactory.lambda$createRebuildAllCompiler$0(IncrementalCompilerFactory.java:55)
+	at org.gradle.api.internal.tasks.compile.incremental.SelectiveCompiler.execute(SelectiveCompiler.java:70)
+	at org.gradle.api.internal.tasks.compile.incremental.SelectiveCompiler.execute(SelectiveCompiler.java:44)
+	at org.gradle.api.internal.tasks.compile.incremental.IncrementalResultStoringCompiler.execute(IncrementalResultStoringCompiler.java:66)
+	at org.gradle.api.internal.tasks.compile.incremental.IncrementalResultStoringCompiler.execute(IncrementalResultStoringCompiler.java:52)
+	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler$1.call(CompileJavaBuildOperationReportingCompiler.java:64)
+	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler$1.call(CompileJavaBuildOperationReportingCompiler.java:48)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler.execute(CompileJavaBuildOperationReportingCompiler.java:48)
+	at org.gradle.api.tasks.compile.JavaCompile.performCompilation(JavaCompile.java:224)
+	at org.gradle.api.tasks.compile.JavaCompile.performIncrementalCompilation(JavaCompile.java:165)
+	at org.gradle.api.tasks.compile.JavaCompile.compile(JavaCompile.java:150)
+	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:125)
+	at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.doExecute(IncrementalTaskAction.java:45)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:51)
+	at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.execute(IncrementalTaskAction.java:26)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:29)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:259)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:244)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:227)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:210)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:176)
+	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:167)
+	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:47)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:137)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:134)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:134)
+	at org.gradle.internal.execution.steps.ExecuteStep$Mutable.execute(ExecuteStep.java:80)
+	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
+	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
+	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:51)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:29)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.executeMutable(RemovePreviousOutputsStep.java:67)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.executeMutable(RemovePreviousOutputsStep.java:39)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:42)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:24)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.executeMutable(ResolveInputChangesStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.executeMutable(ResolveInputChangesStep.java:28)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
+	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:76)
+	at org.gradle.internal.Either$Right.fold(Either.java:176)
+	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:74)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:49)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.executeMutable(StoreExecutionStateStep.java:46)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.executeMutable(StoreExecutionStateStep.java:35)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
+	at org.gradle.internal.execution.steps.ResolveMutableCachingStateStep.executeDelegate(ResolveMutableCachingStateStep.java:70)
+	at org.gradle.internal.execution.steps.ResolveMutableCachingStateStep.executeDelegate(ResolveMutableCachingStateStep.java:32)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:69)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:37)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.executeMutable(ResolveChangesStep.java:63)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.executeMutable(ResolveChangesStep.java:34)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.ValidateStep$Mutable.executeDelegate(ValidateStep.java:79)
+	at org.gradle.internal.execution.steps.ValidateStep$Mutable.executeDelegate(ValidateStep.java:65)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:99)
+	at org.gradle.internal.execution.steps.ValidateStep$Mutable.execute(ValidateStep.java:65)
+	at org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.executeMutable(CaptureMutableStateBeforeExecutionStep.java:86)
+	at org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.execute(CaptureMutableStateBeforeExecutionStep.java:65)
+	at org.gradle.internal.execution.steps.CaptureMutableStateBeforeExecutionStep.execute(CaptureMutableStateBeforeExecutionStep.java:45)
+	at org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeWithNonEmptySources(SkipEmptyMutableWorkStep.java:210)
+	at org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeMutable(SkipEmptyMutableWorkStep.java:90)
+	at org.gradle.internal.execution.steps.SkipEmptyMutableWorkStep.executeMutable(SkipEmptyMutableWorkStep.java:53)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.executeMutable(LoadPreviousExecutionStateStep.java:36)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.executeMutable(LoadPreviousExecutionStateStep.java:23)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:77)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:43)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$executeMutable$0(AssignMutableWorkspaceStep.java:34)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:305)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:30)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:21)
+	at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:56)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:38)
+	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:68)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)
+	... 30 more
+
 
 Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
@@ -1570,5 +1737,5 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.5.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 4m 23s
-636 actionable tasks: 636 executed
+BUILD FAILED in 2m 35s
+548 actionable tasks: 548 executed
