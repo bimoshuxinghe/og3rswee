@@ -40,6 +40,20 @@ fn main() -> ExitCode {
 }
 
 fn run(args: &[String]) -> Result<String, String> {
+    // 特殊子命令：sitewasm <wasm路径> <action> <ext_json> [args...]
+    // 先加载外置站点 wasm，再以 wasm 模式执行后续 action（本机测试/壳子调试用）
+    if args.first().map(|s| s.as_str()) == Some("sitewasm") {
+        let wasm_path = args.get(1).ok_or("sitewasm 缺少 wasm 路径参数")?;
+        let bytes = std::fs::read(wasm_path).map_err(|e| format!("读取 wasm 文件失败: {}", e))?;
+        // ext 位于第 4 个参数（sitewasm, path, action, ext）
+        let ext_raw = args.get(3).map(|s| s.as_str()).unwrap_or("-");
+        let ext_json = if ext_raw == "-" { "" } else { ext_raw };
+        let ext = SiteExt::parse(ext_json)?;
+        let key = ext.resolve_module();
+        spider_rust::wasm_site::load_site_wasm(&key, &bytes)?;
+        return run(&args[2.min(args.len())..]);
+    }
+
     let action = args.first().ok_or("缺少 action 参数").map(|s| s.as_str())?;
 
     // ext：第二个参数；"-" 或缺失表示空配置

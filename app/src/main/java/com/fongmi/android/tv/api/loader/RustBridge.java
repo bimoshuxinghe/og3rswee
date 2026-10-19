@@ -46,4 +46,11 @@ public class RustBridge {
 
     // 播放内容 → {"parse":0,"url":"...","header":{...}}
     public static native String nativePlayerContent(String host, String id, String ext);
+
+    // 加载外置站点 wasm（".wasm" 线路，"Rust 版 py" 模式：站点为纯逻辑 wasm，依赖全在壳子 .so 内）。
+    // 注册成功后，上面 6 个内容入口自动分派到该 wasm 站点执行。返回 "ok" 或错误信息。
+    public static native String nativeLoadSiteWasm(String ext, String path);
+
+    // 卸载全部外置站点 wasm（回到内置站点分发模式）
+    public static native String nativeClearSiteWasm();
 }

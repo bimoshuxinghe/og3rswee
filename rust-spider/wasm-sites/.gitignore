@@ -1,0 +1,2 @@
+# Rust 编译产物（wasm 站点交叉编译在 build-rust.sh 中执行，产物手动部署/分发）
+target

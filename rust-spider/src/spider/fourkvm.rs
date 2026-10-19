@@ -14,6 +14,7 @@ use super::SiteExt;
 use crate::types::*;
 use crate::wasm_engine;
 use once_cell::sync::Lazy;
+use regex::Regex;
 use reqwest::header::{HeaderMap, HeaderValue, COOKIE, USER_AGENT};
 use scraper::{Html, Selector};
 use std::collections::HashMap;
@@ -171,6 +172,10 @@ impl Spider4KVM {
     /// 详情内容（含选集线路）
     pub fn detail_content(&self, id: &str) -> DetailResult {
         let url = self.normalize_url(id);
+        // 与 Python 版一致：非播放页 ID 直接构造单集 VOD
+        if !url.contains("/play/") {
+            return DetailResult { list: vec![single_vod(&url)] };
+        }
         let html = match self.fetch_text(&url) {
             Ok(h) => h,
             Err(e) => {
@@ -246,64 +251,79 @@ impl Spider4KVM {
 
     /// 播放内容：解析播放地址（m3u8 直链）
     ///
-    /// `id` 支持两种形式：
-    /// 1. `dataid=40779&url=/play/ch4phdr82`（详情页下发的选集）
-    /// 2. `/play/ch4phdr82` 或完整 URL（手动播放，需回站提取 dataid 与 userlink）
+    /// 解析路线（与 Python 版行为对齐，并保留 Rust WASM 签名快路径）：
+    /// 1. `id` 本身是媒体直链（.m3u8/.mp4/.flv/.ts）→ parse 0；
+    /// 2. `id` 形如 `dataid=40779&url=/play/xxx&key=...`（详情页下发的选集）→ WASM 签名直取；
+    /// 3. 否则回站访问播放页：
+    ///    a. 提取 dataid + userlink 走 WASM 签名 API（优先，可解析页面内嵌播放器）；
+    ///    b. 页面无签名信息时按 Python 版直提：iframe / video source / script 内联正则；
+    ///    c. 都失败 → parse 1 交给 WebView 嗅探。
     pub fn player_content(&self, id: &str) -> PlayResult {
-        // 1) 优先从 id 中解析 dataid + secret
-        let (dataid, secret) = parse_play_id(id);
+        // 1) id 本身即媒体直链（Python: is_direct 判断）
+        if is_direct_media(id) {
+            return PlayResult { parse: 0, url: id.to_string(), header: Some(self.header_map()) };
+        }
 
-        let (dataid, secret, play_key) = if !dataid.is_empty() && !secret.is_empty() {
-            // 详情页下发的选集：play_key 从 id 附带
-            let key = parse_play_key(id).unwrap_or_default();
-            (dataid, secret, key)
+        // 2) 优先从 id 中解析 dataid + secret（详情页下发的快路径选集）
+        let (dataid, secret) = parse_play_id(id);
+        let fast_key = parse_play_key(id);
+
+        // 回站时拿到的页面 HTML（供 WASM 失败后走 Python 直提兜底）
+        let mut page_html: Option<String> = None;
+
+        let (dataid, secret, play_key) = if !dataid.is_empty() {
+            (dataid, secret, fast_key.unwrap_or_default())
         } else {
             // 回站提取：访问播放页拿 userlink 与当前集 dataid
             let page_url = self.normalize_url(id);
             match self.fetch_text(&page_url) {
                 Ok(html) => {
                     let doc = Html::parse_document(&html);
-                    let key = extract_userlink(&html);
                     let (did, sec) = extract_first_episode(&doc);
                     if did.is_empty() {
-                        // 页面无选集信息：交给 WebView 嗅探
+                        // 页面无选集签名信息 → Python 版直提路线
+                        if let Some(r) = extract_direct_media(&doc, &page_url, self) {
+                            return r;
+                        }
                         return PlayResult { parse: 1, url: page_url, header: Some(self.header_map()) };
                     }
+                    let key = extract_userlink(&html);
+                    page_html = Some(html);
                     (did, sec, key)
                 }
                 Err(e) => {
                     eprintln!("[4KVM] 播放页错误: {}", e);
-                    return PlayResult { parse: 1, url: self.normalize_url(id), header: Some(self.header_map()) };
+                    return PlayResult { parse: 1, url: page_url, header: Some(self.header_map()) };
                 }
             }
         };
 
-        // 2) WASM 生成签名 API 路径
+        // 3) WASM 生成签名 API 路径
         let api_path = match wasm_engine::build_play_url(&dataid, &secret, DEFAULT_QUALITY, &play_key) {
             Ok(p) => p,
             Err(e) => {
                 eprintln!("[4KVM] WASM 签名失败: {}", e);
-                return PlayResult { parse: 1, url: format!("{}play/{}", self.host, secret), header: Some(self.header_map()) };
+                return self.play_fallback(id, page_html.as_deref());
             }
         };
         let api_url = format!("{}{}", self.host.trim_end_matches('/'), api_path);
         let referer = format!("{}play/{}", self.host, secret);
 
-        // 3) 请求播放数据
+        // 4) 请求播放数据
         let resp: PlayApiResponse = match RUNTIME.block_on(self.fetch_json(&api_url, &referer)) {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("[4KVM] 播放 API 错误: {}", e);
-                return PlayResult { parse: 1, url: referer.clone(), header: Some(self.header_map()) };
+                return self.play_fallback(id, page_html.as_deref());
             }
         };
 
-        // 4) 选择可用线路（跳过 VIP 锁定）
+        // 5) 选择可用线路（跳过 VIP 锁定）
         let data = match resp.data {
             Some(d) if resp.code == 200 => d,
             _ => {
                 eprintln!("[4KVM] 播放 API 返回异常: code={} msg={}", resp.code, resp.message);
-                return PlayResult { parse: 1, url: referer, header: Some(self.header_map()) };
+                return self.play_fallback(id, page_html.as_deref());
             }
         };
         let quality = data
@@ -323,8 +343,21 @@ impl Spider4KVM {
                 let url = self.fallback_oss_url(&url);
                 PlayResult { parse: 0, url, header: Some(self.header_map()) }
             }
-            None => PlayResult { parse: 1, url: referer, header: Some(self.header_map()) },
+            None => self.play_fallback(id, page_html.as_deref()),
         }
+    }
+
+    /// WASM 签名路线失败后的兜底：有页面 HTML 时走 Python 版直提，否则 parse 1 交 WebView
+    fn play_fallback(&self, id: &str, page_html: Option<&str>) -> PlayResult {
+        if let Some(html) = page_html {
+            let doc = Html::parse_document(html);
+            let page_url = self.normalize_url(id);
+            if let Some(r) = extract_direct_media(&doc, &page_url, self) {
+                return r;
+            }
+            return PlayResult { parse: 1, url: page_url, header: Some(self.header_map()) };
+        }
+        PlayResult { parse: 1, url: self.normalize_url(id), header: Some(self.header_map()) }
     }
 
     // ---------- 网络 ----------
@@ -523,6 +556,55 @@ fn parse_movie_cards(doc: &Html, spider: &Spider4KVM) -> Vec<VideoItem> {
             });
         }
     }
+
+    // 备用选择器链（Python 版 getVideoList：.video-item/.movie-item/.post-item/article/.item）
+    if videos.is_empty() {
+        let a_play_sel = Selector::parse("a[href^=\"/play/\"]").unwrap();
+        let a_any_sel = Selector::parse("a").unwrap();
+        let img_sel = Selector::parse("img").unwrap();
+        for sel_str in [".video-item", ".movie-item", ".post-item", "article", ".item"] {
+            let item_sel = match Selector::parse(sel_str) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let items: Vec<_> = doc.select(&item_sel).collect();
+            if items.is_empty() {
+                continue;
+            }
+            eprintln!("[4KVM] 使用备用选择器: {}, {} 项", sel_str, items.len());
+            for item in items {
+                // py: 先找 a[href^="/play/"]，找不到则任意 a
+                let a = item
+                    .select(&a_play_sel)
+                    .next()
+                    .or_else(|| item.select(&a_any_sel).next());
+                let Some(a) = a else { continue };
+                let href = a.value().attr("href").unwrap_or("");
+                if href.is_empty() {
+                    continue;
+                }
+                let img = a.select(&img_sel).next();
+                let title = img
+                    .and_then(|i| i.value().attr("alt"))
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("未知")
+                    .to_string();
+                let img_src = img
+                    .and_then(|i| i.value().attr("data-src").or_else(|| i.value().attr("src")))
+                    .unwrap_or("");
+                videos.push(VideoItem {
+                    vod_id: spider.normalize_url(href),
+                    vod_name: title,
+                    vod_pic: spider.normalize_url(img_src),
+                    vod_remarks: String::new(),
+                    vod_year: String::new(),
+                });
+            }
+            if !videos.is_empty() {
+                break;
+            }
+        }
+    }
     videos
 }
 
@@ -565,48 +647,68 @@ fn parse_search_items(doc: &Html, spider: &Spider4KVM) -> Vec<VideoItem> {
     videos
 }
 
-/// 解析详情页选集：`a[data-episode]`，play_url 编码 dataid 与 play_key 供播放签名
+/// 解析详情页选集。
+/// 选择器顺序（与 Python 版对齐，并保留 Rust data-episode 路线）：
+/// 1. `a.episode-link[href^="/play/"]`（Python 主路线）
+/// 2. `a[data-episode][href^="/play/"]`（Rust 路线）
+/// 3. 兜底：`a[href^="/play/"]`（去重，标题固定「播放」）
+/// 下发格式：`第N集$...`；若选集元素带 dataid 且页面可提取 userlink，
+/// 附带签名快路径参数（`dataid=..&url=..&key=..`），否则只下发播放页 URL（Python 格式）。
 fn parse_episodes(doc: &Html, html: &str, spider: &Spider4KVM) -> Vec<String> {
-    let ep_sel = match Selector::parse("a[data-episode]") {
-        Ok(s) => s,
-        Err(_) => return Vec::new(),
-    };
     let span_sel = Selector::parse("span").unwrap();
     // 页面级 userlink（WASM 签名密钥），整个详情页相同
     let play_key = extract_userlink(html);
     let mut links: Vec<String> = Vec::new();
     let mut seen = std::collections::HashSet::new();
-    for ep in doc.select(&ep_sel) {
-        let href = ep.value().attr("href").unwrap_or("");
-        if href.is_empty() || !href.contains("/play/") {
-            continue;
+
+    // 选择器 1/2：带集数的选集按钮
+    let ep_sels = [
+        Selector::parse("a.episode-link[href^=\"/play/\"]").ok(),
+        Selector::parse("a[data-episode][href^=\"/play/\"]").ok(),
+    ];
+    'outer: for ep_sel in ep_sels.iter().flatten() {
+        for ep in doc.select(ep_sel) {
+            let href = ep.value().attr("href").unwrap_or("");
+            if href.is_empty() {
+                continue;
+            }
+            let key = href.to_string();
+            if !seen.insert(key.clone()) {
+                continue;
+            }
+            // 集数：data-episode 属性 → span 文本 → 序号
+            let episode_num = ep
+                .value()
+                .attr("data-episode")
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    ep.select(&span_sel)
+                        .next()
+                        .map(|s| s.text().collect::<String>().trim().to_string())
+                })
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| (links.len() + 1).to_string());
+            let dataid = ep.value().attr("dataid").unwrap_or("").to_string();
+            let play_url = spider.normalize_url(href);
+            if !dataid.is_empty() && !play_key.is_empty() {
+                // Rust 快路径：第N集$dataid=xxx&url=/play/yyy&key=userlink
+                links.push(format!(
+                    "第{}集$dataid={}&url={}&key={}",
+                    episode_num, dataid, play_url, play_key
+                ));
+            } else {
+                // Python 格式：第N集$https://.../play/yyy
+                links.push(format!("第{}集${}", episode_num, play_url));
+            }
         }
-        let key = href.to_string();
-        if !seen.insert(key.clone()) {
-            continue;
+        if !links.is_empty() {
+            break 'outer;
         }
-        let episode_num = ep
-            .value()
-            .attr("data-episode")
-            .filter(|s| !s.is_empty())
-            .map(|s| s.to_string())
-            .or_else(|| {
-                ep.select(&span_sel)
-                    .next()
-                    .map(|s| s.text().collect::<String>().trim().to_string())
-            })
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| (links.len() + 1).to_string());
-        let dataid = ep.value().attr("dataid").unwrap_or("").to_string();
-        let play_url = spider.normalize_url(href);
-        // 格式：第N集$dataid=xxx&url=/play/yyy&key=userlink
-        links.push(format!(
-            "第{}集$dataid={}&url={}&key={}",
-            episode_num, dataid, play_url, play_key
-        ));
     }
+
+    // 选择器 3：兜底任意 /play/ 链接（去重）
     if links.is_empty() {
-        // 兜底：任意 /play/ 链接
         let a_sel = Selector::parse("a[href^=\"/play/\"]").unwrap();
         let mut seen2 = std::collections::HashSet::new();
         for a in doc.select(&a_sel) {
@@ -766,4 +868,57 @@ fn text_of_sel(parent: scraper::ElementRef<'_>, sel: &Selector) -> String {
         .next()
         .map(|e| e.text().collect::<String>().trim().to_string())
         .unwrap_or_default()
+}
+
+/// 是否媒体直链（Python: `.m3u8/.mp4/.flv/.ts` 子串判断）
+fn is_direct_media(url: &str) -> bool {
+    let lower = url.to_lowercase();
+    [".m3u8", ".mp4", ".flv", ".ts"].iter().any(|e| lower.contains(e))
+}
+
+/// Python 版播放直提路线：iframe → video source → script 内联正则。
+/// iframe 非直链时返回 parse 1 + iframe 地址（交 WebView 嗅探 iframe 页），与 py 行为一致。
+fn extract_direct_media(doc: &Html, page_url: &str, spider: &Spider4KVM) -> Option<PlayResult> {
+    let _ = page_url;
+    // 1) iframe
+    if let Some(iframe) = attr_of(doc, "iframe", "src") {
+        if iframe.is_empty() {
+            return None;
+        }
+        let iframe = spider.normalize_url(&iframe);
+        return Some(if is_direct_media(&iframe) {
+            PlayResult { parse: 0, url: iframe, header: Some(spider.header_map()) }
+        } else {
+            PlayResult { parse: 1, url: iframe, header: Some(spider.header_map()) }
+        });
+    }
+    // 2) video source / video src
+    let video = attr_of(doc, "video source", "src").or_else(|| attr_of(doc, "video", "src"));
+    if let Some(v) = video {
+        if !v.is_empty() {
+            return Some(PlayResult {
+                parse: 0,
+                url: spider.normalize_url(&v),
+                header: Some(spider.header_map()),
+            });
+        }
+    }
+    // 3) script 内联正则：https?://...m3u8|mp4|flv（取第一个）
+    static MEDIA_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r#"https?://[^"'\s<>]+\.(?:m3u8|mp4|flv)"#).expect("媒体 URL 正则编译失败")
+    });
+    let script_sel = Selector::parse("script").ok()?;
+    let scripts_text: String = doc
+        .select(&script_sel)
+        .map(|s| s.text().collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n");
+    if let Some(m) = MEDIA_RE.find(&scripts_text) {
+        return Some(PlayResult {
+            parse: 0,
+            url: m.as_str().to_string(),
+            header: Some(spider.header_map()),
+        });
+    }
+    None
 }

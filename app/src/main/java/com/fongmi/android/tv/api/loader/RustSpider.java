@@ -26,6 +26,11 @@ public class RustSpider extends Spider {
     /** init 时保存的 ext 原文，原样透传给 Rust 引擎（模块分发依据） */
     private String extJson = "";
 
+    /** 规范化后的 ext JSON（含 host 兜底），供 WasmLoader 加载 wasm 时复用，保证 Rust 侧站点 key 一致 */
+    String extJson() {
+        return extJson;
+    }
+
     public RustSpider() {
     }
 

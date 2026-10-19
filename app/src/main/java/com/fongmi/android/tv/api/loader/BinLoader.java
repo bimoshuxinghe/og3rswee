@@ -91,10 +91,14 @@ public class BinLoader {
             }
         }
 
-        // 3) 本地路径（绝对路径或相对缓存目录）
+        // 3) 本地路径（绝对路径直接使用；相对路径按缓存目录解析；均自动补可执行权限）
         File local = new File(trimmed);
-        if (!Path.exists(local)) local = new File(Path.cache("rust"), trimmed);
-        if (Path.exists(local) && local.canExecute()) return local;
+        if (Path.exists(local)) return chmod(local) ? local : null;
+        // ./rust/xxx.bin → <cache>/rust/xxx.bin（兼容 <cache>/rust/rust/xxx.bin 旧双层写法）
+        File rel = new File(Path.cache("rust"), trimmed);
+        if (Path.exists(rel)) return chmod(rel) ? rel : null;
+        File relFlat = new File(Path.cache("rust"), base + ".bin");
+        if (Path.exists(relFlat)) return chmod(relFlat) ? relFlat : null;
         return null;
     }
 

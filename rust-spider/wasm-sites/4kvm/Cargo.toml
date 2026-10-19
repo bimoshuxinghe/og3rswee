@@ -1,0 +1,23 @@
+[package]
+name = "site_4kvm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# 站点 WASM 模块（"Rust 版 py"）：纯逻辑，无 IO，所有能力经 host imports 获得。
+# 编译：cargo build --release --target wasm32-unknown-unknown
+# 产物：target/wasm32-unknown-unknown/release/site_4kvm.wasm
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# wasm 站点只需 JSON 处理（关闭默认特性，仅保留 alloc，减小体积）
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
+
+[profile.release]
+# 体积优先：站点逻辑小，解释执行开销可忽略
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

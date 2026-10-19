@@ -55,6 +55,22 @@ cd "${SCRIPT_DIR}"
 build_abi "aarch64-linux-android"   "aarch64-linux-android24-clang"
 build_abi "armv7-linux-androideabi" "armv7a-linux-androideabi24-clang"
 
+# 外置站点 wasm（"Rust 版 py"：纯逻辑模块，运行依赖全在 .so 壳子内）
+# wasm 与 ABI 无关，一份产物通吃所有设备；站点配置 "api":"./rust/xxx.wasm" 加载
+build_wasm_sites() {
+    echo "==> 编译外置站点 wasm (wasm32-unknown-unknown)"
+    if ! rustup target list --installed | grep -q wasm32-unknown-unknown; then
+        rustup target add wasm32-unknown-unknown
+    fi
+    for site in wasm-sites/*/; do
+        [ -f "${site}Cargo.toml" ] || continue
+        echo "    - ${site}"
+        (cd "${site}" && cargo build --release --target wasm32-unknown-unknown)
+    done
+}
+
+build_wasm_sites
+
 echo ""
 echo "构建完成，产物:"
 echo "  [.so 引擎（JNI 内置方式）]"
@@ -63,6 +79,8 @@ ls -lh "target/aarch64-linux-android/release/libspider_rust.so" \
 echo "  [.bin 独立二进制（推荐，新站点零壳子改动）]"
 ls -lh "target/aarch64-linux-android/release/spider_rust_bin" \
        "target/armv7-linux-androideabi/release/spider_rust_bin"
+echo "  [.wasm 外置站点（\"Rust 版 py\"：几十 KB 纯逻辑模块）]"
+find wasm-sites -path '*/wasm32-unknown-unknown/release/*.wasm' ! -path '*/deps/*' ! -name '*.d' -exec ls -lh {} \;
 echo ""
 echo "部署到壳子:"
 echo "  .bin → app/src/main/assets/rust/spider_rust.<abi>.bin（内置），或放到配置目录/网络地址（外置）"
@@ -71,3 +89,5 @@ echo "    cp target/armv7-linux-androideabi/release/spider_rust_bin <repo>/app/s
 echo "  .so  → app/src/main/jniLibs/<abi>/（仅 rust:// JNI 内置方式需要）"
 echo "    cp target/aarch64-linux-android/release/libspider_rust.so   <repo>/app/src/main/jniLibs/arm64-v8a/"
 echo "    cp target/armv7-linux-androideabi/release/libspider_rust.so <repo>/app/src/main/jniLibs/armeabi-v7a/"
+echo "  .wasm → 直接随配置分发（如 ./rust/4kvm.wasm）；壳子按 .wasm 线路自动加载注册"
+echo "    cp wasm-sites/4kvm/target/wasm32-unknown-unknown/release/site_4kvm.wasm <分发目录>/4kvm.wasm"

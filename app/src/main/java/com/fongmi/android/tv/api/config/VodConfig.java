@@ -217,14 +217,14 @@ public class VodConfig extends BaseConfig {
         }
         getSites().addAll(localXbpqSites);
 
-        // 内置 Rust 二进制线路：4KVM（独立可执行 .bin，assets 内置按 ABI 释放）
-        // api 形如 ./rust/spider_rust.bin，由 BaseLoader 分发给 BinLoader → BinSpider（子进程调用）
-        // 其他 Rust 站点：编译自己的 .bin 放到配置目录或网络地址即可，无需改壳子（模板见 rust-spider/template/）
+        // 内置 Rust WASM 站点线路：4KVM（"Rust 版 py"——站点为纯逻辑 wasm，运行依赖全在 libspider_rust.so 内）
+        // api 形如 ./rust/site_4kvm.wasm，由 BaseLoader 分发给 WasmLoader → RustSpider（wasm 站点运行时）
+        // 其他站点：编译自己的 wasm 放到配置目录或网络地址即可，无需改壳子（模板见 rust-spider/wasm-sites/4kvm/）
         if (getSites().stream().noneMatch(s -> "rust_4kvm".equals(s.getKey()))) {
             Site rust4kvm = new Site();
             rust4kvm.setKey("rust_4kvm");
-            rust4kvm.setName("4K • Rust二进制");
-            rust4kvm.setApi("./rust/spider_rust.bin");
+            rust4kvm.setName("4K • Rust Wasm");
+            rust4kvm.setApi("./rust/site_4kvm.wasm");
             rust4kvm.setType(3);
             rust4kvm.setSearchable(1);
             rust4kvm.setExt("{\"host\":\"https://www.4kvms.org/\"}");

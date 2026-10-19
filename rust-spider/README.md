@@ -1,11 +1,15 @@
 # spider_rust — TVBox 内置通用 Rust 爬虫引擎
 
 依据《TV Box 内置 Rust 爬虫引擎技术文档》实现：壳子（FongMi/TV 系）内置的通用 Rust 爬虫运行时。
-支持两种加载方式：
+支持三种加载方式：
 
-1. **独立二进制 `.bin`（推荐）**：站点配置 `"api": "./rust/spider_rust.bin"`，
-   壳子以子进程方式调用，**新站点零壳子代码改动**——编译一个 bin + 一段配置即可上线。
-2. **JNI 内置 `.so`**：站点配置 `"api": "rust://spider_rust"`，
+1. **WASM 站点模块 `.wasm`（推荐，"Rust 版 py"）**：站点配置 `"api": "./rust/4kvm.wasm"`，
+   站点编译为 `wasm32-unknown-unknown` 纯逻辑模块（**139KB**，所有架构通用），
+   网络/HTML 解析/正则/播放签名等运行依赖全部内置在 `.so` 壳子中，经 host imports 提供给 wasm——
+   与 JS/PY 外置爬虫同构，但体积小两个数量级，**新站点零壳子代码改动**。
+2. **独立二进制 `.bin`**：站点配置 `"api": "./rust/spider_rust.bin"`，
+   壳子以子进程方式调用，新站点零壳子代码改动（bin 自带全部依赖，5.6MB 级）。
+3. **JNI 内置 `.so`**：站点配置 `"api": "rust://spider_rust"`，
    单库多站点分发（`ext.module` / host 特征），性能最好，新站点需改 Rust 源码重编。
 
 ```
@@ -15,6 +19,14 @@
           "module":"4kvm"}}               → spider/mod.rs 分发层
                                               ├─ fourkvm   (4KVM 站点)
                                               └─ ...       (未来新增站点)
+
+{"api":"./rust/4kvm.wasm",       →   WasmLoader → RustSpider → RustBridge(JNI)
+ "ext":{"host":"..."}}                   → nativeLoadSiteWasm 注册站点 wasm
+                                              → wasm_site 运行时（wasmi）
+                                                  ├─ host_fetch    reqwest 发请求
+                                                  ├─ host_query    HTML 解析
+                                                  ├─ host_regex    正则
+                                                  └─ host_sign_play WASM 签名
 ```
 
 ## 已内置站点
@@ -28,12 +40,15 @@
 依赖：Rust stable、Android NDK r26d（或自行设置 `NDK_HOME`）。
 
 ```bash
-# 一键交叉编译（双 ABI: arm64-v8a + armeabi-v7a）
+# 一键交叉编译（双 ABI .so + 双 ABI .bin + 外置站点 wasm）
 ./build-rust.sh
 
 # 产物
-target/aarch64-linux-android/release/libspider_rust.so
+target/aarch64-linux-android/release/libspider_rust.so        # JNI 引擎（含 wasm 站点运行时）
 target/armv7-linux-androideabi/release/libspider_rust.so
+target/aarch64-linux-android/release/spider_rust_bin          # 独立二进制
+target/armv7-linux-androideabi/release/spider_rust_bin
+wasm-sites/4kvm/target/wasm32-unknown-unknown/release/site_4kvm.wasm  # 外置站点（139KB，全架构通用）
 ```
 
 部署到壳子工程：
@@ -62,6 +77,14 @@ cargo test            # WASM 单测 + 分发逻辑测试 + 端到端网络测试
       "type": 1,
       "api": "rust://spider_rust",
       "ext": "{\"host\":\"https://www.4kvms.org/\"}"
+    },
+    {
+      "key": "wasm_4kvm",
+      "name": "4K影视[Rust Wasm]",
+      "type": 3,
+      "api": "./rust/4kvm.wasm",
+      "searchable": 1,
+      "ext": "{\"host\":\"https://www.4kvms.org/\"}"
     }
   ]
 }
@@ -81,7 +104,33 @@ cargo test            # WASM 单测 + 分发逻辑测试 + 端到端网络测试
 
 ## 新增一个站点的 Rust 实现
 
-### 方式 A：`.bin` 独立二进制（推荐，不改壳子代码）
+### 方式 A：WASM 站点模块 `.wasm`（推荐，不改壳子代码）
+
+站点配置（与普通 TVBox 站点写法一致）：
+
+```json
+{
+  "key": "mysite",
+  "name": "我的站点 • Rust Wasm",
+  "type": 3,
+  "api": "./rust/mysite.wasm",
+  "searchable": 1,
+  "ext": {"host": "https://www.example.com/", "module": "mysite"}
+}
+```
+
+- 模板：[`wasm-sites/4kvm/`](wasm-sites/4kvm/)（完整可编译样例，含 host imports 用法注释），
+  复制整个目录改站点逻辑即可；多站点时各自 `ext.module` 取不同值避免 key 冲突；
+- wasm 只写纯逻辑（选择器取字段、拼 URL），网络/解析/正则/签名由壳子 host imports 提供：
+  `host_fetch(html,url,mode)` / `host_query(html,selector)` / `host_regex(html,pattern)` /
+  `host_sign_play(...)`，协议见 `src/wasm_site/mod.rs` 的 `build_linker`；
+- 编译：`cargo build --release --target wasm32-unknown-unknown`（产物约 139KB，全架构通用）；
+- wasm 文件来源：APK 内置 `assets/wasm/<名>.wasm`、本地路径、或 http(s) 直链
+  （WasmLoader 按此顺序解析；wasm 与 ABI 无关，无需分架构）；
+- 电脑上直接测试：
+  `cargo build --release && ./target/release/spider_rust_bin sitewasm <wasm路径> home '{"host":"https://..."}'`。
+
+### 方式 B：`.bin` 独立二进制（不改壳子代码）
 
 站点配置（与普通 TVBox 站点写法一致）：
 
@@ -100,11 +149,12 @@ cargo test            # WASM 单测 + 分发逻辑测试 + 端到端网络测试
   改选择器、在 `src/spider/mod.rs` 注册即可（模板头部有三步操作说明）；
 - bin 的 CLI 协议（壳子 ↔ 二进制）：`spider_rust_bin <action> <ext_json> [args...]`，
   action ∈ `home / category / detail / search / play / warm`，stdout 输出结果 JSON，日志走 stderr；
-- bin 文件来源：APK 内置 `assets/rust/spider_rust.<abi>.bin`（`<abi>` = `arm64-v8a` / `armeabi-v7a`）、
-  本地路径、或 http(s) 直链（BinLoader 按此顺序解析，命中后释放到缓存目录并 chmod 755 执行）；
+- bin 文件来源：本地路径、http(s) 直链、或 APK 内置 `assets/rust/spider_rust.<abi>.bin`
+  （BinLoader 按此顺序解析，命中后释放到缓存目录并 chmod 755 执行；
+  当前壳子按"运行依赖全内置 .so、站点逻辑外置"的原则**未内置** bin，由用户自行放置）；
 - 电脑上直接测试：`cargo build --release && ./target/release/spider_rust_bin home '{"host":"https://..."}'`。
 
-### 方式 B：JNI 内置引擎（`rust://spider_rust`）
+### 方式 C：JNI 内置引擎（`rust://spider_rust`）
 
 引擎是通用运行时，新站点按以下四步走：
 
@@ -124,15 +174,19 @@ cargo test            # WASM 单测 + 分发逻辑测试 + 端到端网络测试
 
 ```
 rust-spider/
-├── build-rust.sh            # 一键交叉编译（双 ABI）
+├── build-rust.sh            # 一键交叉编译（双 ABI .so/.bin + 外置站点 wasm）
 ├── src/
 │   ├── lib.rs               # crate 入口（spider_rust）
-│   ├── jni_api.rs           # JNI 导出层（host+ext 双参数，panic 安全）
+│   ├── jni_api.rs           # JNI 导出层（host+ext 双参数，panic 安全；含 wasm 站点注册）
 │   ├── spider/
 │   │   ├── mod.rs           # 分发层：SiteExt 解析 + 多站点注册
 │   │   └── fourkvm.rs       # 4KVM 站点实现（4KVM.py 移植）
 │   ├── types.rs             # Spider 协议数据结构
-│   └── wasm_engine.rs       # wasmi 执行站点 WASM 生成播放签名
+│   ├── wasm_engine.rs       # wasmi 执行站点 WASM 生成播放签名
+│   └── wasm_site/
+│       └── mod.rs           # 外置站点 wasm 运行时（host imports + 多站点注册表）
+├── wasm-sites/
+│   └── 4kvm/                # 外置站点 wasm crate（编译为 site_4kvm.wasm，139KB）
 ├── tests/
 │   ├── spider_test.rs       # 端到端 + 分发逻辑测试
 │   └── wasm_test.rs         # WASM 签名引擎单测

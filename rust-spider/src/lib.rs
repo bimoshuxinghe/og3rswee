@@ -20,5 +20,6 @@ pub mod jni_api;
 pub mod spider;
 pub mod types;
 pub mod wasm_engine;
+pub mod wasm_site;
 
 pub use spider::SiteExt;
