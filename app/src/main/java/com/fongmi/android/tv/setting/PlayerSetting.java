@@ -208,7 +208,7 @@ public class PlayerSetting {
     }
 
     public static int getBackground() {
-        return Prefers.getInt("background", 0);
+        return Prefers.getInt("background", 1);
     }
 
     public static void putBackground(int background) {

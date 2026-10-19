@@ -54,6 +54,7 @@ import com.fongmi.android.tv.ui.fragment.SettingFragment;
 import com.fongmi.android.tv.ui.fragment.SettingPreloadFragment;
 import com.fongmi.android.tv.ui.fragment.SettingPlayerFragment;
 import com.fongmi.android.tv.ui.fragment.SettingHomeFragment;
+import com.fongmi.android.tv.ui.fragment.SettingSpiderScanFragment;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
 import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Guard;
@@ -198,6 +199,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             case 7 -> HotFragment.newInstance();
             case 8 -> SettingAdblockFragment.newInstance();
             case 9 -> SettingAutoSiteFragment.newInstance();
+            case 10 -> SettingSpiderScanFragment.newInstance();
             default -> null;
         });
         change(0);

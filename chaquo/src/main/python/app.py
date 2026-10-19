@@ -8,6 +8,11 @@ STREAM_PROXY_MIME = 'application/x-codex-stream-url'
 
 
 def spider(cache, api):
+    # 本地 .py 爬虫：api 为磁盘上的绝对路径，直接按文件加载，
+    # 否则会被当成代码文本写进缓存文件，导致模块内容变成路径字符串。
+    if os.path.isfile(api):
+        name = os.path.basename(api).split('.')[0]
+        return SourceFileLoader(name, api).load_module().Spider()
     if not api.startswith('http') and not '/' in api and not '\\' in api and '\n' not in api:
         module_name = api[:-3] if api.endswith('.py') else api
         try:

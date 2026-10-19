@@ -217,6 +217,15 @@ public class VodConfig extends BaseConfig {
         }
         getSites().addAll(localXbpqSites);
 
+        // 用户从本地扫描导入的 .js / .py 爬虫，同样追加到线路列表
+        List<Site> localSpiderSites = dbSites.stream()
+                .filter(site -> site.getKey() != null && site.getKey().startsWith("local_spider_"))
+                .toList();
+        for (Site site : localSpiderSites) {
+            if (TextUtils.isEmpty(site.getJar())) site.setJar(spider);
+        }
+        getSites().addAll(localSpiderSites);
+
         setHome(config, getSites().isEmpty() ? new Site() : getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().get(0)), false);
     }
 
