@@ -120,180 +120,20 @@ public class Setting {
         Prefers.put("adblock", adblock);
     }
 
-    public static boolean isAiAdblock() {
-        return Prefers.getBoolean("ai_adblock", true);
-    }
-
-    public static void putAiAdblock(boolean aiAdblock) {
-        Prefers.put("ai_adblock", aiAdblock);
-    }
-
     /**
-     * 声纹去广「提前确认」：START 证据（默认约 1 秒）即派发跳转，
-     * 不必等整条指纹完整校验走完（长规则可达 5 秒以上）。
+     * HLS 特征兜底引擎开关（切片命名规律识别广告块）。
      *
-     * <p>开启后广告跳过延迟可从「播了五六秒才跳」降到约 1 秒；
-     * 若遇到误跳正片，关闭即可回到「必须完整锚点验证」的保守行为。
+     * <p>规则引擎（内置结构化规则）始终随总开关生效；本开关控制无规则命中时
+     * 是否启用特征兜底。特征判定同样受统一安全框架约束（比例/时长/结构/
+     * 直播头部限制，不安全整体回退），但识别精度低于规则引擎，
+     * 遇到误删时可单独关闭本项、保留规则引擎。
      */
-    public static boolean isAdEarlyConfirm() {
-        return Prefers.getBoolean("ad_early_confirm", true);
+    public static boolean isHlsAdFeatureFilter() {
+        return Prefers.getBoolean("hls_ad_feature_filter", true);
     }
 
-    public static void putAdEarlyConfirm(boolean early) {
-        Prefers.put("ad_early_confirm", early);
-    }
-
-    /**
-     * 广告区间记忆：把声纹确认过的广告位置按视频持久化，
-     * 同一视频再次播放时开播前就已知广告在哪——HLS 可直接删掉对应分片，
-     * MP4/FLV 则预先计划跳过，做到二次播放零延迟。
-     */
-    public static boolean isAdSegmentMemory() {
-        return Prefers.getBoolean("ad_segment_memory", true);
-    }
-
-    public static void putAdSegmentMemory(boolean memory) {
-        Prefers.put("ad_segment_memory", memory);
-    }
-
-    public static String getAiAdblockKeywords() {
-        return Prefers.getString("ai_adblock_keywords", "麻将来了,澳门,赌场,娱乐城,荷官,百家乐,老虎机,时时彩,六合彩,彩票,下注,投注,首充,提现,棋牌,捕鱼,斗地主");
-    }
-
-    public static void putAiAdblockKeywords(String keywords) {
-        Prefers.put("ai_adblock_keywords", keywords);
-    }
-
-    public static int getAiAdblockSkipSeconds() {
-        return Prefers.getInt("ai_adblock_skip_seconds", 15);
-    }
-
-    public static void putAiAdblockSkipSeconds(int seconds) {
-        Prefers.put("ai_adblock_skip_seconds", seconds);
-    }
-
-    /** 自动采集：播放时后台扫描广告候选并生成音频指纹规则。 */
-    public static boolean isAutoCollect() {
-        return Prefers.getBoolean("ad_auto_collect", true);
-    }
-
-    public static void putAutoCollect(boolean autoCollect) {
-        Prefers.put("ad_auto_collect", autoCollect);
-    }
-
-    /** 广告跳过模式：0=仅提示，1=提示+自动跳过，2=仅自动跳过（默认提示+自动跳过）。 */
-    public static final int AD_SKIP_MODE_NOTICE = 0;
-    public static final int AD_SKIP_MODE_NOTICE_AND_SKIP = 1;
-    public static final int AD_SKIP_MODE_SKIP_ONLY = 2;
-    public static final int DEFAULT_AD_SKIP_MODE = AD_SKIP_MODE_NOTICE_AND_SKIP;
-
-    public static int getAdSkipMode() {
-        return Prefers.getInt("ad_skip_mode", DEFAULT_AD_SKIP_MODE);
-    }
-
-    public static void putAdSkipMode(int mode) {
-        Prefers.put("ad_skip_mode", mode);
-    }
-
-    /** 智能趣广告的规则文件路径（采集器 APK 生成的 RULES.JSON）。默认在外部 Download 目录（与旧版一致）。 */
-    public static final String DEFAULT_RULES_PATH = "/storage/emulated/0/Download/m3u8-ad-audio/RULES.JSON";
-
-    /** 返回默认（外部）规则路径，与旧版行为一致。 */
-    public static String getDefaultRulesPath() {
-        return DEFAULT_RULES_PATH;
-    }
-
-    /** 解析保存的路径；为空或占位符时返回默认外部路径。 */
-    public static String getAdRulesPath() {
-        String saved = Prefers.getString("ad_rules_path", "");
-        if (saved == null || saved.trim().isEmpty() || DEFAULT_RULES_PATH.equals(saved.trim())) {
-            return DEFAULT_RULES_PATH;
-        }
-        return saved.trim();
-    }
-
-    public static void putAdRulesPath(String path) {
-        String normalized = (path == null || path.trim().isEmpty()) ? DEFAULT_RULES_PATH : path.trim();
-        Prefers.put("ad_rules_path", normalized);
-    }
-
-    /**
-     * 应用私有目录兜底路径。Android 11+ 上外部目录可能因未授予“所有文件访问权限”
-     * 而 EACCES 写入失败，此时降级到这里，零权限依赖，保证规则一定能落盘，
-     * 声纹去广告不会因写不进外部目录而静默失效。
-     */
-    public static String getPrivateRulesPath() {
-        return new File(Init.context().getFilesDir(), "m3u8-ad-audio/RULES.JSON").getAbsolutePath();
-    }
-
-    /**
-     * 读写规则时按优先级尝试的路径列表：首选外部默认路径（与旧版/采集器兼容），
-     * 其次应用私有目录兜底。外部路径在 Android 11+ 未授予“所有文件访问权限”时会 EACCES，
-     * 自动落到私有目录。
-     */
-    public static List<String> getRulesPathCandidates() {
-        List<String> list = new ArrayList<>();
-        String primary = getAdRulesPath();
-        list.add(primary);
-        String priv = getPrivateRulesPath();
-        if (!priv.equals(primary)) list.add(priv);
-        return list;
-    }
-
-    /** 外部（默认）规则目录是否可写，用于自检面板提示是否需授予“所有文件访问权限”。 */
-    public static boolean isPrimaryRulesPathWritable() {
-        try {
-            File dir = new File(getAdRulesPath()).getParentFile();
-            return dir != null && (dir.exists() ? dir.canWrite() : dir.mkdirs());
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * 是否需要请求“所有文件访问权限”（MANAGE_EXTERNAL_STORAGE）。
-     * Android 11+ 上写外部 Download 目录必须授权该特殊权限，否则 EACCES；
-     * API < 30 用 WRITE_EXTERNAL_STORAGE 即可，无需此授权。
-     */
-    public static boolean needsAllFilesAccess() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false;
-        try {
-            return !Environment.isExternalStorageManager();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * 广告规则库地址（可拉取的第三方 rules.json）。默认为空：不预置任何地址，
-     * 由用户自行在“去广告设置”里填写自己的规则库（避免内置地址不可达时误导用户）。
-     * 仅拉取、不回传：本地自动采集到的规则合并进本地 RULES.JSON，但绝不上传。
-     */
-    public static final String DEFAULT_RULE_LIBRARY_URL = "";
-
-    public static String getRuleLibraryUrl() {
-        return Prefers.getString("ad_rule_library_url", DEFAULT_RULE_LIBRARY_URL);
-    }
-
-    public static void putRuleLibraryUrl(String url) {
-        Prefers.put("ad_rule_library_url", (url == null || url.trim().isEmpty()) ? "" : url.trim());
-    }
-
-    /**
-     * 一次性迁移：清理旧版（5.9.8 早期）持久化到本地偏好的不可达默认规则库地址。
-     * 当时我们把第三方 ccfork 规则库预置为默认值并写入了本地存储；该地址后续被证实不可达，
-     * 已改为默认空串（由用户自行填写）。但已运行过旧版的用户本地已存有该旧地址，单靠改默认值
-     * 无法清除，故在启动时检测并清成空串，使设置页不再显示该链接。
-     * 幂等：仅在当前存储值恰好等于旧默认地址时清空，用户后来手动填的地址不受影响。
-     */
-    public static final String LEGACY_RULE_LIBRARY_URL =
-            "https://m3u8-ad-audio-rules-sync.ccfork.workers.dev/rules.json";
-
-    public static void migrateDeprecatedRuleLibraryUrl() {
-        String cur = getRuleLibraryUrl();
-        if (LEGACY_RULE_LIBRARY_URL.equals(cur)) {
-            putRuleLibraryUrl("");
-        }
+    public static void putHlsAdFeatureFilter(boolean value) {
+        Prefers.put("hls_ad_feature_filter", value);
     }
 
     public static boolean isZhuyin() {

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "note": "HLS 结构化去广告基线规则。多信号投票：命中信号数需达到 minimumSignals 才删除；live 流只删头部连续分片；删除比例/时长超限整体回退原文。规则来源：TVBox 社区公开配置（guxiangbin/tvbox2、1771245847/TvBox）的贴片广告特征 + WebHTV 内置基线。",
+  "rules": [
+    {
+      "id": "builtin.hls.baofeng.preroll",
+      "name": "暴风贴片",
+      "playlistHostSuffixes": ["bfzy"],
+      "hostSuffixes": ["bfzycdn.com"],
+      "durationRange": [1.0, 6.0],
+      "requireDiscontinuity": true,
+      "minimumSignals": 2
+    },
+    {
+      "id": "builtin.hls.liangzi.preroll",
+      "name": "量子贴片",
+      "playlistHostSuffixes": ["lz", "lzcdn"],
+      "hostSuffixes": ["lzcdn.com", "lzdsk.com"],
+      "durationRange": [1.0, 8.0],
+      "requireDiscontinuity": true,
+      "minimumSignals": 2
+    },
+    {
+      "id": "builtin.hls.feifan.preroll",
+      "name": "非凡贴片",
+      "playlistHostSuffixes": ["ffzy"],
+      "hostSuffixes": ["ffzycdn.com", "ffzyapi.com"],
+      "durationRange": [1.0, 8.0],
+      "requireDiscontinuity": true,
+      "minimumSignals": 2
+    },
+    {
+      "id": "builtin.hls.cdn.preroll",
+      "name": "跨CDN贴片（通用）",
+      "requireDiscontinuity": true,
+      "requireCrossDomain": true,
+      "durationRange": [1.0, 12.0],
+      "minimumSignals": 3
+    },
+    {
+      "id": "builtin.hls.adpath.preroll",
+      "name": "广告路径贴片（通用）",
+      "segmentUrlPatterns": ["/(ad|ads|advert|adserver)/[^/]+\\.(ts|m4s|mp4)$"],
+      "requireDiscontinuity": true,
+      "durationRange": [0.5, 15.0],
+      "minimumSignals": 3
+    }
+  ]
+}

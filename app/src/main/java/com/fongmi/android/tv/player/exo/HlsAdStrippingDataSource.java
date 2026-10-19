@@ -10,25 +10,26 @@ import androidx.media3.datasource.DataSource;
 import androidx.media3.datasource.DataSpec;
 import androidx.media3.datasource.TransferListener;
 
-import com.fongmi.android.tv.player.AdProbeManager;
-import com.fongmi.android.tv.player.AdSegmentMemory;
+import com.fongmi.android.tv.bean.AdBlockStats;
+import com.fongmi.android.tv.setting.Setting;
+import com.fongmi.android.tv.utils.HlsAdEngine;
+import com.fongmi.android.tv.utils.HlsAdRuleStore;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 在 DataSource 层拦截 m3u8 播放列表，按声纹记忆的广告区间删除分片。
+ * 在 DataSource 层拦截 m3u8 播放列表，调用 {@link HlsAdEngine} 净化后交给解析器。
  *
- * <p>内置的 {@code HlsAdsParser} 只按 URL 路径分组与块大小做启发式判断，
- * 广告与正片同目录时失效，且它是 AAR 内代码无法修改。这里改为在播放列表
- * 进入解析器之前就改写：分片根本不会进入播放列表，播放器也就不会去下载它，
- * 因此广告能做到一帧不播，且无需等探针实时检测。
+ * <p>与旧版（声纹记忆区间删除）的本质区别：判定不依赖任何播放历史，
+ * 每次加载都从 manifest 正文独立得出结论——规则引擎（结构化多信号）主战，
+ * 特征引擎（切片命名规律）兜底，统一安全框架裁决（比例/时长/结构/直播
+ * 头部限制，任一不安全整体回退原文）。
  *
- * <p>只对 {@code .m3u8} 且当前视频存在已知广告区间时介入，其余请求原样透传。
+ * <p>只对 m3u8 介入，其余请求原样透传；任何异常都 fail-open 回原文。
  */
 public final class HlsAdStrippingDataSource implements DataSource {
 
@@ -56,10 +57,8 @@ public final class HlsAdStrippingDataSource implements DataSource {
         long length = upstream.open(dataSpec);
         rewritten = null;
         readPosition = 0;
-        List<AdSegmentMemory.Range> ranges = rangesForCurrentVideo();
-        if (ranges.isEmpty() || !looksLikePlaylist(dataSpec.uri, length)) return length;
-        // 播放列表通常只有几 KB～几十 KB，直接全量读入后改写，
-        // 避免在字节流上做增量解析（易错且难维护）。
+        if (!Setting.isAdblock() || !looksLikePlaylist(dataSpec.uri, length)) return length;
+        // 播放列表通常只有几 KB～几十 KB，直接全量读入后改写
         byte[] original = readFully(length);
         if (original == null || original.length == 0) return length;
         String m3u8 = new String(original, StandardCharsets.UTF_8);
@@ -69,22 +68,20 @@ public final class HlsAdStrippingDataSource implements DataSource {
             log("命中候选但非 m3u8 内容，透传：" + dataSpec.uri);
             return length;
         }
-        // 无论最终是否删除分片，都让预跳过知道这是 HLS——
-        // 它必须在时间轴重排前后的坐标系里做出正确的取舍（见 AdSegmentMemory）。
-        AdSegmentMemory.markHls();
-        String stripped = HlsAdStripper.strip(m3u8, ranges);
-        if (stripped == null || stripped.isEmpty() || stripped.equals(m3u8)) {
-            log("m3u8 无命中分片可删（区间 " + ranges.size() + " 段），原样透传");
+        String url = dataSpec.uri.toString();
+        HlsAdEngine.Result result = HlsAdEngine.clean(url, m3u8,
+                HlsAdRuleStore.getRules(), Setting.isHlsAdFeatureFilter());
+        AdBlockStats.get().record(result.engine(), result.changed(), result.fallback(), result.removedSegments());
+        if (!result.changed()) {
+            if (result.fallback()) {
+                log("净化回退原文（引擎 " + result.engine() + "，安全阈值或结构不满足）");
+            }
             return length;
         }
-        rewritten = stripped.getBytes(StandardCharsets.UTF_8);
-        // 时间轴自此整体前移，必须让记忆库停止按位置判断与写入（见 AdSegmentMemory）。
-        AdSegmentMemory.markStripped();
-        log("已删除广告分片：区间 " + ranges.size() + " 段，"
+        rewritten = result.manifest().getBytes(StandardCharsets.UTF_8);
+        log("已净化播放列表：引擎 " + result.engine() + "，删除 " + result.removedSegments()
+                + " 分片 / " + Math.round(result.removedDurationSec()) + "s，"
                 + original.length + " → " + rewritten.length + " 字节");
-        // 诊断：打印改写后的 m3u8 前 2500 字符，真机 Manifest Malformed 时据此定位畸形点
-        // （不影响逻辑；fail-open 已保证最坏情况回退原文）。
-        log("改写后 m3u8(前2500字符):\n" + (stripped.length() <= 2500 ? stripped : stripped.substring(0, 2500)));
         return rewritten.length;
     }
 
@@ -147,20 +144,6 @@ public final class HlsAdStrippingDataSource implements DataSource {
             Class<?> cls = Class.forName("com.fongmi.chaquo.DbgLog");
             cls.getMethod("log", String.class).invoke(null, "[HlsAdStrip] " + msg);
         } catch (Throwable ignored) {
-        }
-    }
-
-    /** 当前正在播放的视频的已知广告区间；取不到时返回空列表，等于不介入。 */
-    private static List<AdSegmentMemory.Range> rangesForCurrentVideo() {
-        try {
-            // 播放侧显式注入的地址优先；探针的 lastUrl 仅作兜底——它在探针未就绪时
-            // 永远是 null，不能作为唯一来源。
-            String url = AdSegmentMemory.getCurrentUrl();
-            List<AdSegmentMemory.Range> ranges = AdSegmentMemory.get(url);
-            if (!ranges.isEmpty()) return ranges;
-            return AdSegmentMemory.get(AdProbeManager.get().getLastUrl());
-        } catch (Throwable e) {
-            return Collections.emptyList();
         }
     }
 

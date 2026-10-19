@@ -96,19 +96,12 @@ public class App extends Application implements Application.ActivityLifecycleCal
         // 主线程崩溃护栏：远程下载的第三方爬虫 jar 会把回调 post 到主线程，
         // 其内部 NPE 无法被我们的 try/catch 覆盖，直接在 Looper 层兜住，避免整个 App 被带崩。
         CrashGuard.install();
-        // 一次性迁移：清除旧版持久化的不可达默认规则库地址（如 ccfork 链接），使设置页不再显示该链接
-        com.fongmi.android.tv.setting.Setting.migrateDeprecatedRuleLibraryUrl();
         // 异步启动代理，避免主线程阻塞导致启动卡顿
         com.fongmi.android.tv.utils.Task.execute(() -> ProxySubscriptionManager.get().applySaved());
         // 远程服务开关：启动即后台预取服务器指令（不阻塞启动，主页入口同步裁决）
         com.fongmi.android.tv.utils.Task.execute(() -> Guard.prefetch());
         // 内置直播代理：后台拉起 ysp-live（央视频 64 频道 Python 代理，监听 127.0.0.1:8767）
         com.fongmi.android.tv.utils.Task.execute(() -> com.fongmi.android.tv.server.YspLive.get().start());
-        // 启动预热：拉取广告规则库（仅下载、不上传）并合并本地采集规则；失败静默降级，不影响播放。
-        if (Setting.isAiAdblock()) {
-            com.fongmi.android.tv.utils.Task.execute(() ->
-                    com.fongmi.android.tv.player.AdCloudSyncManager.get().syncFromCloud(null));
-        }
         registerActivityLifecycleCallbacks(this);
     }
 
