@@ -609,6 +609,10 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         setMpvOption("cache", "yes");
         setMpvOption("cache-on-disk", "yes");
         setMpvOption("cache-secs", String.valueOf(cacheSecs));
+        // demuxer 内存缓冲上限与预读（对齐上游 FongMi 5.7.4 磁盘预载策略）：
+        // 高码率 4K 内容默认 32MiB 缓冲不够，易触发 demuxer 停顿；放大上限减少卡顿
+        setMpvOption("demuxer-max-bytes", "96MiB");
+        setMpvOption("demuxer-readahead-secs", String.valueOf(Math.max(20, cacheSecs)));
         try {
             java.io.File cacheDir = new java.io.File(context.getCacheDir(), "mpv");
             if (!cacheDir.exists()) cacheDir.mkdirs();
@@ -993,7 +997,9 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private void applyRenderOptions() {
         boolean gpuNext = PlayerSetting.isMpvGpuNext();
-        boolean vulkan = PlayerSetting.isMpvVulkan();
+        // Vulkan 需设备支持 Vulkan 1.2（与上游 FongMi 5.7.4 同款探测）：
+        // 不支持的设备强行启用 Vulkan 会黑屏，此处自动回退 OpenGL
+        boolean vulkan = PlayerSetting.isMpvVulkan() && isVulkanSupported();
         setMpvOption("vo", gpuNext ? "gpu-next" : "gpu");
         if (vulkan) {
             setMpvOption("gpu-api", "vulkan");
@@ -1016,8 +1022,7 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
         setMpvOption("correct-downscaling", "yes");
         // 信号混叠：改善交织内容的渲染
         setMpvOption("sigmoid-upscaling", "yes");
-        // FBO 格式：使用 16-bit 浮点格式，提升 HDR 和 10-bit 内容的渲染精度
-        // 避免中间渲染步骤的精度丢失导致色彩偏差
+        // FBO 格式：使用 16-bit 浮点格式，提升 HDR 和 10-bit 内容的渲染精度        // 避免中间渲染步骤的精度丢失导致色彩偏差
         if (gpuNext) {
             setMpvOption("opengl-fbo-format", "auto16f");
         }
@@ -1031,6 +1036,18 @@ public final class MpvSimplePlayer extends SimpleBasePlayer implements MPVLib.Ev
 
     private String getMpvVo() {
         return PlayerSetting.isMpvGpuNext() ? "gpu-next" : "gpu";
+    }
+
+    /**
+     * 设备是否支持 Vulkan 1.2（与上游 FongMi 5.7.4 的 MpvUtil.isVulkanSupported 同款探测）。
+     * Vulkan 渲染仅在硬件真支持时启用，避免不兼容设备黑屏。
+     */
+    private boolean isVulkanSupported() {
+        try {
+            return context.getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_VULKAN_HARDWARE_VERSION, 0x00402000);
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     private void applyProbeOptions() {
