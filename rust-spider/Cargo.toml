@@ -7,6 +7,11 @@ edition = "2021"
 name = "spider_rust"
 crate-type = ["cdylib", "rlib"]
 
+# 独立可执行二进制（壳子以 .bin 方式加载：ProcessBuilder 调用，stdout 收 JSON）
+[[bin]]
+name = "spider_rust_bin"
+path = "src/main.rs"
+
 [dependencies]
 # JNI 桥接（文档 3.2 要求）
 jni = "0.21"

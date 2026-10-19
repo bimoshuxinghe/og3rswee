@@ -24,12 +24,14 @@ public class BaseLoader {
     private final PyLoader pyLoader;
     private final JsLoader jsLoader;
     private final RustLoader rustLoader;
+    private final BinLoader binLoader;
 
     private BaseLoader() {
         jarLoader = new JarLoader();
         pyLoader = new PyLoader();
         jsLoader = new JsLoader();
         rustLoader = new RustLoader();
+        binLoader = new BinLoader();
     }
 
     public static BaseLoader get() {
@@ -52,15 +54,21 @@ public class BaseLoader {
         return api.startsWith("rust://");
     }
 
+    private static boolean isBin(String api) {
+        return api.endsWith(".bin");
+    }
+
     public void clear() {
         jarLoader.clear();
         pyLoader.clear();
         jsLoader.clear();
         rustLoader.clear();
+        binLoader.clear();
     }
 
     public Spider getSpider(String key, String api, String ext, String jar) {
-        if (isRust(api)) return rustLoader.getSpider(key, api, ext);
+        if (isBin(api)) return binLoader.getSpider(key, api, ext);
+        else if (isRust(api)) return rustLoader.getSpider(key, api, ext);
         else if (isPy(api)) return pyLoader.getSpider(key, api, ext);
         else if (isJs(api)) return jsLoader.getSpider(key, api, ext, jar);
         else if (isCsp(api)) return jarLoader.getSpider(key, api, ext, jar);

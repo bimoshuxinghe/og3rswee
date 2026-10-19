@@ -118,6 +118,8 @@
 -keep class com.fongmi.android.tv.api.loader.RustBridge { *; }
 -keep class com.fongmi.android.tv.api.loader.RustSpider { *; }
 -keep class com.fongmi.android.tv.api.loader.RustLoader { *; }
+-keep class com.fongmi.android.tv.api.loader.BinLoader { *; }
+-keep class com.fongmi.android.tv.api.loader.BinSpider { *; }
 -keepclasseswithmembernames class * {
     native <methods>;
 }

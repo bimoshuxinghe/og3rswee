@@ -1,8 +1,12 @@
 # spider_rust — TVBox 内置通用 Rust 爬虫引擎
 
 依据《TV Box 内置 Rust 爬虫引擎技术文档》实现：壳子（FongMi/TV 系）内置的通用 Rust 爬虫运行时。
-**单个 `libspider_rust.so` 服务多个站点**——站点配置使用统一的 `rust://spider_rust` 入口，
-由引擎按 `ext.module`（或 host 特征）分发到对应站点的 Rust 实现。
+支持两种加载方式：
+
+1. **独立二进制 `.bin`（推荐）**：站点配置 `"api": "./rust/spider_rust.bin"`，
+   壳子以子进程方式调用，**新站点零壳子代码改动**——编译一个 bin + 一段配置即可上线。
+2. **JNI 内置 `.so`**：站点配置 `"api": "rust://spider_rust"`，
+   单库多站点分发（`ext.module` / host 特征），性能最好，新站点需改 Rust 源码重编。
 
 ```
 壳子站点配置 (JSON)                      Rust 引擎 (libspider_rust.so)
@@ -77,7 +81,32 @@ cargo test            # WASM 单测 + 分发逻辑测试 + 端到端网络测试
 
 ## 新增一个站点的 Rust 实现
 
-引擎是**通用运行时**，新增站点不需要新的 `.so`，按以下四步走：
+### 方式 A：`.bin` 独立二进制（推荐，不改壳子代码）
+
+站点配置（与普通 TVBox 站点写法一致）：
+
+```json
+{
+  "key": "mysite",
+  "name": "我的站点 • Rust二进制",
+  "type": 3,
+  "api": "./rust/spider_rust.bin",
+  "searchable": 1,
+  "ext": {"host": "https://www.example.com/"}
+}
+```
+
+- 模板：[`template/mysite_template.rs`](template/mysite_template.rs)，复制到 `src/spider/mysite.rs`
+  改选择器、在 `src/spider/mod.rs` 注册即可（模板头部有三步操作说明）；
+- bin 的 CLI 协议（壳子 ↔ 二进制）：`spider_rust_bin <action> <ext_json> [args...]`，
+  action ∈ `home / category / detail / search / play / warm`，stdout 输出结果 JSON，日志走 stderr；
+- bin 文件来源：APK 内置 `assets/rust/spider_rust.<abi>.bin`（`<abi>` = `arm64-v8a` / `armeabi-v7a`）、
+  本地路径、或 http(s) 直链（BinLoader 按此顺序解析，命中后释放到缓存目录并 chmod 755 执行）；
+- 电脑上直接测试：`cargo build --release && ./target/release/spider_rust_bin home '{"host":"https://..."}'`。
+
+### 方式 B：JNI 内置引擎（`rust://spider_rust`）
+
+引擎是通用运行时，新站点按以下四步走：
 
 1. **写模块**：在 `src/spider/` 新增 `mysite.rs`，实现该站点的爬虫
    （参照 `fourkvm.rs`：`new(ext: &SiteExt)` + `home_content/category_content/detail_content/search_content/player_content`）；
