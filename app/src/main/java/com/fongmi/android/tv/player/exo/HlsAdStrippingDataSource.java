@@ -40,7 +40,14 @@ public final class HlsAdStrippingDataSource implements DataSource {
 
     private final DataSource upstream;
 
-    private byte[] rewritten;
+    /**
+     * 本次 open 的输出缓冲。凡是 readFully 已把 upstream 读空的路径
+     * （净化命中、unchanged、非 m3u8 内容）都必须把已读到的字节放进
+     * 这里供 read() 输出——upstream 已到 EOF，再走 upstream.read() 只会
+     * 返回 END_OF_INPUT，播放器将收到空播放列表（Manifest Malformed）。
+     * 只有完全未介入（非 m3u8 URL、总开关关闭）时才保持 null 走透传。
+     */
+    private byte[] data;
     private int readPosition;
 
     public HlsAdStrippingDataSource(DataSource upstream) {
@@ -55,7 +62,7 @@ public final class HlsAdStrippingDataSource implements DataSource {
     @Override
     public long open(DataSpec dataSpec) throws IOException {
         long length = upstream.open(dataSpec);
-        rewritten = null;
+        data = null;
         readPosition = 0;
         if (!Setting.isAdblock() || !looksLikePlaylist(dataSpec.uri, length)) return length;
         // 播放列表通常只有几 KB～几十 KB，直接全量读入后改写
@@ -63,10 +70,11 @@ public final class HlsAdStrippingDataSource implements DataSource {
         if (original == null || original.length == 0) return length;
         String m3u8 = new String(original, StandardCharsets.UTF_8);
         // 以 URL 粗筛、以魔数定案：伪造路径或带参的列表也能识别，
-        // 又不会把 .ts 媒体分片误读进来。
+        // 又不会把 .ts 媒体分片误读进来。内容不是 m3u8 时把已读
+        // 字节原样回放，绝不能再走 upstream（已在 EOF）。
         if (!m3u8.startsWith("#EXTM3U")) {
-            log("命中候选但非 m3u8 内容，透传：" + dataSpec.uri);
-            return length;
+            data = original;
+            return original.length;
         }
         String url = dataSpec.uri.toString();
         HlsAdEngine.Result result = HlsAdEngine.clean(url, m3u8,
@@ -76,23 +84,25 @@ public final class HlsAdStrippingDataSource implements DataSource {
             if (result.fallback()) {
                 log("净化回退原文（引擎 " + result.engine() + "，安全阈值或结构不满足）");
             }
-            return length;
+            // unchanged 同样必须回放已读字节
+            data = original;
+            return original.length;
         }
-        rewritten = result.manifest().getBytes(StandardCharsets.UTF_8);
+        data = result.manifest().getBytes(StandardCharsets.UTF_8);
         log("已净化播放列表：引擎 " + result.engine() + "，删除 " + result.removedSegments()
                 + " 分片 / " + Math.round(result.removedDurationSec()) + "s，"
-                + original.length + " → " + rewritten.length + " 字节");
-        return rewritten.length;
+                + original.length + " → " + data.length + " 字节");
+        return data.length;
     }
 
     @Override
     public int read(byte[] buffer, int offset, int length) throws IOException {
-        byte[] data = rewritten;
-        if (data == null) return upstream.read(buffer, offset, length);
-        if (readPosition >= data.length) return C.RESULT_END_OF_INPUT;
-        int available = data.length - readPosition;
+        byte[] out = data;
+        if (out == null) return upstream.read(buffer, offset, length);
+        if (readPosition >= out.length) return C.RESULT_END_OF_INPUT;
+        int available = out.length - readPosition;
         int toRead = Math.min(length, available);
-        System.arraycopy(data, readPosition, buffer, offset, toRead);
+        System.arraycopy(out, readPosition, buffer, offset, toRead);
         readPosition += toRead;
         return toRead;
     }
@@ -111,7 +121,7 @@ public final class HlsAdStrippingDataSource implements DataSource {
 
     @Override
     public void close() throws IOException {
-        rewritten = null;
+        data = null;
         readPosition = 0;
         upstream.close();
     }
