@@ -88,11 +88,15 @@ public final class HlsSegmentAdJudger {
      * <p>保守原则：没有任何 DISCONTINUITY 的列表直接放弃（原脚本的全部删除规则
      * 都依赖 DISCONTINUITY 边界，没有边界时无从判断广告块起止）。
      */
+    /** 暴力拆解可容忍的最大 DISCONTINUITY 数：真实贴片一般只有几个标记，
+     *  大量（尤其均匀分布的）DISCONTINUITY 是编码分段而非广告隔离，删了会破坏解码边界。 */
+    private static final int MAX_VIOLENCE_DISCONTINUITY = 8;
+
     public static Verdict judge(List<Segment> segments) {
         if (segments == null || segments.isEmpty()) return none();
-        boolean hasDiscontinuity = false;
-        for (Segment s : segments) if (s.discontinuityBefore) hasDiscontinuity = true;
-        if (!hasDiscontinuity) return none();
+        int discCount = 0;
+        for (Segment s : segments) if (s.discontinuityBefore) discCount++;
+        if (discCount == 0) return none();
 
         Mode mode = detectMode(segments);
         Set<Integer> adIndexes = new HashSet<>();
@@ -104,7 +108,8 @@ public final class HlsSegmentAdJudger {
                 judgePlain(segments, adIndexes);
                 break;
             case VIOLENCE:
-                // 暴力拆解：不删分片，只删标识
+                // 暴力拆解：不删分片，只删标识；标记过多说明是编码分段，放弃
+                if (discCount > MAX_VIOLENCE_DISCONTINUITY) return none();
                 return new Verdict(adIndexes, Mode.VIOLENCE, true, "violence");
             default:
                 return none();

@@ -100,14 +100,12 @@ public final class HlsAdEngine {
                 return apply(nodes, segments, adIndexes, live, manifest, ENGINE_RULE);
             }
 
-            // 引擎二：特征兜底（规则未覆盖的源）
+            // 引擎二：特征兜底的删除型判定（SEQUENCE/PLAIN）。
+            // VIOLENCE（只删 DISCONTINUITY 标识）延后到探测之后作最后手段，
+            // 避免对"DISCONTINUITY 均匀分布"的源抢先误删编码边界。
+            HlsSegmentAdJudger.Verdict verdict = null;
             if (featureEnabled) {
-                HlsSegmentAdJudger.Verdict verdict = HlsSegmentAdJudger.judge(toJudgeSegments(segments));
-                if (verdict.mode == HlsSegmentAdJudger.Mode.VIOLENCE && verdict.stripDiscontinuityOnly) {
-                    // 暴力拆解：只删标识不改时间轴，不触发删除类安全阈值，
-                    // 但仍需保证列表可解析（parse 已通过）。
-                    return applyViolence(nodes, segments, manifest, ENGINE_FEATURE);
-                }
+                verdict = HlsSegmentAdJudger.judge(toJudgeSegments(segments));
                 if (!verdict.adIndexes.isEmpty()) {
                     return apply(nodes, segments, verdict.adIndexes, live, manifest, ENGINE_FEATURE);
                 }
@@ -122,6 +120,12 @@ public final class HlsAdEngine {
                 if (!probed.isEmpty()) {
                     return apply(nodes, segments, probed, live, manifest, ENGINE_PROBE);
                 }
+            }
+
+            // 引擎四：VIOLENCE 暴力拆解兜底（只删标识、不动分片）。
+            if (verdict != null && verdict.mode == HlsSegmentAdJudger.Mode.VIOLENCE
+                    && verdict.stripDiscontinuityOnly) {
+                return applyViolence(nodes, segments, manifest, ENGINE_FEATURE);
             }
             return Result.unchanged(manifest);
         } catch (RuntimeException e) {

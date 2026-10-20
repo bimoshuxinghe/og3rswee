@@ -126,8 +126,12 @@ public class MediaSourceFactory implements MediaSource.Factory {
 
     private DataSource.Factory getDataSourceFactory() {
         if (dataSourceFactory == null) {
-            dataSourceFactory = getCacheDataSource(
-                    new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()));
+            // 去广告改写层放在缓存外层：无论命中缓存与否，播放列表都会
+            // 经过 HlsAdStrippingDataSource，保证净化结果稳定、不把未
+            // 净化的 manifest 写进缓存后绕过引擎。
+            dataSourceFactory = new HlsAdStrippingDataSource.Factory(
+                    getCacheDataSource(
+                            new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory())));
         }
         return dataSourceFactory;
     }
