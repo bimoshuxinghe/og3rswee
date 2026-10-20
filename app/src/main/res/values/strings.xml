@@ -241,9 +241,11 @@
     <string name="hls_ad_rules_manage_summary">Built-in %1$d rules for known ad CDNs; tap to enable/disable individually</string>
     <string name="hls_ad_rule_manage_title">Ad segment rules</string>
     <string name="hls_ad_stats">Filter stats</string>
-    <string name="hls_ad_stats_summary">Stripped %1$s segments (rules %2$s / feature %3$s), safe fallback %4$s times</string>
+    <string name="hls_ad_stats_summary">Stripped %1$s segments (rules %2$s / feature %3$s / probe %4$s), safe fallback %5$s times</string>
     <string name="hls_ad_stats_empty">No data yet</string>
     <string name="hls_ad_stats_reset">Reset stats</string>
+    <string name="hls_ad_probe">Resolution probe</string>
+    <string name="hls_ad_probe_summary">Detects ad segments that were re-encoded into the stream by comparing segment resolutions against the main resolution; uses small extra probe requests before playback and only works for VOD</string>
     <string name="setting_spider_scan">Local spider scan</string>
     <string name="spider_scan_enter">Scan</string>
     <string name="spider_scan_title">Local spiders</string>

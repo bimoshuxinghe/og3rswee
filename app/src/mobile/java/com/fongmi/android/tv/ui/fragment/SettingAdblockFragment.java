@@ -42,6 +42,7 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initView() {
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
         mBinding.hlsAdFeatureText.setText(getSwitch(Setting.isHlsAdFeatureFilter()));
+        mBinding.hlsAdProbeText.setText(getSwitch(Setting.isHlsAdProbe()));
         mBinding.hlsAdRulesText.setText(getString(R.string.hls_ad_rules_manage_summary, countRules()));
         updateStatsText();
     }
@@ -50,6 +51,7 @@ public class SettingAdblockFragment extends BaseFragment {
     protected void initEvent() {
         mBinding.adblock.setOnClickListener(this::setAdblock);
         mBinding.hlsAdFeature.setOnClickListener(this::setFeatureFilter);
+        mBinding.hlsAdProbe.setOnClickListener(this::setProbe);
         mBinding.hlsAdRules.setOnClickListener(this::manageRules);
         mBinding.hlsAdStatsReset.setOnClickListener(this::resetStats);
     }
@@ -67,6 +69,12 @@ public class SettingAdblockFragment extends BaseFragment {
         boolean enabled = !Setting.isHlsAdFeatureFilter();
         Setting.putHlsAdFeatureFilter(enabled);
         mBinding.hlsAdFeatureText.setText(getSwitch(enabled));
+    }
+
+    private void setProbe(View view) {
+        boolean enabled = !Setting.isHlsAdProbe();
+        Setting.putHlsAdProbe(enabled);
+        mBinding.hlsAdProbeText.setText(getSwitch(enabled));
     }
 
     /**
@@ -106,7 +114,8 @@ public class SettingAdblockFragment extends BaseFragment {
             return;
         }
         mBinding.hlsAdStatsText.setText(getString(R.string.hls_ad_stats_summary,
-                s.get("totalStripped"), s.get("ruleHits"), s.get("featureHits"), s.get("totalFallback")));
+                s.get("totalStripped"), s.get("ruleHits"), s.get("featureHits"),
+                s.get("probeHits"), s.get("totalFallback")));
     }
 
     private void resetStats(View view) {

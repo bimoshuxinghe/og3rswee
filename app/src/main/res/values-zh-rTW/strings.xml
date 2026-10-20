@@ -225,9 +225,11 @@
     <string name="hls_ad_rules_manage_summary">內建 %1$d 條主流廣告 CDN 規則，點擊可單獨停用</string>
     <string name="hls_ad_rule_manage_title">貼片規則管理</string>
     <string name="hls_ad_stats">淨化統計</string>
-    <string name="hls_ad_stats_summary">已淨化 %1$s 個分片（規則 %2$s / 特徵 %3$s），安全回退 %4$s 次</string>
+    <string name="hls_ad_stats_summary">已淨化 %1$s 個分片（規則 %2$s / 特徵 %3$s / 探測 %4$s），安全回退 %5$s 次</string>
     <string name="hls_ad_stats_empty">暫無資料</string>
     <string name="hls_ad_stats_reset">重置統計</string>
+    <string name="hls_ad_probe">解析度探測</string>
+    <string name="hls_ad_probe_summary">透過比對各段與主解析度的差異，識別整段轉碼混入的廣告；起播前會發出少量探測請求（每段約 32KB），僅對點播生效</string>
     <string name="setting_spider_scan">本地爬蟲</string>
     <string name="spider_scan_enter">掃描匯入</string>
     <string name="spider_scan_title">本地爬蟲</string>

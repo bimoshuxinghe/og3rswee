@@ -64,6 +64,7 @@ public final class HlsAdEngine {
     /** 使用的引擎标识（用于诊断与统计）。 */
     public static final String ENGINE_RULE = "rule";
     public static final String ENGINE_FEATURE = "feature";
+    public static final String ENGINE_PROBE = "probe";
 
     /**
      * 净化入口。
@@ -73,7 +74,8 @@ public final class HlsAdEngine {
      * @param rules    结构化规则（可空）
      * @param featureEnabled 是否启用特征兜底引擎
      */
-    public static Result clean(String baseUrl, String manifest, List<HlsAdRule> rules, boolean featureEnabled) {
+    public static Result clean(String baseUrl, String manifest, List<HlsAdRule> rules,
+                               boolean featureEnabled, boolean probeEnabled) {
         if (manifest == null || manifest.isEmpty()) return Result.unchanged(manifest);
         if (!manifest.trim().startsWith("#EXTM3U")) return Result.unchanged(manifest);
         if (manifest.length() > MAX_MANIFEST_CHARS || lineCount(manifest) > MAX_MANIFEST_LINES) {
@@ -110,10 +112,54 @@ public final class HlsAdEngine {
                     return apply(nodes, segments, verdict.adIndexes, live, manifest, ENGINE_FEATURE);
                 }
             }
+
+            // 引擎三：分辨率探测。有一类源把广告整段转码后混入正片，
+            // manifest 层面零特征，唯一差异是编码分辨率；对直播禁用
+            // （直播切档换分辨率是正常行为）。
+            if (probeEnabled && !live) {
+                Set<Integer> probed = HlsResolutionProbe.detect(cacheKey(baseUrl, segments.size()),
+                        buildGroups(baseUrl, segments));
+                if (!probed.isEmpty()) {
+                    return apply(nodes, segments, probed, live, manifest, ENGINE_PROBE);
+                }
+            }
             return Result.unchanged(manifest);
         } catch (RuntimeException e) {
             return Result.fallback(manifest, "error");
         }
+    }
+
+    // ---------------- 引擎三：分辨率探测分组 ----------------
+
+    /** 按 DISCONTINUITY 把分片切段，供探测器逐段取首分片。 */
+    private static List<HlsResolutionProbe.Group> buildGroups(String baseUrl, List<Segment> segments) {
+        List<HlsResolutionProbe.Group> groups = new ArrayList<>();
+        List<Integer> current = new ArrayList<>();
+        double duration = 0;
+        for (int i = 0; i < segments.size(); i++) {
+            Segment seg = segments.get(i);
+            if (seg.discontinuityBefore && !current.isEmpty()) {
+                groups.add(toGroup(baseUrl, segments, current, duration));
+                current = new ArrayList<>();
+                duration = 0;
+            }
+            current.add(i);
+            duration += seg.durationSec;
+        }
+        if (!current.isEmpty()) groups.add(toGroup(baseUrl, segments, current, duration));
+        return groups;
+    }
+
+    private static HlsResolutionProbe.Group toGroup(String baseUrl, List<Segment> segments,
+                                                    List<Integer> indexes, double duration) {
+        int[] array = new int[indexes.size()];
+        for (int i = 0; i < array.length; i++) array[i] = indexes.get(i);
+        String probeUrl = resolve(baseUrl, segments.get(array[0]).uri);
+        return new HlsResolutionProbe.Group(array, probeUrl, duration);
+    }
+
+    private static String cacheKey(String baseUrl, int count) {
+        return baseUrl + "#" + count;
     }
 
     // ---------------- 引擎一：规则匹配 ----------------

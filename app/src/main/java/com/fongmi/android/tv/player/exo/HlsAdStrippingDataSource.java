@@ -70,7 +70,7 @@ public final class HlsAdStrippingDataSource implements DataSource {
         }
         String url = dataSpec.uri.toString();
         HlsAdEngine.Result result = HlsAdEngine.clean(url, m3u8,
-                HlsAdRuleStore.getRules(), Setting.isHlsAdFeatureFilter());
+                HlsAdRuleStore.getRules(), Setting.isHlsAdFeatureFilter(), Setting.isHlsAdProbe());
         AdBlockStats.get().record(result.engine(), result.changed(), result.fallback(), result.removedSegments());
         if (!result.changed()) {
             if (result.fallback()) {

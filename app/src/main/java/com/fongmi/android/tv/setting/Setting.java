@@ -136,6 +136,19 @@ public class Setting {
         Prefers.put("hls_ad_feature_filter", value);
     }
 
+    /**
+     * 分辨率探测引擎开关（引擎三）。对 DISCONTINUITY 段首分片发 32KB
+     * Range 请求解析编码分辨率，识别"换编码整段混入"的广告。
+     * 会产生少量探测流量与起播等待，不想要时可关闭。
+     */
+    public static boolean isHlsAdProbe() {
+        return Prefers.getBoolean("hls_ad_probe", true);
+    }
+
+    public static void putHlsAdProbe(boolean value) {
+        Prefers.put("hls_ad_probe", value);
+    }
+
     public static boolean isZhuyin() {
         return Prefers.getBoolean("zhuyin");
     }

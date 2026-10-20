@@ -25,12 +25,14 @@ public final class AdBlockStats {
     /** 引擎标识（与 HlsAdEngine.ENGINE_* 保持一致）。 */
     public static final String ENGINE_RULE = "rule";
     public static final String ENGINE_FEATURE = "feature";
+    public static final String ENGINE_PROBE = "probe";
 
     private long totalStripped;
     private long totalFallback;
     private long totalUnchanged;
     private long ruleHits;
     private long featureHits;
+    private long probeHits;
     private long violenceHits;
     private long lastResetAt;
 
@@ -56,6 +58,7 @@ public final class AdBlockStats {
     public long totalUnchanged() { return totalUnchanged; }
     public long ruleHits() { return ruleHits; }
     public long featureHits() { return featureHits; }
+    public long probeHits() { return probeHits; }
     public long violenceHits() { return violenceHits; }
     public long lastResetAt() { return lastResetAt; }
 
@@ -75,6 +78,8 @@ public final class AdBlockStats {
                 violenceHits++;
             } else if (ENGINE_RULE.equals(engine)) {
                 ruleHits++;
+            } else if (ENGINE_PROBE.equals(engine)) {
+                probeHits++;
             } else {
                 featureHits++;
             }
@@ -92,6 +97,7 @@ public final class AdBlockStats {
         totalUnchanged = 0;
         ruleHits = 0;
         featureHits = 0;
+        probeHits = 0;
         violenceHits = 0;
         lastResetAt = System.currentTimeMillis();
         save();
@@ -139,6 +145,7 @@ public final class AdBlockStats {
         map.put("totalStripped", String.valueOf(s.totalStripped()));
         map.put("ruleHits", String.valueOf(s.ruleHits()));
         map.put("featureHits", String.valueOf(s.featureHits()));
+        map.put("probeHits", String.valueOf(s.probeHits()));
         map.put("violenceHits", String.valueOf(s.violenceHits()));
         map.put("totalFallback", String.valueOf(s.totalFallback()));
         map.put("totalUnchanged", String.valueOf(s.totalUnchanged()));
