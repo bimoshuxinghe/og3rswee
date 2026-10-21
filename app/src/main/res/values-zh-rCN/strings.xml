@@ -287,7 +287,7 @@
     <string name="spider_scan_perm">需要文件访问权限才能扫描</string>
     <string name="spider_scan_pick_dir">选择目录</string>
     <string name="spider_scan_invert">反选</string>
-    <string name="spider_scan_apply">应用</string>
+    <string name="spider_scan_apply">应用(%1$d)</string>
     <string name="spider_scan_count">共 %1$d 个，已导入 %2$d</string>
     <string name="spider_scan_badge">已导入</string>
     <string name="spider_scan_no_change">没有需要同步的变更</string>
