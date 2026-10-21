@@ -235,8 +235,7 @@ public class SettingSpiderScanFragment extends BaseFragment {
         for (SpiderScanner.Item item : mItems) {
             if (item.imported) imported++;
         }
-        mBinding.summary.setText(getString(R.string.spider_scan_count, mItems.size(), imported));
-        mBinding.apply.setText(getString(R.string.spider_scan_apply, mAdapter.pendingCount()));
+        mBinding.summary.setText(getString(R.string.spider_scan_count, mItems.size(), imported, mAdapter.pendingCount()));
     }
 
     // ---------------- 自定义目录持久化 ----------------

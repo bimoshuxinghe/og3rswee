@@ -285,10 +285,10 @@
     <string name="spider_scan_remove_title">移除线路</string>
     <string name="spider_scan_remove_msg">从「本地」分组移除「%1$s」？</string>
     <string name="spider_scan_perm">需要文件访问权限才能扫描</string>
-    <string name="spider_scan_pick_dir">选择目录</string>
+    <string name="spider_scan_pick_dir">选目录</string>
     <string name="spider_scan_invert">反选</string>
-    <string name="spider_scan_apply">应用(%1$d)</string>
-    <string name="spider_scan_count">共 %1$d 个，已导入 %2$d</string>
+    <string name="spider_scan_apply">应用</string>
+    <string name="spider_scan_count">共 %1$d 个，已导入 %2$d，待变更 %3$d</string>
     <string name="spider_scan_badge">已导入</string>
     <string name="spider_scan_no_change">没有需要同步的变更</string>
     <string name="spider_scan_applied">新增 %1$d 条，移除 %2$d 条</string>

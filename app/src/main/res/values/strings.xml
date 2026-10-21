@@ -287,10 +287,10 @@
     <string name="spider_scan_remove_title">Remove site</string>
     <string name="spider_scan_remove_msg">Remove "%1$s" from the local group?</string>
     <string name="spider_scan_perm">File access permission is required to scan</string>
-    <string name="spider_scan_pick_dir">Pick folder</string>
+    <string name="spider_scan_pick_dir">Folder</string>
     <string name="spider_scan_invert">Invert</string>
-    <string name="spider_scan_apply">Apply (%1$d)</string>
-    <string name="spider_scan_count">%1$d files, %2$d imported</string>
+    <string name="spider_scan_apply">Apply</string>
+    <string name="spider_scan_count">%1$d files, %2$d imported, %3$d pending</string>
     <string name="spider_scan_badge">imported</string>
     <string name="spider_scan_no_change">Nothing to sync</string>
     <string name="spider_scan_applied">Added %1$d, removed %2$d</string>
