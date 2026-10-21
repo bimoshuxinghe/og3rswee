@@ -88,7 +88,7 @@ public class SettingSpiderScanFragment extends BaseFragment {
         mBinding.scan.setOnClickListener(v -> onScan());
         mBinding.pickDir.setOnClickListener(v -> dirLauncher.launch(null));
         mBinding.selectAll.setOnClickListener(v -> onSelectAll());
-        mBinding.invert.setOnClickListener(v -> onInvert());
+        mBinding.invert.setOnClickListener(v -> onToggle());
         mBinding.apply.setOnClickListener(v -> onApply());
     }
 
@@ -195,8 +195,17 @@ public class SettingSpiderScanFragment extends BaseFragment {
         updateSummary();
     }
 
-    private void onInvert() {
-        mAdapter.invert();
+    /** 智能选择：没有任何勾选时全选，否则反选（按钮文字随状态切换）。 */
+    private void onToggle() {
+        boolean anyChecked = false;
+        for (SpiderScanner.Item item : mItems) {
+            if (item.checked) {
+                anyChecked = true;
+                break;
+            }
+        }
+        if (anyChecked) mAdapter.invert();
+        else mAdapter.checkAll(true);
         updateSummary();
     }
 
@@ -231,11 +240,14 @@ public class SettingSpiderScanFragment extends BaseFragment {
     }
 
     private void updateSummary() {
-        int imported = 0;
+        int imported = 0, checkedCount = 0;
         for (SpiderScanner.Item item : mItems) {
             if (item.imported) imported++;
+            if (item.checked) checkedCount++;
         }
         mBinding.summary.setText(getString(R.string.spider_scan_count, mItems.size(), imported, mAdapter.pendingCount()));
+        // 没有勾选时显示"全选"，已有勾选则显示"反选"
+        mBinding.invert.setText(checkedCount == 0 ? R.string.spider_scan_select_all : R.string.spider_scan_invert);
     }
 
     // ---------------- 自定义目录持久化 ----------------
