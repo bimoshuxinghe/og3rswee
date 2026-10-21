@@ -99,7 +99,9 @@ public class SettingSpiderScanFragment extends BaseFragment {
                 Notify.show(R.string.spider_scan_perm);
                 return;
             }
-            startScan(loadDirs());
+            List<Uri> dirs = loadDirs();
+            // 选过目录就只扫这些目录，没选过才扫常用目录
+            startScan(dirs, dirs.isEmpty());
         });
     }
 
@@ -115,30 +117,35 @@ public class SettingSpiderScanFragment extends BaseFragment {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } catch (Exception ignored) {
         }
-        startScan(List.of(treeUri));
+        startScan(List.of(treeUri), false);
     }
 
-    private void startScan(@Nullable List<Uri> dirs) {
+    /**
+     * 发起扫描。
+     *
+     * @param dirs          已授权的自定义目录
+     * @param includeCommon 是否连常用目录（存储根/Download/…）一起扫；
+     *                      用户指定过目录时为 false，避免每次都全盘
+     */
+    private void startScan(@Nullable List<Uri> dirs, boolean includeCommon) {
         scanning = true;
         mBinding.scan.setEnabled(false);
         mBinding.pickDir.setEnabled(false);
         mBinding.progress.setText(R.string.spider_scan_scanning);
         List<SpiderScanner.Item> found = new ArrayList<>();
-        SpiderScanner.Callback progress = new SpiderScanner.Callback() {
-            @Override
-            public void onUpdate(int count) {
-                mBinding.progress.setText(getString(R.string.spider_scan_found, count));
+        if (!includeCommon) {
+            if (dirs == null || dirs.isEmpty()) {
+                finishScan(found);
+                return;
             }
-
-            @Override
-            public void onFinish(List<SpiderScanner.Item> items) {
-            }
-        };
+            scanNext(found, dirs, 0);
+            return;
+        }
         // 常用目录先扫，再叠加自定义目录
         SpiderScanner.scan(new SpiderScanner.Callback() {
             @Override
             public void onUpdate(int count) {
-                progress.onUpdate(count);
+                mBinding.progress.setText(getString(R.string.spider_scan_found, count));
             }
 
             @Override
