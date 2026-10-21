@@ -1,5 +1,8 @@
 package com.fongmi.android.tv.utils;
 
+import android.content.Context;
+import android.net.Uri;
+
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.event.RefreshEvent;
@@ -9,6 +12,7 @@ import com.github.catvod.utils.Util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -25,10 +29,22 @@ public class LocalSpider {
 
     /** 登记一个本地爬虫文件，返回生成的站点；失败返回 null。 */
     public static Site add(File src) {
-        File dst = target(src);
-        if (dst == null || !copy(src, dst)) return null;
+        if (src == null) return null;
+        return add(src.getName(), () -> new FileInputStream(src));
+    }
+
+    /** 登记一个来自 SAF（系统文件选择器）的爬虫文件。 */
+    public static Site add(Context context, Uri uri, String name) {
+        if (context == null || uri == null || name == null) return null;
+        return add(name, () -> context.getContentResolver().openInputStream(uri));
+    }
+
+    /** 统一登记入口：把内容写入缓存目录并建站点。 */
+    private static Site add(String name, InputStreamSupplier supplier) {
+        File dst = target(name);
+        if (dst == null || !copy(supplier, dst)) return null;
         Site site = new Site();
-        site.setKey(keyOf(dst));
+        site.setKey(keyOfName(dst.getName()));
         site.setName(trimExt(dst.getName()));
         site.setApi(dst.getAbsolutePath());
         site.setGroup(GROUP);
@@ -38,6 +54,10 @@ public class LocalSpider {
         site.save();
         append(site);
         return site;
+    }
+
+    private interface InputStreamSupplier {
+        InputStream get() throws Exception;
     }
 
     /** 已登记的本地爬虫站点。 */
@@ -50,9 +70,9 @@ public class LocalSpider {
         return result;
     }
 
-    public static boolean exists(File src) {
-        File dst = target(src);
-        return dst != null && Site.find(keyOf(dst)) != null;
+    public static boolean exists(String name) {
+        File dst = target(name);
+        return dst != null && Site.find(keyOfName(dst.getName())) != null;
     }
 
     /** 取消登记，同时删除缓存副本。 */
@@ -61,6 +81,13 @@ public class LocalSpider {
         new File(site.getApi()).delete();
         site.delete();
         RefreshEvent.home();
+    }
+
+    /** 按原始文件名移除登记的线路（用于扫描页取消勾选同步）。 */
+    public static void removeByName(String name) {
+        Site site = Site.find(keyOfName(name));
+        if (site == null) return;
+        remove(site);
     }
 
     /** 站点是否已登记（导入前去重）。 */
@@ -78,15 +105,15 @@ public class LocalSpider {
         RefreshEvent.home();
     }
 
-    private static File target(File src) {
-        String name = src.getName().toLowerCase(Locale.getDefault());
-        if (name.endsWith(".py")) return new File(Path.py(), src.getName());
-        if (name.endsWith(".js")) return new File(Path.js(), src.getName());
+    private static File target(String name) {
+        String lower = name.toLowerCase(Locale.getDefault());
+        if (lower.endsWith(".py")) return new File(Path.py(), name);
+        if (lower.endsWith(".js")) return new File(Path.js(), name);
         return null;
     }
 
-    private static String keyOf(File dst) {
-        return PREFIX + Util.md5(dst.getName()).substring(0, 16);
+    private static String keyOfName(String filename) {
+        return PREFIX + Util.md5(filename).substring(0, 16);
     }
 
     private static String trimExt(String name) {
@@ -94,8 +121,8 @@ public class LocalSpider {
         return dot > 0 ? name.substring(0, dot) : name;
     }
 
-    private static boolean copy(File src, File dst) {
-        try (FileInputStream in = new FileInputStream(src); FileOutputStream out = new FileOutputStream(dst)) {
+    private static boolean copy(InputStreamSupplier supplier, File dst) {
+        try (InputStream in = supplier.get(); FileOutputStream out = new FileOutputStream(dst)) {
             byte[] buffer = new byte[8192];
             int len;
             while ((len = in.read(buffer)) > 0) out.write(buffer, 0, len);

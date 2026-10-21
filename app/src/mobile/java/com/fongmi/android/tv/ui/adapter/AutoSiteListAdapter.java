@@ -10,23 +10,30 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.AdapterAutoSiteBinding;
+import com.fongmi.android.tv.utils.AiSiteStore;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 自动站点二级菜单的站点列表适配器：展示已添加的站点（主要是 AI/手动添加的 xbpq 站点），支持删除。
+ * 自动站点二级菜单的站点列表：展示已添加的站点（AI/手动添加的 xbpq 站点）。
+ * 行内 Switch 控制启停（持久化，禁用的站点不出现在线路列表），
+ * 点击行弹出操作菜单（编辑配置 / 导出 JSON / 删除）。
  */
 public class AutoSiteListAdapter extends RecyclerView.Adapter<AutoSiteListAdapter.ViewHolder> {
 
-    private final OnDeleteListener listener;
+    private final OnSiteListener listener;
     private final List<Site> mItems;
 
-    public interface OnDeleteListener {
+    public interface OnSiteListener {
+        void onMenu(Site item);
+
+        void onToggle(Site item, boolean enabled);
+
         void onDelete(Site item);
     }
 
-    public AutoSiteListAdapter(OnDeleteListener listener) {
+    public AutoSiteListAdapter(OnSiteListener listener) {
         this.listener = listener;
         this.mItems = new ArrayList<>();
         addAll();
@@ -52,7 +59,11 @@ public class AutoSiteListAdapter extends RecyclerView.Adapter<AutoSiteListAdapte
     }
 
     public void add(Site site) {
-        if (mItems.contains(site)) return;
+        if (mItems.contains(site)) {
+            int index = mItems.indexOf(site);
+            notifyItemChanged(index);
+            return;
+        }
         mItems.add(site);
         notifyItemInserted(mItems.size() - 1);
     }
@@ -70,7 +81,13 @@ public class AutoSiteListAdapter extends RecyclerView.Adapter<AutoSiteListAdapte
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Site item = mItems.get(position);
+        boolean enabled = !AiSiteStore.isDisabled(item.getKey());
         holder.binding.name.setText(item.getName());
+        holder.binding.state.setText(enabled ? R.string.auto_site_enabled : R.string.auto_site_disabled);
+        holder.binding.switcher.setOnCheckedChangeListener(null);
+        holder.binding.switcher.setChecked(enabled);
+        holder.binding.switcher.setOnCheckedChangeListener((v, checked) -> listener.onToggle(item, checked));
+        holder.binding.name.setOnClickListener(v -> listener.onMenu(item));
         holder.binding.delete.setOnClickListener(v -> listener.onDelete(item));
     }
 

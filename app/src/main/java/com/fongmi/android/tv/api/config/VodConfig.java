@@ -8,6 +8,7 @@ import com.fongmi.android.tv.api.loader.BaseLoader;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Depot;
 import com.fongmi.android.tv.bean.Parse;
+import com.fongmi.android.tv.utils.AiSiteStore;
 import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.event.ConfigEvent;
@@ -209,6 +210,7 @@ public class VodConfig extends BaseConfig {
         // Add AI-detected XBPQ sites persisted in local db, appended after network sites
         List<Site> localXbpqSites = dbSites.stream()
                 .filter(site -> site.getKey() != null && site.getKey().startsWith("xbpq_"))
+                .filter(site -> !AiSiteStore.isDisabled(site.getKey()))
                 .toList();
         for (Site site : localXbpqSites) {
             if (TextUtils.isEmpty(site.getJar())) {

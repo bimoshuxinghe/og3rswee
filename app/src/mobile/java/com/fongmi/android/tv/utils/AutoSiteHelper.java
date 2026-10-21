@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.utils;
 
+import java.util.List;
+
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -525,7 +527,22 @@ public class AutoSiteHelper {
         return u;
     }
 
+    /** 用户导入的技能（写法说明/示例）注入每一次 AI 调用，引导按特定站型/写法生成。 */
+    private String injectSkills(String prompt) {
+        try {
+            List<String> skills = AiSkillStore.enabledContents();
+            if (skills.isEmpty()) return prompt;
+            StringBuilder sb = new StringBuilder(prompt);
+            sb.append("\n\n===== 附加技能参考（用户自定义，生成时请遵循其中的写法约定）=====");
+            for (String skill : skills) sb.append("\n").append(skill);
+            return sb.toString();
+        } catch (Exception e) {
+            return prompt;
+        }
+    }
+
     private JsonObject callAi(String prompt) throws Exception {
+        prompt = injectSkills(prompt);
         JsonObject body = new JsonObject();
         body.addProperty("model", Setting.getAiModel());
         body.addProperty("temperature", 0.1);
