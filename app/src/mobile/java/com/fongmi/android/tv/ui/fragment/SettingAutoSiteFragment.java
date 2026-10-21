@@ -80,6 +80,14 @@ public class SettingAutoSiteFragment extends BaseFragment {
 
     @Override
     protected void initView() {
+        mBinding.toolbar.setNavigationOnClickListener(v -> getRoot().change(1));
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(),
+                new androidx.activity.OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        getRoot().change(1);
+                    }
+                });
         mBinding.aiUrl.setText(Setting.getAiUrl());
         mBinding.aiKey.setText(Setting.getAiKey());
         mBinding.aiModel.setText(Setting.getAiModel());

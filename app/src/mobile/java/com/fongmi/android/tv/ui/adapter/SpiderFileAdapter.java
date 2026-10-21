@@ -62,7 +62,7 @@ public class SpiderFileAdapter extends RecyclerView.Adapter<SpiderFileAdapter.Vi
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         SpiderScanner.Item item = mItems.get(position);
         holder.binding.name.setText(item.name);
-        holder.binding.desc.setText(item.sizeText() + "  " + item.path);
+        holder.binding.desc.setText(item.sizeText() + " · " + (item.isPy() ? "py" : "js"));
         holder.binding.check.setChecked(item.checked);
         holder.binding.badge.setVisibility(item.imported ? android.view.View.VISIBLE : android.view.View.GONE);
         holder.binding.row.setOnClickListener(v -> toggle(position));

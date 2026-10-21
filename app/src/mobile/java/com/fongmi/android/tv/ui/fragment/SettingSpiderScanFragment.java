@@ -69,6 +69,14 @@ public class SettingSpiderScanFragment extends BaseFragment {
     @Override
     protected void initView() {
         mBinding.toolbar.setNavigationOnClickListener(v -> getRoot().change(1));
+        // 系统返回键回到设置页，而不是直接退出应用
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(),
+                new androidx.activity.OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        getRoot().change(1);
+                    }
+                });
         mAdapter = new SpiderFileAdapter(mItems, this::updateSummary);
         mBinding.list.setLayoutManager(new LinearLayoutManager(requireContext()));
         mBinding.list.setAdapter(mAdapter);
