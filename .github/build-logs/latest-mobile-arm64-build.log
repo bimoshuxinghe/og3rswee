@@ -19,1544 +19,442 @@ Configuration 'mobileArm64_v8aReleaseRuntimeClasspath' was resolved during confi
 This is a build performance and scalability issue.
 See https://github.com/gradle/gradle/issues/2298
 Run with --info for a stacktrace.
-Configuration 'coreLibraryDesugaring' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'mobileArm64_v8aReleaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'arm64_v8aReleaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'arm64_v8aReleaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'arm64_v8aReleaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseCompileClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'releaseRuntimeClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidJdkImage' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'mobileArm64_v8aReleaseAnnotationProcessorClasspath' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'androidApis' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'coreLibraryDesugaring' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'coreLibraryDesugaring' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'coreLibraryDesugaring' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'coreLibraryDesugaring' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'coreLibraryDesugaring' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintPublish' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-Configuration 'lintChecks' was resolved during configuration time.
-This is a build performance and scalability issue.
-See https://github.com/gradle/gradle/issues/2298
-Run with --info for a stacktrace.
-> Task :app:preBuild UP-TO-DATE
-> Task :app:preMobileArm64_v8aReleaseBuild UP-TO-DATE
-
-> Task :probe:probe-api:compileJava
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :app:mergeMobileArm64_v8aReleaseJniLibFolders
-> Task :probe:probe-api:processResources NO-SOURCE
-> Task :probe:probe-api:classes
-> Task :catvod:preBuild UP-TO-DATE
-> Task :catvod:preReleaseBuild UP-TO-DATE
-> Task :catvod:mergeReleaseJniLibFolders
-> Task :catvod:mergeReleaseNativeLibs NO-SOURCE
-> Task :catvod:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-api:jar
-> Task :forcetech:preBuild UP-TO-DATE
-> Task :forcetech:preReleaseBuild UP-TO-DATE
-> Task :forcetech:mergeReleaseJniLibFolders
-> Task :forcetech:mergeReleaseNativeLibs
-> Task :forcetech:copyReleaseJniLibsProjectOnly
-> Task :hook:preBuild UP-TO-DATE
-> Task :hook:preReleaseBuild UP-TO-DATE
-> Task :hook:mergeReleaseJniLibFolders
-> Task :hook:mergeReleaseNativeLibs NO-SOURCE
-> Task :hook:copyReleaseJniLibsProjectOnly
-> Task :jianpian:preBuild UP-TO-DATE
-> Task :jianpian:preReleaseBuild UP-TO-DATE
-> Task :jianpian:mergeReleaseJniLibFolders
-> Task :jianpian:mergeReleaseNativeLibs
-> Task :jianpian:copyReleaseJniLibsProjectOnly
-> Task :media3-common:preBuild UP-TO-DATE
-> Task :media3-common:preReleaseBuild UP-TO-DATE
-> Task :media3-common:mergeReleaseJniLibFolders
-> Task :media3-common:mergeReleaseNativeLibs NO-SOURCE
-> Task :media3-common:copyReleaseJniLibsProjectOnly
-> Task :media3-danmaku:preBuild UP-TO-DATE
-> Task :media3-danmaku:preReleaseBuild UP-TO-DATE
-> Task :media3-danmaku:mergeReleaseJniLibFolders
-> Task :media3-danmaku:mergeReleaseNativeLibs NO-SOURCE
-> Task :media3-danmaku:copyReleaseJniLibsProjectOnly
-> Task :media3-decoder-ffmpeg:preBuild UP-TO-DATE
-> Task :media3-decoder-ffmpeg:preReleaseBuild UP-TO-DATE
-> Task :media3-decoder-ffmpeg:mergeReleaseJniLibFolders
-> Task :media3-decoder-ffmpeg:mergeReleaseNativeLibs NO-SOURCE
-> Task :media3-decoder-ffmpeg:copyReleaseJniLibsProjectOnly
-> Task :media3-ui:preBuild UP-TO-DATE
-> Task :media3-ui:preReleaseBuild UP-TO-DATE
-> Task :media3-ui:mergeReleaseJniLibFolders
-> Task :media3-ui:mergeReleaseNativeLibs NO-SOURCE
-> Task :media3-ui:copyReleaseJniLibsProjectOnly
-> Task :quickjs:preBuild UP-TO-DATE
-> Task :quickjs:preReleaseBuild UP-TO-DATE
-> Task :quickjs:mergeReleaseJniLibFolders
-> Task :quickjs:mergeReleaseNativeLibs NO-SOURCE
-> Task :quickjs:copyReleaseJniLibsProjectOnly
-> Task :thunder:preBuild UP-TO-DATE
-> Task :thunder:preReleaseBuild UP-TO-DATE
-> Task :thunder:mergeReleaseJniLibFolders
-
-> Task :probe:probe-core:compileJava
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :probe:probe-core:processResources NO-SOURCE
-> Task :probe:probe-core:classes
-> Task :thunder:mergeReleaseNativeLibs
-> Task :probe:probe-core:jar
-> Task :tvbus:preBuild UP-TO-DATE
-> Task :tvbus:preReleaseBuild UP-TO-DATE
-> Task :tvbus:mergeReleaseJniLibFolders
-> Task :tvbus:mergeReleaseNativeLibs NO-SOURCE
-> Task :thunder:copyReleaseJniLibsProjectOnly
-> Task :zlive:preBuild UP-TO-DATE
-> Task :zlive:preReleaseBuild UP-TO-DATE
-> Task :tvbus:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-adapter-api:preBuild UP-TO-DATE
-> Task :probe:probe-adapter-api:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-adapter-api:mergeReleaseJniLibFolders
-> Task :probe:probe-adapter-api:mergeReleaseNativeLibs NO-SOURCE
-> Task :probe:probe-adapter-api:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-collector-tools:preBuild UP-TO-DATE
-> Task :probe:probe-collector-tools:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-collector-tools:mergeReleaseJniLibFolders
-> Task :probe:probe-collector-tools:mergeReleaseNativeLibs NO-SOURCE
-> Task :zlive:mergeReleaseJniLibFolders
-> Task :probe:probe-collector-tools:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-media3-1-9:preBuild UP-TO-DATE
-> Task :probe:probe-media3-1-9:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-media3-1-9:mergeReleaseJniLibFolders
-> Task :probe:probe-media3-1-9:mergeReleaseNativeLibs NO-SOURCE
-> Task :zlive:mergeReleaseNativeLibs
-> Task :probe:probe-media3-1-9:copyReleaseJniLibsProjectOnly
-> Task :probe:probe-runtime:preBuild UP-TO-DATE
-> Task :probe:probe-runtime:preReleaseBuild UP-TO-DATE
-> Task :probe:probe-runtime:mergeReleaseJniLibFolders
-> Task :probe:probe-runtime:mergeReleaseNativeLibs NO-SOURCE
-> Task :probe:probe-runtime:copyReleaseJniLibsProjectOnly
-> Task :zlive:copyReleaseJniLibsProjectOnly
-> Task :forcetech:prepareReleaseArtProfile
-> Task :catvod:prepareReleaseArtProfile
-> Task :hook:prepareReleaseArtProfile
-> Task :jianpian:prepareReleaseArtProfile
-> Task :media3-common:prepareReleaseArtProfile
-> Task :media3-danmaku:prepareReleaseArtProfile
-> Task :media3-decoder-ffmpeg:prepareReleaseArtProfile
-> Task :media3-ui:prepareReleaseArtProfile
-> Task :quickjs:prepareReleaseArtProfile
-> Task :tvbus:prepareReleaseArtProfile
-> Task :thunder:prepareReleaseArtProfile
-> Task :zlive:prepareReleaseArtProfile
-> Task :probe:probe-adapter-api:prepareReleaseArtProfile
-> Task :probe:probe-collector-tools:prepareReleaseArtProfile
-> Task :probe:probe-media3-1-9:prepareReleaseArtProfile
-> Task :probe:probe-runtime:prepareReleaseArtProfile
-> Task :catvod:generateReleaseResValues
-> Task :quickjs:generateReleaseResValues
-> Task :catvod:generateReleaseResources
-> Task :quickjs:generateReleaseResources
-> Task :quickjs:packageReleaseResources
-> Task :catvod:packageReleaseResources
-> Task :chaquo:generateArm64_v8aReleasePythonJniLibs
-> Task :chaquo:preBuild UP-TO-DATE
-> Task :chaquo:preArm64_v8aReleaseBuild UP-TO-DATE
-> Task :chaquo:mergeArm64_v8aReleaseJniLibFolders
-> Task :chaquo:mergeArm64_v8aReleaseNativeLibs
-> Task :chaquo:copyArm64_v8aReleaseJniLibsProjectOnly
-> Task :quickjs:parseReleaseLocalResources
-> Task :chaquo:prepareArm64_v8aReleaseArtProfile
-> Task :catvod:parseReleaseLocalResources
-> Task :catvod:javaPreCompileRelease
-> Task :catvod:generateReleaseRFile
-> Task :chaquo:extractArm64_v8aReleasePythonBuildPackages
-
-> Task :chaquo:installArm64_v8aReleasePythonRequirements
-Chaquopy: Installing for arm64-v8a
-Looking in indexes: https://pypi.org/simple, https://chaquo.com/pypi-13.1
-Collecting lxml (from -r requirements.txt (line 1))
-  Downloading https://chaquo.com/pypi-13.1/lxml/lxml-5.3.0-0-cp310-cp310-android_24_arm64_v8a.whl (1.4 MB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 2.2 MB/s  0:00:00
-Collecting ujson (from -r requirements.txt (line 2))
-  Downloading https://chaquo.com/pypi-13.1/ujson/ujson-5.11.0-0-cp310-cp310-android_24_arm64_v8a.whl (79 kB)
-Collecting pyquery (from -r requirements.txt (line 3))
-  Downloading pyquery-2.1.0-py3-none-any.whl.metadata (9.5 kB)
-Collecting requests (from -r requirements.txt (line 4))
-  Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
-Collecting PySocks (from -r requirements.txt (line 5))
-  Downloading PySocks-1.7.1-py3-none-any.whl.metadata (13 kB)
-Collecting cachetools (from -r requirements.txt (line 6))
-  Downloading cachetools-7.2.4-py3-none-any.whl.metadata (5.5 kB)
-Collecting pycryptodome (from -r requirements.txt (line 7))
-  Downloading https://chaquo.com/pypi-13.1/pycryptodome/pycryptodome-3.21.0-0-cp310-cp310-android_24_arm64_v8a.whl (1.6 MB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 5.5 MB/s  0:00:00
-Collecting beautifulsoup4 (from -r requirements.txt (line 8))
-  Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
-Collecting yt-dlp>=2024.10.22 (from -r requirements.txt (line 9))
-  Downloading yt_dlp-2026.8.19-py3-none-any.whl.metadata (183 kB)
-Collecting chaquopy-libxml2>=2.9.8 (from lxml->-r requirements.txt (line 1))
-  Downloading https://chaquo.com/pypi-13.1/chaquopy-libxml2/chaquopy_libxml2-2.9.8-2-py3-none-android_21_arm64_v8a.whl (773 kB)
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 773.4/773.4 kB 154.2 MB/s  0:00:00
-Collecting chaquopy-libxslt>=1.1.32 (from lxml->-r requirements.txt (line 1))
-  Downloading https://chaquo.com/pypi-13.1/chaquopy-libxslt/chaquopy_libxslt-1.1.32-2-py3-none-android_21_arm64_v8a.whl (178 kB)
-Collecting chaquopy-libcxx>=180000 (from ujson->-r requirements.txt (line 2))
-  Downloading https://chaquo.com/pypi-13.1/chaquopy-libcxx/chaquopy_libcxx-180000-0-py3-none-android_24_arm64_v8a.whl (413 kB)
-Collecting cssselect>=1.5.0 (from pyquery->-r requirements.txt (line 3))
-  Downloading cssselect-1.5.0-py3-none-any.whl.metadata (2.4 kB)
-Collecting charset_normalizer<4,>=2 (from requests->-r requirements.txt (line 4))
-  Downloading charset_normalizer-3.5.2-py3-none-any.whl.metadata (46 kB)
-Collecting idna<4,>=2.5 (from requests->-r requirements.txt (line 4))
-  Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
-Collecting urllib3<3,>=1.26 (from requests->-r requirements.txt (line 4))
-  Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
-Collecting certifi>=2023.5.7 (from requests->-r requirements.txt (line 4))
-  Downloading certifi-2026.10.19-py3-none-any.whl.metadata (2.5 kB)
-Collecting soupsieve>=1.6.1 (from beautifulsoup4->-r requirements.txt (line 8))
-  Downloading soupsieve-2.10-py3-none-any.whl.metadata (4.4 kB)
-Collecting typing-extensions>=4.0.0 (from beautifulsoup4->-r requirements.txt (line 8))
-  Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
-Downloading pyquery-2.1.0-py3-none-any.whl (22 kB)
-Downloading requests-2.34.2-py3-none-any.whl (73 kB)
-Downloading charset_normalizer-3.5.2-py3-none-any.whl (68 kB)
-Downloading idna-3.20-py3-none-any.whl (69 kB)
-Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
-Downloading PySocks-1.7.1-py3-none-any.whl (16 kB)
-Downloading cachetools-7.2.4-py3-none-any.whl (18 kB)
-Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
-Downloading yt_dlp-2026.8.19-py3-none-any.whl (3.2 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 35.0 MB/s  0:00:00
-Downloading certifi-2026.10.19-py3-none-any.whl (136 kB)
-Downloading cssselect-1.5.0-py3-none-any.whl (20 kB)
-Downloading soupsieve-2.10-py3-none-any.whl (38 kB)
-Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
-Installing collected packages: chaquopy-libxml2, chaquopy-libcxx, yt-dlp, urllib3, ujson, typing-extensions, soupsieve, PySocks, pycryptodome, idna, cssselect, charset_normalizer, chaquopy-libxslt, certifi, cachetools, requests, lxml, beautifulsoup4, pyquery
-
-Successfully installed PySocks-1.7.1 beautifulsoup4-4.15.0 cachetools-7.2.4 certifi-2026.10.19 chaquopy-libcxx-180000 chaquopy-libxml2-2.9.8 chaquopy-libxslt-1.1.32 charset_normalizer-3.5.2 cssselect-1.5.0 idna-3.20 lxml-5.3.0 pycryptodome-3.21.0 pyquery-2.1.0 requests-2.34.2 soupsieve-2.10 typing-extensions-4.16.0 ujson-5.11.0 urllib3-2.8.0 yt-dlp-2026.8.19
-
-> Task :catvod:compileReleaseJavaWithJavac
-Note: Some input files use or override a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :catvod:bundleLibCompileToJarRelease
-> Task :quickjs:generateReleaseRFile
-> Task :quickjs:javaPreCompileRelease
-> Task :quickjs:compileReleaseJavaWithJavac
-> Task :quickjs:bundleLibCompileToJarRelease
-> Task :forcetech:generateReleaseResValues
-> Task :forcetech:generateReleaseResources
-> Task :forcetech:packageReleaseResources
-> Task :forcetech:parseReleaseLocalResources
-> Task :forcetech:generateReleaseRFile
-> Task :forcetech:javaPreCompileRelease
-
-> Task :forcetech:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :forcetech:mergeReleaseGeneratedProguardFiles
-> Task :forcetech:exportReleaseConsumerProguardFiles
-> Task :jianpian:generateReleaseResValues
-> Task :jianpian:generateReleaseResources
-> Task :jianpian:packageReleaseResources
-> Task :jianpian:parseReleaseLocalResources
-> Task :jianpian:generateReleaseRFile
-> Task :jianpian:javaPreCompileRelease
-
-> Task :jianpian:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :jianpian:mergeReleaseGeneratedProguardFiles
-> Task :jianpian:exportReleaseConsumerProguardFiles
-> Task :quickjs:mergeReleaseGeneratedProguardFiles
-> Task :quickjs:exportReleaseConsumerProguardFiles
-> Task :thunder:generateReleaseResValues
-> Task :thunder:generateReleaseResources
-> Task :thunder:packageReleaseResources
-> Task :thunder:parseReleaseLocalResources
-> Task :thunder:generateReleaseRFile
-> Task :thunder:javaPreCompileRelease
-> Task :thunder:compileReleaseJavaWithJavac
-> Task :thunder:mergeReleaseGeneratedProguardFiles
-> Task :thunder:exportReleaseConsumerProguardFiles
-> Task :tvbus:generateReleaseResValues
-> Task :tvbus:generateReleaseResources
-> Task :tvbus:packageReleaseResources
-> Task :tvbus:parseReleaseLocalResources
-> Task :tvbus:generateReleaseRFile
-> Task :tvbus:javaPreCompileRelease
-
-> Task :tvbus:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :tvbus:mergeReleaseGeneratedProguardFiles
-> Task :tvbus:exportReleaseConsumerProguardFiles
-> Task :catvod:mergeReleaseGeneratedProguardFiles
-> Task :catvod:exportReleaseConsumerProguardFiles
-> Task :hook:generateReleaseResValues
-> Task :hook:generateReleaseResources
-> Task :hook:packageReleaseResources
-> Task :hook:parseReleaseLocalResources
-> Task :hook:generateReleaseRFile
-> Task :hook:javaPreCompileRelease
-
-> Task :hook:compileReleaseJavaWithJavac
-Note: /home/runner/work/og3rswee/og3rswee/hook/src/main/java/com/fongmi/hook/Hook.java uses or overrides a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :hook:mergeReleaseGeneratedProguardFiles
-> Task :hook:exportReleaseConsumerProguardFiles
-> Task :zlive:generateReleaseResValues
-> Task :zlive:generateReleaseResources
-> Task :zlive:packageReleaseResources
-> Task :zlive:parseReleaseLocalResources
-> Task :zlive:generateReleaseRFile
-> Task :zlive:javaPreCompileRelease
-
-> Task :zlive:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :zlive:mergeReleaseGeneratedProguardFiles
-> Task :zlive:exportReleaseConsumerProguardFiles
-> Task :probe:probe-adapter-api:generateReleaseResValues
-> Task :probe:probe-adapter-api:generateReleaseResources
-> Task :probe:probe-adapter-api:packageReleaseResources
-> Task :probe:probe-adapter-api:parseReleaseLocalResources
-> Task :probe:probe-adapter-api:generateReleaseRFile
-> Task :probe:probe-adapter-api:javaPreCompileRelease
-
-> Task :probe:probe-adapter-api:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :probe:probe-adapter-api:bundleLibCompileToJarRelease
-> Task :probe:probe-runtime:generateReleaseResValues
-> Task :probe:probe-runtime:generateReleaseResources
-> Task :probe:probe-runtime:packageReleaseResources
-> Task :probe:probe-runtime:parseReleaseLocalResources
-> Task :probe:probe-runtime:generateReleaseRFile
-> Task :probe:probe-runtime:javaPreCompileRelease
-
-> Task :probe:probe-runtime:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :probe:probe-runtime:mergeReleaseGeneratedProguardFiles
-> Task :probe:probe-runtime:exportReleaseConsumerProguardFiles
-> Task :media3-common:generateReleaseResValues
-> Task :media3-common:generateReleaseResources
-> Task :media3-common:packageReleaseResources
-> Task :media3-common:parseReleaseLocalResources
-> Task :media3-common:generateReleaseRFile
-> Task :media3-common:javaPreCompileRelease
-> Task :chaquo:mergeArm64_v8aReleasePythonSources
-> Task :chaquo:generateArm64_v8aReleasePythonProxies
-> Task :chaquo:generateArm64_v8aReleaseResValues
-> Task :chaquo:generateArm64_v8aReleaseResources
-> Task :chaquo:packageArm64_v8aReleaseResources
-> Task :chaquo:parseArm64_v8aReleaseLocalResources
-> Task :chaquo:generateArm64_v8aReleaseRFile
-> Task :chaquo:javaPreCompileArm64_v8aRelease
-
-> Task :chaquo:compileArm64_v8aReleaseJavaWithJavac
-Note: /home/runner/work/og3rswee/og3rswee/chaquo/src/main/java/com/fongmi/chaquo/Platform.java uses or overrides a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :chaquo:mergeArm64_v8aReleaseGeneratedProguardFiles
-> Task :chaquo:exportArm64_v8aReleaseConsumerProguardFiles
-> Task :probe:probe-media3-1-9:generateReleaseResValues
-> Task :probe:probe-media3-1-9:generateReleaseResources
-> Task :probe:probe-media3-1-9:packageReleaseResources
-> Task :probe:probe-media3-1-9:parseReleaseLocalResources
-> Task :probe:probe-media3-1-9:generateReleaseRFile
-> Task :probe:probe-media3-1-9:javaPreCompileRelease
-> Task :probe:probe-collector-tools:generateReleaseResValues
-> Task :probe:probe-collector-tools:generateReleaseResources
-> Task :probe:probe-collector-tools:packageReleaseResources
-> Task :probe:probe-collector-tools:parseReleaseLocalResources
-> Task :probe:probe-collector-tools:generateReleaseRFile
-> Task :probe:probe-collector-tools:javaPreCompileRelease
-
-> Task :probe:probe-collector-tools:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-3 warnings
-
-> Task :probe:probe-collector-tools:mergeReleaseGeneratedProguardFiles
-> Task :probe:probe-collector-tools:exportReleaseConsumerProguardFiles
-> Task :media3-danmaku:generateReleaseResValues
-> Task :media3-danmaku:generateReleaseResources
-> Task :media3-danmaku:packageReleaseResources
-> Task :media3-danmaku:parseReleaseLocalResources
-> Task :media3-danmaku:generateReleaseRFile
-> Task :media3-danmaku:javaPreCompileRelease
-> Task :media3-ui:generateReleaseResValues
-> Task :media3-ui:generateReleaseResources
-> Task :media3-ui:packageReleaseResources
-> Task :media3-ui:parseReleaseLocalResources
-> Task :media3-ui:generateReleaseRFile
-> Task :media3-ui:javaPreCompileRelease
-> Task :media3-decoder-ffmpeg:generateReleaseResValues
-> Task :media3-decoder-ffmpeg:generateReleaseResources
-> Task :media3-decoder-ffmpeg:packageReleaseResources
-> Task :media3-decoder-ffmpeg:parseReleaseLocalResources
-> Task :media3-decoder-ffmpeg:generateReleaseRFile
-> Task :media3-decoder-ffmpeg:javaPreCompileRelease
-> Task :probe:probe-adapter-api:mergeReleaseGeneratedProguardFiles
-> Task :probe:probe-adapter-api:exportReleaseConsumerProguardFiles
-> Task :catvod:writeReleaseAarMetadata
-> Task :chaquo:writeArm64_v8aReleaseAarMetadata
-> Task :forcetech:writeReleaseAarMetadata
-> Task :hook:writeReleaseAarMetadata
-> Task :jianpian:writeReleaseAarMetadata
-> Task :media3-danmaku:writeReleaseAarMetadata
-> Task :media3-decoder-ffmpeg:writeReleaseAarMetadata
-> Task :media3-ui:writeReleaseAarMetadata
-> Task :quickjs:writeReleaseAarMetadata
-> Task :thunder:writeReleaseAarMetadata
-> Task :tvbus:writeReleaseAarMetadata
-> Task :zlive:writeReleaseAarMetadata
-> Task :probe:probe-adapter-api:writeReleaseAarMetadata
-> Task :probe:probe-collector-tools:writeReleaseAarMetadata
-> Task :probe:probe-media3-1-9:writeReleaseAarMetadata
-> Task :probe:probe-runtime:writeReleaseAarMetadata
-> Task :catvod:extractDeepLinksRelease
-
-> Task :media3-common:compileReleaseJavaWithJavac
-Note: Some input files use or override a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :catvod:processReleaseManifest
-> Task :media3-common:mergeReleaseGeneratedProguardFiles
-> Task :media3-common:exportReleaseConsumerProguardFiles
-> Task :media3-common:writeReleaseAarMetadata
-> Task :chaquo:extractDeepLinksArm64_v8aRelease
-> Task :media3-common:bundleLibCompileToJarRelease
-> Task :chaquo:processArm64_v8aReleaseManifest
-> Task :media3-danmaku:compileReleaseJavaWithJavac
-> Task :media3-danmaku:bundleLibCompileToJarRelease
-
-> Task :probe:probe-media3-1-9:compileReleaseJavaWithJavac
-Java compiler version 21 has deprecated support for compiling with source/target version 8.
-Try one of the following options:
-    1. [Recommended] Use Java toolchain with a lower language version
-    2. Set a higher source/target version
-    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
-For more details on how to configure these settings, see https://developer.android.com/build/jdks.
-To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
-warning: [options] source value 8 is obsolete and will be removed in a future release
-warning: [options] target value 8 is obsolete and will be removed in a future release
-warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
-Note: Some input files use or override a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-3 warnings
-
-> Task :probe:probe-media3-1-9:mergeReleaseGeneratedProguardFiles
-> Task :probe:probe-media3-1-9:exportReleaseConsumerProguardFiles
-
-> Task :media3-decoder-ffmpeg:compileReleaseJavaWithJavac
-warning: unknown enum constant MigrationStatus.STRICT
-  reason: class file for kotlin.annotations.jvm.MigrationStatus not found
-Note: /home/runner/work/og3rswee/og3rswee/media3-decoder-ffmpeg/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegAudioRenderer.java uses or overrides a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-1 warning
-
-> Task :media3-decoder-ffmpeg:mergeReleaseGeneratedProguardFiles
-> Task :media3-decoder-ffmpeg:exportReleaseConsumerProguardFiles
-> Task :media3-danmaku:mergeReleaseGeneratedProguardFiles
-> Task :media3-danmaku:exportReleaseConsumerProguardFiles
-> Task :forcetech:extractDeepLinksRelease
-> Task :forcetech:processReleaseManifest
-> Task :hook:extractDeepLinksRelease
-> Task :hook:processReleaseManifest
-> Task :jianpian:extractDeepLinksRelease
-> Task :jianpian:processReleaseManifest
-> Task :media3-common:extractDeepLinksRelease
-> Task :media3-common:processReleaseManifest
-> Task :media3-danmaku:extractDeepLinksRelease
-> Task :media3-danmaku:processReleaseManifest
-> Task :media3-decoder-ffmpeg:extractDeepLinksRelease
-
-> Task :media3-decoder-ffmpeg:processReleaseManifest
-package="androidx.media3.decoder.ffmpeg" found in source AndroidManifest.xml: /home/runner/work/og3rswee/og3rswee/media3-decoder-ffmpeg/src/main/AndroidManifest.xml.
-Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
-Recommendation: remove package="androidx.media3.decoder.ffmpeg" from the source AndroidManifest.xml: /home/runner/work/og3rswee/og3rswee/media3-decoder-ffmpeg/src/main/AndroidManifest.xml.
-
-> Task :quickjs:extractDeepLinksRelease
-> Task :quickjs:processReleaseManifest
-> Task :thunder:extractDeepLinksRelease
-> Task :thunder:processReleaseManifest
-> Task :tvbus:extractDeepLinksRelease
-> Task :tvbus:processReleaseManifest
-> Task :zlive:extractDeepLinksRelease
-> Task :zlive:processReleaseManifest
-> Task :probe:probe-adapter-api:extractDeepLinksRelease
-> Task :probe:probe-adapter-api:processReleaseManifest
-> Task :probe:probe-collector-tools:extractDeepLinksRelease
-> Task :probe:probe-collector-tools:processReleaseManifest
-> Task :probe:probe-media3-1-9:extractDeepLinksRelease
-> Task :probe:probe-media3-1-9:processReleaseManifest
-> Task :probe:probe-runtime:extractDeepLinksRelease
-> Task :probe:probe-runtime:processReleaseManifest
-> Task :chaquo:bundleLibCompileToJarArm64_v8aRelease
-> Task :forcetech:bundleLibCompileToJarRelease
-> Task :hook:bundleLibCompileToJarRelease
-> Task :jianpian:bundleLibCompileToJarRelease
-> Task :media3-decoder-ffmpeg:bundleLibCompileToJarRelease
-> Task :thunder:bundleLibCompileToJarRelease
-> Task :tvbus:bundleLibCompileToJarRelease
-> Task :zlive:bundleLibCompileToJarRelease
-> Task :probe:probe-collector-tools:bundleLibCompileToJarRelease
-> Task :probe:probe-media3-1-9:bundleLibCompileToJarRelease
-> Task :probe:probe-runtime:bundleLibCompileToJarRelease
-> Task :catvod:bundleLibRuntimeToJarRelease
-> Task :chaquo:bundleLibRuntimeToJarArm64_v8aRelease
-> Task :forcetech:bundleLibRuntimeToJarRelease
-> Task :hook:bundleLibRuntimeToJarRelease
-> Task :jianpian:bundleLibRuntimeToJarRelease
-> Task :media3-common:bundleLibRuntimeToJarRelease
-> Task :media3-danmaku:bundleLibRuntimeToJarRelease
-> Task :media3-decoder-ffmpeg:bundleLibRuntimeToJarRelease
-> Task :quickjs:bundleLibRuntimeToJarRelease
-> Task :thunder:bundleLibRuntimeToJarRelease
-> Task :tvbus:bundleLibRuntimeToJarRelease
-> Task :zlive:bundleLibRuntimeToJarRelease
-> Task :probe:probe-adapter-api:bundleLibRuntimeToJarRelease
-> Task :probe:probe-collector-tools:bundleLibRuntimeToJarRelease
-> Task :probe:probe-media3-1-9:bundleLibRuntimeToJarRelease
-> Task :probe:probe-runtime:bundleLibRuntimeToJarRelease
-> Task :catvod:processReleaseJavaRes NO-SOURCE
-> Task :chaquo:processArm64_v8aReleaseJavaRes NO-SOURCE
-> Task :forcetech:processReleaseJavaRes NO-SOURCE
-> Task :hook:processReleaseJavaRes NO-SOURCE
-> Task :jianpian:processReleaseJavaRes NO-SOURCE
-> Task :media3-common:processReleaseJavaRes NO-SOURCE
-> Task :media3-danmaku:processReleaseJavaRes NO-SOURCE
-> Task :media3-decoder-ffmpeg:processReleaseJavaRes NO-SOURCE
-> Task :quickjs:processReleaseJavaRes NO-SOURCE
-> Task :thunder:processReleaseJavaRes NO-SOURCE
-> Task :tvbus:processReleaseJavaRes NO-SOURCE
-> Task :zlive:processReleaseJavaRes NO-SOURCE
-> Task :probe:probe-adapter-api:processReleaseJavaRes NO-SOURCE
-> Task :probe:probe-collector-tools:processReleaseJavaRes NO-SOURCE
-> Task :probe:probe-media3-1-9:processReleaseJavaRes
-> Task :probe:probe-runtime:processReleaseJavaRes NO-SOURCE
-> Task :catvod:mergeReleaseShaders
-> Task :catvod:compileReleaseShaders NO-SOURCE
-> Task :catvod:generateReleaseAssets UP-TO-DATE
-> Task :catvod:mergeReleaseAssets
-> Task :chaquo:mergeArm64_v8aReleaseShaders
-> Task :chaquo:compileArm64_v8aReleaseShaders NO-SOURCE
-> Task :chaquo:generateArm64_v8aReleaseAssets UP-TO-DATE
-> Task :app:mergeMobileArm64_v8aReleaseNativeLibs
-
-> Task :app:stripMobileArm64_v8aReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libSennheiserAmbeoDecoder.so, libavcodec.so, libavdevice.so, libavfilter.so, libavformat.so, libavif_android.so, libavs3a_decoder.so, libavs3a_renderer.so, libavutil.so, libc++_shared.so, libchaquopy_java.so, libcore.so, libcrypto_chaquopy.so, libcrypto_python.so, libffmpegJNI.so, libjnidispatch.so, libjpa.so, libmitv.so, libmpv.so, libp2p.so, libp3p.so, libpl_droidsonroids_gif.so, libplayer.so, libpython3.10.so, libquickjs-android-wrapper.so, librtmp-jni.so, libsqlite3_chaquopy.so, libsqlite3_python.so, libssl_chaquopy.so, libssl_python.so, libswresample.so, libswscale.so, libxl_stat.so, libxl_thunder_sdk.so. Run with --info option to learn more.
-
-> Task :app:extractMobileArm64_v8aReleaseNativeSymbolTables
-> Task :app:mergeMobileArm64_v8aReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:mergeMobileArm64_v8aReleaseArtProfile
-> Task :chaquo:generateArm64_v8aReleasePythonMiscAssets
-
-> Task :media3-ui:compileReleaseJavaWithJavac
-Note: Some input files use or override a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :chaquo:generateArm64_v8aReleasePythonRequirementsAssets
-> Task :media3-ui:mergeReleaseGeneratedProguardFiles
-> Task :media3-ui:exportReleaseConsumerProguardFiles
-> Task :media3-ui:extractDeepLinksRelease
-> Task :media3-ui:processReleaseManifest
-> Task :media3-ui:bundleLibCompileToJarRelease
-> Task :media3-ui:bundleLibRuntimeToJarRelease
-> Task :media3-ui:processReleaseJavaRes NO-SOURCE
-> Task :forcetech:mergeReleaseShaders
-> Task :forcetech:compileReleaseShaders NO-SOURCE
-> Task :forcetech:generateReleaseAssets UP-TO-DATE
-> Task :forcetech:mergeReleaseAssets
-> Task :hook:mergeReleaseShaders
-> Task :hook:compileReleaseShaders NO-SOURCE
-> Task :hook:generateReleaseAssets UP-TO-DATE
-> Task :hook:mergeReleaseAssets
-> Task :jianpian:mergeReleaseShaders
-> Task :jianpian:compileReleaseShaders NO-SOURCE
-> Task :jianpian:generateReleaseAssets UP-TO-DATE
-> Task :jianpian:mergeReleaseAssets
-> Task :media3-common:mergeReleaseShaders
-> Task :media3-common:compileReleaseShaders NO-SOURCE
-> Task :media3-common:generateReleaseAssets UP-TO-DATE
-> Task :media3-common:mergeReleaseAssets
-> Task :media3-danmaku:mergeReleaseShaders
-> Task :media3-danmaku:compileReleaseShaders NO-SOURCE
-> Task :media3-danmaku:generateReleaseAssets UP-TO-DATE
-> Task :media3-danmaku:mergeReleaseAssets
-> Task :media3-decoder-ffmpeg:mergeReleaseShaders
-> Task :media3-decoder-ffmpeg:compileReleaseShaders NO-SOURCE
-> Task :media3-decoder-ffmpeg:generateReleaseAssets UP-TO-DATE
-> Task :media3-decoder-ffmpeg:mergeReleaseAssets
-> Task :media3-ui:mergeReleaseShaders
-> Task :media3-ui:compileReleaseShaders NO-SOURCE
-> Task :media3-ui:generateReleaseAssets UP-TO-DATE
-> Task :media3-ui:mergeReleaseAssets
-> Task :quickjs:mergeReleaseShaders
-> Task :quickjs:compileReleaseShaders NO-SOURCE
-> Task :quickjs:generateReleaseAssets UP-TO-DATE
-> Task :quickjs:mergeReleaseAssets
-> Task :thunder:mergeReleaseShaders
-> Task :thunder:compileReleaseShaders NO-SOURCE
-> Task :thunder:generateReleaseAssets UP-TO-DATE
-> Task :thunder:mergeReleaseAssets
-> Task :tvbus:mergeReleaseShaders
-> Task :tvbus:compileReleaseShaders NO-SOURCE
-> Task :tvbus:generateReleaseAssets UP-TO-DATE
-> Task :tvbus:mergeReleaseAssets
-> Task :zlive:mergeReleaseShaders
-> Task :zlive:compileReleaseShaders NO-SOURCE
-> Task :zlive:generateReleaseAssets UP-TO-DATE
-> Task :zlive:mergeReleaseAssets
-> Task :chaquo:generateArm64_v8aReleasePythonSourceAssets
-> Task :probe:probe-adapter-api:mergeReleaseShaders
-> Task :probe:probe-adapter-api:compileReleaseShaders NO-SOURCE
-> Task :probe:probe-adapter-api:generateReleaseAssets UP-TO-DATE
-> Task :probe:probe-adapter-api:mergeReleaseAssets
-> Task :chaquo:generateArm64_v8aReleasePythonBuildAssets
-> Task :probe:probe-collector-tools:mergeReleaseShaders
-> Task :probe:probe-collector-tools:compileReleaseShaders NO-SOURCE
-> Task :probe:probe-collector-tools:generateReleaseAssets UP-TO-DATE
-> Task :probe:probe-collector-tools:mergeReleaseAssets
-> Task :probe:probe-media3-1-9:mergeReleaseShaders
-> Task :probe:probe-media3-1-9:compileReleaseShaders NO-SOURCE
-> Task :probe:probe-media3-1-9:generateReleaseAssets UP-TO-DATE
-> Task :probe:probe-media3-1-9:mergeReleaseAssets
-> Task :probe:probe-runtime:mergeReleaseShaders
-> Task :probe:probe-runtime:compileReleaseShaders NO-SOURCE
-> Task :probe:probe-runtime:generateReleaseAssets UP-TO-DATE
-> Task :probe:probe-runtime:mergeReleaseAssets
-> Task :catvod:createFullJarRelease
-> Task :chaquo:mergeArm64_v8aReleaseAssets
-> Task :chaquo:createFullJarArm64_v8aRelease
-> Task :catvod:extractProguardFiles
-> Task :chaquo:extractProguardFiles
-> Task :quickjs:createFullJarRelease
-> Task :quickjs:extractProguardFiles
-> Task :quickjs:prepareLintJarForPublish
-> Task :chaquo:prepareLintJarForPublish
-> Task :forcetech:createFullJarRelease
-> Task :forcetech:extractProguardFiles
-> Task :forcetech:prepareLintJarForPublish
-> Task :hook:createFullJarRelease
-> Task :hook:extractProguardFiles
-> Task :app:expandMobileArm64_v8aReleaseL8ArtProfileWildcards
-> Task :hook:generateReleaseLintModel
-> Task :hook:prepareLintJarForPublish
-> Task :jianpian:createFullJarRelease
-> Task :jianpian:extractProguardFiles
-> Task :jianpian:prepareLintJarForPublish
-> Task :media3-common:createFullJarRelease
-> Task :media3-common:extractProguardFiles
-> Task :media3-common:generateReleaseLintModel
-> Task :media3-common:prepareLintJarForPublish
-> Task :media3-danmaku:createFullJarRelease
-> Task :media3-danmaku:extractProguardFiles
-> Task :media3-danmaku:generateReleaseLintModel
-> Task :media3-danmaku:prepareLintJarForPublish
-> Task :media3-decoder-ffmpeg:createFullJarRelease
-> Task :media3-decoder-ffmpeg:extractProguardFiles
-> Task :media3-decoder-ffmpeg:generateReleaseLintModel
-> Task :media3-decoder-ffmpeg:prepareLintJarForPublish
-> Task :media3-ui:createFullJarRelease
-> Task :media3-ui:extractProguardFiles
-> Task :catvod:generateReleaseLintModel
-> Task :catvod:prepareLintJarForPublish
-> Task :quickjs:generateReleaseLintModel
-> Task :chaquo:generateArm64_v8aReleaseLintModel
-> Task :forcetech:generateReleaseLintModel
-> Task :jianpian:generateReleaseLintModel
-> Task :thunder:createFullJarRelease
-> Task :thunder:extractProguardFiles
-> Task :thunder:generateReleaseLintModel
-> Task :media3-ui:generateReleaseLintModel
-> Task :thunder:prepareLintJarForPublish
-> Task :tvbus:createFullJarRelease
-> Task :tvbus:extractProguardFiles
-> Task :tvbus:generateReleaseLintModel
-> Task :media3-ui:prepareLintJarForPublish
-> Task :tvbus:prepareLintJarForPublish
-> Task :probe:probe-adapter-api:createFullJarRelease
-> Task :zlive:createFullJarRelease
-> Task :probe:probe-adapter-api:extractProguardFiles
-> Task :zlive:extractProguardFiles
-> Task :zlive:generateReleaseLintModel
-> Task :probe:probe-adapter-api:generateReleaseLintModel
-> Task :zlive:prepareLintJarForPublish
-> Task :probe:probe-adapter-api:prepareLintJarForPublish
-> Task :probe:probe-media3-1-9:createFullJarRelease
-> Task :probe:probe-collector-tools:createFullJarRelease
-> Task :probe:probe-media3-1-9:extractProguardFiles
-> Task :probe:probe-collector-tools:extractProguardFiles
-> Task :probe:probe-media3-1-9:generateReleaseLintModel
-> Task :probe:probe-collector-tools:generateReleaseLintModel
-> Task :probe:probe-media3-1-9:prepareLintJarForPublish
-> Task :probe:probe-collector-tools:prepareLintJarForPublish
-> Task :probe:probe-runtime:createFullJarRelease
-> Task :app:checkMobileArm64_v8aReleaseDuplicateClasses
-> Task :probe:probe-runtime:extractProguardFiles
-> Task :probe:probe-runtime:generateReleaseLintModel
-> Task :probe:probe-runtime:prepareLintJarForPublish
-
-> Task :chaquo:stripArm64_v8aReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libchaquopy_java.so, libcrypto_chaquopy.so, libcrypto_python.so, libpython3.10.so, libsqlite3_chaquopy.so, libsqlite3_python.so, libssl_chaquopy.so, libssl_python.so. Run with --info option to learn more.
-
-> Task :forcetech:stripReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libmitv.so, libp2p.so, libp3p.so. Run with --info option to learn more.
-
-> Task :app:generateMobileArm64_v8aReleaseResValues
-> Task :app:dataBindingMergeDependencyArtifactsMobileArm64_v8aRelease
-> Task :forcetech:copyReleaseJniLibsProjectAndLocalJars
-> Task :forcetech:extractDeepLinksForAarRelease
-> Task :app:generateMobileArm64_v8aReleaseResources
-
-> Task :app:mergeMobileArm64_v8aReleaseResources
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:51:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:52:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rCN/strings.xml:57:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:348:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rCN/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values-zh-rCN/values-zh-rCN.xml:7:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:52:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:50:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values/strings.xml:57:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:350:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values/values.xml:23:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:19:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:51:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:49:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:17:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:16:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:20:4: Multiple substitutions specified in non-positional format of string resource string/detail_title. Did you mean to add the formatted="false" attribute?
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:18:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/mobile/res/values-zh-rTW/strings.xml:56:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:332:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:10:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:124:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:47:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:72:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:71:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/work/og3rswee/og3rswee/app/src/main/res/values-zh-rTW/strings.xml:53:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-/home/runner/.gradle/caches/9.5.1/transforms/c49344ace67ac522506cf5dddf2affe5/transformed/preference-1.2.1/res/values-zh-rTW/values-zh-rTW.xml:7:4: Ignoring element '{http://schemas.android.com/apk/res-auto}g' with unknown namespace 'http://schemas.android.com/apk/res-auto'.
-
-> Task :app:packageMobileArm64_v8aReleaseResources
-> Task :app:parseMobileArm64_v8aReleaseLocalResources
-> Task :chaquo:extractArm64_v8aReleaseAnnotations
-> Task :forcetech:extractReleaseAnnotations
-> Task :forcetech:mergeReleaseConsumerProguardFiles
-> Task :chaquo:extractDeepLinksForAarArm64_v8aRelease
-> Task :chaquo:mergeArm64_v8aReleaseConsumerProguardFiles
-> Task :chaquo:copyArm64_v8aReleaseJniLibsProjectAndLocalJars
-> Task :forcetech:mergeReleaseJavaResource
-> Task :chaquo:mergeArm64_v8aReleaseJavaResource
-> Task :forcetech:syncReleaseLibJars
-> Task :chaquo:syncArm64_v8aReleaseLibJars
-> Task :forcetech:bundleReleaseLocalLintAar
-> Task :app:dataBindingGenBaseClassesMobileArm64_v8aRelease
-> Task :app:generateMobileArm64_v8aReleaseBuildConfig
-
-> Task :jianpian:stripReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libjpa.so. Run with --info option to learn more.
-
-> Task :chaquo:bundleArm64_v8aReleaseLocalLintAar
-> Task :jianpian:copyReleaseJniLibsProjectAndLocalJars
-> Task :jianpian:extractDeepLinksForAarRelease
-> Task :jianpian:extractReleaseAnnotations
-> Task :jianpian:mergeReleaseConsumerProguardFiles
-> Task :jianpian:mergeReleaseJavaResource
-> Task :jianpian:syncReleaseLibJars
-> Task :jianpian:bundleReleaseLocalLintAar
-> Task :quickjs:stripReleaseDebugSymbols NO-SOURCE
-> Task :quickjs:copyReleaseJniLibsProjectAndLocalJars
-> Task :quickjs:extractDeepLinksForAarRelease
-> Task :quickjs:extractReleaseAnnotations
-> Task :quickjs:mergeReleaseConsumerProguardFiles
-
-> Task :thunder:stripReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libxl_stat.so, libxl_thunder_sdk.so. Run with --info option to learn more.
-
-> Task :quickjs:mergeReleaseJavaResource
-> Task :quickjs:syncReleaseLibJars
-> Task :thunder:copyReleaseJniLibsProjectAndLocalJars
-> Task :quickjs:bundleReleaseLocalLintAar
-> Task :thunder:extractDeepLinksForAarRelease
-> Task :tvbus:stripReleaseDebugSymbols NO-SOURCE
-> Task :thunder:extractReleaseAnnotations
-> Task :thunder:mergeReleaseConsumerProguardFiles
-> Task :tvbus:copyReleaseJniLibsProjectAndLocalJars
-> Task :tvbus:extractDeepLinksForAarRelease
-> Task :thunder:mergeReleaseJavaResource
-> Task :thunder:syncReleaseLibJars
-> Task :tvbus:extractReleaseAnnotations
-> Task :tvbus:mergeReleaseConsumerProguardFiles
-> Task :tvbus:mergeReleaseJavaResource
-> Task :tvbus:syncReleaseLibJars
-> Task :tvbus:bundleReleaseLocalLintAar
-> Task :thunder:bundleReleaseLocalLintAar
-> Task :catvod:stripReleaseDebugSymbols NO-SOURCE
-> Task :catvod:copyReleaseJniLibsProjectAndLocalJars
-> Task :catvod:extractDeepLinksForAarRelease
-> Task :catvod:extractReleaseAnnotations
-> Task :catvod:mergeReleaseConsumerProguardFiles
-> Task :catvod:mergeReleaseJavaResource
-> Task :catvod:syncReleaseLibJars
-> Task :catvod:bundleReleaseLocalLintAar
-> Task :hook:stripReleaseDebugSymbols NO-SOURCE
-> Task :hook:copyReleaseJniLibsProjectAndLocalJars
-> Task :hook:extractDeepLinksForAarRelease
-> Task :hook:extractReleaseAnnotations
-> Task :hook:mergeReleaseConsumerProguardFiles
-> Task :hook:mergeReleaseJavaResource
-> Task :hook:syncReleaseLibJars
-
-> Task :zlive:stripReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libcore.so, libjnidispatch.so. Run with --info option to learn more.
-
-> Task :hook:bundleReleaseLocalLintAar
-> Task :zlive:extractDeepLinksForAarRelease
-> Task :zlive:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-runtime:stripReleaseDebugSymbols NO-SOURCE
-> Task :zlive:extractReleaseAnnotations
-> Task :probe:probe-runtime:copyReleaseJniLibsProjectAndLocalJars
-> Task :zlive:mergeReleaseConsumerProguardFiles
-> Task :probe:probe-runtime:extractDeepLinksForAarRelease
-> Task :zlive:mergeReleaseJavaResource
-> Task :zlive:syncReleaseLibJars
-> Task :probe:probe-runtime:extractReleaseAnnotations
-> Task :probe:probe-runtime:mergeReleaseConsumerProguardFiles
-> Task :probe:probe-runtime:mergeReleaseJavaResource
-> Task :probe:probe-runtime:syncReleaseLibJars
-> Task :zlive:bundleReleaseLocalLintAar
-> Task :probe:probe-runtime:bundleReleaseLocalLintAar
-> Task :probe:probe-media3-1-9:stripReleaseDebugSymbols NO-SOURCE
-> Task :probe:probe-media3-1-9:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-media3-1-9:extractDeepLinksForAarRelease
-> Task :probe:probe-media3-1-9:extractReleaseAnnotations
-> Task :probe:probe-media3-1-9:mergeReleaseConsumerProguardFiles
-> Task :probe:probe-collector-tools:stripReleaseDebugSymbols NO-SOURCE
-> Task :probe:probe-collector-tools:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-collector-tools:extractDeepLinksForAarRelease
-> Task :probe:probe-collector-tools:extractReleaseAnnotations
-> Task :probe:probe-collector-tools:mergeReleaseConsumerProguardFiles
-> Task :probe:probe-media3-1-9:mergeReleaseJavaResource
-> Task :probe:probe-collector-tools:mergeReleaseJavaResource
-> Task :probe:probe-media3-1-9:syncReleaseLibJars
-> Task :probe:probe-media3-1-9:bundleReleaseLocalLintAar
-> Task :probe:probe-collector-tools:syncReleaseLibJars
-> Task :probe:probe-collector-tools:bundleReleaseLocalLintAar
-> Task :media3-ui:stripReleaseDebugSymbols NO-SOURCE
-> Task :media3-ui:copyReleaseJniLibsProjectAndLocalJars
-> Task :media3-ui:extractDeepLinksForAarRelease
-> Task :media3-decoder-ffmpeg:stripReleaseDebugSymbols NO-SOURCE
-> Task :media3-decoder-ffmpeg:copyReleaseJniLibsProjectAndLocalJars
-> Task :media3-decoder-ffmpeg:extractDeepLinksForAarRelease
-> Task :media3-decoder-ffmpeg:extractReleaseAnnotations
-> Task :media3-ui:mergeReleaseConsumerProguardFiles
-> Task :media3-ui:mergeReleaseJavaResource
-> Task :media3-decoder-ffmpeg:mergeReleaseConsumerProguardFiles
-> Task :media3-decoder-ffmpeg:mergeReleaseJavaResource
-> Task :media3-decoder-ffmpeg:syncReleaseLibJars
-> Task :media3-decoder-ffmpeg:bundleReleaseLocalLintAar
-> Task :media3-danmaku:stripReleaseDebugSymbols NO-SOURCE
-> Task :media3-danmaku:copyReleaseJniLibsProjectAndLocalJars
-> Task :media3-danmaku:extractDeepLinksForAarRelease
-> Task :app:javaPreCompileMobileArm64_v8aRelease
-> Task :app:checkMobileArm64_v8aReleaseAarMetadata
-> Task :app:mapMobileArm64_v8aReleaseSourceSetPaths
-> Task :app:createMobileArm64_v8aReleaseCompatibleScreenManifests
-> Task :app:extractDeepLinksMobileArm64_v8aRelease
-> Task :app:processMobileArm64_v8aReleaseMainManifest
-> Task :app:processMobileArm64_v8aReleaseManifest
-> Task :app:processMobileArm64_v8aReleaseManifestForPackage
-> Task :media3-danmaku:extractReleaseAnnotations
-> Task :app:extractProguardFiles
-> Task :app:mergeMobileArm64_v8aReleaseStartupProfile
-> Task :app:mergeMobileArm64_v8aReleaseShaders
-> Task :app:compileMobileArm64_v8aReleaseShaders NO-SOURCE
-> Task :app:generateMobileArm64_v8aReleaseAssets UP-TO-DATE
-> Task :app:mergeMobileArm64_v8aReleaseAssets
-> Task :media3-ui:extractReleaseAnnotations
-> Task :app:extractMobileArm64_v8aReleaseVersionControlInfo
-> Task :media3-ui:syncReleaseLibJars
-> Task :media3-ui:bundleReleaseLocalLintAar
-> Task :app:compressMobileArm64_v8aReleaseAssets
-> Task :media3-danmaku:mergeReleaseConsumerProguardFiles
-> Task :media3-common:stripReleaseDebugSymbols NO-SOURCE
-> Task :media3-danmaku:mergeReleaseJavaResource
-> Task :media3-common:copyReleaseJniLibsProjectAndLocalJars
-> Task :media3-common:extractDeepLinksForAarRelease
-> Task :media3-danmaku:syncReleaseLibJars
-> Task :media3-danmaku:bundleReleaseLocalLintAar
-> Task :media3-common:mergeReleaseConsumerProguardFiles
-> Task :media3-common:mergeReleaseJavaResource
-> Task :probe:probe-adapter-api:stripReleaseDebugSymbols NO-SOURCE
-> Task :probe:probe-adapter-api:copyReleaseJniLibsProjectAndLocalJars
-> Task :probe:probe-adapter-api:extractDeepLinksForAarRelease
-> Task :probe:probe-adapter-api:extractReleaseAnnotations
-> Task :probe:probe-adapter-api:mergeReleaseConsumerProguardFiles
-> Task :probe:probe-adapter-api:mergeReleaseJavaResource
-> Task :probe:probe-adapter-api:syncReleaseLibJars
-> Task :probe:probe-adapter-api:bundleReleaseLocalLintAar
-> Task :app:processMobileArm64_v8aReleaseResources
-> Task :media3-common:extractReleaseAnnotations
-> Task :media3-common:syncReleaseLibJars
-> Task :media3-common:bundleReleaseLocalLintAar
-> Task :catvod:writeReleaseLintModelMetadata
-> Task :quickjs:writeReleaseLintModelMetadata
-> Task :chaquo:lintVitalAnalyzeArm64_v8aRelease
-> Task :chaquo:writeArm64_v8aReleaseLintModelMetadata
-> Task :catvod:lintVitalAnalyzeRelease
-> Task :hook:lintVitalAnalyzeRelease
-> Task :forcetech:writeReleaseLintModelMetadata
-> Task :hook:writeReleaseLintModelMetadata
-> Task :forcetech:lintVitalAnalyzeRelease
-> Task :jianpian:lintVitalAnalyzeRelease
-> Task :jianpian:writeReleaseLintModelMetadata
-> Task :media3-common:writeReleaseLintModelMetadata
-> Task :media3-danmaku:lintVitalAnalyzeRelease
-> Task :media3-danmaku:writeReleaseLintModelMetadata
-> Task :media3-decoder-ffmpeg:lintVitalAnalyzeRelease
-> Task :media3-decoder-ffmpeg:writeReleaseLintModelMetadata
-
-> Task :app:compileMobileArm64_v8aReleaseJavaWithJavac
-Note: [1] Wrote GeneratedAppGlideModule with: [com.bumptech.glide.integration.okhttp3.OkHttpLibraryGlideModule, com.bumptech.glide.integration.avif.AvifGlideModule]
-
-> Task :media3-ui:lintVitalAnalyzeRelease
-> Task :media3-ui:writeReleaseLintModelMetadata
-> Task :quickjs:lintVitalAnalyzeRelease
-> Task :thunder:lintVitalAnalyzeRelease
-> Task :thunder:writeReleaseLintModelMetadata
-> Task :tvbus:lintVitalAnalyzeRelease
-> Task :tvbus:writeReleaseLintModelMetadata
-> Task :zlive:lintVitalAnalyzeRelease
-> Task :zlive:writeReleaseLintModelMetadata
-> Task :probe:probe-adapter-api:lintVitalAnalyzeRelease
-> Task :probe:probe-adapter-api:writeReleaseLintModelMetadata
-> Task :probe:probe-collector-tools:lintVitalAnalyzeRelease
-> Task :probe:probe-collector-tools:writeReleaseLintModelMetadata
-
-> Task :app:compileMobileArm64_v8aReleaseJavaWithJavac
-Note: Some input files use or override a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-Note: Some input files use unchecked or unsafe operations.
-Note: Recompile with -Xlint:unchecked for details.
-
-> Task :probe:probe-media3-1-9:lintVitalAnalyzeRelease
-> Task :probe:probe-media3-1-9:writeReleaseLintModelMetadata
-> Task :probe:probe-runtime:lintVitalAnalyzeRelease
-> Task :probe:probe-runtime:writeReleaseLintModelMetadata
-> Task :catvod:generateReleaseLintVitalModel
-> Task :chaquo:generateArm64_v8aReleaseLintVitalModel
-> Task :forcetech:generateReleaseLintVitalModel
-> Task :hook:generateReleaseLintVitalModel
-> Task :jianpian:generateReleaseLintVitalModel
-> Task :media3-common:generateReleaseLintVitalModel
-> Task :media3-danmaku:generateReleaseLintVitalModel
-> Task :media3-decoder-ffmpeg:generateReleaseLintVitalModel
-> Task :media3-ui:generateReleaseLintVitalModel
-> Task :quickjs:generateReleaseLintVitalModel
-> Task :thunder:generateReleaseLintVitalModel
-> Task :tvbus:generateReleaseLintVitalModel
-> Task :zlive:generateReleaseLintVitalModel
-> Task :probe:probe-adapter-api:generateReleaseLintVitalModel
-> Task :probe:probe-collector-tools:generateReleaseLintVitalModel
-> Task :probe:probe-media3-1-9:generateReleaseLintVitalModel
-> Task :probe:probe-runtime:generateReleaseLintVitalModel
-> Task :media3-common:lintVitalAnalyzeRelease
-> Task :app:mergeMobileArm64_v8aReleaseGeneratedProguardFiles
-> Task :app:processMobileArm64_v8aReleaseJavaRes
-> Task :app:expandMobileArm64_v8aReleaseArtProfileWildcards
-> Task :app:generateMobileArm64_v8aReleaseLintVitalReportModel
-> Task :app:collectMobileArm64_v8aReleaseDependencies
-> Task :app:sdkMobileArm64_v8aReleaseDependencyData
-> Task :app:writeMobileArm64_v8aReleaseAppMetadata
-> Task :app:writeMobileArm64_v8aReleaseSigningConfigVersions
-> Task :app:mergeMobileArm64_v8aReleaseJavaResource
-> Task :app:lintVitalAnalyzeMobileArm64_v8aRelease
-> Task :app:lintVitalReportMobileArm64_v8aRelease
-> Task :app:lintVitalMobileArm64_v8aRelease
-> Task :app:minifyMobileArm64_v8aReleaseWithR8
-> Task :app:convertShrunkResourcesToBinaryMobileArm64_v8aRelease
-> Task :app:optimizeMobileArm64_v8aReleaseResources
-> Task :app:l8DexDesugarLibMobileArm64_v8aRelease
-> Task :app:compileMobileArm64_v8aReleaseArtProfile
-> Task :app:packageMobileArm64_v8aRelease
-> Task :app:createMobileArm64_v8aReleaseApkListingFileRedirect
-> Task :app:assembleMobileArm64_v8aRelease
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1792597031794.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1792600835199.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/og3rswee/og3rswee/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not determine the dependencies of task ':app:mergeMobileArm64_v8aReleaseNativeLibs'.
+> Could not resolve all dependencies for configuration ':app:mobileArm64_v8aReleaseRuntimeClasspath'.
+   > Could not resolve com.github.Dimezis:BlurView:version-2.0.3.
+     Required by:
+         project ':app'
+      > Could not resolve com.github.Dimezis:BlurView:version-2.0.3.
+         > Could not get resource 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'.
+            > Could not GET 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'. Received status code 502 from server: Bad Gateway
+> There are 2 more failures with identical causes.
+
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.api.internal.tasks.TaskDependencyResolveException: Could not determine the dependencies of task ':app:mergeMobileArm64_v8aReleaseNativeLibs'.
+	at org.gradle.api.internal.tasks.CachingTaskDependencyResolveContext.getDependencies(CachingTaskDependencyResolveContext.java:70)
+	at org.gradle.execution.plan.TaskDependencyResolver.resolveDependenciesFor(TaskDependencyResolver.java:49)
+	at org.gradle.execution.plan.LocalTaskNode.getDependencies(LocalTaskNode.java:151)
+	at org.gradle.execution.plan.LocalTaskNode.resolveDependencies(LocalTaskNode.java:125)
+	at org.gradle.execution.plan.DefaultExecutionPlan.discoverNodeRelationships(DefaultExecutionPlan.java:183)
+	at org.gradle.execution.plan.DefaultExecutionPlan.doAddEntryNodes(DefaultExecutionPlan.java:154)
+	at org.gradle.execution.plan.DefaultExecutionPlan.addEntryTasks(DefaultExecutionPlan.java:129)
+	at org.gradle.execution.plan.DefaultExecutionPlan.addEntryTasks(DefaultExecutionPlan.java:121)
+	at org.gradle.execution.TaskNameResolvingBuildTaskScheduler.scheduleRequestedTasks(TaskNameResolvingBuildTaskScheduler.java:69)
+	at org.gradle.execution.DefaultTasksBuildTaskScheduler.scheduleRequestedTasks(DefaultTasksBuildTaskScheduler.java:72)
+	at org.gradle.initialization.DefaultTaskExecutionPreparer.lambda$scheduleRequestedTasks$0(DefaultTaskExecutionPreparer.java:47)
+	at org.gradle.internal.Factories$1.create(Factories.java:30)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:300)
+	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:298)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:294)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withReplacedLocks$4(DefaultWorkerLeaseService.java:450)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:372)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withReplacedLocks(DefaultWorkerLeaseService.java:449)
+	at org.gradle.api.internal.project.DefaultProjectStateRegistry$DefaultBuildProjectRegistry.withMutableStateOfAllProjects(DefaultProjectStateRegistry.java:254)
+	at org.gradle.api.internal.project.DefaultProjectStateRegistry$DefaultBuildProjectRegistry.withMutableStateOfAllProjects(DefaultProjectStateRegistry.java:247)
+	at org.gradle.initialization.DefaultTaskExecutionPreparer.scheduleRequestedTasks(DefaultTaskExecutionPreparer.java:46)
+	at org.gradle.initialization.VintageBuildModelController.lambda$scheduleRequestedTasks$0(VintageBuildModelController.java:75)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$1(StateTransitionController.java:119)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$2(StateTransitionController.java:134)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:130)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:118)
+	at org.gradle.initialization.VintageBuildModelController.scheduleRequestedTasks(VintageBuildModelController.java:75)
+	at org.gradle.internal.build.DefaultBuildLifecycleController$DefaultWorkGraphBuilder.addRequestedTasks(DefaultBuildLifecycleController.java:414)
+	at org.gradle.internal.buildtree.DefaultBuildTreeWorkPreparer.lambda$scheduleRequestedTasks$0(DefaultBuildTreeWorkPreparer.java:40)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$populateWorkGraph$8(DefaultBuildLifecycleController.java:199)
+	at org.gradle.internal.build.DefaultBuildWorkPreparer.populateWorkGraph(DefaultBuildWorkPreparer.java:42)
+	at org.gradle.internal.build.BuildOperationFiringBuildWorkPreparer$PopulateWorkGraph.populateTaskGraph(BuildOperationFiringBuildWorkPreparer.java:106)
+	at org.gradle.internal.build.BuildOperationFiringBuildWorkPreparer$PopulateWorkGraph.run(BuildOperationFiringBuildWorkPreparer.java:92)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.internal.build.BuildOperationFiringBuildWorkPreparer.populateWorkGraph(BuildOperationFiringBuildWorkPreparer.java:67)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$populateWorkGraph$9(DefaultBuildLifecycleController.java:199)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$1(StateTransitionController.java:119)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$2(StateTransitionController.java:134)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:130)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:118)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.populateWorkGraph(DefaultBuildLifecycleController.java:199)
+	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.populateWorkGraph(DefaultBuildWorkGraphController.java:169)
+	at org.gradle.composite.internal.DefaultBuildController.populateWorkGraph(DefaultBuildController.java:76)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph$DefaultBuildTreeWorkGraphBuilder.withWorkGraph(DefaultIncludedBuildTaskGraph.java:156)
+	at org.gradle.internal.buildtree.DefaultBuildTreeWorkPreparer.lambda$scheduleRequestedTasks$1(DefaultBuildTreeWorkPreparer.java:40)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph$DefaultBuildTreeWorkGraph$1.run(DefaultIncludedBuildTaskGraph.java:212)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph$DefaultBuildTreeWorkGraph.scheduleWork(DefaultIncludedBuildTaskGraph.java:207)
+	at org.gradle.internal.buildtree.DefaultBuildTreeWorkPreparer.scheduleRequestedTasks(DefaultBuildTreeWorkPreparer.java:36)
+	at org.gradle.internal.cc.impl.barrier.BarrierAwareBuildTreeWorkPreparer.scheduleRequestedTasks$lambda$0(BarrierAwareBuildTreeWorkPreparer.kt:34)
+	at org.gradle.internal.cc.impl.barrier.VintageConfigurationTimeActionRunner.runConfigurationTimeAction(VintageConfigurationTimeActionRunner.kt:48)
+	at org.gradle.internal.cc.impl.barrier.BarrierAwareBuildTreeWorkPreparer.scheduleRequestedTasks(BarrierAwareBuildTreeWorkPreparer.kt:33)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1$finalizedGraph$1.call(VintageBuildTreeWorkController.kt:37)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1$finalizedGraph$1.call(VintageBuildTreeWorkController.kt:37)
+	at org.gradle.internal.Try.ofFailable(Try.java:46)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1.apply(VintageBuildTreeWorkController.kt:37)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1.apply(VintageBuildTreeWorkController.kt:36)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph.withNewWorkGraph(DefaultIncludedBuildTaskGraph.java:115)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController.scheduleAndRunRequestedTasks(VintageBuildTreeWorkController.kt:36)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.lambda$scheduleAndRunTasks$1(DefaultBuildTreeLifecycleController.java:76)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.lambda$runBuild$5(DefaultBuildTreeLifecycleController.java:121)
+	at org.gradle.internal.model.StateTransitionController.lambda$transition$7(StateTransitionController.java:207)
+	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:304)
+	at org.gradle.internal.model.StateTransitionController.lambda$transition$8(StateTransitionController.java:207)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
+	at org.gradle.internal.model.StateTransitionController.transition(StateTransitionController.java:207)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.runBuild(DefaultBuildTreeLifecycleController.java:118)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.scheduleAndRunTasks(DefaultBuildTreeLifecycleController.java:76)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.scheduleAndRunTasks(DefaultBuildTreeLifecycleController.java:71)
+	at org.gradle.tooling.internal.provider.ExecuteBuildActionRunner.run(ExecuteBuildActionRunner.java:31)
+	at org.gradle.launcher.exec.ChainingBuildActionRunner.run(ChainingBuildActionRunner.java:35)
+	at org.gradle.internal.buildtree.ProblemReportingBuildActionRunner.run(ProblemReportingBuildActionRunner.java:54)
+	at org.gradle.launcher.exec.BuildOutcomeReportingBuildActionRunner.run(BuildOutcomeReportingBuildActionRunner.java:83)
+	at org.gradle.tooling.internal.provider.FileSystemWatchingBuildActionRunner.run(FileSystemWatchingBuildActionRunner.java:135)
+	at org.gradle.launcher.exec.BuildCompletionNotifyingBuildActionRunner.run(BuildCompletionNotifyingBuildActionRunner.java:65)
+	at org.gradle.launcher.exec.RootBuildLifecycleBuildActionExecutor.lambda$execute$0(RootBuildLifecycleBuildActionExecutor.java:101)
+	at org.gradle.composite.internal.DefaultRootBuildState.run(DefaultRootBuildState.java:126)
+	at org.gradle.launcher.exec.RootBuildLifecycleBuildActionExecutor.execute(RootBuildLifecycleBuildActionExecutor.java:101)
+	at org.gradle.launcher.exec.BuildTreeLifecycleBuildActionExecutor.runRootBuildAction(BuildTreeLifecycleBuildActionExecutor.java:104)
+	at org.gradle.launcher.exec.BuildTreeLifecycleBuildActionExecutor.execute(BuildTreeLifecycleBuildActionExecutor.java:74)
+	at org.gradle.launcher.exec.RunAsBuildOperationBuildActionExecutor$2.call(RunAsBuildOperationBuildActionExecutor.java:65)
+	at org.gradle.launcher.exec.RunAsBuildOperationBuildActionExecutor$2.call(RunAsBuildOperationBuildActionExecutor.java:61)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.launcher.exec.RunAsBuildOperationBuildActionExecutor.execute(RunAsBuildOperationBuildActionExecutor.java:61)
+	at org.gradle.launcher.exec.RunAsWorkerThreadBuildActionExecutor.lambda$execute$0(RunAsWorkerThreadBuildActionExecutor.java:36)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:300)
+	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:298)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:294)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:286)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:130)
+	at org.gradle.launcher.exec.RunAsWorkerThreadBuildActionExecutor.execute(RunAsWorkerThreadBuildActionExecutor.java:36)
+	at org.gradle.tooling.internal.provider.continuous.ContinuousBuildActionExecutor.execute(ContinuousBuildActionExecutor.java:110)
+	at org.gradle.tooling.internal.provider.SubscribableBuildActionExecutor.execute(SubscribableBuildActionExecutor.java:64)
+	at org.gradle.internal.session.DefaultBuildSessionContext.execute(DefaultBuildSessionContext.java:46)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor$ActionImpl.apply(BuildSessionLifecycleBuildActionExecutor.java:106)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor$ActionImpl.apply(BuildSessionLifecycleBuildActionExecutor.java:94)
+	at org.gradle.internal.session.BuildSessionState.run(BuildSessionState.java:73)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor.execute(BuildSessionLifecycleBuildActionExecutor.java:67)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor.execute(BuildSessionLifecycleBuildActionExecutor.java:45)
+	at org.gradle.internal.buildprocess.execution.StartParamsValidatingActionExecutor.execute(StartParamsValidatingActionExecutor.java:57)
+	at org.gradle.internal.buildprocess.execution.StartParamsValidatingActionExecutor.execute(StartParamsValidatingActionExecutor.java:32)
+	at org.gradle.internal.buildprocess.execution.SessionFailureReportingActionExecutor.execute(SessionFailureReportingActionExecutor.java:51)
+	at org.gradle.internal.buildprocess.execution.SessionFailureReportingActionExecutor.execute(SessionFailureReportingActionExecutor.java:39)
+	at org.gradle.internal.buildprocess.execution.SetupLoggingActionExecutor.execute(SetupLoggingActionExecutor.java:47)
+	at org.gradle.internal.buildprocess.execution.SetupLoggingActionExecutor.execute(SetupLoggingActionExecutor.java:31)
+	at org.gradle.launcher.daemon.server.exec.ExecuteBuild.doBuild(ExecuteBuild.java:70)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.WatchForDisconnection.execute(WatchForDisconnection.java:39)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.ResetDeprecationLogger.execute(ResetDeprecationLogger.java:29)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon.execute(RequestStopIfSingleUsedDaemon.java:35)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.ForwardClientInput.lambda$execute$0(ForwardClientInput.java:40)
+	at org.gradle.internal.daemon.clientinput.ClientInputForwarder.forwardInput(ClientInputForwarder.java:80)
+	at org.gradle.launcher.daemon.server.exec.ForwardClientInput.execute(ForwardClientInput.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.LogAndCheckHealth.execute(LogAndCheckHealth.java:53)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.LogToClient.doBuild(LogToClient.java:63)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment.doBuild(EstablishBuildEnvironment.java:84)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy$1.run(StartBuildOrRespondWithBusy.java:52)
+	at org.gradle.launcher.daemon.server.DaemonStateCoordinator.lambda$runCommand$0(DaemonStateCoordinator.java:321)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.api.internal.artifacts.ivyservice.TypedResolveException: Could not resolve all dependencies for configuration ':app:mobileArm64_v8aReleaseRuntimeClasspath'.
+	at org.gradle.api.internal.artifacts.ResolveExceptionMapper.mapFailures(ResolveExceptionMapper.java:61)
+	at org.gradle.api.internal.artifacts.configurations.DefaultConfiguration$DefaultResolutionHost.consolidateFailures(DefaultConfiguration.java:1789)
+	at org.gradle.api.internal.artifacts.configurations.ResolutionBackedFileCollection.visitDependencies(ResolutionBackedFileCollection.java:60)
+	at org.gradle.api.internal.file.FilteredFileCollection.visitDependencies(FilteredFileCollection.java:65)
+	at org.gradle.api.internal.tasks.CachingTaskDependencyResolveContext$TaskGraphImpl.getNodeValues(CachingTaskDependencyResolveContext.java:108)
+	at org.gradle.internal.graph.CachingDirectedGraphWalker$GraphWithEmptyEdges.getNodeValues(CachingDirectedGraphWalker.java:221)
+	at org.gradle.internal.graph.CachingDirectedGraphWalker.doSearch(CachingDirectedGraphWalker.java:129)
+	at org.gradle.internal.graph.CachingDirectedGraphWalker.findValues(CachingDirectedGraphWalker.java:81)
+	at org.gradle.api.internal.tasks.CachingTaskDependencyResolveContext.getDependencies(CachingTaskDependencyResolveContext.java:67)
+	... 151 more
+Cause 1: org.gradle.internal.resolve.ModuleVersionResolveException: Could not resolve com.github.Dimezis:BlurView:version-2.0.3.
+Required by:
+    project ':app'
+Caused by: org.gradle.internal.resolve.ModuleVersionResolveException: Could not resolve com.github.Dimezis:BlurView:version-2.0.3.
+Caused by: org.gradle.api.resources.ResourceException: Could not get resource 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'.
+	at org.gradle.internal.resource.ResourceExceptions.failure(ResourceExceptions.java:74)
+	at org.gradle.internal.resource.ResourceExceptions.getFailed(ResourceExceptions.java:57)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadByCoords(DefaultExternalResourceArtifactResolver.java:154)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadStaticResource(DefaultExternalResourceArtifactResolver.java:94)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.resolveArtifact(DefaultExternalResourceArtifactResolver.java:60)
+	at org.gradle.api.internal.artifacts.repositories.metadata.AbstractRepositoryMetadataSource.parseMetaDataFromArtifact(AbstractRepositoryMetadataSource.java:79)
+	at org.gradle.api.internal.artifacts.repositories.metadata.AbstractRepositoryMetadataSource.create(AbstractRepositoryMetadataSource.java:69)
+	at org.gradle.api.internal.artifacts.repositories.metadata.DefaultMavenPomMetadataSource.create(DefaultMavenPomMetadataSource.java:40)
+	at org.gradle.api.internal.artifacts.repositories.metadata.RedirectingGradleMetadataModuleMetadataSource.create(RedirectingGradleMetadataModuleMetadataSource.java:51)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver.resolveStaticDependency(ExternalResourceResolver.java:248)
+	at org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver.doResolveComponentMetaData(MavenResolver.java:111)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver$RemoteRepositoryAccess.resolveComponentMetaData(ExternalResourceResolver.java:436)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveComponentMetaDataAndCache(CachingModuleComponentRepository.java:403)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveComponentMetaData(CachingModuleComponentRepository.java:397)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$resolveComponentMetaData$5(ErrorHandlingModuleComponentRepository.java:161)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$tryResolveAndMaybeDisable$15(ErrorHandlingModuleComponentRepository.java:235)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:251)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:234)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.performOperationWithRetries(ErrorHandlingModuleComponentRepository.java:214)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.resolveComponentMetaData(ErrorHandlingModuleComponentRepository.java:160)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentMetaDataResolveState.process(ComponentMetaDataResolveState.java:70)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentMetaDataResolveState.resolve(ComponentMetaDataResolveState.java:62)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.findBestMatch(RepositoryChainComponentMetaDataResolver.java:163)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.findBestMatch(RepositoryChainComponentMetaDataResolver.java:142)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.resolveModule(RepositoryChainComponentMetaDataResolver.java:112)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.lambda$createValueContainerFor$1(RepositoryChainComponentMetaDataResolver.java:82)
+	at org.gradle.internal.model.CalculatedValueContainerFactory$SupplierBackedCalculator.calculateValue(CalculatedValueContainerFactory.java:69)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.lambda$attachValue$0(CalculatedValueContainer.java:227)
+	at org.gradle.internal.Try.ofFailable(Try.java:46)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.attachValue(CalculatedValueContainer.java:222)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:195)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:186)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.resolve(RepositoryChainComponentMetaDataResolver.java:74)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.ComponentResolversChain$ComponentMetaDataResolverChain.resolve(ComponentResolversChain.java:91)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ComponentState.resolve(ComponentState.java:211)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ComponentState.getMetadataOrNull(ComponentState.java:144)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.DownloadMetadataOperation.run(DownloadMetadataOperation.java:31)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationExecutor.lambda$executeInParallel$0(DefaultBuildOperationExecutor.java:106)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperation(DefaultBuildOperationQueue.java:400)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.doRunBatch(DefaultBuildOperationQueue.java:391)
+	at org.gradle.internal.resources.AbstractResourceLockRegistry.whileDisallowingLockChanges(AbstractResourceLockRegistry.java:50)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.whileDisallowingProjectLockChanges(DefaultWorkerLeaseService.java:260)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.executePendingWork(DefaultBuildOperationQueue.java:359)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runBatch(DefaultBuildOperationQueue.java:308)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runOperations$0(DefaultBuildOperationQueue.java:250)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperations(DefaultBuildOperationQueue.java:247)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.run(DefaultBuildOperationQueue.java:240)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.internal.resource.transport.http.HttpErrorStatusCodeException: Could not GET 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'. Received status code 502 from server: Bad Gateway
+	at org.gradle.internal.resource.transport.http.ApacheCommonsHttpClient.processResponse(ApacheCommonsHttpClient.java:310)
+	at org.gradle.internal.resource.transport.http.ApacheCommonsHttpClient.performGet(ApacheCommonsHttpClient.java:121)
+	at org.gradle.internal.resource.transport.http.HttpResourceAccessor.openResource(HttpResourceAccessor.java:49)
+	at org.gradle.internal.resource.transport.http.HttpResourceAccessor.openResource(HttpResourceAccessor.java:32)
+	at org.gradle.internal.resource.transfer.AbstractExternalResourceAccessor.withContent(AbstractExternalResourceAccessor.java:32)
+	at org.gradle.internal.resource.transfer.DefaultExternalResourceConnector.withContent(DefaultExternalResourceConnector.java:59)
+	at org.gradle.internal.resource.transfer.ProgressLoggingExternalResourceAccessor$DownloadOperation.call(ProgressLoggingExternalResourceAccessor.java:136)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.internal.resource.transfer.ProgressLoggingExternalResourceAccessor.withContent(ProgressLoggingExternalResourceAccessor.java:49)
+	at org.gradle.internal.resource.transfer.AccessorBackedExternalResource.withContentIfPresent(AccessorBackedExternalResource.java:103)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.copyToCache(DefaultCacheAwareExternalResourceAccessor.java:188)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.lambda$getResource$1(DefaultCacheAwareExternalResourceAccessor.java:86)
+	at org.gradle.cache.internal.ProducerGuard$AdaptiveProducerGuard.guardByKey(ProducerGuard.java:97)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.getResource(DefaultCacheAwareExternalResourceAccessor.java:80)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadByCoords(DefaultExternalResourceArtifactResolver.java:149)
+	... 51 more
+Cause 2: org.gradle.internal.resolve.ModuleVersionResolveException: Could not resolve com.github.thegrizzlylabs:sardine-android:0.9.
+Required by:
+    project ':app' > project :catvod
+Caused by: org.gradle.internal.resolve.ModuleVersionResolveException: Repository maven3 is disabled due to earlier error below:
+Caused by: org.gradle.internal.resolve.ModuleVersionResolveException: Could not resolve com.github.Dimezis:BlurView:version-2.0.3.
+Caused by: org.gradle.api.resources.ResourceException: Could not get resource 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'.
+	at org.gradle.internal.resource.ResourceExceptions.failure(ResourceExceptions.java:74)
+	at org.gradle.internal.resource.ResourceExceptions.getFailed(ResourceExceptions.java:57)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadByCoords(DefaultExternalResourceArtifactResolver.java:154)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadStaticResource(DefaultExternalResourceArtifactResolver.java:94)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.resolveArtifact(DefaultExternalResourceArtifactResolver.java:60)
+	at org.gradle.api.internal.artifacts.repositories.metadata.AbstractRepositoryMetadataSource.parseMetaDataFromArtifact(AbstractRepositoryMetadataSource.java:79)
+	at org.gradle.api.internal.artifacts.repositories.metadata.AbstractRepositoryMetadataSource.create(AbstractRepositoryMetadataSource.java:69)
+	at org.gradle.api.internal.artifacts.repositories.metadata.DefaultMavenPomMetadataSource.create(DefaultMavenPomMetadataSource.java:40)
+	at org.gradle.api.internal.artifacts.repositories.metadata.RedirectingGradleMetadataModuleMetadataSource.create(RedirectingGradleMetadataModuleMetadataSource.java:51)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver.resolveStaticDependency(ExternalResourceResolver.java:248)
+	at org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver.doResolveComponentMetaData(MavenResolver.java:111)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver$RemoteRepositoryAccess.resolveComponentMetaData(ExternalResourceResolver.java:436)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveComponentMetaDataAndCache(CachingModuleComponentRepository.java:403)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveComponentMetaData(CachingModuleComponentRepository.java:397)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$resolveComponentMetaData$5(ErrorHandlingModuleComponentRepository.java:161)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$tryResolveAndMaybeDisable$15(ErrorHandlingModuleComponentRepository.java:235)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:251)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:234)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.performOperationWithRetries(ErrorHandlingModuleComponentRepository.java:214)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.resolveComponentMetaData(ErrorHandlingModuleComponentRepository.java:160)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentMetaDataResolveState.process(ComponentMetaDataResolveState.java:70)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentMetaDataResolveState.resolve(ComponentMetaDataResolveState.java:62)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.findBestMatch(RepositoryChainComponentMetaDataResolver.java:163)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.findBestMatch(RepositoryChainComponentMetaDataResolver.java:142)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.resolveModule(RepositoryChainComponentMetaDataResolver.java:112)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.lambda$createValueContainerFor$1(RepositoryChainComponentMetaDataResolver.java:82)
+	at org.gradle.internal.model.CalculatedValueContainerFactory$SupplierBackedCalculator.calculateValue(CalculatedValueContainerFactory.java:69)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.lambda$attachValue$0(CalculatedValueContainer.java:227)
+	at org.gradle.internal.Try.ofFailable(Try.java:46)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.attachValue(CalculatedValueContainer.java:222)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:195)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:186)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.resolve(RepositoryChainComponentMetaDataResolver.java:74)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.ComponentResolversChain$ComponentMetaDataResolverChain.resolve(ComponentResolversChain.java:91)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ComponentState.resolve(ComponentState.java:211)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ComponentState.getMetadataOrNull(ComponentState.java:144)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.DownloadMetadataOperation.run(DownloadMetadataOperation.java:31)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationExecutor.lambda$executeInParallel$0(DefaultBuildOperationExecutor.java:106)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperation(DefaultBuildOperationQueue.java:400)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.doRunBatch(DefaultBuildOperationQueue.java:391)
+	at org.gradle.internal.resources.AbstractResourceLockRegistry.whileDisallowingLockChanges(AbstractResourceLockRegistry.java:50)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.whileDisallowingProjectLockChanges(DefaultWorkerLeaseService.java:260)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.executePendingWork(DefaultBuildOperationQueue.java:359)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runBatch(DefaultBuildOperationQueue.java:308)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runOperations$0(DefaultBuildOperationQueue.java:250)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperations(DefaultBuildOperationQueue.java:247)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.run(DefaultBuildOperationQueue.java:240)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.internal.resource.transport.http.HttpErrorStatusCodeException: Could not GET 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'. Received status code 502 from server: Bad Gateway
+	at org.gradle.internal.resource.transport.http.ApacheCommonsHttpClient.processResponse(ApacheCommonsHttpClient.java:310)
+	at org.gradle.internal.resource.transport.http.ApacheCommonsHttpClient.performGet(ApacheCommonsHttpClient.java:121)
+	at org.gradle.internal.resource.transport.http.HttpResourceAccessor.openResource(HttpResourceAccessor.java:49)
+	at org.gradle.internal.resource.transport.http.HttpResourceAccessor.openResource(HttpResourceAccessor.java:32)
+	at org.gradle.internal.resource.transfer.AbstractExternalResourceAccessor.withContent(AbstractExternalResourceAccessor.java:32)
+	at org.gradle.internal.resource.transfer.DefaultExternalResourceConnector.withContent(DefaultExternalResourceConnector.java:59)
+	at org.gradle.internal.resource.transfer.ProgressLoggingExternalResourceAccessor$DownloadOperation.call(ProgressLoggingExternalResourceAccessor.java:136)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.internal.resource.transfer.ProgressLoggingExternalResourceAccessor.withContent(ProgressLoggingExternalResourceAccessor.java:49)
+	at org.gradle.internal.resource.transfer.AccessorBackedExternalResource.withContentIfPresent(AccessorBackedExternalResource.java:103)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.copyToCache(DefaultCacheAwareExternalResourceAccessor.java:188)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.lambda$getResource$1(DefaultCacheAwareExternalResourceAccessor.java:86)
+	at org.gradle.cache.internal.ProducerGuard$AdaptiveProducerGuard.guardByKey(ProducerGuard.java:97)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.getResource(DefaultCacheAwareExternalResourceAccessor.java:80)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadByCoords(DefaultExternalResourceArtifactResolver.java:149)
+	... 51 more
+Cause 3: org.gradle.internal.resolve.ModuleVersionResolveException: Could not resolve com.github.TeamNewPipe:nanojson:e9d656ddb49a412a5a0a5d5ef20ca7ef09549996.
+Required by:
+    project ':app' > com.github.TeamNewPipe:NewPipeExtractor:v0.26.5
+Caused by: org.gradle.internal.resolve.ModuleVersionResolveException: Repository maven3 is disabled due to earlier error below:
+Caused by: org.gradle.internal.resolve.ModuleVersionResolveException: Could not resolve com.github.Dimezis:BlurView:version-2.0.3.
+Caused by: org.gradle.api.resources.ResourceException: Could not get resource 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'.
+	at org.gradle.internal.resource.ResourceExceptions.failure(ResourceExceptions.java:74)
+	at org.gradle.internal.resource.ResourceExceptions.getFailed(ResourceExceptions.java:57)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadByCoords(DefaultExternalResourceArtifactResolver.java:154)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadStaticResource(DefaultExternalResourceArtifactResolver.java:94)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.resolveArtifact(DefaultExternalResourceArtifactResolver.java:60)
+	at org.gradle.api.internal.artifacts.repositories.metadata.AbstractRepositoryMetadataSource.parseMetaDataFromArtifact(AbstractRepositoryMetadataSource.java:79)
+	at org.gradle.api.internal.artifacts.repositories.metadata.AbstractRepositoryMetadataSource.create(AbstractRepositoryMetadataSource.java:69)
+	at org.gradle.api.internal.artifacts.repositories.metadata.DefaultMavenPomMetadataSource.create(DefaultMavenPomMetadataSource.java:40)
+	at org.gradle.api.internal.artifacts.repositories.metadata.RedirectingGradleMetadataModuleMetadataSource.create(RedirectingGradleMetadataModuleMetadataSource.java:51)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver.resolveStaticDependency(ExternalResourceResolver.java:248)
+	at org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver.doResolveComponentMetaData(MavenResolver.java:111)
+	at org.gradle.api.internal.artifacts.repositories.resolver.ExternalResourceResolver$RemoteRepositoryAccess.resolveComponentMetaData(ExternalResourceResolver.java:436)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveComponentMetaDataAndCache(CachingModuleComponentRepository.java:403)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.CachingModuleComponentRepository$ResolveAndCacheRepositoryAccess.resolveComponentMetaData(CachingModuleComponentRepository.java:397)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$resolveComponentMetaData$5(ErrorHandlingModuleComponentRepository.java:161)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.lambda$tryResolveAndMaybeDisable$15(ErrorHandlingModuleComponentRepository.java:235)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:251)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.tryResolveAndMaybeDisable(ErrorHandlingModuleComponentRepository.java:234)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.performOperationWithRetries(ErrorHandlingModuleComponentRepository.java:214)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ErrorHandlingModuleComponentRepository$ErrorHandlingModuleComponentRepositoryAccess.resolveComponentMetaData(ErrorHandlingModuleComponentRepository.java:160)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentMetaDataResolveState.process(ComponentMetaDataResolveState.java:70)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ComponentMetaDataResolveState.resolve(ComponentMetaDataResolveState.java:62)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.findBestMatch(RepositoryChainComponentMetaDataResolver.java:163)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.findBestMatch(RepositoryChainComponentMetaDataResolver.java:142)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.resolveModule(RepositoryChainComponentMetaDataResolver.java:112)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.lambda$createValueContainerFor$1(RepositoryChainComponentMetaDataResolver.java:82)
+	at org.gradle.internal.model.CalculatedValueContainerFactory$SupplierBackedCalculator.calculateValue(CalculatedValueContainerFactory.java:69)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.lambda$attachValue$0(CalculatedValueContainer.java:227)
+	at org.gradle.internal.Try.ofFailable(Try.java:46)
+	at org.gradle.internal.model.CalculatedValueContainer$CalculationState.attachValue(CalculatedValueContainer.java:222)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:195)
+	at org.gradle.internal.model.CalculatedValueContainer.finalizeIfNotAlready(CalculatedValueContainer.java:186)
+	at org.gradle.api.internal.artifacts.ivyservice.ivyresolve.RepositoryChainComponentMetaDataResolver.resolve(RepositoryChainComponentMetaDataResolver.java:74)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.ComponentResolversChain$ComponentMetaDataResolverChain.resolve(ComponentResolversChain.java:91)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ComponentState.resolve(ComponentState.java:211)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.ComponentState.getMetadataOrNull(ComponentState.java:144)
+	at org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.builder.DownloadMetadataOperation.run(DownloadMetadataOperation.java:31)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationExecutor.lambda$executeInParallel$0(DefaultBuildOperationExecutor.java:106)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperation(DefaultBuildOperationQueue.java:400)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.doRunBatch(DefaultBuildOperationQueue.java:391)
+	at org.gradle.internal.resources.AbstractResourceLockRegistry.whileDisallowingLockChanges(AbstractResourceLockRegistry.java:50)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.whileDisallowingProjectLockChanges(DefaultWorkerLeaseService.java:260)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.executePendingWork(DefaultBuildOperationQueue.java:359)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runBatch(DefaultBuildOperationQueue.java:308)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.lambda$runOperations$0(DefaultBuildOperationQueue.java:250)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.runOperations(DefaultBuildOperationQueue.java:247)
+	at org.gradle.internal.operations.DefaultBuildOperationQueue$WorkerRunnable.run(DefaultBuildOperationQueue.java:240)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.internal.resource.transport.http.HttpErrorStatusCodeException: Could not GET 'https://maven.aliyun.com/repository/public/com/github/Dimezis/BlurView/version-2.0.3/BlurView-version-2.0.3.pom'. Received status code 502 from server: Bad Gateway
+	at org.gradle.internal.resource.transport.http.ApacheCommonsHttpClient.processResponse(ApacheCommonsHttpClient.java:310)
+	at org.gradle.internal.resource.transport.http.ApacheCommonsHttpClient.performGet(ApacheCommonsHttpClient.java:121)
+	at org.gradle.internal.resource.transport.http.HttpResourceAccessor.openResource(HttpResourceAccessor.java:49)
+	at org.gradle.internal.resource.transport.http.HttpResourceAccessor.openResource(HttpResourceAccessor.java:32)
+	at org.gradle.internal.resource.transfer.AbstractExternalResourceAccessor.withContent(AbstractExternalResourceAccessor.java:32)
+	at org.gradle.internal.resource.transfer.DefaultExternalResourceConnector.withContent(DefaultExternalResourceConnector.java:59)
+	at org.gradle.internal.resource.transfer.ProgressLoggingExternalResourceAccessor$DownloadOperation.call(ProgressLoggingExternalResourceAccessor.java:136)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.internal.resource.transfer.ProgressLoggingExternalResourceAccessor.withContent(ProgressLoggingExternalResourceAccessor.java:49)
+	at org.gradle.internal.resource.transfer.AccessorBackedExternalResource.withContentIfPresent(AccessorBackedExternalResource.java:103)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.copyToCache(DefaultCacheAwareExternalResourceAccessor.java:188)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.lambda$getResource$1(DefaultCacheAwareExternalResourceAccessor.java:86)
+	at org.gradle.cache.internal.ProducerGuard$AdaptiveProducerGuard.guardByKey(ProducerGuard.java:97)
+	at org.gradle.internal.resource.transfer.DefaultCacheAwareExternalResourceAccessor.getResource(DefaultCacheAwareExternalResourceAccessor.java:80)
+	at org.gradle.api.internal.artifacts.repositories.resolver.DefaultExternalResourceArtifactResolver.downloadByCoords(DefaultExternalResourceArtifactResolver.java:149)
+	... 51 more
+
 
 Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
 
@@ -1564,5 +462,4 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/9.5.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 3m 11s
-636 actionable tasks: 636 executed
+BUILD FAILED in 1m 23s
