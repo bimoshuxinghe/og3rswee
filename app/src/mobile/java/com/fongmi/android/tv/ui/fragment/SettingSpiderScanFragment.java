@@ -87,7 +87,6 @@ public class SettingSpiderScanFragment extends BaseFragment {
     protected void initEvent() {
         mBinding.scan.setOnClickListener(v -> onScan());
         mBinding.pickDir.setOnClickListener(v -> dirLauncher.launch(null));
-        mBinding.selectAll.setOnClickListener(v -> onSelectAll());
         mBinding.invert.setOnClickListener(v -> onToggle());
         mBinding.apply.setOnClickListener(v -> onApply());
     }
@@ -187,11 +186,6 @@ public class SettingSpiderScanFragment extends BaseFragment {
         mBinding.progress.setText(mItems.isEmpty()
                 ? getString(R.string.spider_scan_none)
                 : getString(R.string.spider_scan_summary, mItems.size(), SpiderScanner.summary(mItems)));
-        updateSummary();
-    }
-
-    private void onSelectAll() {
-        mAdapter.checkAll(true);
         updateSummary();
     }
 

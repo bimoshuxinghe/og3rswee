@@ -36,7 +36,7 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             android:text="@string/spider_scan_start"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/pickDir"
@@ -50,21 +50,7 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             android:text="@string/spider_scan_pick_dir"
-            android:textSize="12sp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/selectAll"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="4dp"
-            android:layout_weight="1"
-            android:insetLeft="0dp"
-            android:insetRight="0dp"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp"
-            android:text="@string/spider_scan_select_all"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/invert"
@@ -78,7 +64,7 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             android:text="@string/spider_scan_invert"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/apply"
@@ -91,7 +77,7 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             android:text="@string/spider_scan_apply"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
@@ -104,7 +90,7 @@
         android:paddingTop="6dp"
         android:text="@string/spider_scan_hint"
         android:textColor="@color/white"
-        android:textSize="12sp" />
+        android:textSize="13sp" />
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/summary"
