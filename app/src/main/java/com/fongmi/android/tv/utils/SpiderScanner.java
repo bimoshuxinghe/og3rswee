@@ -38,6 +38,11 @@ public class SpiderScanner {
             "Alarms", "Audiobooks", "Podcasts", "Ringtones", "Notifications"
     );
 
+    /** 扫描类型：其他软件也会在存储里放 .js，按类型过滤避免误扫。 */
+    public enum Kind {
+        ALL, JS, PY
+    }
+
     /** 一个候选爬虫文件；file 与 uri 二选一，取决于来源。 */
     public static class Item {
 
@@ -48,6 +53,7 @@ public class SpiderScanner {
         public final Uri uri;
         public boolean checked;
         public boolean imported;
+        public boolean hasExt;
 
         Item(String name, String path, long size, File file, Uri uri) {
             this.name = name;
@@ -116,9 +122,14 @@ public class SpiderScanner {
 
     /** 后台扫描常用目录，结果回主线程。 */
     public static void scan(Callback callback) {
+        scan(callback, Kind.ALL);
+    }
+
+    public static void scan(Callback callback, Kind kind) {
+        Kind target = kind == null ? Kind.ALL : kind;
         Task.submit(() -> {
             List<Item> items = new ArrayList<>();
-            for (File root : roots()) walk(root, 0, items, callback);
+            for (File root : roots()) walk(root, 0, items, callback, target);
             sort(items);
             App.post(() -> callback.onFinish(items));
         });
@@ -126,9 +137,14 @@ public class SpiderScanner {
 
     /** 后台扫描用户授权的目录树（SAF），结果回主线程。 */
     public static void scanTree(Context context, Uri treeUri, Callback callback) {
+        scanTree(context, treeUri, callback, Kind.ALL);
+    }
+
+    public static void scanTree(Context context, Uri treeUri, Callback callback, Kind kind) {
+        Kind target = kind == null ? Kind.ALL : kind;
         Task.submit(() -> {
             List<Item> items = new ArrayList<>();
-            walkTree(context, treeUri, DocumentsContract.getTreeDocumentId(treeUri), 0, items, callback);
+            walkTree(context, treeUri, DocumentsContract.getTreeDocumentId(treeUri), 0, items, callback, target);
             sort(items);
             App.post(() -> callback.onFinish(items));
         });
@@ -138,7 +154,7 @@ public class SpiderScanner {
         items.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
     }
 
-    private static void walk(File dir, int depth, List<Item> items, Callback callback) {
+    private static void walk(File dir, int depth, List<Item> items, Callback callback, Kind kind) {
         if (depth > MAX_DEPTH || items.size() >= MAX_ITEMS) return;
         if (dir == null || !dir.isDirectory() || dir.getName().startsWith(".")) return;
         if (SKIP_DIR.contains(dir.getName())) return;
@@ -147,8 +163,8 @@ public class SpiderScanner {
         int found = 0;
         for (File file : files) {
             if (file.isDirectory()) {
-                walk(file, depth + 1, items, callback);
-            } else if (isSpider(file.getName()) && file.length() <= MAX_SIZE) {
+                walk(file, depth + 1, items, callback, kind);
+            } else if (isSpider(file.getName(), kind) && file.length() <= MAX_SIZE) {
                 items.add(of(file));
                 found++;
             }
@@ -157,7 +173,7 @@ public class SpiderScanner {
     }
 
     private static void walkTree(Context context, Uri treeUri, String docId, int depth,
-                                 List<Item> items, Callback callback) {
+                                 List<Item> items, Callback callback, Kind kind) {
         if (depth > MAX_DEPTH || items.size() >= MAX_ITEMS) return;
         Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId);
         String[] projection = {
@@ -175,8 +191,8 @@ public class SpiderScanner {
                 String mime = cursor.getString(2);
                 long size = cursor.isNull(3) ? 0 : cursor.getLong(3);
                 if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
-                    walkTree(context, treeUri, id, depth + 1, items, callback);
-                } else if (isSpider(name) && size <= MAX_SIZE) {
+                    walkTree(context, treeUri, id, depth + 1, items, callback, kind);
+                } else if (isSpider(name, kind) && size <= MAX_SIZE) {
                     items.add(of(DocumentsContract.buildDocumentUriUsingTree(treeUri, id), name, size));
                     found++;
                 }
@@ -186,9 +202,13 @@ public class SpiderScanner {
         }
     }
 
-    private static boolean isSpider(String name) {
+    private static boolean isSpider(String name, Kind kind) {
         String lower = name.toLowerCase(Locale.getDefault());
-        return lower.endsWith(".js") || lower.endsWith(".py");
+        boolean js = lower.endsWith(".js");
+        boolean py = lower.endsWith(".py");
+        if (kind == Kind.JS) return js;
+        if (kind == Kind.PY) return py;
+        return js || py;
     }
 
     private static void notifyCount(int count, Callback callback) {
@@ -214,6 +234,16 @@ public class SpiderScanner {
 
     public static void checkAll(List<Item> items, boolean checked) {
         for (Item item : items) item.checked = checked;
+    }
+
+    /** 按类型过滤（切换类型时避免重新扫描）。 */
+    public static List<Item> filter(List<Item> items, Kind kind) {
+        if (kind == null || kind == Kind.ALL) return new ArrayList<>(items);
+        List<Item> result = new ArrayList<>();
+        for (Item item : items) {
+            if (isSpider(item.name, kind)) result.add(item);
+        }
+        return result;
     }
 
     /** 按文件名去重。 */

@@ -44,10 +44,25 @@
                 tools:text="drpy_xxx.js" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/param"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:paddingStart="6dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="2dp"
+                android:text="@string/spider_scan_param"
+                android:textColor="@color/white"
+                android:textSize="11sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 android:background="@drawable/shape_site_group_selected"
                 android:paddingStart="8dp"
                 android:paddingTop="2dp"
@@ -65,12 +80,11 @@
             android:id="@+id/desc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="start"
             android:paddingTop="2dp"
             android:singleLine="true"
             android:textColor="@color/white"
             android:textSize="12sp"
-            tools:text="12.4 KB  /storage/emulated/0/Download" />
+            tools:text="12.4 KB · js" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 

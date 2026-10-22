@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.ui.fragment;
 
 import android.content.Intent;
+import android.text.TextUtils;
 import android.content.UriPermission;
 import android.net.Uri;
 import android.view.LayoutInflater;
@@ -15,8 +16,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
+import android.widget.EditText;
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.FragmentSettingSpiderScanBinding;
+import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.ui.activity.HomeActivity;
 import com.fongmi.android.tv.ui.adapter.SpiderFileAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
@@ -24,6 +28,7 @@ import com.fongmi.android.tv.utils.LocalSpider;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.SpiderScanner;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.github.catvod.utils.Prefers;
 
 import org.json.JSONArray;
@@ -40,10 +45,12 @@ import java.util.List;
 public class SettingSpiderScanFragment extends BaseFragment {
 
     private static final String KEY_DIRS = "spider_scan_dirs";
+    private static final String KEY_KIND = "spider_scan_kind";
 
     private FragmentSettingSpiderScanBinding mBinding;
     private SpiderFileAdapter mAdapter;
     private final List<SpiderScanner.Item> mItems = new ArrayList<>();
+    private final List<SpiderScanner.Item> mAll = new ArrayList<>();
     private boolean scanning;
 
     private final ActivityResultLauncher<Uri> dirLauncher =
@@ -77,7 +84,9 @@ public class SettingSpiderScanFragment extends BaseFragment {
                         getRoot().change(1);
                     }
                 });
-        mAdapter = new SpiderFileAdapter(mItems, this::updateSummary);
+        mAdapter = new SpiderFileAdapter(mItems, this::updateSummary, this::showItemMenu);
+        int saved = Prefers.getInt(KEY_KIND);
+        mBinding.kind.check(saved == 1 ? R.id.kindJs : saved == 2 ? R.id.kindPy : R.id.kindAll);
         mBinding.list.setLayoutManager(new LinearLayoutManager(requireContext()));
         mBinding.list.setAdapter(mAdapter);
         updateSummary();
@@ -89,6 +98,11 @@ public class SettingSpiderScanFragment extends BaseFragment {
         mBinding.pickDir.setOnClickListener(v -> dirLauncher.launch(null));
         mBinding.invert.setOnClickListener(v -> onToggle());
         mBinding.apply.setOnClickListener(v -> onApply());
+        mBinding.kind.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            Prefers.put(KEY_KIND, checkedId == R.id.kindJs ? 1 : checkedId == R.id.kindPy ? 2 : 0);
+            applyKindFilter();
+        });
     }
 
     /** 扫描常用目录 + 已授权的自定义目录。 */
@@ -183,13 +197,9 @@ public class SettingSpiderScanFragment extends BaseFragment {
         scanning = false;
         mBinding.scan.setEnabled(true);
         mBinding.pickDir.setEnabled(true);
-        mItems.clear();
-        mItems.addAll(SpiderScanner.dedup(items));
-        for (SpiderScanner.Item item : mItems) {
-            item.imported = LocalSpider.exists(item.name);
-            item.checked = item.imported; // 已导入的默认勾选，避免误取消
-        }
-        mAdapter.notifyDataSetChanged();
+        mAll.clear();
+        mAll.addAll(SpiderScanner.dedup(items));
+        applyKindFilter();
         mBinding.progress.setText(mItems.isEmpty()
                 ? getString(R.string.spider_scan_none)
                 : getString(R.string.spider_scan_summary, mItems.size(), SpiderScanner.summary(mItems)));
@@ -283,5 +293,79 @@ public class SettingSpiderScanFragment extends BaseFragment {
             Prefers.put(KEY_DIRS, array.toString());
         } catch (Exception ignored) {
         }
+    }
+
+    /** 按当前类型过滤全量结果，无需重新扫描。 */
+    private void applyKindFilter() {
+        SpiderScanner.Kind kind = currentKind();
+        List<SpiderScanner.Item> filtered = SpiderScanner.filter(mAll, kind);
+        mItems.clear();
+        for (SpiderScanner.Item item : filtered) {
+            item.imported = LocalSpider.exists(item.name);
+            Site site = item.imported ? LocalSpider.siteFor(item.name) : null;
+            item.hasExt = site != null && !TextUtils.isEmpty(site.getExt());
+            if (!item.imported) item.checked = false;
+            mItems.add(item);
+        }
+        mAdapter.notifyDataSetChanged();
+        updateSummary();
+    }
+
+    private SpiderScanner.Kind currentKind() {
+        int checked = mBinding.kind.getCheckedButtonId();
+        if (checked == R.id.kindJs) return SpiderScanner.Kind.JS;
+        if (checked == R.id.kindPy) return SpiderScanner.Kind.PY;
+        return SpiderScanner.Kind.ALL;
+    }
+
+    /** 长按条目：编辑 ext 参数 / 移除线路。 */
+    private void showItemMenu(SpiderScanner.Item item) {
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(item.name)
+                .setItems(new CharSequence[]{getString(R.string.spider_scan_edit_ext), getString(R.string.spider_scan_remove)}, (dialog, which) -> {
+                    if (which == 0) editExt(item);
+                    else {
+                        if (item.imported) {
+                            LocalSpider.removeByName(item.name);
+                            item.imported = false;
+                            item.checked = false;
+                            item.hasExt = false;
+                            mAdapter.notifyDataSetChanged();
+                            updateSummary();
+                            Notify.show(R.string.spider_scan_removed);
+                        }
+                    }
+                })
+                .show();
+    }
+
+    /** 编辑导入爬虫的 ext 参数（部分 js/py 爬虫需要 ext 传入配置）。 */
+    private void editExt(SpiderScanner.Item item) {
+        if (!item.imported) {
+            Notify.show(R.string.spider_scan_need_import);
+            return;
+        }
+        Site site = LocalSpider.siteFor(item.name);
+        if (site == null) return;
+        EditText input = new EditText(requireContext());
+        input.setMinLines(3);
+        input.setMaxLines(10);
+        input.setTextSize(13);
+        input.setText(site.getExt() == null ? "" : site.getExt());
+        new MaterialAlertDialogBuilder(requireActivity())
+                .setTitle(R.string.spider_scan_edit_ext)
+                .setMessage(R.string.spider_scan_edit_ext_hint)
+                .setView(input)
+                .setPositiveButton(R.string.dialog_positive, (d, w) -> {
+                    String ext = input.getText().toString().trim();
+                    site.setExt(ext);
+                    site.save();
+                    item.hasExt = !TextUtils.isEmpty(ext);
+                    mAdapter.notifyDataSetChanged();
+                    RefreshEvent.home();
+                    Notify.show(R.string.spider_scan_ext_saved);
+                })
+                .setNegativeButton(R.string.dialog_negative, null)
+                .show();
     }
 }

@@ -83,6 +83,11 @@ public class LocalSpider {
         RefreshEvent.home();
     }
 
+    /** 按原始文件名取回已登记的站点（用于编辑 ext 参数）。 */
+    public static Site siteFor(String name) {
+        return Site.find(keyOfName(name));
+    }
+
     /** 按原始文件名移除登记的线路（用于扫描页取消勾选同步）。 */
     public static void removeByName(String name) {
         Site site = Site.find(keyOfName(name));

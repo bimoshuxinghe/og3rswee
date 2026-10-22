@@ -290,6 +290,16 @@
     <string name="spider_scan_apply">导入</string>
     <string name="spider_scan_count">共 %1$d 个，已导入 %2$d，待变更 %3$d</string>
     <string name="spider_scan_badge">已导入</string>
+    <string name="spider_scan_kind_all">全部</string>
+    <string name="spider_scan_kind_js">仅 js</string>
+    <string name="spider_scan_kind_py">仅 py</string>
+    <string name="spider_scan_param">参数</string>
+    <string name="spider_scan_edit_ext">编辑参数(ext)</string>
+    <string name="spider_scan_edit_ext_hint">部分爬虫需要 ext 传入配置（JSON 或 key=value;;），不确定就留空</string>
+    <string name="spider_scan_ext_saved">参数已保存</string>
+    <string name="spider_scan_need_import">请先导入该文件</string>
+    <string name="spider_scan_remove">移出线路</string>
+    <string name="spider_scan_removed">已移除</string>
     <string name="spider_scan_no_change">没有需要同步的变更</string>
     <string name="spider_scan_applied">新增 %1$d 条，移除 %2$d 条</string>
     <string name="player_always_time">时钟常显</string>

@@ -292,6 +292,16 @@
     <string name="spider_scan_apply">Import</string>
     <string name="spider_scan_count">%1$d files, %2$d imported, %3$d pending</string>
     <string name="spider_scan_badge">imported</string>
+    <string name="spider_scan_kind_all">All</string>
+    <string name="spider_scan_kind_js">js only</string>
+    <string name="spider_scan_kind_py">py only</string>
+    <string name="spider_scan_param">params</string>
+    <string name="spider_scan_edit_ext">Edit params (ext)</string>
+    <string name="spider_scan_edit_ext_hint">Some spiders need ext (JSON or "key=value;;"). Leave empty if unsure.</string>
+    <string name="spider_scan_ext_saved">Params saved</string>
+    <string name="spider_scan_need_import">Import this file first</string>
+    <string name="spider_scan_remove">Remove from line-up</string>
+    <string name="spider_scan_removed">Removed</string>
     <string name="spider_scan_no_change">Nothing to sync</string>
     <string name="spider_scan_applied">Added %1$d, removed %2$d</string>
     <string name="player_always_time">Always display clock</string>

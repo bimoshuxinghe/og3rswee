@@ -18,10 +18,16 @@ public class SpiderFileAdapter extends RecyclerView.Adapter<SpiderFileAdapter.Vi
 
     private final List<SpiderScanner.Item> mItems;
     private final Runnable mListener;
+    private final OnItemListener mItemListener;
 
-    public SpiderFileAdapter(List<SpiderScanner.Item> items, Runnable listener) {
+    public interface OnItemListener {
+        void onLongClick(SpiderScanner.Item item);
+    }
+
+    public SpiderFileAdapter(List<SpiderScanner.Item> items, Runnable listener, OnItemListener itemListener) {
         this.mItems = items;
         this.mListener = listener;
+        this.mItemListener = itemListener;
     }
 
     public void toggle(int position) {
@@ -66,6 +72,11 @@ public class SpiderFileAdapter extends RecyclerView.Adapter<SpiderFileAdapter.Vi
         holder.binding.check.setChecked(item.checked);
         holder.binding.badge.setVisibility(item.imported ? android.view.View.VISIBLE : android.view.View.GONE);
         holder.binding.row.setOnClickListener(v -> toggle(position));
+        holder.binding.row.setOnLongClickListener(v -> {
+            if (mItemListener != null) mItemListener.onLongClick(item);
+            return true;
+        });
+        holder.binding.param.setVisibility(item.hasExt ? android.view.View.VISIBLE : android.view.View.GONE);
     }
 
     @Override
